@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#111318" />
+  <meta name="description" content="A fast, personal workout tracker built for progressive overload." />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <link rel="stylesheet" href="styles.css" />
+  <title>Big Gains</title>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">REVEAL / BIG GAINS</p>
+        <h1 id="greeting">Good afternoon, Jorge.</h1>
+      </div>
+      <button id="installButton" class="ghost hidden">Install</button>
+    </header>
+
+    <main>
+      <section class="hero-card">
+        <div>
+          <span class="label">Next workout</span>
+          <strong id="nextWorkout">Push</strong>
+          <p id="heroNote">Log the work. Reveal the pattern.</p>
+        </div>
+        <button id="startWorkout" class="primary">Start workout</button>
+      </section>
+
+      <section class="stats-grid">
+        <article class="stat-card"><span>Workouts this week</span><strong id="weeklyWorkouts">0</strong></article>
+        <article class="stat-card"><span>Sets logged</span><strong id="totalSets">0</strong></article>
+        <article class="stat-card"><span>Training volume</span><strong id="trainingVolume">0 lb</strong></article>
+        <article class="stat-card"><span>Latest bodyweight</span><strong id="latestWeight">—</strong></article>
+      </section>
+
+      <section class="panel" id="loggerPanel">
+        <div class="section-heading">
+          <div><span class="label">Workout log</span><h2>Today’s session</h2></div>
+          <select id="workoutType" aria-label="Workout type">
+            <option>Push</option><option>Pull</option><option>Legs</option><option>Upper</option><option>Lower</option><option>Run</option><option>Other</option>
+          </select>
+        </div>
+
+        <form id="setForm" class="set-form">
+          <label>Exercise<input id="exercise" required autocomplete="off" placeholder="Bench press" /></label>
+          <label>Weight<input id="weight" required type="number" min="0" step="0.5" inputmode="decimal" placeholder="225" /></label>
+          <label>Reps<input id="reps" required type="number" min="1" step="1" inputmode="numeric" placeholder="5" /></label>
+          <label>RPE<input id="rpe" type="number" min="1" max="10" step="0.5" inputmode="decimal" placeholder="8" /></label>
+          <button class="primary" type="submit">Add set</button>
+        </form>
+
+        <div id="lastPerformance" class="last-performance">Choose an exercise to see your last performance.</div>
+        <div id="currentSets" class="set-list empty">No sets logged yet.</div>
+        <button id="finishWorkout" class="secondary wide" disabled>Finish workout</button>
+      </section>
+
+      <section class="two-column">
+        <article class="panel">
+          <div class="section-heading"><div><span class="label">Recent activity</span><h2>Workout history</h2></div></div>
+          <div id="history" class="history-list empty">Your completed workouts will appear here.</div>
+        </article>
+
+        <article class="panel">
+          <div class="section-heading"><div><span class="label">Body</span><h2>Weight check-in</h2></div></div>
+          <form id="weightForm" class="weight-form">
+            <input id="bodyweight" type="number" min="0" step="0.1" inputmode="decimal" placeholder="188.4" required />
+            <button class="secondary" type="submit">Save</button>
+          </form>
+          <div id="weightHistory" class="mini-list empty">No weigh-ins yet.</div>
+        </article>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="Primary navigation">
+      <button class="active" data-target="top">Dashboard</button>
+      <button data-target="loggerPanel">Log</button>
+      <button data-target="history">History</button>
+    </nav>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
