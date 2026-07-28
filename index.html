@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#111318" />
-  <meta name="description" content="A fast, personal workout tracker built for progressive overload." />
+  <meta name="theme-color" content="#090b0f" />
+  <meta name="description" content="Big Gains — a fast, private strength training journal." />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icon.svg" />
@@ -13,7 +13,7 @@
 </head>
 <body>
   <div class="app-shell">
-    <header class="topbar">
+    <header class="topbar" id="top">
       <div>
         <p class="eyebrow">REVEAL / BIG GAINS</p>
         <h1 id="greeting">Good afternoon, Jorge.</h1>
@@ -24,44 +24,74 @@
     <main>
       <section class="hero-card">
         <div>
-          <span class="label">Next workout</span>
+          <span class="label">Today</span>
           <strong id="nextWorkout">Push</strong>
-          <p id="heroNote">Log the work. Reveal the pattern.</p>
+          <p id="heroNote">Your plan is ready. Log the work.</p>
         </div>
-        <button id="startWorkout" class="primary">Start workout</button>
+        <button id="startWorkout" class="primary hero-action">Start workout</button>
       </section>
 
       <section class="stats-grid">
-        <article class="stat-card"><span>Workouts this week</span><strong id="weeklyWorkouts">0</strong></article>
-        <article class="stat-card"><span>Sets logged</span><strong id="totalSets">0</strong></article>
-        <article class="stat-card"><span>Training volume</span><strong id="trainingVolume">0 lb</strong></article>
-        <article class="stat-card"><span>Latest bodyweight</span><strong id="latestWeight">—</strong></article>
+        <article class="stat-card"><span>This week</span><strong id="weeklyWorkouts">0</strong><small>workouts</small></article>
+        <article class="stat-card"><span>Lifetime volume</span><strong id="trainingVolume">0 lb</strong></article>
+        <article class="stat-card"><span>Personal records</span><strong id="prCount">0</strong></article>
+        <article class="stat-card"><span>Bodyweight</span><strong id="latestWeight">—</strong></article>
       </section>
 
-      <section class="panel" id="loggerPanel">
+      <section class="panel workout-builder" id="workoutPanel">
         <div class="section-heading">
-          <div><span class="label">Workout log</span><h2>Today’s session</h2></div>
-          <select id="workoutType" aria-label="Workout type">
-            <option>Push</option><option>Pull</option><option>Legs</option><option>Upper</option><option>Lower</option><option>Run</option><option>Other</option>
+          <div><span class="label">Training core</span><h2>Build today’s session</h2></div>
+          <button id="cancelWorkout" class="ghost compact hidden">Cancel</button>
+        </div>
+
+        <div class="day-tabs" id="dayTabs" role="tablist">
+          <button data-day="Push">Push</button>
+          <button data-day="Pull">Pull</button>
+          <button data-day="Legs">Legs + Core</button>
+          <button data-day="Cardio">Cardio</button>
+          <button data-day="Other">Other</button>
+        </div>
+
+        <div class="library-toolbar">
+          <label class="search-box">
+            <span>Find an exercise</span>
+            <input id="exerciseSearch" type="search" placeholder="Search chest press, cable row, squat…" autocomplete="off" />
+          </label>
+          <select id="equipmentFilter" aria-label="Filter by equipment">
+            <option value="all">All equipment</option>
           </select>
         </div>
 
-        <form id="setForm" class="set-form">
-          <label>Exercise<input id="exercise" required autocomplete="off" placeholder="Bench press" /></label>
-          <label>Weight<input id="weight" required type="number" min="0" step="0.5" inputmode="decimal" placeholder="225" /></label>
-          <label>Reps<input id="reps" required type="number" min="1" step="1" inputmode="numeric" placeholder="5" /></label>
-          <label>RPE<input id="rpe" type="number" min="1" max="10" step="0.5" inputmode="decimal" placeholder="8" /></label>
-          <button class="primary" type="submit">Add set</button>
-        </form>
+        <div id="exerciseLibrary" class="exercise-library"></div>
+      </section>
 
-        <div id="lastPerformance" class="last-performance">Choose an exercise to see your last performance.</div>
-        <div id="currentSets" class="set-list empty">No sets logged yet.</div>
-        <button id="finishWorkout" class="secondary wide" disabled>Finish workout</button>
+      <section class="panel active-panel hidden" id="activePanel">
+        <div class="section-heading active-heading">
+          <div><span class="label">Active workout</span><h2 id="activeWorkoutTitle">Push</h2></div>
+          <div class="workout-clock" id="workoutClock">00:00</div>
+        </div>
+
+        <div id="activeExercises" class="active-exercises"></div>
+        <button id="addExerciseButton" class="secondary wide">+ Add exercise</button>
+        <button id="finishWorkout" class="primary wide" disabled>Finish workout</button>
+      </section>
+
+      <section class="panel timer-card hidden" id="timerCard" aria-live="polite">
+        <div>
+          <span class="label">Rest timer</span>
+          <strong id="timerDisplay">2:30</strong>
+          <p id="timerNext">Recover. Your next set is waiting.</p>
+        </div>
+        <div class="timer-actions">
+          <button id="timerMinus" class="ghost compact">− 15s</button>
+          <button id="timerSkip" class="secondary compact">Skip</button>
+          <button id="timerPlus" class="ghost compact">+ 15s</button>
+        </div>
       </section>
 
       <section class="two-column">
-        <article class="panel">
-          <div class="section-heading"><div><span class="label">Recent activity</span><h2>Workout history</h2></div></div>
+        <article class="panel" id="historyPanel">
+          <div class="section-heading"><div><span class="label">Evidence</span><h2>Workout history</h2></div></div>
           <div id="history" class="history-list empty">Your completed workouts will appear here.</div>
         </article>
 
@@ -74,14 +104,31 @@
           <div id="weightHistory" class="mini-list empty">No weigh-ins yet.</div>
         </article>
       </section>
+
+      <section class="panel data-panel" id="settingsPanel">
+        <div class="section-heading"><div><span class="label">Your data</span><h2>Backup and restore</h2></div></div>
+        <p>Everything stays on this device unless you export it. Keep a backup before changing phones or clearing browser data.</p>
+        <div class="data-actions">
+          <button id="exportData" class="secondary">Export JSON</button>
+          <label class="secondary file-button">Restore JSON<input id="importData" type="file" accept="application/json" /></label>
+        </div>
+      </section>
     </main>
 
     <nav class="bottom-nav" aria-label="Primary navigation">
-      <button class="active" data-target="top">Dashboard</button>
-      <button data-target="loggerPanel">Log</button>
-      <button data-target="history">History</button>
+      <button class="active" data-target="top">Home</button>
+      <button data-target="workoutPanel">Train</button>
+      <button data-target="historyPanel">History</button>
+      <button data-target="settingsPanel">Data</button>
     </nav>
   </div>
+
+  <template id="exerciseCardTemplate">
+    <article class="exercise-card">
+      <div><span class="exercise-muscle"></span><h3></h3><p></p></div>
+      <button class="add-exercise primary compact">Add</button>
+    </article>
+  </template>
 
   <script src="app.js"></script>
 </body>
