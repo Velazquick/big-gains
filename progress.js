@@ -226,6 +226,16 @@
   progressDialog.addEventListener('click', event => { if (event.target === progressDialog) closeProgress(); });
   document.getElementById('cancelRoutineDialog')?.addEventListener('click', () => closeRoutineEditor());
 
+  const mutationObserver = new MutationObserver(() => {
+    decorateLibrary();
+    decorateActive();
+    decorateHistoryDialog();
+  });
+  ['exerciseLibrary', 'activeExercises', 'historyDialogContent'].forEach(id => {
+    const element = document.getElementById(id);
+    if (element) mutationObserver.observe(element, { childList: true, subtree: true });
+  });
+
   document.addEventListener('click', event => {
     const button = event.target.closest('[data-progress-exercise]');
     if (!button) return;
