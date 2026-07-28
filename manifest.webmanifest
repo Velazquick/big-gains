@@ -1,0 +1,19 @@
+{
+  "name": "Big Gains",
+  "short_name": "Big Gains",
+  "description": "A fast personal workout tracker for progressive overload.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0a0b0e",
+  "theme_color": "#111318",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
