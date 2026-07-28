@@ -8,20 +8,29 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icon.svg" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=3" />
+  <style>
+    .set-line{grid-template-columns:38px minmax(0,1fr) minmax(0,1fr) 48px;align-items:center}
+    .stepper{display:grid;grid-template-columns:36px minmax(54px,1fr) 36px;align-items:center;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#0d1015}
+    .stepper button{height:44px;background:var(--panel2);color:var(--text);font-size:1.15rem;padding:0;touch-action:manipulation}
+    .stepper input{min-width:0;height:44px;border:0;border-radius:0;padding:8px 3px;text-align:center;background:#0d1015;box-shadow:none!important}
+    .set-line.completed .stepper{border-color:rgba(216,255,62,.55)}
+    button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+    @media(max-width:560px){.set-line{grid-template-columns:28px minmax(0,1fr) minmax(0,1fr) 42px;gap:5px}.stepper{grid-template-columns:30px minmax(38px,1fr) 30px}.stepper button{height:42px}.stepper input{height:42px;font-size:.9rem}.set-number{font-size:.72rem}}
+  </style>
   <title>Big Gains</title>
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar" id="top">
       <div><p class="eyebrow">REVEAL / BIG GAINS</p><h1 id="greeting">Good afternoon, Jorge.</h1></div>
-      <button id="installButton" class="ghost hidden">Install</button>
+      <button id="installButton" class="ghost hidden" type="button">Install</button>
     </header>
 
     <main>
       <section class="hero-card">
         <div><span class="label">Today</span><strong id="nextWorkout">Push</strong><p id="heroNote">Your plan is ready. Tap once and train.</p></div>
-        <button id="startWorkout" class="primary hero-action">Start planned workout</button>
+        <button id="startWorkout" class="primary hero-action" type="button">Start planned workout</button>
       </section>
 
       <section class="stats-grid">
@@ -32,20 +41,20 @@
       </section>
 
       <section class="panel workout-builder" id="workoutPanel">
-        <div class="section-heading"><div><span class="label">Training core</span><h2>Choose your workout</h2></div><button id="cancelWorkout" class="ghost compact hidden">Cancel</button></div>
+        <div class="section-heading"><div><span class="label">Training core</span><h2>Choose your workout</h2></div><button id="cancelWorkout" class="ghost compact hidden" type="button">Cancel</button></div>
 
         <div class="day-tabs" id="dayTabs" role="tablist">
-          <button data-day="Push">Push</button><button data-day="Pull">Pull</button><button data-day="Legs">Legs + Core</button><button data-day="Cardio">Cardio</button><button data-day="Other">Other</button>
+          <button data-day="Push" type="button">Push</button><button data-day="Pull" type="button">Pull</button><button data-day="Legs" type="button">Legs + Core</button><button data-day="Cardio" type="button">Cardio</button><button data-day="Other" type="button">Other</button>
         </div>
 
         <div class="library-toolbar">
           <label class="search-box"><span>Routine</span><select id="routineSelect" aria-label="Choose workout routine"></select></label>
-          <button id="loadRoutine" class="primary">Load routine</button>
+          <button id="loadRoutine" class="primary" type="button">Load routine</button>
         </div>
 
         <div class="library-toolbar">
           <label class="search-box"><span>Add one exercise</span><select id="quickExerciseSelect" aria-label="Choose exercise"></select></label>
-          <button id="addSelectedExercise" class="secondary">Add exercise</button>
+          <button id="addSelectedExercise" class="secondary" type="button">Add exercise</button>
         </div>
 
         <details>
@@ -61,12 +70,12 @@
       <section class="panel active-panel hidden" id="activePanel">
         <div class="section-heading active-heading"><div><span class="label">Active workout</span><h2 id="activeWorkoutTitle">Push</h2></div><div class="workout-clock" id="workoutClock">00:00</div></div>
         <div id="activeExercises" class="active-exercises"></div>
-        <button id="finishWorkout" class="primary wide" disabled>Finish workout</button>
+        <button id="finishWorkout" class="primary wide" type="button" disabled>Finish workout</button>
       </section>
 
       <section class="panel timer-card hidden" id="timerCard" aria-live="polite">
         <div><span class="label">Rest timer</span><strong id="timerDisplay">2:30</strong><p id="timerNext">Recover. Your next set is waiting.</p></div>
-        <div class="timer-actions"><button id="timerMinus" class="ghost compact">− 15s</button><button id="timerSkip" class="secondary compact">Skip</button><button id="timerPlus" class="ghost compact">+ 15s</button></div>
+        <div class="timer-actions"><button id="timerMinus" class="ghost compact" type="button">− 15s</button><button id="timerSkip" class="secondary compact" type="button">Skip</button><button id="timerPlus" class="ghost compact" type="button">+ 15s</button></div>
       </section>
 
       <section class="two-column">
@@ -74,11 +83,11 @@
         <article class="panel"><div class="section-heading"><div><span class="label">Body</span><h2>Weight check-in</h2></div></div><form id="weightForm" class="weight-form"><input id="bodyweight" type="number" min="0" step="0.1" inputmode="decimal" placeholder="188.4" required /><button class="secondary" type="submit">Save</button></form><div id="weightHistory" class="mini-list empty">No weigh-ins yet.</div></article>
       </section>
 
-      <section class="panel data-panel" id="settingsPanel"><div class="section-heading"><div><span class="label">Your data</span><h2>Backup and restore</h2></div></div><p>Everything stays on this device unless you export it.</p><div class="data-actions"><button id="exportData" class="secondary">Export JSON</button><label class="secondary file-button">Restore JSON<input id="importData" type="file" accept="application/json" /></label></div></section>
+      <section class="panel data-panel" id="settingsPanel"><div class="section-heading"><div><span class="label">Your data</span><h2>Backup and restore</h2></div></div><p>Everything stays on this device unless you export it.</p><div class="data-actions"><button id="exportData" class="secondary" type="button">Export JSON</button><label class="secondary file-button">Restore JSON<input id="importData" type="file" accept="application/json" /></label></div></section>
     </main>
 
-    <nav class="bottom-nav" aria-label="Primary navigation"><button class="active" data-target="top">Home</button><button data-target="workoutPanel">Train</button><button data-target="historyPanel">History</button><button data-target="settingsPanel">Data</button></nav>
+    <nav class="bottom-nav" aria-label="Primary navigation"><button class="active" data-target="top" type="button">Home</button><button data-target="workoutPanel" type="button">Train</button><button data-target="historyPanel" type="button">History</button><button data-target="settingsPanel" type="button">Data</button></nav>
   </div>
-  <script src="app.js"></script>
+  <script src="app.js?v=3"></script>
 </body>
 </html>
