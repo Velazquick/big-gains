@@ -1,4 +1,4 @@
-const CACHE='big-gains-v13';
+const CACHE='big-gains-v14';
 const CORE_ASSETS=[
   './',
   './index.html',
