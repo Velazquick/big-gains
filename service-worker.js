@@ -1,4 +1,4 @@
-const CACHE='big-gains-v12';
+const CACHE='big-gains-v13';
 const CORE_ASSETS=[
   './',
   './index.html',
@@ -6,7 +6,7 @@ const CORE_ASSETS=[
   './app.js?v=12',
   './progress.js?v=12',
   './notes.js?v=12',
-  './active-ui.js?v=12',
+  './active-ui.js?v=13',
   './manifest.webmanifest',
   './icon.svg'
 ];
