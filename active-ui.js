@@ -40,6 +40,38 @@
     };
   }
 
+  function openOnly(index) {
+    if (!active?.exercises) return;
+    active.exercises.forEach((exercise, exerciseIndex) => {
+      exercise.collapsed = exerciseIndex !== index;
+    });
+  }
+
+  function advanceAfterCompletion(exerciseIndex) {
+    const exercise = active?.exercises?.[exerciseIndex];
+    if (!exercise) return;
+    const working = (exercise.sets || []).filter(set => !set.warmup);
+    if (!working.length || !working.every(set => set.completed)) return;
+
+    exercise.collapsed = true;
+    const nextIndex = active.exercises.findIndex((candidate, index) => {
+      if (index <= exerciseIndex) return false;
+      const candidateWorking = (candidate.sets || []).filter(set => !set.warmup);
+      return candidateWorking.some(set => !set.completed);
+    });
+
+    if (nextIndex >= 0) openOnly(nextIndex);
+    autosave();
+    renderActive();
+
+    if (nextIndex >= 0) {
+      requestAnimationFrame(() => {
+        const nextCard = document.querySelectorAll('#activeExercises .active-exercise')[nextIndex];
+        nextCard?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    }
+  }
+
   renderActive = function renderActiveWithExerciseControls() {
     if (!active) return;
     const box = $('activeExercises');
@@ -100,6 +132,16 @@
 
   const activeBox = $('activeExercises');
   activeBox.addEventListener('click', event => {
+    const completeButton = event.target.closest('[data-complete-set]');
+    if (completeButton && active) {
+      const exerciseIndex = Number(completeButton.dataset.ei);
+      const setIndex = Number(completeButton.dataset.si);
+      const set = active.exercises?.[exerciseIndex]?.sets?.[setIndex];
+      const willComplete = set && !set.completed && Number(set.weight) > 0 && Number(set.reps) > 0;
+      if (willComplete) requestAnimationFrame(() => advanceAfterCompletion(exerciseIndex));
+      return;
+    }
+
     const move = event.target.closest('[data-move-exercise]');
     if (move && active) {
       event.preventDefault();
@@ -120,7 +162,9 @@
       event.preventDefault();
       event.stopImmediatePropagation();
       const index = Number(toggle.dataset.toggleExercise);
-      active.exercises[index].collapsed = !active.exercises[index].collapsed;
+      const shouldOpen = Boolean(active.exercises[index].collapsed);
+      if (shouldOpen) openOnly(index);
+      else active.exercises[index].collapsed = true;
       autosave();
       renderActive();
       return;
@@ -131,7 +175,9 @@
       event.preventDefault();
       event.stopImmediatePropagation();
       const index = Number(head.dataset.exerciseHead);
-      active.exercises[index].collapsed = !active.exercises[index].collapsed;
+      const shouldOpen = Boolean(active.exercises[index].collapsed);
+      if (shouldOpen) openOnly(index);
+      else active.exercises[index].collapsed = true;
       autosave();
       renderActive();
     }
