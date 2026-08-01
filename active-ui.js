@@ -35,7 +35,7 @@
     return {
       complete: working.length > 0 && completed.length === working.length,
       status: working.length ? `${completed.length}/${working.length} working sets` : 'No working sets',
-      best: best ? `Best ${Number(best.weight)} × ${Number(best.reps)}` : 'No completed sets',
+      best: best ? `Best ${Number(best.weight)} × ${Number(best.reps)}` : 'Tap to open and start',
       volume: `${Math.round(volume).toLocaleString('en-US')} lb volume`
     };
   }
@@ -53,7 +53,7 @@
       const last = lastPerformance(exercise.name);
       const previous = last ? `Last: ${last.sets.map(set => `${set.weight} × ${set.reps}`).join(' · ')}` : 'First time logged.';
       const summary = summaryFor(exercise);
-      if (summary.complete && exercise.collapsed === undefined) exercise.collapsed = true;
+      if (exercise.collapsed === undefined) exercise.collapsed = true;
       const collapsed = Boolean(exercise.collapsed);
       const sets = exercise.sets.map((set, setIndex) => `
         <div class="set-line ${set.completed ? 'completed' : ''}">
