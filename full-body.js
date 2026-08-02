@@ -16,7 +16,7 @@
     exercises: names
   };
 
-  const existingIds = new Set(EXERCISES.filter(exercise => exercise.day === day).map(exercise => exercise.id));
+  const existingIds = new Set(EXERCISES.map(exercise => exercise.id));
   names.forEach(name => {
     const source = EXERCISES.find(exercise => exercise.name === name);
     if (source && !existingIds.has(source.id)) {
