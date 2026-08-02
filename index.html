@@ -4,76 +4,89 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#090b0f" />
-  <meta name="description" content="Big Gains — a fast, private strength training journal." />
+  <meta name="description" content="Big Gains — Jorge's private strength training archive." />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icon.svg" />
   <link rel="stylesheet" href="styles.css?v=8" />
-  <style>
-    .set-line{grid-template-columns:38px minmax(0,1fr) minmax(0,1fr) 48px;align-items:center}
-    .stepper{display:grid;grid-template-columns:36px minmax(54px,1fr) 36px;align-items:center;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#0d1015}
-    .stepper button{height:44px;background:var(--panel2);color:var(--text);font-size:1.15rem;padding:0;touch-action:manipulation}
-    .stepper input{min-width:0;height:44px;border:0;border-radius:0;padding:8px 3px;text-align:center;background:#0d1015;box-shadow:none!important}
-    .set-line.completed .stepper{border-color:rgba(216,255,62,.55)}
-    button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
-    .history-item{width:100%;text-align:left;color:var(--text);cursor:pointer}.history-item:hover{border-color:rgba(216,255,62,.45)}
-    .history-open{color:var(--accent);font-size:.78rem;font-weight:800;margin-top:5px}
-    dialog{width:min(760px,calc(100% - 24px));max-height:90vh;border:1px solid var(--line);border-radius:22px;padding:0;background:var(--panel);color:var(--text);box-shadow:var(--shadow)}
-    dialog::backdrop{background:rgba(0,0,0,.72);backdrop-filter:blur(7px)}
-    .history-dialog-shell{padding:22px;overflow:auto;max-height:90vh}.history-dialog-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;position:sticky;top:-22px;background:linear-gradient(var(--panel) 75%,transparent);padding:22px 0 18px;z-index:2}
-    .history-dialog-head h2{margin:4px 0 5px}.history-dialog-head p{margin:0;color:var(--muted)}
-    .history-summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:8px 0 18px}.history-summary-grid div{background:var(--panel3);border:1px solid var(--line);border-radius:14px;padding:13px}.history-summary-grid span{display:block;color:var(--muted);font-size:.74rem;margin-bottom:5px}.history-summary-grid strong{font-size:1.05rem}
-    .history-detail-list{display:grid;gap:12px}.history-exercise{background:var(--panel3);border:1px solid var(--line);border-radius:16px;padding:15px}.history-exercise-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.history-exercise h3{margin:3px 0}.history-exercise small{color:var(--muted)}
-    .history-sets{display:grid;gap:7px;margin-top:13px}.history-set{display:grid;grid-template-columns:70px 1fr auto;gap:10px;align-items:center;background:var(--panel2);border-radius:11px;padding:10px 12px}.history-set span{color:var(--muted);font-size:.78rem}.warmup-chip{color:var(--accent)!important}.pr-chip{background:var(--accent);color:#111!important;border-radius:999px;padding:3px 7px;font-size:.66rem!important;font-weight:900}
-    .routine-actions{display:flex;gap:8px}.routine-editor-list{display:grid;gap:9px;margin:10px 0 18px}.routine-row{display:flex;justify-content:space-between;gap:12px;align-items:center;background:var(--panel3);border:1px solid var(--line);border-radius:14px;padding:12px}.routine-row>div:first-child{display:grid;grid-template-columns:26px 1fr;column-gap:8px;align-items:center}.routine-row>div:first-child>span{grid-row:1/3;color:var(--accent);font-weight:900}.routine-row strong{display:block}.routine-row small{color:var(--muted)}.routine-row-actions{display:flex;gap:6px}.routine-row-actions button{width:38px;height:38px;border-radius:10px;background:var(--panel2);color:var(--text);border:1px solid var(--line)}.routine-row-actions button:last-child{color:var(--danger)}.routine-add{display:grid;grid-template-columns:1fr auto;gap:10px}.routine-footer{display:flex;justify-content:space-between;gap:10px;margin-top:18px}.routine-footer>div{display:flex;gap:8px}
-    .exercise-card-actions,.exercise-head-actions{display:flex;gap:8px;align-items:center}.exercise-card-actions{flex-direction:column;align-items:stretch}.exercise-head-actions .remove-exercise{position:static}
-    .progress-panel{scroll-margin-top:18px}.progress-picker{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end}.progress-preview{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:18px;align-items:center;margin-top:16px;padding:16px;border:1px solid var(--line);border-radius:16px;background:var(--panel3)}.progress-preview h3{margin:3px 0}.progress-preview p{margin:4px 0 0;color:var(--muted)}.progress-preview-stats{display:grid;grid-template-columns:repeat(3,auto);gap:10px}.progress-preview-stats div{min-width:84px;background:var(--panel2);border-radius:12px;padding:10px}.progress-preview-stats span{display:block;color:var(--muted);font-size:.7rem;margin-bottom:4px}.progress-preview-stats strong{font-size:.94rem}.progress-preview.empty{display:block;color:var(--muted);text-align:center}
-    .progress-trend-note{display:flex;justify-content:space-between;gap:14px;align-items:center;background:var(--panel3);border:1px solid var(--line);border-radius:14px;padding:13px 15px;margin-bottom:14px}.progress-trend-note span{color:var(--muted);font-size:.86rem;text-align:right}
-    .progress-chart{border:1px solid var(--line);border-radius:16px;background:var(--panel3);padding:14px;margin-bottom:20px;overflow:hidden}.progress-chart-title{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px}.progress-chart-title span{color:var(--muted);font-size:.78rem}.progress-chart svg{display:block;width:100%;height:auto;overflow:visible}.progress-grid-line{stroke:var(--line);stroke-width:1}.progress-line{fill:none;stroke:var(--accent);stroke-width:4;stroke-linecap:round;stroke-linejoin:round}.progress-dot{fill:var(--accent);stroke:var(--panel3);stroke-width:3}.progress-axis-label,.progress-date-label{fill:var(--muted);font-size:12px}.progress-recent-head{margin:4px 0 12px}.progress-recent-head h3{margin:4px 0}.progress-session-list{display:grid;gap:10px}.progress-session{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;background:var(--panel3);border:1px solid var(--line);border-radius:14px;padding:13px}.progress-session small{display:block;color:var(--muted);margin-top:4px}.progress-session-meta{text-align:right}.progress-session-sets{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:7px}.progress-session-sets span{background:var(--panel2);border-radius:999px;padding:5px 9px;font-size:.76rem;color:var(--muted)}
-    .exercise-notes{margin:14px 0 10px;border:1px solid var(--line);border-radius:14px;background:var(--panel2);overflow:hidden}.exercise-notes summary{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px 14px;cursor:pointer;font-weight:800}.exercise-notes summary span{color:var(--accent);font-size:.78rem}.exercise-note-grid{display:grid;grid-template-columns:1fr 1fr 180px;gap:10px;padding:0 12px 12px}.exercise-note-grid label{display:flex;flex-direction:column;gap:6px}.exercise-note-grid label>span{color:var(--muted);font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em}.exercise-note-grid textarea{width:100%;min-height:68px;resize:vertical;background:#0d1015;color:var(--text);border:1px solid var(--line);border-radius:11px;padding:10px;font:inherit}.exercise-note-grid select{width:100%}.exercise-note-grid small{color:var(--muted);font-size:.68rem;line-height:1.35}.history-note{margin-top:12px;padding:11px 12px;border-left:3px solid var(--accent);background:var(--panel2);border-radius:0 10px 10px 0}.history-note span{color:var(--accent);font-size:.68rem;font-weight:900;text-transform:uppercase;letter-spacing:.05em}.history-note p{margin:5px 0 0;white-space:pre-wrap;line-height:1.45}
-    @media(max-width:700px){.progress-preview{grid-template-columns:1fr}.progress-preview-stats{grid-template-columns:repeat(3,1fr)}.progress-preview>button{width:100%}.exercise-note-grid{grid-template-columns:1fr 1fr}.rest-setting{grid-column:1/-1}}
-    @media(max-width:560px){.set-line{grid-template-columns:28px minmax(0,1fr) minmax(0,1fr) 42px;gap:5px}.stepper{grid-template-columns:30px minmax(38px,1fr) 30px}.stepper button{height:42px}.stepper input{height:42px;font-size:.9rem}.set-number{font-size:.72rem}.history-summary-grid{grid-template-columns:1fr}.history-dialog-shell{padding:16px}.history-dialog-head{top:-16px;padding:16px 0 14px}.routine-actions{width:100%}.routine-actions button{flex:1}.routine-row{align-items:flex-start}.routine-row-actions{flex-direction:column}.routine-add{grid-template-columns:1fr}.routine-footer{flex-direction:column-reverse}.routine-footer>div{display:grid;grid-template-columns:1fr 1fr}.routine-footer>button{width:100%}.progress-picker{grid-template-columns:1fr}.progress-preview-stats{grid-template-columns:1fr}.progress-trend-note{align-items:flex-start;flex-direction:column}.progress-trend-note span{text-align:left}.progress-session{grid-template-columns:1fr}.progress-session-meta{text-align:left}.exercise-head{align-items:flex-start}.exercise-head-actions{flex-direction:column-reverse}.exercise-note-grid{grid-template-columns:1fr}.rest-setting{grid-column:auto}}
-  </style>
+  <link rel="stylesheet" href="v2-shell.css?v=15" />
   <title>Big Gains</title>
 </head>
 <body>
   <div class="app-shell">
-    <header class="topbar" id="top"><div><p class="eyebrow">REVEAL / BIG GAINS</p><h1 id="greeting">Good afternoon, Jorge.</h1></div><button id="installButton" class="ghost hidden" type="button">Install</button></header>
+    <header class="topbar" id="top">
+      <div><p class="eyebrow">BIG GAINS</p><h1 id="greeting">Good morning, Jorge.</h1></div>
+      <button id="installButton" class="ghost hidden" type="button">Install</button>
+    </header>
+
     <main>
-      <section class="hero-card"><div><span class="label">Today</span><strong id="nextWorkout">Push</strong><p id="heroNote">Your plan is ready. Tap once and train.</p></div><button id="startWorkout" class="primary hero-action" type="button">Start planned workout</button></section>
-      <section class="stats-grid"><article class="stat-card"><span>This week</span><strong id="weeklyWorkouts">0</strong><small>workouts</small></article><article class="stat-card"><span>Lifetime volume</span><strong id="trainingVolume">0 lb</strong></article><article class="stat-card"><span>Personal records</span><strong id="prCount">0</strong></article><article class="stat-card"><span>Bodyweight</span><strong id="latestWeight">—</strong></article></section>
-
-      <section class="panel progress-panel" id="progressPanel">
-        <div class="section-heading"><div><span class="label">Momentum</span><h2>Exercise progress</h2></div></div>
-        <div class="progress-picker"><label class="search-box"><span>Logged movement</span><select id="progressExerciseSelect" aria-label="Choose exercise progress"></select></label><button id="openSelectedProgress" class="primary" type="button">View progress</button></div>
-        <div id="progressPreview" class="progress-preview empty">Finish a workout and your movement trends will begin here.</div>
+      <section class="view is-active" id="viewToday">
+        <div class="v2-page-head"><div><span class="label">Today</span><h2>Your work.</h2><p>One clear plan. Everything else can wait.</p></div></div>
+        <section class="hero-card">
+          <div><span class="label">Planned session</span><strong id="nextWorkout">Push</strong><p id="heroNote">Your plan is ready. Tap once and train.</p></div>
+          <button id="startWorkout" class="primary hero-action" type="button">Start planned workout</button>
+        </section>
+        <section class="stats-grid">
+          <article class="stat-card"><span>This week</span><strong id="weeklyWorkouts">0</strong><small>workouts</small></article>
+          <article class="stat-card"><span>Lifetime volume</span><strong id="trainingVolume">0 lb</strong></article>
+          <article class="stat-card"><span>Personal records</span><strong id="prCount">0</strong></article>
+          <article class="stat-card"><span>Bodyweight</span><strong id="latestWeight">—</strong></article>
+        </section>
       </section>
 
-      <section class="panel workout-builder" id="workoutPanel">
-        <div class="section-heading"><div><span class="label">Training core</span><h2>Choose your workout</h2></div><button id="cancelWorkout" class="ghost compact hidden" type="button">Cancel</button></div>
-        <div class="day-tabs" id="dayTabs" role="tablist"><button data-day="Push" type="button">Push</button><button data-day="Pull" type="button">Pull</button><button data-day="Legs" type="button">Legs + Core</button><button data-day="Cardio" type="button">Cardio</button><button data-day="Other" type="button">Other</button></div>
-        <div class="library-toolbar"><label class="search-box"><span>Routine</span><select id="routineSelect" aria-label="Choose workout routine"></select></label><div class="routine-actions"><button id="editRoutine" class="secondary" type="button">Edit routine</button><button id="loadRoutine" class="primary" type="button">Load routine</button></div></div>
-        <div class="library-toolbar"><label class="search-box"><span>Add one exercise</span><select id="quickExerciseSelect" aria-label="Choose exercise"></select></label><button id="addSelectedExercise" class="secondary" type="button">Add exercise</button></div>
-        <details><summary class="secondary wide">Browse full exercise library</summary><div class="library-toolbar"><label class="search-box"><span>Find an exercise</span><input id="exerciseSearch" type="search" placeholder="Search chest press, cable row, squat…" autocomplete="off" /></label><select id="equipmentFilter" aria-label="Filter by equipment"><option value="all">All equipment</option></select></div><div id="exerciseLibrary" class="exercise-library"></div></details>
+      <section class="view" id="viewTrain">
+        <div class="v2-page-head"><div><span class="label">Train</span><h2>Focus mode.</h2><p>Your current movement stays open. The rest stay out of the way.</p></div></div>
+        <section class="panel active-panel hidden" id="activePanel">
+          <div class="section-heading active-heading"><div><span class="label">Active workout</span><h2 id="activeWorkoutTitle">Push</h2></div><div class="workout-clock" id="workoutClock">00:00</div></div>
+          <div id="activeExercises" class="active-exercises"></div>
+          <button id="finishWorkout" class="primary wide" type="button" disabled>Finish workout</button>
+        </section>
+        <div class="train-empty"><strong>No active workout.</strong><span>Start today's plan or build one from Library.</span></div>
+        <section class="panel timer-card hidden" id="timerCard" aria-live="polite"><div><span class="label">Rest timer</span><strong id="timerDisplay">2:30</strong><p id="timerNext">Recover. Your next set is waiting.</p></div><div class="timer-actions"><button id="timerMinus" class="ghost compact" type="button">− 15s</button><button id="timerSkip" class="secondary compact" type="button">Skip</button><button id="timerPlus" class="ghost compact" type="button">+ 15s</button></div></section>
       </section>
 
-      <section class="panel active-panel hidden" id="activePanel"><div class="section-heading active-heading"><div><span class="label">Active workout</span><h2 id="activeWorkoutTitle">Push</h2></div><div class="workout-clock" id="workoutClock">00:00</div></div><div id="activeExercises" class="active-exercises"></div><button id="finishWorkout" class="primary wide" type="button" disabled>Finish workout</button></section>
-      <section class="panel timer-card hidden" id="timerCard" aria-live="polite"><div><span class="label">Rest timer</span><strong id="timerDisplay">2:30</strong><p id="timerNext">Recover. Your next set is waiting.</p></div><div class="timer-actions"><button id="timerMinus" class="ghost compact" type="button">− 15s</button><button id="timerSkip" class="secondary compact" type="button">Skip</button><button id="timerPlus" class="ghost compact" type="button">+ 15s</button></div></section>
-      <section class="two-column"><article class="panel" id="historyPanel"><div class="section-heading"><div><span class="label">Evidence</span><h2>Workout history</h2></div></div><div id="history" class="history-list empty">Your completed workouts will appear here.</div></article><article class="panel"><div class="section-heading"><div><span class="label">Body</span><h2>Weight check-in</h2></div></div><form id="weightForm" class="weight-form"><input id="bodyweight" type="number" min="0" step="0.1" inputmode="decimal" placeholder="188.4" required /><button class="secondary" type="submit">Save</button></form><div id="weightHistory" class="mini-list empty">No weigh-ins yet.</div></article></section>
-      <section class="panel data-panel" id="settingsPanel"><div class="section-heading"><div><span class="label">Your data</span><h2>Backup and restore</h2></div></div><p>Everything stays on this device unless you export it.</p><div class="data-actions"><button id="exportData" class="secondary" type="button">Export JSON</button><label class="secondary file-button">Restore JSON<input id="importData" type="file" accept="application/json" /></label></div></section>
+      <section class="view" id="viewProgress">
+        <div class="v2-page-head"><div><span class="label">Progress</span><h2>The evidence.</h2><p>Strength, consistency, bodyweight, and the sessions behind them.</p></div></div>
+        <section class="panel progress-panel" id="progressPanel">
+          <div class="section-heading"><div><span class="label">Momentum</span><h2>Exercise progress</h2></div></div>
+          <div class="progress-picker"><label class="search-box"><span>Logged movement</span><select id="progressExerciseSelect" aria-label="Choose exercise progress"></select></label><button id="openSelectedProgress" class="primary" type="button">View progress</button></div>
+          <div id="progressPreview" class="progress-preview empty">Finish a workout and your movement trends will begin here.</div>
+        </section>
+        <section class="two-column">
+          <article class="panel" id="historyPanel"><div class="section-heading"><div><span class="label">Archive</span><h2>Workout history</h2></div></div><div id="history" class="history-list empty">Your completed workouts will appear here.</div></article>
+          <article class="panel"><div class="section-heading"><div><span class="label">Body</span><h2>Weight check-in</h2></div></div><form id="weightForm" class="weight-form"><input id="bodyweight" type="number" min="0" step="0.1" inputmode="decimal" placeholder="222.0" required /><button class="secondary" type="submit">Save</button></form><div id="weightHistory" class="mini-list empty">No weigh-ins yet.</div></article>
+        </section>
+      </section>
+
+      <section class="view" id="viewLibrary">
+        <div class="v2-page-head"><div><span class="label">Library</span><h2>Build the work.</h2><p>Choose routines, edit your lineup, or find a movement.</p></div></div>
+        <section class="panel workout-builder" id="workoutPanel">
+          <div class="section-heading"><div><span class="label">Workout builder</span><h2>Choose your workout</h2></div><button id="cancelWorkout" class="ghost compact hidden" type="button">Cancel</button></div>
+          <div class="day-tabs" id="dayTabs" role="tablist"><button data-day="Push" type="button">Push</button><button data-day="Pull" type="button">Pull</button><button data-day="Legs" type="button">Legs + Core</button><button data-day="Cardio" type="button">Cardio</button><button data-day="Other" type="button">Other</button></div>
+          <div class="library-toolbar"><label class="search-box"><span>Routine</span><select id="routineSelect" aria-label="Choose workout routine"></select></label><div class="routine-actions"><button id="editRoutine" class="secondary" type="button">Edit routine</button><button id="loadRoutine" class="primary" type="button">Load routine</button></div></div>
+          <div class="library-toolbar"><label class="search-box"><span>Add one exercise</span><select id="quickExerciseSelect" aria-label="Choose exercise"></select></label><button id="addSelectedExercise" class="secondary" type="button">Add exercise</button></div>
+          <details><summary class="secondary wide">Browse full exercise library</summary><div class="library-toolbar"><label class="search-box"><span>Find an exercise</span><input id="exerciseSearch" type="search" placeholder="Search chest press, cable row, squat…" autocomplete="off" /></label><select id="equipmentFilter" aria-label="Filter by equipment"><option value="all">All equipment</option></select></div><div id="exerciseLibrary" class="exercise-library"></div></details>
+        </section>
+        <section class="panel data-panel" id="settingsPanel"><div class="section-heading"><div><span class="label">Your data</span><h2>Backup and restore</h2></div></div><p>Everything stays on this device unless you export it.</p><div class="data-actions"><button id="exportData" class="secondary" type="button">Export JSON</button><label class="secondary file-button">Restore JSON<input id="importData" type="file" accept="application/json" /></label></div></section>
+      </section>
     </main>
-    <nav class="bottom-nav" aria-label="Primary navigation"><button class="active" data-target="top" type="button">Home</button><button data-target="workoutPanel" type="button">Train</button><button data-target="historyPanel" type="button">History</button><button data-target="settingsPanel" type="button">Data</button></nav>
+
+    <nav class="bottom-nav" aria-label="Primary navigation">
+      <button class="active" data-view="today" type="button">Today</button>
+      <button data-view="train" type="button">Train</button>
+      <button data-view="progress" type="button">Progress</button>
+      <button data-view="library" type="button">Library</button>
+    </nav>
   </div>
 
   <dialog id="historyDialog" aria-labelledby="historyDialogTitle"><div class="history-dialog-shell"><div class="history-dialog-head"><div><span class="label">Completed workout</span><h2 id="historyDialogTitle">Workout</h2><p id="historyDialogDate"></p></div><button id="closeHistoryDialog" class="ghost compact" type="button">Close</button></div><div id="historyDialogContent"></div></div></dialog>
-
   <dialog id="progressDialog" aria-labelledby="progressDialogTitle"><div class="history-dialog-shell"><div class="history-dialog-head"><div><span class="label">Strength record</span><h2 id="progressDialogTitle">Exercise progress</h2><p id="progressDialogMeta"></p></div><button id="closeProgressDialog" class="ghost compact" type="button">Close</button></div><div id="progressDialogContent"></div></div></dialog>
-
   <dialog id="routineDialog" aria-labelledby="routineEditorTitle"><div class="history-dialog-shell"><div class="history-dialog-head"><div><span class="label">Default lineup</span><h2 id="routineEditorTitle">Edit routine</h2><p>Change the order once. Every future workout follows it.</p></div><button id="closeRoutineDialog" class="ghost compact" type="button">Close</button></div><div id="routineEditorList" class="routine-editor-list"></div><div class="routine-add"><select id="routineExerciseSelect" aria-label="Exercise to add"></select><button id="addRoutineExercise" class="secondary" type="button">Add exercise</button></div><div class="routine-footer"><button id="resetRoutine" class="ghost" type="button">Restore original</button><div><button id="cancelRoutineDialog" class="ghost" type="button">Cancel</button><button id="saveRoutine" class="primary" type="button">Save routine</button></div></div></div></dialog>
 
   <script src="app.js?v=12"></script>
   <script src="progress.js?v=12"></script>
   <script src="notes.js?v=12"></script>
-  <script src="active-ui.js?v=12"></script>
+  <script src="active-ui.js?v=14"></script>
+  <script src="v2-shell.js?v=15"></script>
 </body>
 </html>
