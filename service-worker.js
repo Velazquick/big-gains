@@ -1,10 +1,11 @@
-const CACHE='big-gains-v16';
+const CACHE='big-gains-v17';
 const CORE_ASSETS=[
   './',
   './index.html',
   './styles.css?v=8',
   './v2-shell.css?v=15',
   './app.js?v=12',
+  './full-body.js?v=17',
   './progress.js?v=12',
   './notes.js?v=12',
   './active-ui.js?v=14',
