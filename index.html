@@ -37,7 +37,10 @@
       <section class="view" id="viewTrain">
         <div class="v2-page-head"><div><span class="label">Train</span><h2>Focus mode.</h2><p>Your current movement stays open. The rest stay out of the way.</p></div></div>
         <section class="panel active-panel hidden" id="activePanel">
-          <div class="section-heading active-heading"><div><span class="label">Active workout</span><h2 id="activeWorkoutTitle">Push</h2></div><div class="workout-clock" id="workoutClock">00:00</div></div>
+          <div class="section-heading active-heading">
+            <div><span class="label">Active workout</span><h2 id="activeWorkoutTitle">Push</h2></div>
+            <div class="active-heading-actions"><div class="workout-clock" id="workoutClock">00:00</div><button id="cancelWorkout" class="ghost compact hidden" type="button">Cancel</button></div>
+          </div>
           <div id="activeExercises" class="active-exercises"></div>
           <button id="finishWorkout" class="primary wide" type="button" disabled>Finish workout</button>
         </section>
@@ -61,7 +64,7 @@
       <section class="view" id="viewLibrary">
         <div class="v2-page-head"><div><span class="label">Library</span><h2>Build the work.</h2><p>Choose routines, edit your lineup, or find a movement.</p></div></div>
         <section class="panel workout-builder" id="workoutPanel">
-          <div class="section-heading"><div><span class="label">Workout builder</span><h2>Choose your workout</h2></div><button id="cancelWorkout" class="ghost compact hidden" type="button">Cancel</button></div>
+          <div class="section-heading"><div><span class="label">Workout builder</span><h2>Choose your workout</h2></div></div>
           <div class="day-tabs" id="dayTabs" role="tablist"><button data-day="Push" type="button">Push</button><button data-day="Pull" type="button">Pull</button><button data-day="Legs" type="button">Legs + Core</button><button data-day="Cardio" type="button">Cardio</button><button data-day="Other" type="button">Other</button></div>
           <div class="library-toolbar"><label class="search-box"><span>Routine</span><select id="routineSelect" aria-label="Choose workout routine"></select></label><div class="routine-actions"><button id="editRoutine" class="secondary" type="button">Edit routine</button><button id="loadRoutine" class="primary" type="button">Load routine</button></div></div>
           <div class="library-toolbar"><label class="search-box"><span>Add one exercise</span><select id="quickExerciseSelect" aria-label="Choose exercise"></select></label><button id="addSelectedExercise" class="secondary" type="button">Add exercise</button></div>
