@@ -1,15 +1,18 @@
-const CACHE='big-gains-v17';
+const CACHE='big-gains-v18-profiles';
 const CORE_ASSETS=[
   './',
   './index.html',
-  './styles.css?v=8',
-  './v2-shell.css?v=15',
-  './app.js?v=12',
+  './styles.css?v=18',
+  './v2-shell.css?v=18',
+  './profiles.css?v=18',
+  './profiles.js?v=18',
+  './app.js?v=18',
   './full-body.js?v=17',
   './progress.js?v=12',
   './notes.js?v=12',
   './active-ui.js?v=14',
-  './v2-shell.js?v=15',
+  './v2-shell.js?v=18',
+  './alexa-shell.js?v=18',
   './manifest.webmanifest',
   './icon.svg'
 ];
