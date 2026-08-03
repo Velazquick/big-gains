@@ -1,4 +1,4 @@
-const CACHE='big-gains-v21-performance-instrument';
+const CACHE='big-gains-v22-alexa-contrast';
 const CORE_ASSETS=[
   './',
   './index.html',
@@ -8,6 +8,7 @@ const CORE_ASSETS=[
   './training-pet.css?v=20',
   './workout-controls.css?v=21',
   './design-v21.css?v=21',
+  './alexa-contrast-v22.css?v=22',
   './profiles.js?v=18',
   './app.js?v=18',
   './full-body.js?v=17',
