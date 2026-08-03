@@ -1,4 +1,9 @@
 (() => {
+  const contrastStyles = document.createElement('link');
+  contrastStyles.rel = 'stylesheet';
+  contrastStyles.href = 'alexa-contrast-v22.css?v=22';
+  document.head.appendChild(contrastStyles);
+
   const alexaDays = ['PilatesPull','LegsLowImpact','PilatesCardioAccessory','Optional','FullBody','Cardio','Other'];
 
   function renderProfileShell() {
