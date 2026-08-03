@@ -1,18 +1,24 @@
 (() => {
   function controlLabel(field) {
-    return field === 'weight' ? 'Weight · lb' : 'Reps';
+    return field === 'weight' ? 'Weight' : 'Reps';
   }
 
-  stepper = function polishedStepper(field, exerciseIndex, setIndex, value, step) {
+  stepper = function instrumentStepper(field, exerciseIndex, setIndex, value, step) {
     const safeValue = value === '' ? '' : Number(value);
     const label = controlLabel(field);
+    const unit = field === 'weight' ? '<span class="stepper-unit">lb</span>' : '';
     const className = field === 'reps' ? 'stepper reps-stepper' : 'stepper weight-stepper';
     return `
       <div class="${className}">
         <span class="stepper-label">${label}</span>
-        <button type="button" data-adjust="-${step}" data-field="${field}" data-ei="${exerciseIndex}" data-si="${setIndex}" aria-label="Decrease ${label}">−</button>
-        <input data-field="${field}" data-ei="${exerciseIndex}" data-si="${setIndex}" type="number" min="0" step="${step}" inputmode="decimal" value="${safeValue}" placeholder="—" aria-label="${label}">
-        <button type="button" data-adjust="${step}" data-field="${field}" data-ei="${exerciseIndex}" data-si="${setIndex}" aria-label="Increase ${label}">+</button>
+        <div class="stepper-control">
+          <button type="button" data-adjust="-${step}" data-field="${field}" data-ei="${exerciseIndex}" data-si="${setIndex}" aria-label="Decrease ${label}">−</button>
+          <div class="stepper-value">
+            <input data-field="${field}" data-ei="${exerciseIndex}" data-si="${setIndex}" type="number" min="0" step="${step}" inputmode="decimal" value="${safeValue}" placeholder="—" aria-label="${label}">
+            ${unit}
+          </div>
+          <button type="button" data-adjust="${step}" data-field="${field}" data-ei="${exerciseIndex}" data-si="${setIndex}" aria-label="Increase ${label}">+</button>
+        </div>
       </div>
     `;
   };
@@ -58,7 +64,14 @@
     });
   }
 
-  renderActive = function renderPolishedActiveWorkout() {
+  function setPosition(exercise, set, setIndex) {
+    if (set.warmup) return 'Warm-up';
+    const working = exercise.sets.filter(item => !item.warmup);
+    const position = working.indexOf(set) + 1;
+    return `Set ${position} of ${working.length}`;
+  }
+
+  renderActive = function renderInstrumentWorkout() {
     if (!active) return;
     const box = $('activeExercises');
     if (!active.exercises.length) {
@@ -69,18 +82,33 @@
 
     box.innerHTML = active.exercises.map((exercise, exerciseIndex) => {
       const last = lastPerformance(exercise.name);
-      const previous = last ? `Last: ${last.sets.map(set => `${set.weight} × ${set.reps}`).join(' · ')}` : 'First time logged.';
+      const previous = last ? last.sets.map(set => `${set.weight} × ${set.reps}`).join(' · ') : 'First time logged. Establish the baseline.';
       const summary = summaryFor(exercise);
       if (exercise.collapsed === undefined) exercise.collapsed = true;
       const collapsed = Boolean(exercise.collapsed);
-      const sets = exercise.sets.map((set, setIndex) => `
-        <div class="set-line ${set.completed ? 'completed' : ''}">
-          <span class="set-number">${set.warmup ? 'W' : setIndex}</span>
-          ${stepper('weight', exerciseIndex, setIndex, set.weight, 5)}
-          ${stepper('reps', exerciseIndex, setIndex, set.reps, 1)}
-          <button type="button" class="set-done" data-complete-set="1" data-ei="${exerciseIndex}" data-si="${setIndex}" aria-label="${set.completed ? 'Mark set incomplete' : 'Complete set'}">✓</button>
-        </div>
-      `).join('');
+      const firstIncomplete = exercise.sets.findIndex(set => !set.completed);
+      const currentIndex = firstIncomplete >= 0 ? firstIncomplete : Math.max(0, exercise.sets.length - 1);
+
+      const sets = exercise.sets.map((set, setIndex) => {
+        const current = setIndex === currentIndex && !set.completed;
+        const upcoming = !set.completed && setIndex > currentIndex;
+        const label = setPosition(exercise, set, setIndex);
+        return `
+          <div class="set-line ${set.completed ? 'completed' : ''} ${current ? 'is-current' : ''} ${upcoming ? 'is-upcoming' : ''}">
+            <div class="set-row-meta">
+              <span>${set.completed ? 'Logged' : current ? 'Current set' : 'Up next'}</span>
+              <strong>${label}</strong>
+            </div>
+            <span class="set-number">${set.warmup ? 'W' : exercise.sets.filter(item => !item.warmup).indexOf(set) + 1}</span>
+            ${stepper('weight', exerciseIndex, setIndex, set.weight, 5)}
+            ${stepper('reps', exerciseIndex, setIndex, set.reps, 1)}
+            <button type="button" class="set-done" data-complete-set="1" data-ei="${exerciseIndex}" data-si="${setIndex}" aria-label="${set.completed ? 'Mark set incomplete' : `Complete ${label}`}">
+              <span class="set-done-icon">✓</span>
+              <span class="set-done-text">${set.completed ? 'Done' : 'Complete'}</span>
+            </button>
+          </div>
+        `;
+      }).join('');
 
       return `
         <article class="active-exercise ${collapsed ? 'is-collapsed' : ''} ${summary.complete ? 'is-complete' : ''}">
@@ -88,7 +116,7 @@
             <div>
               <span class="exercise-muscle">${escapeHtml(exercise.muscle)}</span>
               <h3>${escapeHtml(exercise.name)}</h3>
-              <p>${escapeHtml(exercise.equipment)}</p>
+              <p>${escapeHtml(exercise.equipment)} · ${escapeHtml(summary.status)}</p>
             </div>
             <div class="exercise-head-actions">
               <div class="exercise-order">
@@ -100,7 +128,7 @@
             </div>
           </div>
           <div class="active-exercise-body">
-            <div class="previous-note">${escapeHtml(previous)}</div>
+            <div class="exercise-context"><span>Previous performance</span><strong>${escapeHtml(previous)}</strong></div>
             <div class="set-grid">${sets}</div>
             <button type="button" class="add-set" data-add-set="${exerciseIndex}">＋ Add set</button>
           </div>
