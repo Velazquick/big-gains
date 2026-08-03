@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="styles.css?v=18" />
   <link rel="stylesheet" href="v2-shell.css?v=18" />
   <link rel="stylesheet" href="profiles.css?v=18" />
+  <link rel="stylesheet" href="training-pet.css?v=20" />
   <title>Big Gains</title>
 </head>
 <body>
@@ -26,6 +27,42 @@
         <section class="hero-card">
           <div><span class="label">Planned session</span><strong id="nextWorkout">Push</strong><p id="heroNote">Your plan is ready. Tap once and train.</p></div>
           <button id="startWorkout" class="primary hero-action" type="button">Start planned workout</button>
+        </section>
+        <section class="training-pet-card" id="trainingPetCard" aria-labelledby="trainingPetState">
+          <button class="training-pet" id="trainingPet" type="button" aria-describedby="trainingPetMessage">
+            <span class="training-pet-stage" aria-hidden="true">
+              <svg class="training-pet-svg" viewBox="0 0 160 132">
+                <ellipse class="pet-shadow" cx="80" cy="119" rx="43" ry="8" />
+                <g class="pet-sparkles"><path d="M20 32h12M26 26v12"/><path d="M131 23h9M135.5 18.5v9"/><path d="M137 75h8M141 71v8"/></g>
+                <g class="pet-body">
+                  <path class="pet-ear pet-ear-left" d="M49 46 39 23l26 13Z" />
+                  <path class="pet-ear pet-ear-right" d="m111 46 10-23-26 13Z" />
+                  <path class="pet-tail" d="M117 83c27-12 31 18 14 25" />
+                  <rect class="pet-torso" x="43" y="44" width="74" height="67" rx="31" />
+                  <path class="pet-arm pet-arm-left" d="M47 69c-14 3-18 15-11 25" />
+                  <path class="pet-arm pet-arm-right" d="M113 69c14 3 18 15 11 25" />
+                  <path class="pet-leg pet-leg-left" d="M63 106v12" />
+                  <path class="pet-leg pet-leg-right" d="M97 106v12" />
+                  <g class="pet-face">
+                    <ellipse class="pet-eye pet-eye-left" cx="64" cy="67" rx="5" ry="6" />
+                    <ellipse class="pet-eye pet-eye-right" cx="96" cy="67" rx="5" ry="6" />
+                    <path class="pet-mouth" d="M73 83q7 7 14 0" />
+                    <path class="pet-sleep-eye pet-sleep-eye-left" d="m57 68 7 3 7-3" />
+                    <path class="pet-sleep-eye pet-sleep-eye-right" d="m89 68 7 3 7-3" />
+                  </g>
+                  <path class="pet-bolt" d="m82 89-9 13h8l-3 13 12-18h-8Z" />
+                </g>
+                <g class="pet-zzz"><text x="112" y="43">z</text><text x="125" y="31">z</text><text x="137" y="18">z</text></g>
+                <g class="pet-sweat"><path d="M121 53c8 10 3 17-3 17s-9-8 3-17Z"/></g>
+              </svg>
+            </span>
+          </button>
+          <div class="training-pet-copy">
+            <span class="label">Training companion</span>
+            <strong id="trainingPetState">Standing by</strong>
+            <p id="trainingPetMessage" aria-live="polite">Small creature. Serious commitment to the bit.</p>
+            <small>Tap for field commentary.</small>
+          </div>
         </section>
         <section class="stats-grid">
           <article class="stat-card"><span>This week</span><strong id="weeklyWorkouts">0</strong><small>workouts</small></article>
@@ -97,5 +134,6 @@
   <script src="active-ui.js?v=14"></script>
   <script src="v2-shell.js?v=18"></script>
   <script src="alexa-shell.js?v=18"></script>
+  <script src="training-pet.js?v=20"></script>
 </body>
 </html>

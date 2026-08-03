@@ -1,10 +1,11 @@
-const CACHE='big-gains-v19-workout-controls';
+const CACHE='big-gains-v20-training-pet';
 const CORE_ASSETS=[
   './',
   './index.html',
   './styles.css?v=18',
   './v2-shell.css?v=18',
   './profiles.css?v=18',
+  './training-pet.css?v=20',
   './profiles.js?v=18',
   './app.js?v=18',
   './full-body.js?v=17',
@@ -15,6 +16,7 @@ const CORE_ASSETS=[
   './workout-controls.js?v=19',
   './v2-shell.js?v=18',
   './alexa-shell.js?v=18',
+  './training-pet.js?v=20',
   './manifest.webmanifest',
   './icon.svg'
 ];
