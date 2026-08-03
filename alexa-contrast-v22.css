@@ -11,6 +11,7 @@ html[data-profile="alexa"]{
   --accent2:#a9477e;
   --danger:#b94463;
   --amber:#a56a24;
+  color-scheme:light;
 }
 
 html[data-profile="alexa"] body{
@@ -21,6 +22,7 @@ html[data-profile="alexa"] body{
   color:var(--text);
 }
 
+/* Readable type throughout Alexa's profile */
 html[data-profile="alexa"] .v2-page-head p,
 html[data-profile="alexa"] .hero-card p,
 html[data-profile="alexa"] .momentum-copy p,
@@ -31,28 +33,33 @@ html[data-profile="alexa"] .collapsed-summary small,
 html[data-profile="alexa"] .momentum-metric span,
 html[data-profile="alexa"] .momentum-metric small,
 html[data-profile="alexa"] .stepper-label,
-html[data-profile="alexa"] .set-number{
+html[data-profile="alexa"] .set-number,
+html[data-profile="alexa"] .search-box span,
+html[data-profile="alexa"] .exercise-card p,
+html[data-profile="alexa"] .history-item small,
+html[data-profile="alexa"] .weight-row small,
+html[data-profile="alexa"] .data-panel p,
+html[data-profile="alexa"] .timer-card p,
+html[data-profile="alexa"] .empty,
+html[data-profile="alexa"] .train-empty,
+html[data-profile="alexa"] .exercise-note-grid small,
+html[data-profile="alexa"] .exercise-note-grid label>span,
+html[data-profile="alexa"] .history-note span,
+html[data-profile="alexa"] .progress-preview-copy p,
+html[data-profile="alexa"] .progress-preview-stats span,
+html[data-profile="alexa"] .progress-chart-title span,
+html[data-profile="alexa"] .progress-session small,
+html[data-profile="alexa"] .history-summary-grid span,
+html[data-profile="alexa"] .progress-trend-note span,
+html[data-profile="alexa"] .progress-axis-label,
+html[data-profile="alexa"] .progress-date-label{
   color:var(--muted);
 }
 
-html[data-profile="alexa"] #viewToday .hero-card{
-  border-color:#dfb5ce;
-  background:
-    linear-gradient(140deg,rgba(244,207,226,.72),rgba(251,239,247,.94) 48%,#fffdfd 100%);
-}
-html[data-profile="alexa"] #viewToday .hero-card::before{
-  background:linear-gradient(180deg,var(--accent),rgba(200,95,152,.16));
-}
-html[data-profile="alexa"] .session-meta span{
-  border-color:#dfc4d3;
-  background:rgba(255,255,255,.82);
-  color:#5d3d50;
-}
-
-html[data-profile="alexa"] .today-stage .training-pet-card{
-  border-color:#dfc4d3;
-  background:linear-gradient(180deg,#fffefd,#fff1f7);
-}
+html[data-profile="alexa"] h1,
+html[data-profile="alexa"] h2,
+html[data-profile="alexa"] h3,
+html[data-profile="alexa"] strong,
 html[data-profile="alexa"] .training-pet-copy strong,
 html[data-profile="alexa"] .momentum-copy strong,
 html[data-profile="alexa"] .momentum-metric strong,
@@ -61,15 +68,114 @@ html[data-profile="alexa"] .set-row-meta strong{
   color:var(--text);
 }
 
+/* Shared surfaces: Today, Train, Progress and Garden */
+html[data-profile="alexa"] .panel,
+html[data-profile="alexa"] .stat-card,
+html[data-profile="alexa"] .exercise-card,
+html[data-profile="alexa"] .history-item,
+html[data-profile="alexa"] .weight-row,
+html[data-profile="alexa"] .progress-preview,
+html[data-profile="alexa"] .progress-chart,
+html[data-profile="alexa"] .progress-session,
+html[data-profile="alexa"] .progress-trend-note,
+html[data-profile="alexa"] .history-exercise,
+html[data-profile="alexa"] .routine-editor-item,
+html[data-profile="alexa"] .exercise-notes,
+html[data-profile="alexa"] .train-empty,
+html[data-profile="alexa"] .history-summary-grid>div,
+html[data-profile="alexa"] .progress-preview-stats>div{
+  background:#fffefd;
+  border-color:#e2c7d6;
+  color:var(--text);
+  box-shadow:0 10px 28px rgba(119,66,96,.07);
+}
+
+html[data-profile="alexa"] .goal-grid>div,
+html[data-profile="alexa"] .week-plan-grid>div{
+  background:#fff8fb;
+  border-color:#dfc4d3;
+  color:var(--text);
+}
+
+/* Today */
+html[data-profile="alexa"] #viewToday .hero-card{
+  border-color:#dfb5ce;
+  background:linear-gradient(140deg,rgba(244,207,226,.72),rgba(251,239,247,.94) 48%,#fffdfd 100%);
+}
+html[data-profile="alexa"] #viewToday .hero-card::before{
+  background:linear-gradient(180deg,var(--accent),rgba(200,95,152,.16));
+}
+html[data-profile="alexa"] .session-meta span{
+  border-color:#dfc4d3;
+  background:rgba(255,255,255,.86);
+  color:#5d3d50;
+}
+html[data-profile="alexa"] .today-stage .training-pet-card{
+  border-color:#dfc4d3;
+  background:linear-gradient(180deg,#fffefd,#fff1f7);
+}
 html[data-profile="alexa"] .momentum-panel{
   border-color:#e2c7d6;
-  background:rgba(255,254,253,.94);
+  background:rgba(255,254,253,.96);
 }
 html[data-profile="alexa"] .momentum-metric{
   border-color:#e2c7d6;
 }
 
+/* Buttons, tabs and fields everywhere */
+html[data-profile="alexa"] input,
+html[data-profile="alexa"] select,
+html[data-profile="alexa"] textarea{
+  background:#fffefd;
+  border-color:#dcbfce;
+  color:var(--text);
+  box-shadow:inset 0 1px 4px rgba(104,55,83,.06);
+}
+html[data-profile="alexa"] input::placeholder,
+html[data-profile="alexa"] textarea::placeholder{
+  color:#9a7b8d;
+}
+html[data-profile="alexa"] input:focus,
+html[data-profile="alexa"] select:focus,
+html[data-profile="alexa"] textarea:focus{
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(200,95,152,.13);
+}
+html[data-profile="alexa"] .secondary,
+html[data-profile="alexa"] .ghost,
+html[data-profile="alexa"] .file-button,
+html[data-profile="alexa"] details>summary{
+  background:#fff8fb;
+  border-color:#dfc4d3;
+  color:#5b344b;
+}
+html[data-profile="alexa"] .primary,
+html[data-profile="alexa"] .day-tabs button.active,
+html[data-profile="alexa"] .set-line.is-current .set-done{
+  background:linear-gradient(135deg,#d96fa8,#c85f98);
+  border-color:#c85f98;
+  color:#fff;
+}
+html[data-profile="alexa"] .day-tabs button{
+  background:#fff8fb;
+  border-color:#dfc4d3;
+  color:#745467;
+}
+html[data-profile="alexa"] .exercise-card.added{
+  border-color:rgba(200,95,152,.58);
+  background:#fff1f7;
+}
+html[data-profile="alexa"] .pr-badge{
+  background:var(--accent);
+  color:#fff;
+}
+
+/* Train */
 html[data-profile="alexa"] #viewTrain .active-heading{
+  border-color:#e2c7d6;
+}
+html[data-profile="alexa"] body.workout-focus #activePanel>.section-heading{
+  background:rgba(255,249,252,.96);
   border-color:#e2c7d6;
 }
 html[data-profile="alexa"] .workout-clock{
@@ -88,9 +194,12 @@ html[data-profile="alexa"] .active-exercise-body,
 html[data-profile="alexa"] .collapsed-summary{
   border-color:#ead8e2;
 }
-html[data-profile="alexa"] .exercise-context{
+html[data-profile="alexa"] .exercise-context,
+html[data-profile="alexa"] .previous-note,
+html[data-profile="alexa"] .history-note{
   border-color:#ead5e1;
   background:#fff1f7;
+  color:var(--text);
 }
 html[data-profile="alexa"] .exercise-order button,
 html[data-profile="alexa"] .exercise-toggle,
@@ -102,7 +211,10 @@ html[data-profile="alexa"] .set-number{
 html[data-profile="alexa"] .exercise-toggle{
   color:var(--accent);
 }
-
+html[data-profile="alexa"] .remove-exercise{
+  border-color:rgba(185,68,99,.22);
+  color:var(--danger);
+}
 html[data-profile="alexa"] .set-line{
   border-color:#ead6e1;
   background:#fffdfd;
@@ -114,6 +226,9 @@ html[data-profile="alexa"] .set-line.is-current{
 html[data-profile="alexa"] .set-line.completed{
   border-color:rgba(200,95,152,.28);
   background:#fff1f7;
+}
+html[data-profile="alexa"] .set-line.is-upcoming{
+  opacity:.78;
 }
 html[data-profile="alexa"] .set-row-meta span{
   color:var(--accent2);
@@ -134,13 +249,6 @@ html[data-profile="alexa"] .stepper input{
 html[data-profile="alexa"] .stepper-unit{
   color:#745566;
 }
-html[data-profile="alexa"] .set-line.is-current .set-done,
-html[data-profile="alexa"] .primary,
-html[data-profile="alexa"] .day-tabs button.active{
-  background:linear-gradient(135deg,#d96fa8,#c85f98);
-  border-color:#c85f98;
-  color:#fff;
-}
 html[data-profile="alexa"] .set-line.completed .set-done{
   background:#f7dbe9;
   border-color:#dca9c5;
@@ -151,13 +259,82 @@ html[data-profile="alexa"] .add-set{
   background:#fff3f8;
   color:#93476e;
 }
-
+html[data-profile="alexa"] .exercise-notes summary{
+  color:#633c52;
+}
+html[data-profile="alexa"] .exercise-note-grid{
+  border-color:#ead5e1;
+}
 html[data-profile="alexa"] .timer-card{
   border-color:#dca9c5;
   background:rgba(255,254,253,.98);
 }
+
+/* Progress */
+html[data-profile="alexa"] .progress-preview,
+html[data-profile="alexa"] .progress-session,
+html[data-profile="alexa"] .progress-chart,
+html[data-profile="alexa"] .progress-trend-note{
+  background:#fff8fb;
+  border-color:#dfc4d3;
+}
+html[data-profile="alexa"] .progress-line{
+  stroke:var(--accent);
+}
+html[data-profile="alexa"] .progress-dot{
+  fill:var(--accent);
+  stroke:#fff;
+}
+html[data-profile="alexa"] .progress-grid-line{
+  stroke:#ead5e1;
+}
+html[data-profile="alexa"] .progress-session-sets span{
+  background:#fff1f7;
+  border-color:#e2c7d6;
+  color:#633c52;
+}
+
+/* Library / Garden */
+html[data-profile="alexa"] .garden-panel,
+html[data-profile="alexa"] .weekly-plan,
+html[data-profile="alexa"] .workout-builder,
+html[data-profile="alexa"] .data-panel{
+  background:rgba(255,254,253,.97);
+  border-color:#e2c7d6;
+}
+html[data-profile="alexa"] .garden-bed{
+  border:1px solid #e2c7d6;
+  background:linear-gradient(180deg,#fffafd,#f8e8f1);
+}
+html[data-profile="alexa"] .garden-copy p{
+  color:var(--muted);
+}
+html[data-profile="alexa"] .exercise-library .exercise-card{
+  background:#fff8fb;
+  border-color:#dfc4d3;
+}
+
+/* Dialogs and overlays */
+html[data-profile="alexa"] dialog{
+  color:var(--text);
+}
+html[data-profile="alexa"] dialog::backdrop{
+  background:rgba(66,34,52,.38);
+}
+html[data-profile="alexa"] .history-dialog-shell{
+  background:#fffdfd;
+  border:1px solid #dfc4d3;
+  color:var(--text);
+  box-shadow:0 28px 90px rgba(88,43,69,.22);
+}
+html[data-profile="alexa"] .history-dialog-head,
+html[data-profile="alexa"] .routine-footer{
+  border-color:#e2c7d6;
+}
+
+/* Navigation */
 html[data-profile="alexa"] .bottom-nav{
-  background:rgba(255,250,252,.96);
+  background:rgba(255,250,252,.97);
   border-color:#e2c7d6;
 }
 html[data-profile="alexa"] .bottom-nav button{
@@ -166,16 +343,6 @@ html[data-profile="alexa"] .bottom-nav button{
 html[data-profile="alexa"] .bottom-nav button.active{
   background:#f7dbe9;
   color:#7e345d;
-}
-
-html[data-profile="alexa"] input,
-html[data-profile="alexa"] select,
-html[data-profile="alexa"] .panel,
-html[data-profile="alexa"] .stat-card,
-html[data-profile="alexa"] .history-item,
-html[data-profile="alexa"] .weight-row,
-html[data-profile="alexa"] .exercise-card{
-  color:var(--text);
 }
 
 @media(max-width:760px){
