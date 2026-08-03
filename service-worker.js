@@ -1,4 +1,4 @@
-const CACHE='big-gains-v18-profiles';
+const CACHE='big-gains-v19-workout-controls';
 const CORE_ASSETS=[
   './',
   './index.html',
@@ -11,6 +11,8 @@ const CORE_ASSETS=[
   './progress.js?v=12',
   './notes.js?v=12',
   './active-ui.js?v=14',
+  './workout-controls.css?v=19',
+  './workout-controls.js?v=19',
   './v2-shell.js?v=18',
   './alexa-shell.js?v=18',
   './manifest.webmanifest',
