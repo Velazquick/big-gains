@@ -1,8 +1,12 @@
 (() => {
-  const contrastStyles = document.createElement('link');
-  contrastStyles.rel = 'stylesheet';
-  contrastStyles.href = 'alexa-contrast-v22.css?v=22';
-  document.head.appendChild(contrastStyles);
+  const contrastStyleId = 'alexaContrastStyles';
+  if (!document.getElementById(contrastStyleId)) {
+    const contrastStyles = document.createElement('link');
+    contrastStyles.id = contrastStyleId;
+    contrastStyles.rel = 'stylesheet';
+    contrastStyles.href = 'alexa-contrast-v22.css?v=23';
+    document.head.appendChild(contrastStyles);
+  }
 
   const alexaDays = ['PilatesPull','LegsLowImpact','PilatesCardioAccessory','Optional','FullBody','Cardio','Other'];
 
