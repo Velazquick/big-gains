@@ -33,6 +33,31 @@
     };
   }
 
+  function openOnly(index) {
+    if (!active?.exercises) return;
+    active.exercises.forEach((exercise, exerciseIndex) => {
+      exercise.collapsed = exerciseIndex !== index;
+    });
+  }
+
+  function advanceAfterCompletion(exerciseIndex) {
+    const exercise = active?.exercises?.[exerciseIndex];
+    if (!exercise) return;
+    const working = (exercise.sets || []).filter(set => !set.warmup);
+    if (!working.length || !working.every(set => set.completed)) return;
+    exercise.collapsed = true;
+    const nextIndex = active.exercises.findIndex((candidate, index) => {
+      if (index <= exerciseIndex) return false;
+      return (candidate.sets || []).filter(set => !set.warmup).some(set => !set.completed);
+    });
+    if (nextIndex >= 0) openOnly(nextIndex);
+    autosave();
+    renderActive();
+    if (nextIndex >= 0) requestAnimationFrame(() => {
+      document.querySelectorAll('#activeExercises .active-exercise')[nextIndex]?.scrollIntoView({behavior:'smooth',block:'nearest'});
+    });
+  }
+
   renderActive = function renderPolishedActiveWorkout() {
     if (!active) return;
     const box = $('activeExercises');
@@ -90,6 +115,57 @@
     saveState();
     $('finishWorkout').disabled = !active.exercises.some(exercise => exercise.sets.some(set => set.completed));
   };
+
+  const activeBox = $('activeExercises');
+  activeBox.addEventListener('click', event => {
+    const completeButton = event.target.closest('[data-complete-set]');
+    if (completeButton && active) {
+      const exerciseIndex = Number(completeButton.dataset.ei);
+      const setIndex = Number(completeButton.dataset.si);
+      const set = active.exercises?.[exerciseIndex]?.sets?.[setIndex];
+      const willComplete = set && !set.completed && Number(set.weight) > 0 && Number(set.reps) > 0;
+      if (willComplete) requestAnimationFrame(() => advanceAfterCompletion(exerciseIndex));
+      return;
+    }
+
+    const move = event.target.closest('[data-move-exercise]');
+    if (move && active) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const from = Number(move.dataset.index);
+      const to = move.dataset.moveExercise === 'up' ? from - 1 : from + 1;
+      if (to >= 0 && to < active.exercises.length) {
+        const [exercise] = active.exercises.splice(from, 1);
+        active.exercises.splice(to, 0, exercise);
+        autosave();
+        renderActive();
+      }
+      return;
+    }
+
+    const toggle = event.target.closest('[data-toggle-exercise]');
+    if (toggle && active) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const index = Number(toggle.dataset.toggleExercise);
+      if (active.exercises[index].collapsed) openOnly(index);
+      else active.exercises[index].collapsed = true;
+      autosave();
+      renderActive();
+      return;
+    }
+
+    const head = event.target.closest('[data-exercise-head]');
+    if (head && active && !event.target.closest('button,input,select,textarea,a')) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const index = Number(head.dataset.exerciseHead);
+      if (active.exercises[index].collapsed) openOnly(index);
+      else active.exercises[index].collapsed = true;
+      autosave();
+      renderActive();
+    }
+  }, true);
 
   if (active) renderActive();
 })();
