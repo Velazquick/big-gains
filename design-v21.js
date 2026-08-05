@@ -1,4 +1,6 @@
 (() => {
+  'use strict';
+
   const routineMeta = document.getElementById('todayRoutineMeta');
   const blockMeta = document.getElementById('todayBlockMeta');
   const momentumHeadline = document.getElementById('momentumHeadline');
@@ -6,6 +8,7 @@
   const watched = ['nextWorkout','heroNote','weeklyWorkouts','trainingVolume','prCount','latestWeight','activePanel']
     .map(id => document.getElementById(id))
     .filter(Boolean);
+  let initialized = false;
 
   function completedThisWeek() {
     if (typeof startOfWeek !== 'function') return 0;
@@ -44,12 +47,19 @@
     else momentumNote.textContent = 'Build the baseline. Then make it difficult to recognize.';
   }
 
-  const observer = new MutationObserver(() => renderDirection());
-  watched.forEach(node => observer.observe(node, {subtree:true,childList:true,attributes:true}));
-  ['startWorkout','finishWorkout','cancelWorkout','loadRoutine','addSelectedExercise'].forEach(id => {
-    document.getElementById(id)?.addEventListener('click', () => setTimeout(renderDirection, 100));
-  });
-  document.getElementById('profileSelect')?.addEventListener('change', () => setTimeout(renderDirection, 0));
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) renderDirection(); });
-  renderDirection();
+  function initialize() {
+    if (initialized) return false;
+    initialized = true;
+    const observer = new MutationObserver(() => renderDirection());
+    watched.forEach(node => observer.observe(node, {subtree:true,childList:true,attributes:true}));
+    ['startWorkout','finishWorkout','cancelWorkout','loadRoutine','addSelectedExercise'].forEach(id => {
+      document.getElementById(id)?.addEventListener('click', () => setTimeout(renderDirection, 100));
+    });
+    document.getElementById('profileSelect')?.addEventListener('change', () => setTimeout(renderDirection, 0));
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) renderDirection(); });
+    renderDirection();
+    return true;
+  }
+
+  window.bigGainsDirection = Object.freeze({ initialize, render: renderDirection });
 })();

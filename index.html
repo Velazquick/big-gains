@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="icon.svg" />
   <title>Big Gains</title>
 </head>
-<body>
+<body class="session-selector-ready">
   <div class="app-shell">
     <header class="topbar" id="top">
       <div><p class="eyebrow">BIG GAINS</p><h1 id="greeting">Good morning, Jorge.</h1></div>
@@ -22,6 +22,23 @@
         <div class="v2-page-head"><div><span class="label">Today</span><h2>Ready when you are.</h2><p>Strength first. Everything else gets layered on top.</p></div></div>
 
         <div class="today-stage">
+          <section class="session-selector-card" id="sessionTypeSelector" aria-label="Workout session selector">
+            <div class="session-selector-bar">
+              <button class="session-selector-toggle" id="sessionSelectorToggle" type="button" aria-expanded="false" aria-controls="sessionSelectorBody">
+                <span class="session-selector-kicker">Session</span>
+                <span class="session-selector-current"><strong id="selectedSessionLabel">Push</strong><small id="sessionPlanChip"></small></span>
+                <span class="session-selector-chevron" aria-hidden="true">⌄</span>
+              </button>
+              <button class="primary session-start-button" id="quickStartSession" type="button">Start</button>
+            </div>
+            <div class="session-selector-body" id="sessionSelectorBody" hidden>
+              <div class="session-type-grid" id="sessionTypeGrid"></div>
+              <div class="session-selector-footer">
+                <small id="selectedSessionNote"></small>
+                <button class="ghost compact" id="openSessionLibrary" type="button">Open Library</button>
+              </div>
+            </div>
+          </section>
           <section class="hero-card">
             <div>
               <span class="label">Planned session</span>
@@ -114,7 +131,7 @@
         <section class="panel weekly-plan" data-profile-only="alexa" hidden><div class="section-heading"><div><span class="label">Weekly rhythm</span><h2>A plan with room to breathe.</h2></div></div><div class="week-plan-grid"><div><strong>Mon</strong><span>Pilates + Pull</span></div><div><strong>Tue</strong><span>Legs + low-impact class</span></div><div><strong>Wed</strong><span>Rest</span></div><div><strong>Thu</strong><span>Pilates + cardio + accessories</span></div><div><strong>Fri</strong><span>Optional / rest</span></div><div><strong>Sat</strong><span>Full Body</span></div><div><strong>Sun</strong><span>Rest</span></div></div></section>
         <section class="panel workout-builder" id="workoutPanel">
           <div class="section-heading"><div><span class="label">Workout builder</span><h2>Choose your workout</h2></div></div>
-          <div class="day-tabs" id="dayTabs" role="tablist"><button data-day="Push" type="button">Push</button><button data-day="Pull" type="button">Pull</button><button data-day="Legs" type="button">Legs + Core</button><button data-day="FullBody" type="button">Full Body</button><button data-day="Cardio" type="button">Cardio</button><button data-day="Other" type="button">Other</button></div>
+          <div class="day-tabs" id="dayTabs" role="tablist"><button data-day="Push" type="button">Push</button><button data-day="Pull" type="button">Pull</button><button data-day="Legs" type="button">Legs</button><button data-day="Core" type="button">Core</button><button data-day="FullBody" type="button">Full Body</button><button data-day="Cardio" type="button">Conditioning</button><button data-day="Other" type="button">Other</button></div>
           <div class="library-toolbar"><label class="search-box"><span>Routine</span><select id="routineSelect" aria-label="Choose workout routine"></select></label><div class="routine-actions"><button id="editRoutine" class="secondary" type="button">Edit routine</button><button id="loadRoutine" class="primary" type="button">Load routine</button></div></div>
           <div class="library-toolbar"><label class="search-box"><span>Add one exercise</span><select id="quickExerciseSelect" aria-label="Choose exercise"></select></label><button id="addSelectedExercise" class="secondary" type="button">Add exercise</button></div>
           <details><summary class="secondary wide">Browse full exercise library</summary><div class="library-toolbar"><label class="search-box"><span>Find an exercise</span><input id="exerciseSearch" type="search" placeholder="Search chest press, cable row, squat…" autocomplete="off" /></label><select id="equipmentFilter" aria-label="Filter by equipment"><option value="all">All equipment</option></select></div><div id="exerciseLibrary" class="exercise-library"></div></details>

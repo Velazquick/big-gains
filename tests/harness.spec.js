@@ -9,13 +9,13 @@ const productionScriptOrder = [
   'notes.js',
   'progress.js',
   'app.js',
-  'full-body.js',
   'v2-shell.js',
   'alexa-shell.js',
   'training-pet.js',
   'design-v21.js',
   'session-selector-v26.js',
-  'sync-gateway.js'
+  'sync-gateway.js',
+  'shell-init.js'
 ];
 
 test('serves the production document with explicit hook layers loaded before the app', async ({ page }) => {
@@ -94,4 +94,65 @@ test('workout controls expose explicit hooks without replacing app globals', asy
     }
   });
   expect(storageWrites).toBe(0);
+});
+
+test('shell modules initialize once without duplicate listeners or assets', async ({ page, request }) => {
+  await installLocalStorageFixture(page, 'blankJorge');
+  await openApp(page);
+
+  const initialization = await page.evaluate(() => ({
+    shell: window.BigGainsShell.initialize(),
+    view: window.bigGainsViewShell.initialize(),
+    profile: window.bigGainsProfileShell.initialize(),
+    pet: window.trainingPet.initialize(),
+    direction: window.bigGainsDirection.initialize(),
+    selector: window.sessionSelector.initialize(),
+    sync: window.BigGainsSync.initialize()
+  }));
+  expect(initialization).toEqual({
+    shell: false,
+    view: false,
+    profile: false,
+    pet: false,
+    direction: false,
+    selector: false,
+    sync: false
+  });
+
+  const viewWrites = await page.evaluate(() => {
+    const original = Storage.prototype.setItem;
+    let writes = 0;
+    Storage.prototype.setItem = function (key, ...args) {
+      if (this === sessionStorage && key === 'big-gains-view') writes += 1;
+      return original.call(this, key, ...args);
+    };
+    try {
+      document.querySelector('.bottom-nav [data-view="progress"]').click();
+      return writes;
+    } finally {
+      Storage.prototype.setItem = original;
+    }
+  });
+  expect(viewWrites).toBe(1);
+
+  await page.locator('.bottom-nav [data-view="today"]').click();
+  await page.locator('#sessionSelectorToggle').click();
+  await expect(page.locator('#sessionSelectorToggle')).toHaveAttribute('aria-expanded', 'true');
+  await page.locator('#trainingPet').click();
+  await expect(page.locator('#trainingPetMessage')).toHaveText('The iron remains suspiciously liftable.');
+
+  expect(await page.locator('#sessionTypeSelector').count()).toBe(1);
+  expect(await page.locator('#syncGatewayCard').count()).toBe(1);
+  expect(await page.locator('style#syncGatewayStyles').count()).toBe(0);
+
+  const duplicateAssets = await page.locator('[data-big-gains-asset]').evaluateAll(assets => {
+    const urls = assets.map(asset => asset.href || asset.src);
+    return urls.filter((url, index) => urls.indexOf(url) !== index);
+  });
+  expect(duplicateAssets).toEqual([]);
+
+  const appSource = await (await request.get('/app.js')).text();
+  expect(appSource).not.toContain('dataset.target');
+  expect((await request.get('/active-ui.js')).status()).toBe(404);
+  expect((await request.get('/full-body.js')).status()).toBe(404);
 });

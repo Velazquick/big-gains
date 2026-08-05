@@ -2,8 +2,8 @@ import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
 
-const CURRENT_CACHE = 'big-gains-shell-v34-cache-update-hardening';
-const PREVIOUS_CACHE = 'big-gains-v33-state-persistence-api';
+const CURRENT_CACHE = 'big-gains-shell-v35-script-audit-cleanup';
+const PREVIOUS_CACHE = 'big-gains-shell-v34-cache-update-hardening';
 
 async function waitForServiceWorker(page) {
   await page.evaluate(async () => {
@@ -32,7 +32,7 @@ test('first install precaches one complete, revision-consistent app shell', asyn
     };
   }, CURRENT_CACHE);
 
-  expect(state.release).toBe('v34-cache-update-hardening');
+  expect(state.release).toBe('v35-script-audit-cleanup');
   expect(state.cacheNames).toContain(CURRENT_CACHE);
   expect(state.cachedUrls).toEqual(state.expectedUrls);
 });

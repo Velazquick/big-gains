@@ -1,4 +1,6 @@
 (() => {
+  'use strict';
+
   const pet = document.getElementById('trainingPet');
   const card = document.getElementById('trainingPetCard');
   const stateLabel = document.getElementById('trainingPetState');
@@ -27,6 +29,7 @@
   let currentState = '';
   let messageIndex = 0;
   let pokeTimer;
+  let initialized = false;
 
   function resolveState() {
     const workout = latestToday();
@@ -65,11 +68,18 @@
     if (navigator.vibrate && !matchMedia('(prefers-reduced-motion: reduce)').matches) navigator.vibrate(18);
   }
 
-  pet.addEventListener('click', poke);
-  ['startWorkout','finishWorkout','cancelWorkout'].forEach(id => document.getElementById(id)?.addEventListener('click', () => setTimeout(() => render(true), 80)));
-  document.getElementById('profileSelect')?.addEventListener('change', () => setTimeout(() => render(true), 0));
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) render(true); });
-  window.addEventListener('storage', () => render(true));
-  setInterval(() => render(false), 4000);
-  render(true);
+  function initialize() {
+    if (initialized) return false;
+    initialized = true;
+    pet.addEventListener('click', poke);
+    ['startWorkout','finishWorkout','cancelWorkout'].forEach(id => document.getElementById(id)?.addEventListener('click', () => setTimeout(() => render(true), 80)));
+    document.getElementById('profileSelect')?.addEventListener('change', () => setTimeout(() => render(true), 0));
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) render(true); });
+    window.addEventListener('storage', () => render(true));
+    setInterval(() => render(false), 4000);
+    render(true);
+    return true;
+  }
+
+  window.trainingPet = Object.freeze({ initialize, render });
 })();
