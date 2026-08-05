@@ -49,6 +49,7 @@
             <button id="startWorkout" class="primary hero-action" type="button">Start planned workout</button>
           </section>
 
+          <div id="trainingPetHome">
           <section class="training-pet-card" id="trainingPetCard" aria-labelledby="trainingPetState">
             <button class="training-pet" id="trainingPet" type="button" aria-describedby="trainingPetMessage">
               <span class="training-pet-stage" aria-hidden="true">
@@ -85,6 +86,7 @@
               <small>Tap for field commentary.</small>
             </div>
           </section>
+          </div>
         </div>
 
         <section class="momentum-panel" aria-label="Current training momentum">
@@ -105,11 +107,25 @@
             <div><span class="label">Active workout</span><h2 id="activeWorkoutTitle">Push</h2></div>
             <div class="active-heading-actions"><div class="workout-clock" id="workoutClock">00:00</div><button id="cancelWorkout" class="ghost compact hidden" type="button">Cancel</button></div>
           </div>
+          <div class="workout-mode-toolbar" id="workoutModeToolbar">
+            <button id="exitWorkoutMode" class="ghost compact" type="button">Exit Workout Mode</button>
+            <button id="browseWorkoutLibrary" class="secondary compact" type="button">Browse Library / Add Exercise</button>
+          </div>
+          <div id="workoutPetSlot" class="workout-pet-slot" aria-label="Workout companion"></div>
           <div id="activeExercises" class="active-exercises"></div>
           <button id="finishWorkout" class="primary wide" type="button" disabled>Finish workout</button>
         </section>
         <div class="train-empty"><strong>No active workout.</strong><span>Start today's plan or build one from Library.</span></div>
-        <section class="panel timer-card hidden" id="timerCard" aria-live="polite"><div><span class="label">Rest timer</span><strong id="timerDisplay">2:30</strong><p id="timerNext">Recover. Your next set is waiting.</p></div><div class="timer-actions"><button id="timerMinus" class="ghost compact" type="button">− 15s</button><button id="timerSkip" class="secondary compact" type="button">Skip</button><button id="timerPlus" class="ghost compact" type="button">+ 15s</button></div></section>
+        <section class="panel timer-card hidden" id="timerCard" aria-live="polite">
+          <div><span class="label">Rest timer</span><strong id="timerDisplay">2:30</strong><p id="timerNext">Recover. Your next set is waiting.</p></div>
+          <div class="timer-control-stack">
+            <div class="timer-preferences" aria-label="Timer feedback">
+              <button id="timerSoundToggle" class="ghost compact" type="button" aria-label="Timer completion sound" aria-pressed="true">Sound on</button>
+              <button id="timerVibrationToggle" class="ghost compact" type="button" aria-label="Timer completion vibration" aria-pressed="true">Vibration on</button>
+            </div>
+            <div class="timer-actions"><button id="timerMinus" class="ghost compact" type="button">− 15s</button><button id="timerSkip" class="secondary compact" type="button">Skip</button><button id="timerPlus" class="ghost compact" type="button">+ 15s</button></div>
+          </div>
+        </section>
       </section>
 
       <section class="view" id="viewProgress">
@@ -139,6 +155,11 @@
         <section class="panel data-panel" id="settingsPanel"><div class="section-heading"><div><span class="label">Your data</span><h2>Backup and restore</h2></div></div><p>Everything stays on this device unless you export it.</p><div class="data-actions"><button id="exportData" class="secondary" type="button">Export JSON</button><label class="secondary file-button">Restore JSON<input id="importData" type="file" accept="application/json" /></label></div></section>
       </section>
     </main>
+
+    <aside class="workout-return-bar hidden" id="workoutReturnBar" aria-label="Workout in progress">
+      <div><span class="label">Workout in progress</span><strong id="workoutReturnType">Push</strong><span id="workoutReturnElapsed">00:00</span></div>
+      <button id="returnToWorkout" class="primary compact" type="button">Return to workout</button>
+    </aside>
 
     <nav class="bottom-nav" aria-label="Primary navigation">
       <button class="active" data-view="today" type="button">Today</button>

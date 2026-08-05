@@ -44,7 +44,7 @@ test('starts, resumes, and expires rest with the existing messages', async ({ pa
 
   for (let click = 0; click < 4; click += 1) await page.locator('#timerMinus').click();
   await expect(page.locator('#timerDisplay')).toHaveText('00:00');
-  await expect(page.locator('#timerNext')).toHaveText('Rest complete. Go earn the next one.');
+  await expect(page.locator('#timerNext')).toHaveText("Rest complete. You're up.");
   expect((await jorgeState(page)).restTimerEndsAt).toBeNull();
 });
 

@@ -9,6 +9,7 @@ const productionScriptOrder = [
   'notes.js',
   'progress.js',
   'app.js',
+  'workout-mode.js',
   'v2-shell.js',
   'alexa-shell.js',
   'training-pet.js',
@@ -102,6 +103,7 @@ test('shell modules initialize once without duplicate listeners or assets', asyn
 
   const initialization = await page.evaluate(() => ({
     shell: window.BigGainsShell.initialize(),
+    workoutMode: window.bigGainsWorkoutMode.initialize(),
     view: window.bigGainsViewShell.initialize(),
     profile: window.bigGainsProfileShell.initialize(),
     pet: window.trainingPet.initialize(),
@@ -111,6 +113,7 @@ test('shell modules initialize once without duplicate listeners or assets', asyn
   }));
   expect(initialization).toEqual({
     shell: false,
+    workoutMode: false,
     view: false,
     profile: false,
     pet: false,

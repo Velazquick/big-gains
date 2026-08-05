@@ -17,15 +17,16 @@ The production script order is:
 4. `notes.js`
 5. `progress.js`
 6. `app.js`
-7. `v2-shell.js`
-8. `alexa-shell.js`
-9. `training-pet.js`
-10. `design-v21.js`
-11. `session-selector-v26.js`
-12. `sync-gateway.js`
-13. `shell-init.js`
+7. `workout-mode.js`
+8. `v2-shell.js`
+9. `alexa-shell.js`
+10. `training-pet.js`
+11. `design-v21.js`
+12. `session-selector-v26.js`
+13. `sync-gateway.js`
+14. `shell-init.js`
 
-This order is a runtime contract. Persistence and hook APIs exist before `app.js` consumes them. `app.js` loads and renders the current profile before the shell modules initialize. The final script, `shell-init.js`, initializes the shell modules exactly once in this order: view shell, profile shell, training pet, direction/momentum, session selector, and sync.
+This order is a runtime contract. Persistence and hook APIs exist before `app.js` consumes them. `app.js` loads and renders the current profile before the shell modules initialize. The final script, `shell-init.js`, initializes the shell modules exactly once in this order: Workout Mode, view shell, profile shell, training pet, direction/momentum, session selector, and sync.
 
 ## APIs and ownership boundaries
 
@@ -38,6 +39,7 @@ This order is a runtime contract. Persistence and hook APIs exist before `app.js
 | `notes.js` | `workoutNotes` | Exercise cue preferences, per-session notes, rest preferences, note decoration, and rest-timer start hooks. |
 | `progress.js` | `workoutProgress` | Progress calculations, dialogs, and explicit post-render decoration hooks. It reads state through the context supplied by `app.js` and does not replace app render functions. |
 | `app.js` | `workoutSessionController` | Live `state` and `active` workout ownership, workout transitions, app rendering, event coordination, persistence calls, timers, PR calculation, backup UI, and service-worker registration. |
+| `workout-mode.js` | `bigGainsWorkoutMode` | Focus-shell entry/exit, session-scoped explicit-exit memory, return-bar timing, Library departure/return, and moving the existing pet between Today and the active-workout header. It never mutates workout state. |
 | Shell modules | `bigGainsViewShell`, `bigGainsProfileShell`, `trainingPet`, `bigGainsDirection`, `sessionSelector`, `BigGainsSync` | Focused UI behavior. Every `initialize()` is guarded and returns `false` after the first call. |
 | `shell-init.js` | `BigGainsShell` | One deterministic initialization pass across all shell modules. |
 | `service-worker-core.js` | `BigGainsServiceWorkerCore` | Testable cache and fetch runtime used by `service-worker.js`. |
@@ -56,6 +58,8 @@ The application uses classic scripts, so `app.js` helpers such as `state`, `acti
 
 An active workout and its absolute `restTimerEndsAt` timestamp survive reloads. Expired timers are cleared on resume; live timer expiry saves the cleared timestamp and may vibrate when supported.
 
+Starting or resuming enters Workout Mode automatically. The shell hides primary navigation and promotes the active session without changing `startedAt`. Exit stores only a profile-and-workout-ID marker in `sessionStorage`, leaves the session and absolute rest deadline untouched, and shows the persistent return bar. A reload re-enters Workout Mode unless that exact active workout was explicitly exited in the current tab session. Library browsing suspends the focus shell without creating an exit marker; exercise additions continue through `workoutSessionController`.
+
 ## State and persistence flow
 
 The current schema version is 5. A blank profile state contains:
@@ -65,6 +69,7 @@ The current schema version is 5. A blank profile state contains:
 - `prs`
 - `activeWorkout` and `restTimerEndsAt`
 - `customRoutines`
+- `timerPreferences`, with independent `sound` and `vibration` booleans defaulting to `true`
 
 `notes.js` also initializes and owns the persisted `exercisePreferences` map. Normalization preserves supported extra state properties while validating workouts, active workouts, exercises, sets, weights, PRs, goals, routines, and timer values.
 
@@ -83,9 +88,10 @@ When Jorge has no current state, the persistence layer imports only valid legacy
 
 `app.js` initializes notes and progress, calls `renderAll()`, and then `shell-init.js` performs the one-time shell pass.
 
-- `bigGainsViewShell` owns the Today/Train/Progress/Library view, session-scoped last-view memory, active-workout focus mode, and post-start/finish navigation.
+- `bigGainsWorkoutMode` owns focused-session presentation, safe explicit exit, Library departure, and the workout-in-progress return path.
+- `bigGainsViewShell` owns the Today/Train/Progress/Library view, session-scoped last-view memory, and post-start/finish navigation.
 - `bigGainsProfileShell` adjusts Alexa-specific labels, routine tabs, and the consistency garden.
-- `trainingPet` derives its display from the active session, today's completed workout, PRs, leg-day content, and rest days.
+- `trainingPet` derives its display from the active session, rest state, today's completed workout, PRs, leg-day content, and rest days. Workout Mode uses calm, attentive, and ready states with concise cues; completed-workout and PR states remain available after finish.
 - `bigGainsDirection` decorates the hero and weekly momentum from the app's state and render outputs.
 - `sessionSelector` maps the compact Push/Pull/Legs/Core/Full Body/Conditioning choices to the current profile's concrete workout types and can resume or repair an active session.
 - `BigGainsSync` adds the optional private snapshot controls and catch-up listeners.
@@ -101,7 +107,7 @@ The notes and progress features attach through explicit app-owned hooks:
 
 ## Asset and service-worker lifecycle
 
-`asset-manifest.js` is the single asset inventory. It applies the release query parameter to every production CSS and application script, rejects duplicate core assets, and supplies the same immutable manifest to the page loader and service worker. `index.html`, the loader, manifest, service-worker core, web manifest, icon, and all revisioned CSS and scripts form the precached app shell.
+`asset-manifest.js` is the single asset inventory. Release `v37-workout-mode-pet-timer-sound` adds the Workout Mode CSS/script to that inventory. The manifest applies the release query parameter to every production CSS and application script, rejects duplicate core assets, and supplies the same immutable manifest to the page loader and service worker. `index.html`, the loader, manifest, service-worker core, web manifest, icon, and all revisioned CSS and scripts form the precached app shell.
 
 `app.js` registers `service-worker.js` on window load with `updateViaCache: 'none'`. The worker imports the unrevisioned asset manifest and service-worker core.
 
@@ -126,13 +132,13 @@ Sync is outbound snapshot publishing, not two-way state synchronization.
 - `sync-gateway.js` owns its separate `big-gains-sync-gateway-v1` local-storage key for the fine-grained GitHub token, last sync time, and latest published workout ID per profile.
 - A token is tested against `Velazquick/firstcut-validator` and requires Contents read/write access. It remains on the device and is not included in a snapshot.
 - Each profile publishes to `big-gains-data` at `big-gains/profiles/<profileId>/snapshot.json` through the GitHub Contents API.
-- Snapshot schema `big-gains.snapshot.v1` includes summary data, up to 120 completed workouts, up to 200 weights, and all PRs. Active workouts, rest timers, custom routines, exercise preferences, and the token are excluded.
+- Snapshot schema `big-gains.snapshot.v1` includes summary data, up to 120 completed workouts, up to 200 weights, and all PRs. Active workouts, rest timers, custom routines, exercise preferences, timer feedback preferences, and the token are excluded.
 - Publishing occurs on connect or manual request and catches up after workout completion, reconnection, page show, or return to a visible tab when the latest workout ID differs. One 409 conflict is retried with a refreshed file SHA.
 - Forgetting the token clears the local credential but does not delete an existing remote snapshot. The app does not read snapshots back, merge remote changes, or sync live sets.
 
 ## Testing and CI
 
-The Playwright harness serves the repository as static files, so tests exercise `index.html` and the production manifest order without a test-only application bundle. The stabilized baseline is 49 passing Chromium tests with no expected failures.
+The Playwright harness serves the repository as static files, so tests exercise `index.html` and the production manifest order without a test-only application bundle. The current baseline is 58 passing Chromium tests with no expected failures: the stabilized 49-test suite plus nine Stage 2 regressions.
 
 Local verification:
 

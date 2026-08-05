@@ -38,6 +38,44 @@ let selectedDay=(state.activeWorkout&&state.activeWorkout.type)||(todaysWorkout(
 let active=state.activeWorkout||null;
 let workoutTicker=null,timerTicker=null,timerRemaining=DEFAULT_REST,deferredPrompt=null,cancelArmedUntil=0;
 let routineDraftDay=selectedDay,routineDraft=[];
+function timerPreferences(){if(!state.timerPreferences)state.timerPreferences={sound:true,vibration:true};return state.timerPreferences;}
+function setWorkoutPetState(next){if(next)document.body.dataset.workoutPetState=next;else delete document.body.dataset.workoutPetState;if(typeof window.trainingPet?.render==='function')window.trainingPet.render(true);}
+const workoutTimerFeedback=(()=>{
+  let audioContext=null;
+  function unlock(){
+    if(!timerPreferences().sound||audioContext)return Boolean(audioContext);
+    const AudioContext=window.AudioContext||window.webkitAudioContext;
+    if(!AudioContext)return false;
+    try{
+      audioContext=new AudioContext();
+      if(audioContext.state==='suspended')audioContext.resume().catch(()=>{});
+      return true;
+    }catch(error){console.warn('Timer sound is unavailable',error);audioContext=null;return false;}
+  }
+  function chime(){
+    if(!timerPreferences().sound||!audioContext)return false;
+    try{
+      const start=audioContext.currentTime;
+      [[523.25,0],[659.25,.09]].forEach(([frequency,offset])=>{
+        const oscillator=audioContext.createOscillator(),gain=audioContext.createGain();
+        oscillator.type='sine';oscillator.frequency.setValueAtTime(frequency,start+offset);
+        gain.gain.setValueAtTime(.0001,start+offset);gain.gain.exponentialRampToValueAtTime(.12,start+offset+.012);gain.gain.exponentialRampToValueAtTime(.0001,start+offset+.16);
+        oscillator.connect(gain);gain.connect(audioContext.destination);oscillator.start(start+offset);oscillator.stop(start+offset+.17);
+      });
+      return true;
+    }catch(error){console.warn('Timer chime could not play',error);return false;}
+  }
+  function complete(){
+    let sounded=false,vibrated=false;
+    if(timerPreferences().sound)sounded=chime();
+    if(timerPreferences().vibration&&navigator.vibrate){try{vibrated=navigator.vibrate([150,80,150])!==false;}catch{vibrated=false;}}
+    return {sounded,vibrated};
+  }
+  return Object.freeze({unlock,chime,complete,isAudioReady:()=>Boolean(audioContext)});
+})();
+window.workoutTimerFeedback=workoutTimerFeedback;
+document.addEventListener('pointerdown',()=>workoutTimerFeedback.unlock(),{capture:true,once:true});
+document.addEventListener('keydown',()=>workoutTimerFeedback.unlock(),{capture:true,once:true});
 function saveState(){statePersistenceApi.save(state,active);}
 function autosave(){saveState();renderHero();}
 function todaysWorkout(){return WEEK_PLAN[new Date().getDay()];}
@@ -60,14 +98,14 @@ function renderEquipment(){if($('equipmentFilter').options.length>1)return;[...n
 function renderLibrary(){renderSelectors();const q=$('exerciseSearch').value.trim().toLowerCase(),eq=$('equipmentFilter').value,knownRoutine=new Set(routineFor(selectedDay));const list=EXERCISES.filter(e=>(PROFILE.id==='alexa'||e.day===selectedDay||selectedDay==='Other'||knownRoutine.has(e.id))&&(!q||`${e.name} ${e.muscle} ${e.equipment}`.toLowerCase().includes(q))&&(eq==='all'||e.equipment===eq));$('exerciseLibrary').innerHTML=list.length?list.map(e=>`<article class="exercise-card ${active&&active.exercises.some(x=>x.id===e.id)?'added':''}"><div><span class="exercise-muscle">${escapeHtml(e.muscle)}</span><h3>${escapeHtml(e.name)}</h3><p>${escapeHtml(e.equipment)}</p></div><button type="button" class="add-exercise primary compact" data-add="${e.id}">${active&&active.exercises.some(x=>x.id===e.id)?'Added':'Add'}</button></article>`).join(''):'<div class="no-results">No matching exercises.</div>';progressApi.afterLibraryRender();}
 function lastPerformance(name){for(const w of state.workouts){const e=(w.exercises||[]).find(x=>x.name.toLowerCase()===name.toLowerCase());if(e){const sets=e.sets.filter(s=>s.completed&&!s.warmup);if(sets.length)return {date:w.completedAt,sets};}}return null;}
 function makeExercise(ex){const last=lastPerformance(ex.name),prior=last?last.sets:[],working=prior[0]?Number(prior[0].weight)||0:0,warm=working?Math.round(working*.6/5)*5:0;return {id:ex.id,name:ex.name,muscle:ex.muscle,equipment:ex.equipment,collapsed:true,sets:[{id:uid(),weight:warm,reps:10,warmup:true,completed:false},...Array.from({length:3},(_,i)=>({id:uid(),weight:prior[i]?Number(prior[i].weight)||working:working,reps:prior[i]?Number(prior[i].reps)||'':'',warmup:false,completed:false}))]};}
-function renderActiveSession(scroll=true){if(!active)return;selectedDay=active.type;$('activePanel').classList.remove('hidden');$('cancelWorkout').classList.remove('hidden');$('cancelWorkout').textContent='Cancel';$('activeWorkoutTitle').textContent=displayWorkout(active.type);clearInterval(workoutTicker);workoutTicker=setInterval(renderWorkoutClock,1000);renderWorkoutClock();renderActive();renderLibrary();resumeRestTimer();if(scroll)$('activePanel').scrollIntoView({behavior:'smooth',block:'start'});}
+function renderActiveSession(scroll=true){if(!active)return;selectedDay=active.type;$('activePanel').classList.remove('hidden');$('cancelWorkout').classList.remove('hidden');$('cancelWorkout').textContent='Cancel';$('activeWorkoutTitle').textContent=displayWorkout(active.type);clearInterval(workoutTicker);workoutTicker=setInterval(renderWorkoutClock,1000);renderWorkoutClock();renderActive();renderLibrary();renderTimerPreferences();setWorkoutPetState(state.restTimerEndsAt?'attentive':'calm');resumeRestTimer();if(scroll)$('activePanel').scrollIntoView({behavior:'smooth',block:'start'});}
 const workoutSessionController=(()=>{
   function begin(day){selectedDay=day;active={id:uid(),type:day,startedAt:new Date().toISOString(),exercises:[]};return active;}
   function appendRoutine(day){const before=active.exercises.length;routineFor(day).forEach(id=>{const ex=EXERCISES.find(e=>e.id===id);if(ex&&!active.exercises.some(item=>item.id===ex.id))active.exercises.push(makeExercise(ex));});return active.exercises.length-before;}
   function renderLoaded(scroll){renderActive();renderLibrary();if(scroll)$('activePanel').scrollIntoView({behavior:'smooth',block:'start'});}
-  function clearRuntime(hideActive=true){active=null;state.activeWorkout=null;state.restTimerEndsAt=null;clearInterval(workoutTicker);clearInterval(timerTicker);if(hideActive)$('activePanel').classList.add('hidden');$('timerCard').classList.add('hidden');$('cancelWorkout').classList.add('hidden');$('cancelWorkout').textContent='Cancel';cancelArmedUntil=0;}
+  function clearRuntime(hideActive=true){active=null;state.activeWorkout=null;state.restTimerEndsAt=null;clearInterval(workoutTicker);clearInterval(timerTicker);setWorkoutPetState(null);if(hideActive)$('activePanel').classList.add('hidden');$('timerCard').classList.add('hidden');$('cancelWorkout').classList.add('hidden');$('cancelWorkout').textContent='Cancel';cancelArmedUntil=0;}
   function start(day=selectedDay,{loadRoutine:shouldLoad=true,scroll=true}={}){if(active)return resume(scroll);begin(day);if(shouldLoad)appendRoutine(day);autosave();renderActiveSession(scroll);return active;}
-  function resume(scroll=true){if(!active)return null;renderActiveSession(scroll);return active;}
+  function resume(scroll=true,{enterMode=true}={}){if(!active)return null;renderActiveSession(scroll);if(enterMode&&typeof window.bigGainsWorkoutMode?.enter==='function')window.bigGainsWorkoutMode.enter();return active;}
   function replace(day=selectedDay,{loadRoutine:shouldLoad=true,scroll=true}={}){if(!active)return start(day,{loadRoutine:shouldLoad,scroll});clearRuntime(false);begin(day);if(shouldLoad)appendRoutine(day);autosave();renderActiveSession(scroll);return active;}
   function loadRoutine(day=selectedDay,{scroll=true}={}){if(!active)return start(day,{loadRoutine:true,scroll});appendRoutine(day);autosave();renderLoaded(scroll);return active;}
   function repairEmpty(session=active,{scroll=false}={}){if(session!==active||!session||!Array.isArray(session.exercises)||session.exercises.length||!DEFAULT_ROUTINES[session.type])return false;const added=appendRoutine(session.type);if(!added)return false;autosave();renderLoaded(scroll);return true;}
@@ -77,7 +115,7 @@ const workoutSessionController=(()=>{
   return Object.freeze({start,resume,replace,loadRoutine,repairEmpty,addExercise,complete,discard});
 })();
 window.workoutSessionController=workoutSessionController;
-function showActive(scroll=true){return workoutSessionController.resume(scroll);}
+function showActive(scroll=true){return workoutSessionController.resume(scroll,{enterMode:false});}
 function startWorkout(day=selectedDay,load=true){return workoutSessionController.start(day,{loadRoutine:load,scroll:true});}
 function addExercise(id,scroll=true){return workoutSessionController.addExercise(id,{scroll});}
 function loadRoutine(day=selectedDay,scroll=true){if(active&&active.type===day&&active.exercises.length===0&&workoutSessionController.repairEmpty(active,{scroll}))return active;return workoutSessionController.loadRoutine(day,{scroll});}
@@ -85,9 +123,11 @@ function renderWorkoutClock(){if(active)$('workoutClock').textContent=fmtTime((D
 function stepper(field,ei,si,value,step){return workoutControlsApi.renderStepper(field,ei,si,value,step);}
 function renderActive(){const result=workoutControlsApi.renderActive({activeWorkout:active,box:$('activeExercises'),finishButton:$('finishWorkout'),lastPerformance,estimate1RM,escapeHtml,stepper});notesApi.renderActiveNotes({activeWorkout:active,box:$('activeExercises'),state,defaultRest:DEFAULT_REST,escapeHtml});progressApi.afterActiveRender({activeWorkout:active});return result;}
 function startRestTimer(exerciseIndex){return notesApi.startRestTimer({activeWorkout:active,state,exerciseIndex,defaultRest:DEFAULT_REST,saveState,runRestTimer,message:$('timerNext')});}
-function resumeRestTimer(){if(!state.restTimerEndsAt)return;if(state.restTimerEndsAt<=Date.now()){state.restTimerEndsAt=null;saveState();return;}runRestTimer();}
-function runRestTimer(){clearInterval(timerTicker);$('timerCard').classList.remove('hidden');$('timerNext').textContent='Recover. Your next set is waiting.';const tick=()=>{timerRemaining=Math.max(0,Math.ceil((state.restTimerEndsAt-Date.now())/1000));renderTimer();if(timerRemaining<=0){clearInterval(timerTicker);state.restTimerEndsAt=null;saveState();$('timerNext').textContent='Rest complete. Go earn the next one.';if(navigator.vibrate)navigator.vibrate([150,80,150]);}};tick();timerTicker=setInterval(tick,1000);}
+function resumeRestTimer(){if(!state.restTimerEndsAt)return;if(state.restTimerEndsAt<=Date.now()){state.restTimerEndsAt=null;saveState();setWorkoutPetState('ready');return;}runRestTimer();}
+function runRestTimer(){clearInterval(timerTicker);$('timerCard').classList.remove('hidden');$('timerNext').textContent='Recover. Your next set is waiting.';setWorkoutPetState('attentive');let completed=false;const tick=()=>{timerRemaining=Math.max(0,Math.ceil((state.restTimerEndsAt-Date.now())/1000));renderTimer();if(timerRemaining<=0&&!completed){completed=true;clearInterval(timerTicker);state.restTimerEndsAt=null;saveState();$('timerNext').textContent="Rest complete. You're up.";setWorkoutPetState('ready');workoutTimerFeedback.complete();}};tick();timerTicker=setInterval(tick,1000);}
 function renderTimer(){$('timerDisplay').textContent=fmtTime(timerRemaining);}
+function renderTimerPreferences(){const preferences=timerPreferences(),sound=$('timerSoundToggle'),vibration=$('timerVibrationToggle');if(sound){sound.setAttribute('aria-pressed',String(preferences.sound));sound.textContent=`Sound ${preferences.sound?'on':'off'}`;}if(vibration){vibration.setAttribute('aria-pressed',String(preferences.vibration));vibration.textContent=`Vibration ${preferences.vibration?'on':'off'}`;}}
+function toggleTimerPreference(name){const preferences=timerPreferences();preferences[name]=!preferences[name];saveState();renderTimerPreferences();return preferences[name];}
 function discardWorkout(){return workoutSessionController.discard();}
 function finishWorkout(){return workoutSessionController.complete();}
 function renderHistory(){const box=$('history');if(!state.workouts.length){box.className='history-list empty';box.textContent='Your completed workouts will appear here.';return;}box.className='history-list';box.innerHTML=state.workouts.slice(0,20).map(w=>`<button type="button" class="history-item" data-history-id="${w.id}"><div><strong>${escapeHtml(w.type==='Legs'?'Legs + Core':w.type)}</strong><small>${fmtDate(w.completedAt)} · ${(w.exercises||[]).flatMap(e=>e.sets||[]).length} sets · ${fmtTime(w.durationSeconds||0)}</small><div class="history-open">View full workout →</div></div><div class="history-meta"><strong>${Math.round(volumeForWorkout(w)).toLocaleString('en-US')} lb</strong><small>${(w.exercises||[]).length} exercises${w.prs?` · ${w.prs} PR${w.prs===1?'':'s'}`:''}</small></div></button>`).join('');}
@@ -99,7 +139,7 @@ function closeRoutineEditor(){const d=$('routineDialog');if(d.close)d.close();el
 function saveRoutine(){state.customRoutines[routineDraftDay]=[...routineDraft];saveState();renderLibrary();closeRoutineEditor();}
 function resetRoutine(){delete state.customRoutines[routineDraftDay];routineDraft=[...routineFor(routineDraftDay)];saveState();renderRoutineEditor();renderLibrary();}
 function renderWeights(){const box=$('weightHistory');if(!state.weights.length){box.className='mini-list empty';box.textContent='No weigh-ins yet.';return;}box.className='mini-list';box.innerHTML=state.weights.slice(0,5).map(x=>`<div class="weight-row"><strong>${x.weight} lb</strong><small>${fmtDate(x.date)}</small></div>`).join('');}
-function renderAll(){renderGreeting();renderHero();renderStats();renderEquipment();renderLibrary();renderHistory();renderWeights();if(active)showActive(false);progressApi.afterFullRender({activeWorkout:active});}
+function renderAll(){renderGreeting();renderHero();renderStats();renderEquipment();renderLibrary();renderHistory();renderWeights();renderTimerPreferences();if(active)showActive(false);progressApi.afterFullRender({activeWorkout:active});}
 function bind(id,event,handler){const el=$(id);if(el)el.addEventListener(event,handler);}
 bind('dayTabs','click',e=>{const b=e.target.closest('[data-day]');if(!b)return;selectedDay=b.dataset.day;$('equipmentFilter').value='all';$('exerciseSearch').value='';renderLibrary();});
 bind('startWorkout','click',()=>{const today=todaysWorkout();if(active)workoutSessionController.resume(true);else if(today!=='Rest')workoutSessionController.start(today,{loadRoutine:true,scroll:true});});
@@ -129,7 +169,9 @@ bind('activeExercises','click',e=>{
 bind('finishWorkout','click',()=>workoutSessionController.complete());
 bind('timerMinus','click',()=>{if(!state.restTimerEndsAt)return;state.restTimerEndsAt=Math.max(Date.now(),state.restTimerEndsAt-15000);saveState();runRestTimer();});
 bind('timerPlus','click',()=>{state.restTimerEndsAt=(state.restTimerEndsAt||Date.now())+15000;saveState();runRestTimer();});
-bind('timerSkip','click',()=>{clearInterval(timerTicker);state.restTimerEndsAt=null;saveState();$('timerCard').classList.add('hidden');});
+bind('timerSkip','click',()=>{clearInterval(timerTicker);state.restTimerEndsAt=null;saveState();$('timerCard').classList.add('hidden');setWorkoutPetState('calm');});
+bind('timerSoundToggle','click',event=>{if(toggleTimerPreference('sound')&&event.isTrusted)workoutTimerFeedback.unlock();});
+bind('timerVibrationToggle','click',()=>toggleTimerPreference('vibration'));
 bind('history','click',e=>{const b=e.target.closest('[data-history-id]');if(b)openHistory(b.dataset.historyId);});
 bind('closeHistoryDialog','click',closeHistory);bind('historyDialog','click',e=>{if(e.target===$('historyDialog'))closeHistory();});
 bind('routineEditorList','click',e=>{const b=e.target.closest('button');if(!b)return;const i=Number(b.dataset.index);if(b.dataset.routineMove==='up'&&i>0)[routineDraft[i-1],routineDraft[i]]=[routineDraft[i],routineDraft[i-1]];else if(b.dataset.routineMove==='down'&&i<routineDraft.length-1)[routineDraft[i+1],routineDraft[i]]=[routineDraft[i],routineDraft[i+1]];else if(b.dataset.routineRemove!==undefined)routineDraft.splice(Number(b.dataset.routineRemove),1);renderRoutineEditor();});

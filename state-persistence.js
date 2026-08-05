@@ -43,7 +43,8 @@
         prs: {},
         activeWorkout: null,
         restTimerEndsAt: null,
-        customRoutines: {}
+        customRoutines: {},
+        timerPreferences: { sound: true, vibration: true }
       };
     }
 
@@ -154,6 +155,13 @@
       return goals;
     }
 
+    function normalizeTimerPreferences(value) {
+      return {
+        sound: !isRecord(value) || value.sound !== false,
+        vibration: !isRecord(value) || value.vibration !== false
+      };
+    }
+
     function normalizeState(value, profileId = profile.id) {
       const defaults = blankState(profileId);
       const saved = isRecord(value) ? value : {};
@@ -167,6 +175,7 @@
         prs: normalizePrs(saved.prs),
         activeWorkout: normalizeActiveWorkout(saved.activeWorkout),
         customRoutines: normalizeCustomRoutines(saved.customRoutines),
+        timerPreferences: normalizeTimerPreferences(saved.timerPreferences),
         restTimerEndsAt: Number.isFinite(saved.restTimerEndsAt) && saved.restTimerEndsAt > 0
           ? saved.restTimerEndsAt
           : null

@@ -13,6 +13,11 @@
     navButtons.forEach(button => button.classList.toggle('active', button.dataset.view === name));
     document.body.dataset.view = name;
     document.body.classList.toggle('workout-focus', name === 'train' && activePanel && !activePanel.classList.contains('hidden'));
+    if (name === 'train' && options.workout !== false && activePanel && !activePanel.classList.contains('hidden')) {
+      window.bigGainsWorkoutMode?.enter({ showView: false });
+    } else if (name !== 'train' && document.body.classList.contains('workout-mode')) {
+      window.bigGainsWorkoutMode?.suspend();
+    }
     try { sessionStorage.setItem('big-gains-view', name); } catch {}
     if (options.scroll !== false) window.scrollTo({ top: 0, behavior: options.instant ? 'auto' : 'smooth' });
   }
@@ -62,8 +67,12 @@
 
     const requested = location.hash.replace('#', '');
     const saved = (() => { try { return sessionStorage.getItem('big-gains-view'); } catch { return null; } })();
-    const initial = ['today','train','progress','library'].includes(requested) ? requested : (activePanel && !activePanel.classList.contains('hidden') ? 'train' : saved || 'today');
-    showView(initial, { instant: true, scroll: false });
+    const hasActiveWorkout = activePanel && !activePanel.classList.contains('hidden');
+    const explicitlyExited = window.bigGainsWorkoutMode?.wasExplicitlyExited();
+    const initial = ['today','train','progress','library'].includes(requested)
+      ? requested
+      : (hasActiveWorkout && !explicitlyExited ? 'train' : saved || 'today');
+    showView(initial, { instant: true, scroll: false, workout: !explicitlyExited });
     return true;
   }
 

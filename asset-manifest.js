@@ -1,13 +1,14 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v36-retire-legacy-workout-migration';
+  const release = 'v37-workout-mode-pet-timer-sound';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];
   const styles = [
     './styles.css',
     './v2-shell.css',
+    './workout-mode.css',
     './profiles.css',
     './training-pet.css',
     './workout-controls.css',
@@ -24,6 +25,7 @@
     './notes.js',
     './progress.js',
     './app.js',
+    './workout-mode.js',
     './v2-shell.js',
     './alexa-shell.js',
     './training-pet.js',

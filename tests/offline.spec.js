@@ -2,8 +2,8 @@ import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
 
-const CURRENT_CACHE = 'big-gains-shell-v36-retire-legacy-workout-migration';
-const PREVIOUS_CACHE = 'big-gains-shell-v35-script-audit-cleanup';
+const CURRENT_CACHE = 'big-gains-shell-v37-workout-mode-pet-timer-sound';
+const PREVIOUS_CACHE = 'big-gains-shell-v36-retire-legacy-workout-migration';
 
 async function waitForServiceWorker(page) {
   await page.evaluate(async () => {
@@ -32,7 +32,7 @@ test('first install precaches one complete, revision-consistent app shell', asyn
     };
   }, CURRENT_CACHE);
 
-  expect(state.release).toBe('v36-retire-legacy-workout-migration');
+  expect(state.release).toBe('v37-workout-mode-pet-timer-sound');
   expect(state.cacheNames).toContain(CURRENT_CACHE);
   expect(state.cachedUrls).toEqual(state.expectedUrls);
 });
@@ -180,6 +180,24 @@ test('reloads offline after the service worker is installed', async ({ context, 
     await expect(page.locator('#greeting')).toContainText('Jorge');
     await expect(page.locator('#sessionTypeSelector')).toBeAttached();
     await expect(page.locator('#quickStartSession')).toBeVisible();
+  } finally {
+    await context.setOffline(false);
+  }
+});
+
+test('reloads an active session offline directly into Workout Mode', async ({ context, page }) => {
+  await installLocalStorageFixture(page, 'activeWorkoutWithExercises');
+  await openApp(page);
+  await waitForServiceWorker(page);
+  await expect(page.locator('body')).toHaveClass(/workout-mode/);
+
+  await context.setOffline(true);
+  try {
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(page).toHaveTitle('Big Gains');
+    await expect(page.locator('body')).toHaveClass(/workout-mode/);
+    await expect(page.locator('#activePanel')).not.toHaveClass(/hidden/);
+    await expect(page.locator('.bottom-nav')).toBeHidden();
   } finally {
     await context.setOffline(false);
   }

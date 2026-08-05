@@ -19,7 +19,9 @@
 
   const definitions = {
     idle: { label: 'Standing by', messages: ['Small creature. Serious commitment to the bit.','The iron remains suspiciously liftable.','No pressure. I merely believe in progressive overload.'] },
-    active: { label: 'Workout mode', messages: ['I am spotting emotionally.','Rest timer has been inspected. Carry on.','Clean reps. Tiny witness.','The set counts even if nobody posts it.'] },
+    calm: { label: 'Workout mode', messages: ['Lock in.','Big set.','Clean reps.','One set at a time.'] },
+    attentive: { label: 'Resting', messages: ['Breathe.','Recover.','Next set is waiting.'] },
+    ready: { label: 'Rest complete', messages: ["You're up.",'Big set.','Ready.'] },
     sleeping: { label: 'Recovery mode', messages: ['Rest is training with the lights off.','No streak lost. The creature is simply horizontal.','Muscles loading… please do not unplug.'] },
     complete: { label: 'Work logged', messages: ['One more brick laid.','The database remembers. Excellent work.','Workout secured. Go be a person again.'] },
     pr: { label: 'PR detected', messages: ['New number. Same menace.','That record was load-bearing.','Personal record acquired. Creature impressed.'] },
@@ -33,7 +35,12 @@
 
   function resolveState() {
     const workout = latestToday();
-    if (active || state?.activeWorkout) return 'active';
+    if (active || state?.activeWorkout) {
+      const workoutState = document.body.dataset.workoutPetState;
+      if (workoutState === 'attentive') return 'attentive';
+      if (workoutState === 'ready') return 'ready';
+      return 'calm';
+    }
     if (workout && isLegDay(workout)) return 'exhausted';
     if (workout?.prs > 0) return 'pr';
     if (workout) return 'complete';
@@ -65,7 +72,7 @@
     pet.classList.add('is-poked');
     clearTimeout(pokeTimer);
     pokeTimer = setTimeout(() => pet.classList.remove('is-poked'), 600);
-    if (navigator.vibrate && !matchMedia('(prefers-reduced-motion: reduce)').matches) navigator.vibrate(18);
+    if (navigator.vibrate && state?.timerPreferences?.vibration !== false && !matchMedia('(prefers-reduced-motion: reduce)').matches) navigator.vibrate(18);
   }
 
   function initialize() {

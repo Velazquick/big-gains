@@ -2,6 +2,7 @@
   'use strict';
 
   const modules = [
+    window.bigGainsWorkoutMode,
     window.bigGainsViewShell,
     window.bigGainsProfileShell,
     window.trainingPet,
