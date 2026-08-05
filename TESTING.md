@@ -27,10 +27,13 @@ Reusable fixtures live in `tests/fixtures/local-storage.js`:
 1. Blank Jorge state
 2. Blank Alexa state
 3. Active workout with exercises
-4. Active workout with zero exercises
-5. Completed workouts
-6. Malformed but parseable state
-7. Legacy state
+4. Active workout with two exercises
+5. Active workout with zero exercises
+6. Completed workouts
+7. Malformed but parseable state
+8. Legacy state
+
+Workout-control coverage verifies the production hook order, render-only storage behavior, active-session rendering, collapse and expand, exercise ordering and removal, set editing, and completion-driven advancement.
 
 ## Known expected failure
 
