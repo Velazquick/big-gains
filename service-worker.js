@@ -1,4 +1,4 @@
-const CACHE='big-gains-v24-moss-cards';
+const CACHE='big-gains-v25-private-sync';
 const CORE_ASSETS=[
   './',
   './index.html',
@@ -20,6 +20,7 @@ const CORE_ASSETS=[
   './alexa-shell.js?v=18',
   './training-pet.js?v=20',
   './design-v21.js?v=21',
+  './sync-gateway.js?v=25',
   './manifest.webmanifest',
   './icon.svg'
 ];
