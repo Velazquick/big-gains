@@ -102,6 +102,19 @@
     if (body) body.hidden = !expanded;
   }
 
+  function repairEmptySession(session) {
+    if (!session || (session.exercises || []).length || typeof loadRoutine !== 'function') return false;
+    if (!normalizeType(session.type)) return false;
+
+    try {
+      loadRoutine(session.type, false);
+      return (session.exercises || []).length > 0;
+    } catch (error) {
+      console.warn('Could not repair empty workout', error);
+      return false;
+    }
+  }
+
   function selectType(key) {
     if (currentWorkout()) {
       setExpanded(false);
@@ -119,6 +132,7 @@
     setExpanded(false);
 
     if (session) {
+      repairEmptySession(session);
       goTo('train');
       window.setTimeout(() => {
         if (typeof showActive === 'function') showActive(true);
@@ -132,7 +146,7 @@
 
     goTo('train');
     window.setTimeout(() => {
-      if (typeof startWorkout === 'function') startWorkout(workoutType, Boolean(usesPlan));
+      if (typeof startWorkout === 'function') startWorkout(workoutType, true);
       render();
     }, 30);
   }
@@ -236,14 +250,15 @@
       if (quickButton) quickButton.textContent = 'Start';
     } else {
       if (planChip) planChip.textContent = planned === 'Rest' ? 'Recovery day' : `Plan · ${displayName(planned)}`;
-      if (note) note.textContent = `${selected.label} will open as an empty quick session.`;
-      if (quickButton) quickButton.textContent = 'Quick start';
+      if (note) note.textContent = `${selected.label} will load your saved routine.`;
+      if (quickButton) quickButton.textContent = 'Start';
     }
   }
 
   function boot() {
     ensureRoutineTypes();
     alignLibraryTabs();
+    repairEmptySession(currentWorkout());
 
     const planned = plannedWorkout();
     selectedType = normalizeType(currentWorkout()?.type)
