@@ -64,6 +64,7 @@ For any production app-shell change:
 - [ ] Verify malformed but parseable state recovers safely and invalid records cannot break startup.
 - [ ] Verify `pagehide` and hidden-page persistence still capture pending active-session changes.
 - [ ] Verify Jorge and Alexa remain isolated across state, workouts, weights, routines, preferences, active sessions, and timers.
+- [ ] On timer-feedback changes, verify unsupported browsers label vibration unavailable without overwriting the saved preference; verify Sound unlock, confirmation, Test Sound, one completion chime, and the visible ready fallback on a real device. Remember that iOS/WebKit may omit vibration and silent mode or OS routing may suppress sound.
 - [ ] Preserve the current legacy policy: import only valid `big-gains-v1` weights when Jorge has no current state, do not reconstruct undocumented workouts, and leave the original payload byte-for-byte untouched.
 
 ## Backup and sync compatibility

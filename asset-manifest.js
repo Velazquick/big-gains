@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v37-workout-mode-pet-timer-sound';
+  const release = 'v38-timer-feedback-device-support';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];
