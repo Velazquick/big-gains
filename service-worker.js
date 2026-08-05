@@ -1,4 +1,4 @@
-const CACHE='big-gains-v31-notes-api';
+const CACHE='big-gains-v32-progress-api';
 const CORE_ASSETS=[
   './',
   './index.html',
@@ -14,9 +14,9 @@ const CORE_ASSETS=[
   './profiles.js?v=18',
   './workout-controls.js?v=22',
   './notes.js?v=13',
-  './app.js?v=21',
+  './progress.js?v=13',
+  './app.js?v=22',
   './full-body.js?v=17',
-  './progress.js?v=12',
   './v2-shell.js?v=18',
   './alexa-shell.js?v=18',
   './training-pet.js?v=20',
