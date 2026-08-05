@@ -39,6 +39,10 @@ Notes coverage verifies the explicit notes hook API, active-session notes render
 
 Progress coverage verifies the explicit progress hook API and production script order, library and active-session decoration, history decoration, full progress-panel refresh, removal of global render replacement, and render-only storage behavior.
 
+## Cache and update coverage
+
+Offline coverage verifies a complete first install, deterministic manifest revisions, unique core assets, migration from the previous Big Gains cache, preservation of unrelated origin caches, awaited precache and runtime writes, visible cache-write failures, and offline reload.
+
 ## Known expected failure
 
 - Legacy migration preserves weights but discards legacy workouts. The test accepts only the exact known defect or a migration that preserves both; other outcomes remain unexpected.
@@ -55,4 +59,4 @@ Storage coverage verifies load/normalize/save round trips, profile-key ownership
 
 ## Not covered
 
-The harness runs Chromium only. It does not validate native PWA install prompts, vibration, browser background-timer throttling, or the full real-time 2:30 rest-timer expiry. It does cover rest-timer activation and persistence, service-worker installation, and an offline reload.
+The harness runs Chromium only. It does not validate Safari or Firefox service-worker lifecycle differences, native PWA install prompts, OS-managed update timing, vibration, browser background-timer throttling, or the full real-time 2:30 rest-timer expiry. It does cover rest-timer activation and persistence, Chromium service-worker installation and cache replacement, and an offline reload.

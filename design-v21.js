@@ -1,38 +1,4 @@
 (() => {
-  const mossStyleId = 'mossExerciseCardStyles';
-  if (!document.getElementById(mossStyleId)) {
-    const mossStyles = document.createElement('link');
-    mossStyles.id = mossStyleId;
-    mossStyles.rel = 'stylesheet';
-    mossStyles.href = 'moss-cards-v24.css?v=24';
-    document.head.appendChild(mossStyles);
-  }
-
-  const selectorStyleId = 'bigGainsSessionSelectorStyles';
-  if (!document.getElementById(selectorStyleId)) {
-    const selectorStyles = document.createElement('link');
-    selectorStyles.id = selectorStyleId;
-    selectorStyles.rel = 'stylesheet';
-    selectorStyles.href = 'session-selector-v26.css?v=28';
-    document.head.appendChild(selectorStyles);
-  }
-
-  const selectorScriptId = 'bigGainsSessionSelector';
-  if (!document.getElementById(selectorScriptId)) {
-    const selectorScript = document.createElement('script');
-    selectorScript.id = selectorScriptId;
-    selectorScript.src = 'session-selector-v26.js?v=28';
-    document.head.appendChild(selectorScript);
-  }
-
-  const syncScriptId = 'bigGainsSyncGateway';
-  if (!document.getElementById(syncScriptId)) {
-    const syncScript = document.createElement('script');
-    syncScript.id = syncScriptId;
-    syncScript.src = 'sync-gateway.js?v=25';
-    document.head.appendChild(syncScript);
-  }
-
   const routineMeta = document.getElementById('todayRoutineMeta');
   const blockMeta = document.getElementById('todayBlockMeta');
   const momentumHeadline = document.getElementById('momentumHeadline');
