@@ -13,6 +13,7 @@
 
   let selectedType = 'Push';
   let expanded = false;
+  let initialized = false;
 
   function normalizeType(value) {
     const map = {
@@ -28,49 +29,6 @@
       PilatesCardioAccessory: 'Cardio'
     };
     return map[value] || null;
-  }
-
-  function ensureRoutineTypes() {
-    if (typeof DEFAULT_ROUTINES === 'undefined') return;
-
-    if (!DEFAULT_ROUTINES.Core) {
-      DEFAULT_ROUTINES.Core = {
-        label: 'Core',
-        exercises: [
-          'Cable Crunch',
-          'Hanging Knee Raise',
-          'Hanging Leg Raise',
-          'Ab Wheel Rollout',
-          'Plank',
-          'Side Plank',
-          'Pallof Press',
-          'Machine Crunch',
-          'Russian Twist',
-          'Dead Bug'
-        ]
-      };
-    }
-
-    if (DEFAULT_ROUTINES.Cardio) DEFAULT_ROUTINES.Cardio.label = 'Conditioning';
-  }
-
-  function alignLibraryTabs() {
-    const tabs = document.getElementById('dayTabs');
-    if (!tabs) return;
-
-    const legsButton = tabs.querySelector('[data-day="Legs"]');
-    if (legsButton) legsButton.textContent = 'Legs';
-
-    if (!tabs.querySelector('[data-day="Core"]')) {
-      const coreButton = document.createElement('button');
-      coreButton.type = 'button';
-      coreButton.dataset.day = 'Core';
-      coreButton.textContent = 'Core';
-      legsButton?.insertAdjacentElement('afterend', coreButton);
-    }
-
-    const cardioButton = tabs.querySelector('[data-day="Cardio"]');
-    if (cardioButton) cardioButton.textContent = 'Conditioning';
   }
 
   function plannedWorkout() {
@@ -165,48 +123,6 @@
     }, 80);
   }
 
-  function buildCard() {
-    const todayStage = document.querySelector('#viewToday .today-stage');
-    const legacyHero = todayStage?.querySelector('.hero-card');
-    if (!todayStage || !legacyHero || document.getElementById(SELECTOR_ID)) return;
-
-    const card = document.createElement('section');
-    card.id = SELECTOR_ID;
-    card.className = 'session-selector-card';
-    card.setAttribute('aria-label', 'Workout session selector');
-    card.innerHTML = `
-      <div class="session-selector-bar">
-        <button class="session-selector-toggle" id="sessionSelectorToggle" type="button" aria-expanded="false" aria-controls="sessionSelectorBody">
-          <span class="session-selector-kicker">Session</span>
-          <span class="session-selector-current">
-            <strong id="selectedSessionLabel">Push</strong>
-            <small id="sessionPlanChip"></small>
-          </span>
-          <span class="session-selector-chevron" aria-hidden="true">⌄</span>
-        </button>
-        <button class="primary session-start-button" id="quickStartSession" type="button">Start</button>
-      </div>
-      <div class="session-selector-body" id="sessionSelectorBody" hidden>
-        <div class="session-type-grid" id="sessionTypeGrid"></div>
-        <div class="session-selector-footer">
-          <small id="selectedSessionNote"></small>
-          <button class="ghost compact" id="openSessionLibrary" type="button">Open Library</button>
-        </div>
-      </div>
-    `;
-
-    legacyHero.insertAdjacentElement('beforebegin', card);
-    document.body.classList.add('session-selector-ready');
-
-    card.querySelector('#sessionSelectorToggle')?.addEventListener('click', () => setExpanded(!expanded));
-    card.querySelector('#sessionTypeGrid')?.addEventListener('click', event => {
-      const button = event.target.closest('[data-session-type]');
-      if (button) selectType(button.dataset.sessionType);
-    });
-    card.querySelector('#quickStartSession')?.addEventListener('click', startSelected);
-    card.querySelector('#openSessionLibrary')?.addEventListener('click', openLibrary);
-  }
-
   function render() {
     const card = document.getElementById(SELECTOR_ID);
     if (!card) return;
@@ -255,9 +171,9 @@
     }
   }
 
-  function boot() {
-    ensureRoutineTypes();
-    alignLibraryTabs();
+  function initialize() {
+    if (initialized) return false;
+    initialized = true;
     repairEmptySession(currentWorkout());
 
     const planned = plannedWorkout();
@@ -266,9 +182,17 @@
       || (typeof selectedDay !== 'undefined' ? normalizeType(selectedDay) : null)
       || 'Push';
 
-    buildCard();
     render();
     setExpanded(false);
+
+    const card = document.getElementById(SELECTOR_ID);
+    card?.querySelector('#sessionSelectorToggle')?.addEventListener('click', () => setExpanded(!expanded));
+    card?.querySelector('#sessionTypeGrid')?.addEventListener('click', event => {
+      const button = event.target.closest('[data-session-type]');
+      if (button) selectType(button.dataset.sessionType);
+    });
+    card?.querySelector('#quickStartSession')?.addEventListener('click', startSelected);
+    card?.querySelector('#openSessionLibrary')?.addEventListener('click', openLibrary);
 
     document.getElementById('dayTabs')?.addEventListener('click', event => {
       const normalized = normalizeType(event.target.closest('[data-day]')?.dataset.day);
@@ -286,11 +210,8 @@
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) render();
     });
+    return true;
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', boot, { once: true });
-  } else {
-    boot();
-  }
+  window.sessionSelector = Object.freeze({ initialize, render });
 })();

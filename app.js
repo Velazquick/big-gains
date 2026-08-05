@@ -7,7 +7,8 @@ const DEFAULT_ROUTINES={
   Push:{label:'Jorge Push',exercises:['Seated Machine Chest Press','Incline Iso Machine Press','Iso Machine Shoulder Press','Seated Pec Deck','Triceps Pushdown','Overhead Triceps Extension']},
   Pull:{label:'Pull — Back + Biceps',exercises:['Lat Pulldown','Seated Cable Row','Chest-Supported Row','Reverse Pec Deck','Dumbbell Curl','Hammer Curl']},
   Legs:{label:'Legs + Core',exercises:['Leg Press','Leg Extension','Seated Leg Curl','Romanian Deadlift','Standing Calf Raise','Cable Crunch','Hanging Knee Raise']},
-  Cardio:{label:'Cardio',exercises:['Treadmill Run']},
+  Core:{label:'Core',exercises:['Cable Crunch','Hanging Knee Raise','Hanging Leg Raise','Ab Wheel Rollout','Plank','Side Plank','Pallof Press','Machine Crunch','Russian Twist','Dead Bug']},
+  Cardio:{label:'Conditioning',exercises:['Treadmill Run']},
   FullBody:{label:'Full Body',exercises:['Seated Machine Chest Press','Dumbbell Shoulder Press','Lat Pulldown','Triceps Pushdown','Dumbbell Lateral Raise','Hack Squat','Leg Extension','Standing Calf Raise']},
   Other:{label:'Blank workout',exercises:[]},
   PilatesPull:{label:'Pilates + Pull',exercises:['Lat Pulldown','Seated Cable Row','Chest-Supported Row','Face Pull','Dumbbell Curl']},
@@ -31,7 +32,7 @@ const slug=v=>v.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
 const EXERCISES=RAW.map(([name,day,muscle,equipment])=>({id:slug(name),name,day,muscle,equipment}));
 const $=id=>document.getElementById(id);
 const uid=()=>crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random().toString(16).slice(2)}`;
-const statePersistenceApi=bigGainsStatePersistence.create({profile:PROFILE,profileConfig:PROFILE_CONFIG,validWorkoutTypes:[...Object.keys(DEFAULT_ROUTINES),'Core'],createId:uid,slug});
+const statePersistenceApi=bigGainsStatePersistence.create({profile:PROFILE,profileConfig:PROFILE_CONFIG,validWorkoutTypes:Object.keys(DEFAULT_ROUTINES),createId:uid,slug});
 let state=statePersistenceApi.load();
 let selectedDay=(state.activeWorkout&&state.activeWorkout.type)||(todaysWorkout()==='Rest'?(PROFILE.id==='alexa'?'PilatesPull':'Push'):todaysWorkout());
 let active=state.activeWorkout||null;
@@ -137,7 +138,6 @@ bind('saveRoutine','click',saveRoutine);bind('resetRoutine','click',resetRoutine
 bind('weightForm','submit',e=>{e.preventDefault();state.weights.unshift({weight:Number($('bodyweight').value),date:new Date().toISOString()});$('bodyweight').value='';saveState();renderAll();});
 bind('exportData','click',()=>{const backup=statePersistenceApi.prepareExport(state),blob=new Blob([backup.json],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=backup.filename;a.click();URL.revokeObjectURL(url);});
 bind('importData','change',async e=>{const file=e.target.files[0];if(!file)return;try{const imported=JSON.parse(await file.text()),result=statePersistenceApi.validateImport(imported);if(!result.ok){if(result.reason==='profile-mismatch'){alert(`This backup belongs to ${result.profileName}, not ${PROFILE.name}. Switch profiles before restoring it.`);return;}throw new Error('Invalid backup');}state=result.state;active=state.activeWorkout||null;const today=todaysWorkout();selectedDay=(active&&active.type)||(today==='Rest'?(PROFILE.id==='alexa'?'PilatesPull':'Push'):today);saveState();renderAll();alert('Backup restored for '+PROFILE.name+'.');}catch{alert('That file is not a valid Big Gains backup.');}finally{e.target.value='';}});
-document.addEventListener('click',e=>{const b=e.target.closest('.bottom-nav button');if(!b)return;const target=$(b.dataset.target);if(!target)return;document.querySelectorAll('.bottom-nav button').forEach(x=>x.classList.toggle('active',x===b));target.scrollIntoView({behavior:'smooth',block:'start'});});
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;$('installButton').classList.remove('hidden');});
 bind('installButton','click',async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;$('installButton').classList.add('hidden');});
 window.addEventListener('pagehide',saveState);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')saveState();});

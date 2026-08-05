@@ -1,5 +1,8 @@
 (() => {
+  'use strict';
+
   const alexaDays = ['PilatesPull','LegsLowImpact','PilatesCardioAccessory','Optional','FullBody','Cardio','Other'];
+  let initialized = false;
 
   function renderProfileShell() {
     const isAlexa = PROFILE.id === 'alexa';
@@ -33,7 +36,14 @@
     garden.innerHTML = `<div class="garden-copy"><span class="label">Consistency garden</span><h2>${stages[stage]}</h2><p>${count} completed movement${count===1?'':'s'} have helped it grow. Missed days never undo your care.</p></div><div class="garden-bed" aria-label="Garden with ${count} completed workouts">${flowers}</div><div class="goal-grid"><div><span>Primary goal</span><strong>Weight loss</strong></div><div><span>Starting point</span><strong>225 lb</strong></div><div><span>Growing</span><strong>Glutes, legs & back</strong></div><div><span>December 20</span><strong>${days} days to nurture</strong></div></div>`;
   }
 
-  document.getElementById('finishWorkout')?.addEventListener('click',()=>setTimeout(renderGarden,120));
-  window.addEventListener('pageshow',renderProfileShell);
-  renderProfileShell();
+  function initialize() {
+    if (initialized) return false;
+    initialized = true;
+    document.getElementById('finishWorkout')?.addEventListener('click',()=>setTimeout(renderGarden,120));
+    window.addEventListener('pageshow',renderProfileShell);
+    renderProfileShell();
+    return true;
+  }
+
+  window.bigGainsProfileShell = Object.freeze({ initialize, renderGarden, renderProfileShell });
 })();

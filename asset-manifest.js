@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v34-cache-update-hardening';
+  const release = 'v35-script-audit-cleanup';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];
@@ -14,7 +14,8 @@
     './design-v21.css',
     './moss-cards-v24.css',
     './alexa-contrast-v22.css',
-    './session-selector-v26.css'
+    './session-selector-v26.css',
+    './sync-gateway.css'
   ];
   const scripts = [
     './state-persistence.js',
@@ -23,13 +24,13 @@
     './notes.js',
     './progress.js',
     './app.js',
-    './full-body.js',
     './v2-shell.js',
     './alexa-shell.js',
     './training-pet.js',
     './design-v21.js',
     './session-selector-v26.js',
-    './sync-gateway.js'
+    './sync-gateway.js',
+    './shell-init.js'
   ];
   const revision = path => `${path}?v=${encodeURIComponent(release)}`;
   const revisionedStyles = styles.map(revision);
