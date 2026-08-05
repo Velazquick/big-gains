@@ -138,9 +138,22 @@ export const localStorageFixtures = Object.freeze({
         profileId: 'jorge',
         workouts: { unexpected: 'object instead of an array' },
         weights: 'not-an-array',
-        prs: [],
-        activeWorkout: null,
-        customRoutines: null
+        prs: { broken: null },
+        activeWorkout: {
+          id: 'invalid-active-workout',
+          type: 'Unknown',
+          startedAt: 'not-a-date',
+          exercises: 'not-an-array'
+        },
+        customRoutines: {
+          Push: 'not-an-array',
+          Pull: ['lat-pulldown', null, 42, 'lat-pulldown']
+        },
+        goals: {
+          primary: 42,
+          secondary: 'not-an-array'
+        },
+        restTimerEndsAt: 'tomorrow'
       }
     }
   },

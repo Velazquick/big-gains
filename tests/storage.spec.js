@@ -43,10 +43,12 @@ test('keeps Jorge and Alexa localStorage isolated', async ({ page }) => {
   expect(alexa.weights.map(entry => entry.weight)).toEqual([225]);
 });
 
-test('characterizes the current cross-profile import behavior', async ({ page }) => {
+test('rejects a cross-profile import without modifying either profile', async ({ page }) => {
   await installLocalStorageFixture(page, ['blankJorge', 'blankAlexa'], { activeProfile: 'jorge' });
   await openApp(page);
   await page.locator('.bottom-nav [data-view="library"]').click();
+  const jorgeBefore = await readStoredJson(page, STORAGE_KEYS.jorge);
+  const alexaBefore = await readStoredJson(page, STORAGE_KEYS.alexa);
 
   const alexaBackup = {
     ...blankState('alexa'),
@@ -62,16 +64,11 @@ test('characterizes the current cross-profile import behavior', async ({ page })
     buffer: Buffer.from(JSON.stringify(alexaBackup))
   });
   const dialog = await dialogPromise;
-  expect(dialog.message()).toBe('Backup restored for Jorge.');
+  expect(dialog.message()).toBe('This backup belongs to Alexa, not Jorge. Switch profiles before restoring it.');
   await dialog.accept();
 
-  const jorge = await readStoredJson(page, STORAGE_KEYS.jorge);
-  const alexa = await readStoredJson(page, STORAGE_KEYS.alexa);
-  expect(jorge.profileId).toBe('jorge');
-  expect(jorge.workouts[0].id).toBe('alexa-imported-workout');
-  expect(jorge.weights[0].weight).toBe(224);
-  expect(alexa.workouts).toHaveLength(0);
-  expect(alexa.weights).toHaveLength(0);
+  expect(await readStoredJson(page, STORAGE_KEYS.jorge)).toEqual(jorgeBefore);
+  expect(await readStoredJson(page, STORAGE_KEYS.alexa)).toEqual(alexaBefore);
 });
 
 test('renders completed workout history from persisted state', async ({ page }) => {
@@ -89,22 +86,30 @@ test('recovers a malformed but parseable current-profile state', async ({ page }
   await installLocalStorageFixture(page, 'malformedButParseableState');
   await openApp(page);
 
-  const collectionShapes = await page.evaluate(() => ({
+  const normalized = await page.evaluate(() => ({
     workouts: Array.isArray(state.workouts),
     weights: Array.isArray(state.weights),
-    prs: Boolean(state.prs) && !Array.isArray(state.prs) && typeof state.prs === 'object'
+    prs: Boolean(state.prs) && !Array.isArray(state.prs) && typeof state.prs === 'object',
+    prCount: Object.keys(state.prs).length,
+    activeWorkout: state.activeWorkout,
+    customRoutines: state.customRoutines,
+    goals: state.goals,
+    restTimerEndsAt: state.restTimerEndsAt
   }));
 
-  // Known defect: parseable but structurally invalid persisted state is not normalized.
-  // This guard runs before test.fail so partial or otherwise unanticipated behavior remains a real failure.
-  expect([
-    { workouts: false, weights: false, prs: false },
-    { workouts: true, weights: true, prs: true }
-  ]).toContainEqual(collectionShapes);
-  test.fail(true, 'Parseable but structurally invalid persisted state is not normalized.');
-
-  expect(collectionShapes).toEqual({ workouts: true, weights: true, prs: true });
+  expect(normalized).toEqual({
+    workouts: true,
+    weights: true,
+    prs: true,
+    prCount: 0,
+    activeWorkout: null,
+    customRoutines: { Pull: ['lat-pulldown'] },
+    goals: { primary: 'Strength and performance' },
+    restTimerEndsAt: null
+  });
   await expect(page.locator('#routineSelect option')).toHaveCount(1);
+  await expect(page.locator('#history')).toHaveText('Your completed workouts will appear here.');
+  await expect(page.locator('#weightHistory')).toHaveText('No weigh-ins yet.');
 });
 
 test('migrates legacy workouts and weights into Jorge state', async ({ page }) => {

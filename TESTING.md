@@ -18,7 +18,7 @@ npm test
 npx playwright test --workers=1
 ```
 
-The expected baseline is green with 16 passing tests and two tests reported as expected failures.
+The expected baseline is green with 17 normal passes and one test reported as an expected failure.
 
 ## localStorage fixtures
 
@@ -32,16 +32,15 @@ Reusable fixtures live in `tests/fixtures/local-storage.js`:
 6. Malformed but parseable state
 7. Legacy state
 
-## Known expected failures
+## Known expected failure
 
-- Parseable but structurally invalid persisted state is not normalized. The test accepts only the exact known defect or fully normalized collections; partial or different failures remain unexpected.
 - Legacy migration preserves weights but discards legacy workouts. The test accepts only the exact known defect or a migration that preserves both; other outcomes remain unexpected.
 
-Both tests use Playwright's expected-failure annotation. If either defect is fixed as expected, its test becomes an unexpected pass so the annotation must be removed.
+The test uses Playwright's expected-failure annotation. If the defect is fixed as expected, it becomes an unexpected pass so the annotation must be removed.
 
 ## Cross-profile import behavior
 
-The suite characterizes the current behavior: importing an Alexa backup while Jorge is active writes the imported workouts and weights into Jorge's storage, stamps the result as Jorge, and leaves Alexa's storage unchanged.
+The suite verifies that importing an Alexa backup while Jorge is active is rejected with a profile-specific message and leaves both profiles' stored data unchanged.
 
 ## Not covered
 
