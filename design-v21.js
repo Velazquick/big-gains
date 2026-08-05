@@ -1,4 +1,13 @@
 (() => {
+  const mossStyleId = 'mossExerciseCardStyles';
+  if (!document.getElementById(mossStyleId)) {
+    const mossStyles = document.createElement('link');
+    mossStyles.id = mossStyleId;
+    mossStyles.rel = 'stylesheet';
+    mossStyles.href = 'moss-cards-v24.css?v=24';
+    document.head.appendChild(mossStyles);
+  }
+
   const routineMeta = document.getElementById('todayRoutineMeta');
   const blockMeta = document.getElementById('todayBlockMeta');
   const momentumHeadline = document.getElementById('momentumHeadline');
