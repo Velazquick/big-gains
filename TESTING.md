@@ -18,7 +18,7 @@ npm test
 npx playwright test --workers=1
 ```
 
-The expected baseline is green with the legacy migration test reported as the only expected failure.
+The expected baseline is fully green with no expected failures.
 
 ## localStorage fixtures
 
@@ -45,11 +45,9 @@ Shell coverage verifies deterministic production script order, idempotent single
 
 Offline coverage verifies a complete first install, deterministic manifest revisions, unique core assets, migration from the previous Big Gains cache, preservation of unrelated origin caches, awaited precache and runtime writes, visible cache-write failures, and offline reload.
 
-## Known expected failure
+## Legacy migration policy
 
-- Legacy migration preserves weights but discards legacy workouts. The test accepts only the exact known defect or a migration that preserves both; other outcomes remain unexpected.
-
-The test uses Playwright's expected-failure annotation. If the defect is fixed as expected, it becomes an unexpected pass so the annotation must be removed.
+The undocumented `big-gains-v1` payload is treated as a retained source record, not as a complete import format. Valid legacy weight entries are normalized into Jorge's schema-version-5 state. Legacy workout records are not reconstructed because no supported workout schema exists for that payload; they remain available only in the original, untouched `big-gains-v1` key/value. Regression coverage verifies that invalid weights are rejected, the original payload is preserved byte-for-byte, and repeated loads do not duplicate migrated weights.
 
 ## Cross-profile import behavior
 

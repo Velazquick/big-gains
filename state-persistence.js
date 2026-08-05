@@ -174,10 +174,11 @@
     }
 
     function migrateLegacyV1(value) {
+      // big-gains-v1 workout records never had a documented schema. Keep the
+      // source payload untouched and import only weights that normalize cleanly.
       return normalizeState({
         ...blankState(),
-        weights: isRecord(value) ? value.weights || [] : [],
-        workouts: []
+        weights: isRecord(value) && Array.isArray(value.weights) ? value.weights : []
       });
     }
 
