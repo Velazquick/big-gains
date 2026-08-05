@@ -7,11 +7,12 @@
     { key: 'Pull', label: 'Pull', detail: 'Back, rear delts, biceps', index: '02' },
     { key: 'Legs', label: 'Legs', detail: 'Quads, glutes, hamstrings', index: '03' },
     { key: 'Core', label: 'Core', detail: 'Abs, bracing, trunk work', index: '04' },
-    { key: 'FullBody', label: 'Full Body', detail: 'One pass across the whole system', index: '05' },
+    { key: 'FullBody', label: 'Full Body', detail: 'Whole-body strength', index: '05' },
     { key: 'Cardio', label: 'Conditioning', detail: 'Intervals, classes, cardio', index: '06' }
   ];
 
   let selectedType = 'Push';
+  let expanded = false;
 
   function normalizeType(value) {
     const map = {
@@ -88,19 +89,35 @@
   }
 
   function goTo(view) {
-    const button = document.querySelector(`.bottom-nav [data-view="${view}"]`);
-    button?.click();
+    document.querySelector(`.bottom-nav [data-view="${view}"]`)?.click();
+  }
+
+  function setExpanded(next) {
+    expanded = Boolean(next);
+    const card = document.getElementById(SELECTOR_ID);
+    const toggle = card?.querySelector('#sessionSelectorToggle');
+    const body = card?.querySelector('#sessionSelectorBody');
+    card?.classList.toggle('is-expanded', expanded);
+    toggle?.setAttribute('aria-expanded', String(expanded));
+    if (body) body.hidden = !expanded;
   }
 
   function selectType(key) {
+    if (currentWorkout()) {
+      setExpanded(false);
+      return;
+    }
     if (!SESSION_TYPES.some(item => item.key === key)) return;
     selectedType = key;
     if (typeof selectedDay !== 'undefined') selectedDay = key;
     render();
+    setExpanded(false);
   }
 
   function startSelected() {
     const session = currentWorkout();
+    setExpanded(false);
+
     if (session) {
       goTo('train');
       window.setTimeout(() => {
@@ -112,16 +129,16 @@
     const planned = plannedWorkout();
     const usesPlan = planned && planned !== 'Rest' && normalizeType(planned) === selectedType;
     const workoutType = usesPlan ? planned : selectedType;
-    const shouldLoadRoutine = Boolean(usesPlan);
 
     goTo('train');
     window.setTimeout(() => {
-      if (typeof startWorkout === 'function') startWorkout(workoutType, shouldLoadRoutine);
+      if (typeof startWorkout === 'function') startWorkout(workoutType, Boolean(usesPlan));
       render();
     }, 30);
   }
 
   function openLibrary() {
+    setExpanded(false);
     if (typeof selectedDay !== 'undefined') selectedDay = selectedType;
     const equipment = document.getElementById('equipmentFilter');
     const search = document.getElementById('exerciseSearch');
@@ -142,25 +159,24 @@
     const card = document.createElement('section');
     card.id = SELECTOR_ID;
     card.className = 'session-selector-card';
-    card.setAttribute('aria-labelledby', 'sessionSelectorTitle');
+    card.setAttribute('aria-label', 'Workout session selector');
     card.innerHTML = `
-      <div class="session-selector-head">
-        <div>
-          <span class="label">Choose the work</span>
-          <h2 id="sessionSelectorTitle">What are we training?</h2>
-        </div>
-        <span class="session-plan-chip" id="sessionPlanChip"></span>
+      <div class="session-selector-bar">
+        <button class="session-selector-toggle" id="sessionSelectorToggle" type="button" aria-expanded="false" aria-controls="sessionSelectorBody">
+          <span class="session-selector-kicker">Session</span>
+          <span class="session-selector-current">
+            <strong id="selectedSessionLabel">Push</strong>
+            <small id="sessionPlanChip"></small>
+          </span>
+          <span class="session-selector-chevron" aria-hidden="true">⌄</span>
+        </button>
+        <button class="primary session-start-button" id="quickStartSession" type="button">Start</button>
       </div>
-      <div class="session-type-grid" id="sessionTypeGrid"></div>
-      <div class="session-selector-summary">
-        <div>
-          <span class="label">Selected session</span>
-          <strong id="selectedSessionLabel">Push</strong>
-          <p id="selectedSessionNote"></p>
-        </div>
-        <div class="session-selector-actions">
-          <button class="primary" id="quickStartSession" type="button">Quick start</button>
-          <button class="secondary" id="openSessionLibrary" type="button">Open Library</button>
+      <div class="session-selector-body" id="sessionSelectorBody" hidden>
+        <div class="session-type-grid" id="sessionTypeGrid"></div>
+        <div class="session-selector-footer">
+          <small id="selectedSessionNote"></small>
+          <button class="ghost compact" id="openSessionLibrary" type="button">Open Library</button>
         </div>
       </div>
     `;
@@ -168,6 +184,7 @@
     legacyHero.insertAdjacentElement('beforebegin', card);
     document.body.classList.add('session-selector-ready');
 
+    card.querySelector('#sessionSelectorToggle')?.addEventListener('click', () => setExpanded(!expanded));
     card.querySelector('#sessionTypeGrid')?.addEventListener('click', event => {
       const button = event.target.closest('[data-session-type]');
       if (button) selectType(button.dataset.sessionType);
@@ -191,7 +208,7 @@
         const isSelected = item.key === selectedType;
         const isPlanned = item.key === plannedType;
         return `
-          <button class="session-type-option${isSelected ? ' is-selected' : ''}${isPlanned ? ' is-planned' : ''}" type="button" data-session-type="${item.key}" aria-pressed="${isSelected}">
+          <button class="session-type-option${isSelected ? ' is-selected' : ''}${isPlanned ? ' is-planned' : ''}" type="button" data-session-type="${item.key}" aria-pressed="${isSelected}"${session ? ' disabled' : ''}>
             <span class="session-type-index">${item.index}</span>
             <span class="session-type-copy"><strong>${item.label}</strong><small>${item.detail}</small></span>
             ${isPlanned ? '<span class="session-type-badge">Today</span>' : ''}
@@ -210,19 +227,17 @@
     if (label) label.textContent = session ? displayName(session.type) : selected.label;
 
     if (session) {
-      if (note) note.textContent = `${session.exercises?.length || 0} movements saved. Pick up exactly where you left off.`;
-      if (quickButton) quickButton.textContent = `Resume ${displayName(session.type)}`;
+      if (planChip) planChip.textContent = `Active · ${session.exercises?.length || 0} movements`;
+      if (note) note.textContent = 'An active workout is already open.';
+      if (quickButton) quickButton.textContent = 'Resume';
     } else if (matchesPlan) {
-      if (note) note.textContent = `Today’s planned routine is ${displayName(planned)}. Start it loaded, or open the Library first.`;
-      if (quickButton) quickButton.textContent = 'Start today’s plan';
+      if (planChip) planChip.textContent = 'Today’s plan';
+      if (note) note.textContent = `${displayName(planned)} is ready with your saved routine.`;
+      if (quickButton) quickButton.textContent = 'Start';
     } else {
-      if (note) note.textContent = `Quick start opens an empty ${selected.label.toLowerCase()} session. Library opens the filtered shelf.`;
+      if (planChip) planChip.textContent = planned === 'Rest' ? 'Recovery day' : `Plan · ${displayName(planned)}`;
+      if (note) note.textContent = `${selected.label} will open as an empty quick session.`;
       if (quickButton) quickButton.textContent = 'Quick start';
-    }
-
-    if (planChip) {
-      planChip.textContent = planned === 'Rest' ? 'Recovery day' : `Plan · ${displayName(planned)}`;
-      planChip.dataset.state = planned === 'Rest' ? 'rest' : 'planned';
     }
   }
 
@@ -238,10 +253,10 @@
 
     buildCard();
     render();
+    setExpanded(false);
 
     document.getElementById('dayTabs')?.addEventListener('click', event => {
-      const button = event.target.closest('[data-day]');
-      const normalized = normalizeType(button?.dataset.day);
+      const normalized = normalizeType(event.target.closest('[data-day]')?.dataset.day);
       if (normalized) {
         selectedType = normalized;
         window.setTimeout(render, 0);
