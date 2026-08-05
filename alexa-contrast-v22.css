@@ -351,11 +351,57 @@ html[data-profile="alexa"] .bottom-nav button.active{
   }
 }
 
-/* Progressive exercise-card wayfinding */
+/* Individually identifiable workout cards */
+html[data-profile="alexa"] #activeExercises{
+  counter-reset:alexa-exercise;
+}
+
+html[data-profile="alexa"] #activeExercises .active-exercise:nth-child(6n+1){
+  --card-border:#d45f91;
+  --card-fill-a:#fff8fb;
+  --card-fill-b:#fbe5ef;
+  --card-fill-c:#f4d3e1;
+}
+html[data-profile="alexa"] #activeExercises .active-exercise:nth-child(6n+2){
+  --card-border:#a94074;
+  --card-fill-a:#fff5f9;
+  --card-fill-b:#f7deea;
+  --card-fill-c:#edc7d8;
+}
+html[data-profile="alexa"] #activeExercises .active-exercise:nth-child(6n+3){
+  --card-border:#d9797b;
+  --card-fill-a:#fff8f8;
+  --card-fill-b:#fbe5e4;
+  --card-fill-c:#f1cfce;
+}
+html[data-profile="alexa"] #activeExercises .active-exercise:nth-child(6n+4){
+  --card-border:#8f5a91;
+  --card-fill-a:#fbf7fc;
+  --card-fill-b:#eee0ef;
+  --card-fill-c:#dfc9e1;
+}
+html[data-profile="alexa"] #activeExercises .active-exercise:nth-child(6n+5){
+  --card-border:#bd3f68;
+  --card-fill-a:#fff5f8;
+  --card-fill-b:#f8dde7;
+  --card-fill-c:#efc5d4;
+}
+html[data-profile="alexa"] #activeExercises .active-exercise:nth-child(6n){
+  --card-border:#744668;
+  --card-fill-a:#faf7fa;
+  --card-fill-b:#eadfe7;
+  --card-fill-c:#d8c9d4;
+}
+
 html[data-profile="alexa"] #activeExercises .active-exercise{
+  counter-increment:alexa-exercise;
   position:relative;
   isolation:isolate;
-  transition:background .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease;
+  box-sizing:border-box;
+  border:2px solid var(--card-border);
+  background:linear-gradient(145deg,var(--card-fill-a) 0%,var(--card-fill-b) 55%,var(--card-fill-c) 100%);
+  box-shadow:0 8px 20px rgba(92,45,73,.09);
+  transition:background .18s ease,border-color .18s ease,border-width .18s ease,box-shadow .18s ease,transform .18s ease;
 }
 
 html[data-profile="alexa"] #activeExercises .active-exercise::before{
@@ -365,53 +411,78 @@ html[data-profile="alexa"] #activeExercises .active-exercise::before{
   z-index:3;
   width:4px;
   pointer-events:none;
-  opacity:.76;
-  background:linear-gradient(180deg,#e996bd 0%,#cd679a 54%,#99436f 100%);
+  opacity:.88;
+  background:var(--card-border);
   transition:width .18s ease,opacity .18s ease,filter .18s ease;
 }
 
-html[data-profile="alexa"] #activeExercises .active-exercise:nth-child(6n+1){background:linear-gradient(145deg,#fff8fb 0%,#fdebf3 55%,#f9dfe9 100%)}
-html[data-profile="alexa"] #activeExercises .active-exercise:nth-child(6n+2){background:linear-gradient(145deg,#fff3f8 0%,#fbe3ed 55%,#f5d4e2 100%)}
-html[data-profile="alexa"] #activeExercises .active-exercise:nth-child(6n+3){background:linear-gradient(145deg,#fff9fc 0%,#fce8f1 55%,#f7dbe7 100%)}
-html[data-profile="alexa"] #activeExercises .active-exercise:nth-child(6n+4){background:linear-gradient(145deg,#ffeff6 0%,#f9dce8 55%,#f3cedd 100%)}
-html[data-profile="alexa"] #activeExercises .active-exercise:nth-child(6n+5){background:linear-gradient(145deg,#fff6fa 0%,#fce5ef 55%,#f6d7e4 100%)}
-html[data-profile="alexa"] #activeExercises .active-exercise:nth-child(6n){background:linear-gradient(145deg,#fff1f7 0%,#f8dfe9 55%,#f1cfdd 100%)}
+html[data-profile="alexa"] #activeExercises .exercise-head{
+  position:relative;
+  padding-left:60px;
+}
+
+html[data-profile="alexa"] #activeExercises .exercise-head::before{
+  content:counter(alexa-exercise);
+  position:absolute;
+  left:18px;
+  top:50%;
+  transform:translateY(-50%);
+  display:grid;
+  place-items:center;
+  width:27px;
+  height:27px;
+  border:2px solid var(--card-border);
+  border-radius:999px;
+  background:rgba(255,255,255,.84);
+  color:var(--card-border);
+  font-size:.76rem;
+  font-weight:900;
+  line-height:1;
+  box-shadow:0 3px 10px rgba(88,43,69,.10);
+}
 
 html[data-profile="alexa"] #activeExercises .active-exercise.is-collapsed::before{
-  width:3px;
-  opacity:.54;
+  width:4px;
+  opacity:.72;
 }
 
 html[data-profile="alexa"] #activeExercises .active-exercise:not(.is-collapsed){
-  transform:translateY(-1px);
-  border-color:rgba(200,95,152,.78);
+  transform:translateY(-2px);
+  border-width:3px;
   box-shadow:
-    0 0 0 1px rgba(207,104,159,.14) inset,
-    0 12px 28px rgba(148,65,111,.14),
-    0 0 22px rgba(207,104,159,.10);
+    0 0 0 1px color-mix(in srgb,var(--card-border) 22%,transparent) inset,
+    0 14px 32px rgba(105,48,81,.18),
+    0 0 24px color-mix(in srgb,var(--card-border) 20%,transparent);
 }
 
 html[data-profile="alexa"] #activeExercises .active-exercise:not(.is-collapsed)::before{
-  width:6px;
+  width:7px;
   opacity:1;
-  filter:saturate(1.08) brightness(1.03);
+  filter:saturate(1.12) brightness(.96);
 }
 
 html[data-profile="alexa"] #activeExercises .active-exercise:not(.is-collapsed) .exercise-head{
-  background:linear-gradient(90deg,rgba(216,120,169,.18),transparent 60%);
+  background:linear-gradient(90deg,color-mix(in srgb,var(--card-border) 18%,transparent),transparent 62%);
+}
+
+html[data-profile="alexa"] #activeExercises .active-exercise:not(.is-collapsed) .exercise-head::before{
+  background:var(--card-border);
+  color:#fff;
+  box-shadow:0 5px 14px color-mix(in srgb,var(--card-border) 32%,transparent);
 }
 
 html[data-profile="alexa"] #activeExercises .active-exercise.is-complete{
-  border-color:rgba(200,95,152,.48);
-}
-
-html[data-profile="alexa"] #activeExercises .active-exercise.is-complete.is-collapsed{
-  box-shadow:inset 0 0 0 1px rgba(200,95,152,.07);
+  border-color:var(--card-border);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb,var(--card-border) 18%,transparent),
+    0 8px 20px rgba(92,45,73,.09);
 }
 
 @media(max-width:560px){
-  html[data-profile="alexa"] #activeExercises .active-exercise::before{width:3px}
-  html[data-profile="alexa"] #activeExercises .active-exercise:not(.is-collapsed)::before{width:5px}
+  html[data-profile="alexa"] #activeExercises .exercise-head{padding-left:54px}
+  html[data-profile="alexa"] #activeExercises .exercise-head::before{left:14px;width:25px;height:25px}
+  html[data-profile="alexa"] #activeExercises .active-exercise::before{width:4px}
+  html[data-profile="alexa"] #activeExercises .active-exercise:not(.is-collapsed)::before{width:6px}
 }
 
 @media(prefers-reduced-motion:reduce){
