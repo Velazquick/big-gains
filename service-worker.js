@@ -1,4 +1,4 @@
-const CACHE='big-gains-v26-session-selector';
+const CACHE='big-gains-v27-compact-selector';
 const CORE_ASSETS=[
   './',
   './index.html',
@@ -10,7 +10,7 @@ const CORE_ASSETS=[
   './design-v21.css?v=21',
   './moss-cards-v24.css?v=24',
   './alexa-contrast-v22.css?v=23',
-  './session-selector-v26.css?v=26',
+  './session-selector-v26.css?v=27',
   './profiles.js?v=18',
   './app.js?v=18',
   './full-body.js?v=17',
@@ -21,7 +21,7 @@ const CORE_ASSETS=[
   './alexa-shell.js?v=18',
   './training-pet.js?v=20',
   './design-v21.js?v=21',
-  './session-selector-v26.js?v=26',
+  './session-selector-v26.js?v=27',
   './sync-gateway.js?v=25',
   './manifest.webmanifest',
   './icon.svg'
