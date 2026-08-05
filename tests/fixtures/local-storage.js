@@ -25,7 +25,8 @@ export function blankState(profileId) {
     prs: {},
     activeWorkout: null,
     restTimerEndsAt: null,
-    customRoutines: {}
+    customRoutines: {},
+    timerPreferences: { sound: true, vibration: true }
   };
 }
 

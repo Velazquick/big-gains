@@ -2,7 +2,7 @@
 
 The Playwright harness serves the static PWA from `index.html` without rewriting it, so production scripts execute in their declared order.
 
-The stabilized baseline is 49 passing Chromium tests with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
+The current baseline is 58 passing Chromium tests with no expected failures: the stabilized 49-test suite plus nine Stage 2 regressions. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
 
 ## Install
 
@@ -20,7 +20,7 @@ npm test
 npx playwright test --workers=1
 ```
 
-Both commands must pass all 49 tests with no expected failures.
+Both commands must pass all 58 tests with no expected failures.
 
 ## localStorage fixtures
 
@@ -43,9 +43,11 @@ Progress coverage verifies the explicit progress hook API and production script 
 
 Shell coverage verifies deterministic production script order, idempotent single initialization, one listener effect per interaction, unique production assets, static selector markup, pet behavior, Alexa shell behavior, and sync snapshot compatibility.
 
+Workout Mode coverage verifies start/resume entry, session-safe explicit exit, elapsed return-bar behavior, Library add/return through `workoutSessionController`, calm/rest/ready/PR pet states, per-profile sound and vibration preferences, sound-off and sound-on completion behavior, blocked-audio safety, and duplicate UI/listener prevention.
+
 ## Cache and update coverage
 
-Offline coverage verifies a complete first install, deterministic manifest revisions, unique core assets, migration from the previous Big Gains cache, preservation of unrelated origin caches, awaited precache and runtime writes, visible cache-write failures, and offline reload.
+Offline coverage verifies a complete first install, deterministic manifest revisions, unique core assets, migration from the previous Big Gains cache, preservation of unrelated origin caches, awaited precache and runtime writes, visible cache-write failures, ordinary offline reload, and active-session reload directly into Workout Mode.
 
 ## Legacy migration policy
 
@@ -61,4 +63,4 @@ Storage coverage verifies load/normalize/save round trips, profile-key ownership
 
 ## Not covered
 
-The harness runs Chromium only. It does not validate Safari or Firefox service-worker lifecycle differences, native PWA install prompts, OS-managed update timing, vibration, browser background-timer throttling, or the full real-time 2:30 rest-timer expiry. It does cover rest-timer activation and persistence, Chromium service-worker installation and cache replacement, and an offline reload.
+The harness runs Chromium only. It does not validate Safari or Firefox service-worker lifecycle differences, native PWA install prompts, OS-managed update timing, physical vibration hardware, browser background-timer throttling, OS audio routing, or the full real-time 2:30 rest-timer expiry. It does cover rest-timer activation and persistence, Web Audio scheduling and blocked-audio safety, Chromium service-worker installation and cache replacement, and offline Workout Mode reload.

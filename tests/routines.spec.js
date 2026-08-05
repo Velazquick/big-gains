@@ -38,7 +38,7 @@ test('starts a selected session and resumes it after reload', async ({ page }) =
 
   await page.reload();
   await expect(page.locator('#sessionTypeSelector')).toBeAttached();
-  await page.locator('.bottom-nav [data-view="today"]').click();
+  await page.locator('#exitWorkoutMode').click();
   await expect(page.locator('#quickStartSession')).toHaveText('Resume');
   await page.locator('#quickStartSession').click();
 
@@ -72,13 +72,13 @@ test('resumes implicitly and replaces only through the explicit Library action',
   await openApp(page);
   const original = (await jorgeState(page)).activeWorkout;
 
-  await page.locator('.bottom-nav [data-view="today"]').click();
+  await page.locator('#exitWorkoutMode').click();
   await page.locator('#startWorkout').evaluate(button => button.click());
   const resumed = (await jorgeState(page)).activeWorkout;
   expect(resumed.id).toBe(original.id);
   expect(resumed.startedAt).toBe(original.startedAt);
 
-  await page.locator('.bottom-nav [data-view="library"]').click();
+  await page.locator('#browseWorkoutLibrary').click();
   await page.locator('#dayTabs [data-day="Pull"]').click();
   await expect(page.locator('#routineSelect')).toHaveValue('Pull');
   await page.locator('#loadRoutine').click();

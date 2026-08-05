@@ -28,8 +28,8 @@ npm test
 npx playwright test --workers=1
 ```
 
-- [ ] The normal suite passes all 49 current tests with no expected failures, retries, focused tests, or skipped regression coverage.
-- [ ] The single-worker suite passes all 49 current tests.
+- [ ] The normal suite passes all 58 current tests with no expected failures, retries, focused tests, or skipped regression coverage.
+- [ ] The single-worker suite passes all 58 current tests.
 - [ ] Any intentional test-count change is explained by added or removed coverage, not by a silent skip.
 - [ ] GitHub Actions is green on the pushed commit. Inspect the uploaded Playwright report if local and CI behavior differ.
 
@@ -72,7 +72,7 @@ For any production app-shell change:
 - [ ] Verify invalid JSON, invalid shapes, and cross-profile imports are rejected before either profile is modified.
 - [ ] If state fields change, decide whether full-state JSON backups need normalization, migration, or compatibility tests.
 - [ ] If completed workout, weight, PR, or profile fields change, verify `big-gains.snapshot.v1` consumers remain compatible or version the snapshot schema deliberately.
-- [ ] Confirm sync still excludes the token and live-only data: active workouts, rest timers, custom routines, and exercise preferences.
+- [ ] Confirm sync still excludes the token and local/live-only data: active workouts, rest timers, custom routines, exercise preferences, and timer feedback preferences.
 - [ ] Verify both profile snapshot paths and catch-up behavior when sync code changes. Remember that sync is outbound-only and overwrites the current profile snapshot; it does not merge or restore state.
 
 ## Merge and cleanup

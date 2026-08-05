@@ -1,0 +1,26 @@
+.workout-mode-toolbar{display:flex;justify-content:space-between;gap:10px;margin:14px 0}
+.workout-pet-slot:empty{display:none}
+.workout-pet-slot .training-pet-card{margin:0 0 14px;box-shadow:none;grid-template-columns:74px 1fr;padding:12px 16px}
+.workout-pet-slot .training-pet{width:70px;height:66px}
+.workout-pet-slot .training-pet-copy small{display:none}
+.workout-pet-slot .training-pet[data-state="attentive"] .pet-ear{stroke-width:5}
+.workout-pet-slot .training-pet[data-state="ready"] .pet-sparkles{opacity:1}
+.workout-pet-slot .training-pet[data-state="ready"] .pet-body{transform:translateY(-3px)}
+.timer-control-stack{display:grid;gap:10px;justify-items:end}
+.timer-preferences,.timer-actions{display:flex;gap:8px}
+.timer-preferences button[aria-pressed="true"]{border-color:rgba(216,255,62,.55);color:var(--accent);background:rgba(216,255,62,.07)}
+.workout-return-bar{position:fixed;left:50%;bottom:calc(var(--nav-h,76px) + env(safe-area-inset-bottom) + 10px);z-index:19;transform:translateX(-50%);width:min(620px,calc(100% - 28px));display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 14px;border:1px solid rgba(216,255,62,.42);border-radius:18px;background:rgba(18,22,29,.97);box-shadow:0 18px 50px rgba(0,0,0,.42);backdrop-filter:blur(18px)}
+.workout-return-bar>div{display:grid;grid-template-columns:auto auto;align-items:baseline;column-gap:10px}
+.workout-return-bar .label{grid-column:1/-1}
+.workout-return-bar strong{font-size:1rem}
+.workout-return-bar span:last-child{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.86rem}
+body.workout-mode{padding-bottom:env(safe-area-inset-bottom)}
+body.workout-mode .bottom-nav,body.workout-mode .workout-return-bar,body.workout-mode .topbar,body.workout-mode #viewTrain>.v2-page-head{display:none!important}
+body.workout-mode .app-shell{max-width:900px;padding-top:max(12px,env(safe-area-inset-top));padding-bottom:36px}
+body.workout-mode main{padding-top:0}
+body.workout-mode #viewTrain{padding-top:0}
+body.workout-mode #activePanel{border:0;background:transparent;padding:0;box-shadow:none}
+body.workout-mode #activePanel>.active-heading{position:sticky;top:0;z-index:8;margin:0 -4px;padding:10px 4px 12px;background:rgba(9,11,15,.94);backdrop-filter:blur(18px)}
+body.workout-mode #timerCard{bottom:8px}
+@media(prefers-reduced-motion:reduce){.view{animation:none!important}.primary,.secondary,.ghost,.file-button{transition:none!important}}
+@media(max-width:560px){.workout-mode-toolbar{display:grid;grid-template-columns:1fr}.workout-mode-toolbar button{width:100%}.workout-return-bar{align-items:stretch}.workout-return-bar button{white-space:nowrap}.timer-control-stack{width:100%;justify-items:stretch}.timer-preferences{display:grid;grid-template-columns:1fr 1fr}.timer-preferences button{min-width:0}.timer-actions{width:100%}}
