@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v38-timer-feedback-device-support';
+  const release = 'v39-ios-timer-audio-fallback';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];
@@ -45,7 +45,8 @@
     ...revisionedStyles,
     ...revisionedScripts,
     './manifest.webmanifest',
-    './icon.svg'
+    './icon.svg',
+    './assets/timer-ready.wav'
   ];
 
   if (new Set(coreAssets).size !== coreAssets.length) {
