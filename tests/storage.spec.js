@@ -4,6 +4,7 @@ import {
   blankState,
   completedWorkout,
   installLocalStorageFixture,
+  localStorageFixtures,
   readStoredJson,
   STORAGE_KEYS
 } from './fixtures/local-storage.js';
@@ -257,32 +258,34 @@ test('rendering stateful views does not write persistence', async ({ page }) => 
   expect(writes).toBe(0);
 });
 
-test('migrates legacy workouts and weights into Jorge state', async ({ page }) => {
+test('migrates valid legacy weights once and retains unsupported workouts in the untouched legacy payload', async ({ page }) => {
   await installLocalStorageFixture(page, 'legacyState');
   await openApp(page);
   await page.locator('.bottom-nav [data-view="progress"]').click();
 
-  const migrated = await readStoredJson(page, STORAGE_KEYS.jorge);
-  const migrationResult = {
-    weightCount: migrated.weights.length,
-    firstWeight: migrated.weights[0]?.weight ?? null,
-    workoutCount: migrated.workouts.length,
-    firstExercise: migrated.workouts[0]?.exercises?.[0]?.name ?? null
-  };
+  const expectedLegacyRaw = JSON.stringify(localStorageFixtures.legacyState.values[STORAGE_KEYS.legacy]);
+  const migrationResult = await page.evaluate(keys => {
+    const firstLoad = statePersistenceApi.load();
+    const storedAfterFirstLoad = localStorage.getItem(keys.jorge);
+    const secondLoad = statePersistenceApi.load();
+    return {
+      firstLoad,
+      secondLoad,
+      storedAfterFirstLoad,
+      storedAfterSecondLoad: localStorage.getItem(keys.jorge),
+      legacyRaw: localStorage.getItem(keys.legacy)
+    };
+  }, STORAGE_KEYS);
 
-  // Known defect: legacy migration preserves weights but discards legacy workouts.
-  // This guard runs before test.fail so any result other than the exact defect or the intended fix fails normally.
-  expect([
-    { weightCount: 1, firstWeight: 220, workoutCount: 0, firstExercise: null },
-    { weightCount: 1, firstWeight: 220, workoutCount: 1, firstExercise: 'Seated Machine Chest Press' }
-  ]).toContainEqual(migrationResult);
-  test.fail(true, 'Legacy migration preserves weights but discards legacy workouts.');
-
-  expect(migrationResult).toEqual({
-    weightCount: 1,
-    firstWeight: 220,
-    workoutCount: 1,
-    firstExercise: 'Seated Machine Chest Press'
+  expect(migrationResult.firstLoad).toMatchObject({
+    version: 5,
+    profileId: 'jorge',
+    weights: [{ weight: 220, date: '2026-07-28T12:00:00.000Z' }],
+    workouts: []
   });
-  await expect(page.locator('#history .history-item')).toHaveCount(1);
+  expect(migrationResult.secondLoad).toEqual(migrationResult.firstLoad);
+  expect(migrationResult.storedAfterSecondLoad).toBe(migrationResult.storedAfterFirstLoad);
+  expect(migrationResult.legacyRaw).toBe(expectedLegacyRaw);
+  await expect(page.locator('#latestWeight')).toHaveText('220 lb');
+  await expect(page.locator('#history')).toHaveText('Your completed workouts will appear here.');
 });

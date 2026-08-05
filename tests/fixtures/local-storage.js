@@ -199,7 +199,12 @@ export const localStorageFixtures = Object.freeze({
             ]
           }
         ],
-        weights: [{ weight: 220, date: '2026-07-28T12:00:00.000Z' }]
+        weights: [
+          { weight: 220, date: '2026-07-28T12:00:00.000Z' },
+          { weight: -1, date: '2026-07-29T12:00:00.000Z' },
+          { weight: 219, date: 'not-a-date' },
+          { weight: 'unknown', date: '2026-07-30T12:00:00.000Z' }
+        ]
       }
     }
   }

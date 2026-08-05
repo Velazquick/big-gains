@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v35-script-audit-cleanup';
+  const release = 'v36-retire-legacy-workout-migration';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];
