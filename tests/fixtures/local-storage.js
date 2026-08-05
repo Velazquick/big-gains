@@ -79,6 +79,24 @@ export function activeWorkout(overrides = {}) {
 const blankJorge = blankState('jorge');
 const blankAlexa = blankState('alexa');
 const activeWithExercises = activeWorkout();
+const activeWithTwoExercises = activeWorkout({
+  exercises: [
+    ...activeWithExercises.exercises,
+    {
+      id: 'lat-pulldown',
+      name: 'Lat Pulldown',
+      muscle: 'Back',
+      equipment: 'Cable',
+      collapsed: true,
+      sets: [
+        { id: 'lat-warmup-1', weight: 50, reps: 10, warmup: true, completed: false },
+        { id: 'lat-working-1', weight: 90, reps: 10, warmup: false, completed: false },
+        { id: 'lat-working-2', weight: 90, reps: 10, warmup: false, completed: false },
+        { id: 'lat-working-3', weight: 90, reps: 10, warmup: false, completed: false }
+      ]
+    }
+  ]
+});
 const activeWithZeroExercises = activeWorkout({
   id: 'active-empty-pull-1',
   type: 'Pull',
@@ -114,6 +132,15 @@ export const localStorageFixtures = Object.freeze({
       [STORAGE_KEYS.jorge]: {
         ...blankState('jorge'),
         activeWorkout: activeWithExercises
+      }
+    }
+  },
+  activeWorkoutWithTwoExercises: {
+    activeProfile: 'jorge',
+    values: {
+      [STORAGE_KEYS.jorge]: {
+        ...blankState('jorge'),
+        activeWorkout: activeWithTwoExercises
       }
     }
   },
