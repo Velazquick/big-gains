@@ -43,7 +43,7 @@ Progress coverage verifies the explicit progress hook API and production script 
 
 Shell coverage verifies deterministic production script order, idempotent single initialization, one listener effect per interaction, unique production assets, static selector markup, pet behavior, Alexa shell behavior, and sync snapshot compatibility.
 
-Workout Mode coverage verifies start/resume entry, session-safe explicit exit, elapsed return-bar behavior, Library add/return through `workoutSessionController`, calm/rest/ready/PR pet states, per-profile sound and vibration preferences, sound-off and sound-on completion behavior, blocked-audio safety, and duplicate UI/listener prevention.
+Workout Mode coverage verifies start/resume entry, session-safe explicit exit, elapsed return-bar behavior, Library add/return through `workoutSessionController`, calm/rest/ready/PR pet states, and independent per-profile sound and vibration preferences. Timer-feedback cases cover unsupported-vibration UI, supported vibration calls, Sound-toggle unlock and confirmation, Test Sound, suspended-context resume, one two-note completion chime, blocked-audio safety, the accessible ready fallback, and duplicate feedback prevention.
 
 ## Cache and update coverage
 
@@ -63,4 +63,4 @@ Storage coverage verifies load/normalize/save round trips, profile-key ownership
 
 ## Not covered
 
-The harness runs Chromium only. It does not validate Safari or Firefox service-worker lifecycle differences, native PWA install prompts, OS-managed update timing, physical vibration hardware, browser background-timer throttling, OS audio routing, or the full real-time 2:30 rest-timer expiry. It does cover rest-timer activation and persistence, Web Audio scheduling and blocked-audio safety, Chromium service-worker installation and cache replacement, and offline Workout Mode reload.
+The harness runs Chromium only. It does not validate Safari or Firefox service-worker lifecycle differences, native PWA install prompts, OS-managed update timing, physical vibration hardware, browser background-timer throttling, device silent mode, OS audio routing, or the full real-time 2:30 rest-timer expiry. iOS/WebKit may not expose `navigator.vibrate`, including in installed PWAs, and silent mode or OS routing can suppress Web Audio even after a successful unlock. The harness does cover capability-aware vibration UI, gesture-owned Web Audio preparation and scheduling, blocked-audio safety, Chromium service-worker installation and cache replacement, and offline Workout Mode reload.

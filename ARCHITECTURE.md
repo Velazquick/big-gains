@@ -56,7 +56,11 @@ The application uses classic scripts, so `app.js` helpers such as `state`, `acti
 6. `complete()` keeps only exercises with completed sets, calculates duration and new estimated-one-rep-max records, prepends the completed workout, clears the active session and timer, saves, and refreshes the UI. A workout with no completed sets cannot finish.
 7. Cancel requires a second click within 2.5 seconds. `discard()` clears the active workout and rest timer without creating history.
 
-An active workout and its absolute `restTimerEndsAt` timestamp survive reloads. Expired timers are cleared on resume; live timer expiry saves the cleared timestamp and may vibrate when supported.
+An active workout and its absolute `restTimerEndsAt` timestamp survive reloads. Expired timers are cleared on resume. Live timer expiry saves the cleared timestamp, preserves the pet's ready state, and always shows a brief accessible ready message and visual flash. Sound and vibration then run as independent best-effort enhancements.
+
+Timer audio is prepared only from a trusted user gesture. Repeated gesture hooks plus the Sound and Test Sound controls create or resume the Web Audio context, await its running state, and prime it before playback. Turning Sound on plays a brief confirmation; Test Sound plays the same local two-note chime used at completion. Completion schedules one chime only when that gesture-prepared context is already running, deduplicates repeated requests for the same rest deadline, and never blocks timer completion on audio failure. Vibration is attempted only when `navigator.vibrate` is exposed; unsupported devices keep the saved per-profile preference but show a disabled `Vibration unavailable` control.
+
+iOS/WebKit commonly does not expose the Vibration API, including in installed PWAs. Sound remains subject to device silent mode, media volume, focus modes, and OS/browser audio routing, so a running Web Audio context cannot guarantee audible output.
 
 Starting or resuming enters Workout Mode automatically. The shell hides primary navigation and promotes the active session without changing `startedAt`. Exit stores only a profile-and-workout-ID marker in `sessionStorage`, leaves the session and absolute rest deadline untouched, and shows the persistent return bar. A reload re-enters Workout Mode unless that exact active workout was explicitly exited in the current tab session. Library browsing suspends the focus shell without creating an exit marker; exercise additions continue through `workoutSessionController`.
 
@@ -107,7 +111,7 @@ The notes and progress features attach through explicit app-owned hooks:
 
 ## Asset and service-worker lifecycle
 
-`asset-manifest.js` is the single asset inventory. Release `v37-workout-mode-pet-timer-sound` adds the Workout Mode CSS/script to that inventory. The manifest applies the release query parameter to every production CSS and application script, rejects duplicate core assets, and supplies the same immutable manifest to the page loader and service worker. `index.html`, the loader, manifest, service-worker core, web manifest, icon, and all revisioned CSS and scripts form the precached app shell.
+`asset-manifest.js` is the single asset inventory. Release `v38-timer-feedback-device-support` advances the app shell for capability-aware vibration, gesture-prepared timer audio, and the accessible completion fallback. The manifest applies the release query parameter to every production CSS and application script, rejects duplicate core assets, and supplies the same immutable manifest to the page loader and service worker. `index.html`, the loader, manifest, service-worker core, web manifest, icon, and all revisioned CSS and scripts form the precached app shell.
 
 `app.js` registers `service-worker.js` on window load with `updateViaCache: 'none'`. The worker imports the unrevisioned asset manifest and service-worker core.
 

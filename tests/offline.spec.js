@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
 
-const CURRENT_CACHE = 'big-gains-shell-v37-workout-mode-pet-timer-sound';
+const CURRENT_CACHE = 'big-gains-shell-v38-timer-feedback-device-support';
 const PREVIOUS_CACHE = 'big-gains-shell-v36-retire-legacy-workout-migration';
 
 async function waitForServiceWorker(page) {
@@ -32,7 +32,7 @@ test('first install precaches one complete, revision-consistent app shell', asyn
     };
   }, CURRENT_CACHE);
 
-  expect(state.release).toBe('v37-workout-mode-pet-timer-sound');
+  expect(state.release).toBe('v38-timer-feedback-device-support');
   expect(state.cacheNames).toContain(CURRENT_CACHE);
   expect(state.cachedUrls).toEqual(state.expectedUrls);
 });
