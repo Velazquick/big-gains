@@ -2,6 +2,8 @@
 
 The Playwright harness serves the static PWA from `index.html` without rewriting it, so production scripts execute in their declared order.
 
+The stabilized baseline is 49 passing Chromium tests with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
+
 ## Install
 
 ```sh
@@ -18,7 +20,7 @@ npm test
 npx playwright test --workers=1
 ```
 
-The expected baseline is fully green with no expected failures.
+Both commands must pass all 49 tests with no expected failures.
 
 ## localStorage fixtures
 
