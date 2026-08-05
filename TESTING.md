@@ -49,6 +49,10 @@ The test uses Playwright's expected-failure annotation. If the defect is fixed a
 
 The suite verifies that importing an Alexa backup while Jorge is active is rejected with a profile-specific message and leaves both profiles' stored data unchanged.
 
+## State and persistence API coverage
+
+Storage coverage verifies load/normalize/save round trips, profile-key ownership and isolation, backup export/import compatibility, malformed-state recovery, pagehide and hidden-page saves, and render-only behavior. Runtime instrumentation also verifies that profile state reads and writes originate in `state-persistence.js`, with no direct `localStorage` access left in `app.js` or `profiles.js`.
+
 ## Not covered
 
 The harness runs Chromium only. It does not validate native PWA install prompts, vibration, browser background-timer throttling, or the full real-time 2:30 rest-timer expiry. It does cover rest-timer activation and persistence, service-worker installation, and an offline reload.

@@ -1,4 +1,4 @@
-const CACHE='big-gains-v32-progress-api';
+const CACHE='big-gains-v33-state-persistence-api';
 const CORE_ASSETS=[
   './',
   './index.html',
@@ -11,11 +11,12 @@ const CORE_ASSETS=[
   './moss-cards-v24.css?v=24',
   './alexa-contrast-v22.css?v=23',
   './session-selector-v26.css?v=28',
-  './profiles.js?v=18',
+  './state-persistence.js?v=1',
+  './profiles.js?v=19',
   './workout-controls.js?v=22',
   './notes.js?v=13',
   './progress.js?v=13',
-  './app.js?v=22',
+  './app.js?v=23',
   './full-body.js?v=17',
   './v2-shell.js?v=18',
   './alexa-shell.js?v=18',
