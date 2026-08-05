@@ -41,74 +41,107 @@ let routineDraftDay=selectedDay,routineDraft=[];
 function timerPreferences(){if(!state.timerPreferences)state.timerPreferences={sound:true,vibration:true};return state.timerPreferences;}
 function setWorkoutPetState(next){if(next)document.body.dataset.workoutPetState=next;else delete document.body.dataset.workoutPetState;if(typeof window.trainingPet?.render==='function')window.trainingPet.render(true);}
 const workoutTimerFeedback=(()=>{
-  let audioContext=null,audioUnlockPromise=null,audioPrimed=false,lastCompletionKey=null;
+  const PLAY_START_TIMEOUT_MS=900;
+  let soundSessionState='unverified',lastCompletionKey=null;
   const vibrationAvailable=()=>typeof navigator.vibrate==='function';
-  const audioAvailable=()=>Boolean(window.AudioContext||window.webkitAudioContext);
+  const audioElement=()=>$('timerCompletionAudio');
+  const audioSupported=()=>typeof audioElement()?.play==='function';
+  const audioAvailable=()=>audioSupported()&&soundSessionState!=='unavailable';
   function isDirectUserGesture(event){return Boolean(event&&event.isTrusted);}
-  function primeAudio(){
-    if(audioPrimed||!audioContext)return;
-    try{
-      if(typeof audioContext.createBuffer==='function'&&typeof audioContext.createBufferSource==='function'){
-        const source=audioContext.createBufferSource();
-        source.buffer=audioContext.createBuffer(1,1,22050);
-        source.connect(audioContext.destination);
-        source.start(0);
-      }
-      audioPrimed=true;
-    }catch(error){console.warn('Timer sound could not be primed',error);}
+  function resetAudio(audio){
+    if(!audio)return;
+    try{audio.pause();}catch{}
+    try{audio.currentTime=0;}catch{}
   }
-  async function prepareAudioFromGesture(event){
-    if(!timerPreferences().sound||!audioAvailable()||!isDirectUserGesture(event))return false;
-    const AudioContext=window.AudioContext||window.webkitAudioContext;
-    try{
-      if(!audioContext)audioContext=new AudioContext();
-      if(audioContext.state==='suspended'){
-        const resumed=audioContext.resume();
-        primeAudio();
-        await resumed;
-      }
-      if(audioContext.state!=='running')return false;
-      primeAudio();
-      return audioContext.state==='running';
-    }catch(error){console.warn('Timer sound is unavailable',error);audioContext=null;return false;}
+  function markUnavailable(reason,error){
+    soundSessionState='unavailable';
+    renderTimerPreferences();
+    if(error)console.warn(`Timer sound ${reason}`,error);
+    return {ok:false,reason};
   }
-  function unlock(event){
-    if(audioUnlockPromise)return audioUnlockPromise;
-    audioUnlockPromise=prepareAudioFromGesture(event).finally(()=>{audioUnlockPromise=null;});
-    return audioUnlockPromise;
-  }
-  function playTones(tones){
-    if(!timerPreferences().sound||!audioContext||audioContext.state!=='running')return false;
+  async function verifyFromGesture(event){
+    if(!timerPreferences().sound)return {ok:false,reason:'disabled'};
+    if(!isDirectUserGesture(event))return {ok:false,reason:'gesture'};
+    if(soundSessionState==='unavailable')return {ok:false,reason:'unavailable'};
+    const audio=audioElement();
+    if(!audioSupported())return markUnavailable('unsupported');
+    resetAudio(audio);
+
+    let timeoutId=null,playingListener=null;
+    const started=new Promise(resolve=>{
+      playingListener=()=>resolve();
+      audio.addEventListener('playing',playingListener);
+    });
+    const timedOut=new Promise(resolve=>{
+      timeoutId=setTimeout(()=>resolve({ok:false,reason:'timeout'}),PLAY_START_TIMEOUT_MS);
+    });
+    let playPromise;
     try{
-      const start=audioContext.currentTime;
-      tones.forEach(([frequency,offset,duration=.17,volume=.12])=>{
-        const oscillator=audioContext.createOscillator(),gain=audioContext.createGain();
-        oscillator.type='sine';oscillator.frequency.setValueAtTime(frequency,start+offset);
-        gain.gain.setValueAtTime(.0001,start+offset);gain.gain.exponentialRampToValueAtTime(volume,start+offset+.012);gain.gain.exponentialRampToValueAtTime(.0001,start+offset+duration-.01);
-        oscillator.connect(gain);gain.connect(audioContext.destination);oscillator.start(start+offset);oscillator.stop(start+offset+duration);
-      });
+      // This call intentionally remains in the trusted click task. iOS may reject
+      // or ignore later playback even after this direct-gesture verification.
+      playPromise=audio.play();
+    }catch(error){
+      audio.removeEventListener('playing',playingListener);
+      clearTimeout(timeoutId);
+      resetAudio(audio);
+      return markUnavailable('rejected',error);
+    }
+    const playback=Promise.all([Promise.resolve(playPromise),started])
+      .then(()=>({ok:true,reason:'success'}),error=>({ok:false,reason:'rejected',error}));
+    const result=await Promise.race([playback,timedOut]);
+    audio.removeEventListener('playing',playingListener);
+    clearTimeout(timeoutId);
+    if(!result.ok){
+      resetAudio(audio);
+      return markUnavailable(result.reason,result.error);
+    }
+    soundSessionState='verified';
+    renderTimerPreferences();
+    return result;
+  }
+  function playVerifiedCompletion(){
+    if(soundSessionState!=='verified'||!timerPreferences().sound)return false;
+    const audio=audioElement();
+    if(!audioSupported())return false;
+    resetAudio(audio);
+    let settled=false,timeoutId=null;
+    const cleanup=()=>{
+      if(settled)return;
+      settled=true;
+      clearTimeout(timeoutId);
+      audio.removeEventListener('playing',onPlaying);
+    };
+    const fail=(reason,error)=>{
+      if(settled)return;
+      cleanup();
+      resetAudio(audio);
+      markUnavailable(reason,error);
+    };
+    const onPlaying=()=>cleanup();
+    audio.addEventListener('playing',onPlaying);
+    timeoutId=setTimeout(()=>fail('timeout'),PLAY_START_TIMEOUT_MS);
+    try{
+      const playPromise=audio.play();
+      Promise.resolve(playPromise).catch(error=>fail('rejected',error));
       return true;
-    }catch(error){console.warn('Timer chime could not play',error);return false;}
+    }catch(error){
+      fail('rejected',error);
+      return false;
+    }
   }
-  const chime=()=>playTones([[523.25,0],[659.25,.09]]);
-  const confirmation=()=>playTones([[783.99,0,.1,.08]]);
-  async function confirmSound(event){return await unlock(event)&&confirmation();}
-  async function testSound(event){return await unlock(event)&&chime();}
   function complete(completionKey){
     if(completionKey&&completionKey===lastCompletionKey)return {sounded:false,vibrated:false,duplicate:true};
     lastCompletionKey=completionKey||null;
     let sounded=false,vibrated=false;
-    // Completion never creates or unlocks audio outside a user gesture. A running,
-    // gesture-prepared context is required before either note is scheduled.
-    if(timerPreferences().sound)sounded=chime();
+    // Completion never verifies or retries audio. It requests one playback only
+    // after a successful trusted-gesture test and never blocks the visual cue.
+    if(timerPreferences().sound)sounded=playVerifiedCompletion();
     if(timerPreferences().vibration&&vibrationAvailable()){try{vibrated=navigator.vibrate([150,80,150])!==false;}catch{vibrated=false;}}
     return {sounded,vibrated};
   }
-  return Object.freeze({unlock,confirmSound,testSound,complete,audioAvailable,vibrationAvailable,isAudioReady:()=>audioContext?.state==='running'});
+  return Object.freeze({verifyFromGesture,complete,audioAvailable,vibrationAvailable,getSoundSessionState:()=>soundSessionState});
 })();
 window.workoutTimerFeedback=workoutTimerFeedback;
-document.addEventListener('pointerdown',event=>{workoutTimerFeedback.unlock(event);},{capture:true});
-document.addEventListener('keydown',event=>{workoutTimerFeedback.unlock(event);},{capture:true});
 function saveState(){statePersistenceApi.save(state,active);}
 function autosave(){saveState();renderHero();}
 function todaysWorkout(){return WEEK_PLAN[new Date().getDay()];}
@@ -163,8 +196,9 @@ function showTimerCompletionFallback(completionKey){if(completionKey===lastAnnou
 function setTimerFeedbackStatus(message){const status=$('timerFeedbackStatus');if(status)status.textContent=message;}
 function runRestTimer(){clearInterval(timerTicker);clearTimerCompletionFallback();const completionKey=`${active?.id||'workout'}:${state.restTimerEndsAt}`;$('timerCard').classList.remove('hidden');$('timerNext').textContent='Recover. Your next set is waiting.';setWorkoutPetState('attentive');let completed=false;const tick=()=>{timerRemaining=Math.max(0,Math.ceil((state.restTimerEndsAt-Date.now())/1000));renderTimer();if(timerRemaining<=0&&!completed){completed=true;clearInterval(timerTicker);state.restTimerEndsAt=null;saveState();$('timerNext').textContent="Rest complete. You're up.";setWorkoutPetState('ready');showTimerCompletionFallback(completionKey);workoutTimerFeedback.complete(completionKey);}};tick();if(!completed)timerTicker=setInterval(tick,1000);}
 function renderTimer(){$('timerDisplay').textContent=fmtTime(timerRemaining);}
-function renderTimerPreferences(){const preferences=timerPreferences(),sound=$('timerSoundToggle'),vibration=$('timerVibrationToggle'),testSound=$('timerTestSound');if(sound){sound.setAttribute('aria-pressed',String(preferences.sound));sound.textContent=`Sound ${preferences.sound?'on':'off'}`;}if(testSound)testSound.disabled=!preferences.sound||!workoutTimerFeedback.audioAvailable();if(vibration){const available=workoutTimerFeedback.vibrationAvailable();vibration.disabled=!available;vibration.setAttribute('aria-disabled',String(!available));vibration.setAttribute('aria-pressed',String(available&&preferences.vibration));vibration.textContent=available?`Vibration ${preferences.vibration?'on':'off'}`:'Vibration unavailable';vibration.title=available?'':'Vibration is not supported by this browser or device.';}}
+function renderTimerPreferences(){const preferences=timerPreferences(),sound=$('timerSoundToggle'),vibration=$('timerVibrationToggle'),testSound=$('timerTestSound'),audioAvailable=workoutTimerFeedback.audioAvailable();if(sound){sound.disabled=!audioAvailable;sound.setAttribute('aria-disabled',String(!audioAvailable));sound.setAttribute('aria-pressed',String(audioAvailable&&preferences.sound));sound.textContent=audioAvailable?`Sound ${preferences.sound?'on':'off'}`:'Sound unavailable';}if(testSound){testSound.hidden=!audioAvailable;testSound.disabled=!preferences.sound||!audioAvailable;}if(vibration){const available=workoutTimerFeedback.vibrationAvailable();vibration.hidden=!available;vibration.disabled=!available;vibration.setAttribute('aria-disabled',String(!available));vibration.setAttribute('aria-pressed',String(available&&preferences.vibration));vibration.textContent=`Vibration ${preferences.vibration?'on':'off'}`;}}
 function toggleTimerPreference(name){const preferences=timerPreferences();preferences[name]=!preferences[name];saveState();renderTimerPreferences();return preferences[name];}
+function timerSoundResultMessage(result,source){if(result.ok)return source==='toggle'?'Sound on. Test chime played.':'Test sound played.';if(result.reason==='timeout')return 'Sound unavailable this session: playback did not start.';if(result.reason==='rejected')return 'Sound unavailable this session: playback was rejected.';if(result.reason==='gesture')return 'Sound test requires a direct tap or click.';return 'Sound is unavailable for this browser session.';}
 function discardWorkout(){return workoutSessionController.discard();}
 function finishWorkout(){return workoutSessionController.complete();}
 function renderHistory(){const box=$('history');if(!state.workouts.length){box.className='history-list empty';box.textContent='Your completed workouts will appear here.';return;}box.className='history-list';box.innerHTML=state.workouts.slice(0,20).map(w=>`<button type="button" class="history-item" data-history-id="${w.id}"><div><strong>${escapeHtml(w.type==='Legs'?'Legs + Core':w.type)}</strong><small>${fmtDate(w.completedAt)} · ${(w.exercises||[]).flatMap(e=>e.sets||[]).length} sets · ${fmtTime(w.durationSeconds||0)}</small><div class="history-open">View full workout →</div></div><div class="history-meta"><strong>${Math.round(volumeForWorkout(w)).toLocaleString('en-US')} lb</strong><small>${(w.exercises||[]).length} exercises${w.prs?` · ${w.prs} PR${w.prs===1?'':'s'}`:''}</small></div></button>`).join('');}
@@ -207,8 +241,8 @@ bind('finishWorkout','click',()=>workoutSessionController.complete());
 bind('timerMinus','click',()=>{if(!state.restTimerEndsAt)return;state.restTimerEndsAt=Math.max(Date.now(),state.restTimerEndsAt-15000);saveState();runRestTimer();});
 bind('timerPlus','click',()=>{state.restTimerEndsAt=(state.restTimerEndsAt||Date.now())+15000;saveState();runRestTimer();});
 bind('timerSkip','click',()=>{clearInterval(timerTicker);state.restTimerEndsAt=null;saveState();$('timerCard').classList.add('hidden');setWorkoutPetState('calm');});
-bind('timerSoundToggle','click',async event=>{const enabled=toggleTimerPreference('sound');if(!enabled)return;const played=await workoutTimerFeedback.confirmSound(event);setTimerFeedbackStatus(played?'Sound on. Confirmation played.':'Sound is on, but audio could not start. Check device volume and audio routing.');});
-bind('timerTestSound','click',async event=>{const played=await workoutTimerFeedback.testSound(event);setTimerFeedbackStatus(played?'Test sound played.':'Test sound could not play. Check device volume and audio routing.');});
+bind('timerSoundToggle','click',async event=>{const enabled=toggleTimerPreference('sound');if(!enabled){setTimerFeedbackStatus('Sound off. Visual feedback stays on.');return;}const result=await workoutTimerFeedback.verifyFromGesture(event);setTimerFeedbackStatus(timerSoundResultMessage(result,'toggle'));});
+bind('timerTestSound','click',async event=>{const result=await workoutTimerFeedback.verifyFromGesture(event);setTimerFeedbackStatus(timerSoundResultMessage(result,'test'));});
 bind('timerVibrationToggle','click',()=>{if(workoutTimerFeedback.vibrationAvailable())toggleTimerPreference('vibration');});
 bind('history','click',e=>{const b=e.target.closest('[data-history-id]');if(b)openHistory(b.dataset.historyId);});
 bind('closeHistoryDialog','click',closeHistory);bind('historyDialog','click',e=>{if(e.target===$('historyDialog'))closeHistory();});

@@ -2,8 +2,8 @@ import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
 
-const CURRENT_CACHE = 'big-gains-shell-v38-timer-feedback-device-support';
-const PREVIOUS_CACHE = 'big-gains-shell-v36-retire-legacy-workout-migration';
+const CURRENT_CACHE = 'big-gains-shell-v39-ios-timer-audio-fallback';
+const PREVIOUS_CACHE = 'big-gains-shell-v38-timer-feedback-device-support';
 
 async function waitForServiceWorker(page) {
   await page.evaluate(async () => {
@@ -32,9 +32,10 @@ test('first install precaches one complete, revision-consistent app shell', asyn
     };
   }, CURRENT_CACHE);
 
-  expect(state.release).toBe('v38-timer-feedback-device-support');
+  expect(state.release).toBe('v39-ios-timer-audio-fallback');
   expect(state.cacheNames).toContain(CURRENT_CACHE);
   expect(state.cachedUrls).toEqual(state.expectedUrls);
+  expect(state.cachedUrls).toContain(new URL('/assets/timer-ready.wav', page.url()).href);
 });
 
 test('updates the previous Big Gains cache without deleting unrelated origin caches', async ({ page }) => {
@@ -198,6 +199,11 @@ test('reloads an active session offline directly into Workout Mode', async ({ co
     await expect(page.locator('body')).toHaveClass(/workout-mode/);
     await expect(page.locator('#activePanel')).not.toHaveClass(/hidden/);
     await expect(page.locator('.bottom-nav')).toBeHidden();
+    const soundAsset = await page.evaluate(async () => {
+      const response = await fetch('/assets/timer-ready.wav');
+      return { bytes: (await response.arrayBuffer()).byteLength, contentType: response.headers.get('content-type'), ok: response.ok };
+    });
+    expect(soundAsset).toEqual({ bytes: 18_566, contentType: 'audio/wav', ok: true });
   } finally {
     await context.setOffline(false);
   }
