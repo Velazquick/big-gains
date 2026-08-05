@@ -1,26 +1,29 @@
-(() => {
-  const progressSelect = document.getElementById('progressExerciseSelect');
-  const progressButton = document.getElementById('openSelectedProgress');
-  const progressPreview = document.getElementById('progressPreview');
-  const progressDialog = document.getElementById('progressDialog');
+window.workoutProgress = (() => {
+  let context = null;
+  let initialized = false;
 
-  if (!progressSelect || !progressButton || !progressPreview || !progressDialog) return;
+  const elements = () => ({
+    select: document.getElementById('progressExerciseSelect'),
+    button: document.getElementById('openSelectedProgress'),
+    preview: document.getElementById('progressPreview'),
+    dialog: document.getElementById('progressDialog')
+  });
 
   const formatMonthDay = iso => new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(new Date(iso));
 
   function sessionHistoryFor(exerciseId) {
     const sessions = [];
-    for (const workout of state.workouts) {
-      const exercise = (workout.exercises || []).find(item => item.id === exerciseId || slug(item.name || '') === exerciseId);
+    for (const workout of context.getState().workouts) {
+      const exercise = (workout.exercises || []).find(item => item.id === exerciseId || context.slug(item.name || '') === exerciseId);
       if (!exercise) continue;
       const sets = (exercise.sets || []).filter(set => !set.warmup && Number(set.weight) > 0 && Number(set.reps) > 0);
       if (!sets.length) continue;
-      const best = sets.reduce((winner, set) => estimate1RM(Number(set.weight), Number(set.reps)) > estimate1RM(Number(winner?.weight || 0), Number(winner?.reps || 0)) ? set : winner, null);
+      const best = sets.reduce((winner, set) => context.estimate1RM(Number(set.weight), Number(set.reps)) > context.estimate1RM(Number(winner?.weight || 0), Number(winner?.reps || 0)) ? set : winner, null);
       sessions.push({
         date: workout.completedAt,
         sets,
         best,
-        estimated1RM: estimate1RM(Number(best.weight), Number(best.reps)),
+        estimated1RM: context.estimate1RM(Number(best.weight), Number(best.reps)),
         volume: sets.reduce((total, set) => total + Number(set.weight) * Number(set.reps), 0)
       });
     }
@@ -28,11 +31,11 @@
   }
 
   function loggedExercises() {
-    return EXERCISES.filter(exercise => sessionHistoryFor(exercise.id).length).sort((a, b) => a.name.localeCompare(b.name));
+    return context.exercises.filter(exercise => sessionHistoryFor(exercise.id).length).sort((a, b) => a.name.localeCompare(b.name));
   }
 
   function bestSetAcross(sessions) {
-    return sessions.flatMap(session => session.sets).reduce((winner, set) => estimate1RM(Number(set.weight), Number(set.reps)) > estimate1RM(Number(winner?.weight || 0), Number(winner?.reps || 0)) ? set : winner, null);
+    return sessions.flatMap(session => session.sets).reduce((winner, set) => context.estimate1RM(Number(set.weight), Number(set.reps)) > context.estimate1RM(Number(winner?.weight || 0), Number(winner?.reps || 0)) ? set : winner, null);
   }
 
   function trendText(sessions) {
@@ -65,53 +68,56 @@
       const y = yFor(value);
       return `<line class="progress-grid-line" x1="${padX}" y1="${y}" x2="${width - padX}" y2="${y}"></line><text class="progress-axis-label" x="6" y="${y + 4}">${Math.round(value)}</text>`;
     }).join('');
-    const dots = data.map((session, index) => `<circle class="progress-dot" cx="${xFor(index)}" cy="${yFor(session.estimated1RM)}" r="5"><title>${fmtDate(session.date)}: ${session.estimated1RM} lb estimated 1RM</title></circle>`).join('');
-    return `<div class="progress-chart"><div class="progress-chart-title"><strong>Estimated 1RM trend</strong><span>Last ${data.length} session${data.length === 1 ? '' : 's'}</span></div><svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Estimated one rep max trend">${grid}<polyline class="progress-line" points="${points}"></polyline>${dots}<text class="progress-date-label" x="${padX}" y="${height - 7}">${escapeHtml(formatMonthDay(data[0].date))}</text><text class="progress-date-label" text-anchor="end" x="${width - padX}" y="${height - 7}">${escapeHtml(formatMonthDay(data[data.length - 1].date))}</text></svg></div>`;
+    const dots = data.map((session, index) => `<circle class="progress-dot" cx="${xFor(index)}" cy="${yFor(session.estimated1RM)}" r="5"><title>${context.fmtDate(session.date)}: ${session.estimated1RM} lb estimated 1RM</title></circle>`).join('');
+    return `<div class="progress-chart"><div class="progress-chart-title"><strong>Estimated 1RM trend</strong><span>Last ${data.length} session${data.length === 1 ? '' : 's'}</span></div><svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Estimated one rep max trend">${grid}<polyline class="progress-line" points="${points}"></polyline>${dots}<text class="progress-date-label" x="${padX}" y="${height - 7}">${context.escapeHtml(formatMonthDay(data[0].date))}</text><text class="progress-date-label" text-anchor="end" x="${width - padX}" y="${height - 7}">${context.escapeHtml(formatMonthDay(data[data.length - 1].date))}</text></svg></div>`;
   }
 
   function renderProgressPreview(exerciseId) {
-    const exercise = EXERCISES.find(item => item.id === exerciseId);
+    const { preview } = elements();
+    const exercise = context.exercises.find(item => item.id === exerciseId);
     const sessions = sessionHistoryFor(exerciseId);
     if (!exercise || !sessions.length) {
-      progressPreview.className = 'progress-preview empty';
-      progressPreview.textContent = 'No sessions logged for this movement yet.';
+      preview.className = 'progress-preview empty';
+      preview.textContent = 'No sessions logged for this movement yet.';
       return;
     }
     const best = bestSetAcross(sessions);
     const latest = sessions[0];
-    progressPreview.className = 'progress-preview';
-    progressPreview.innerHTML = `<div class="progress-preview-copy"><span class="exercise-muscle">${escapeHtml(exercise.muscle)}</span><h3>${escapeHtml(exercise.name)}</h3><p>${trendText(sessions)}</p></div><div class="progress-preview-stats"><div><span>Best set</span><strong>${Number(best.weight)} × ${Number(best.reps)}</strong></div><div><span>Best e1RM</span><strong>${estimate1RM(Number(best.weight), Number(best.reps))} lb</strong></div><div><span>Latest</span><strong>${latest.estimated1RM} lb</strong></div></div><button type="button" class="ghost compact" data-progress-exercise="${exerciseId}">Open full progress</button>`;
+    preview.className = 'progress-preview';
+    preview.innerHTML = `<div class="progress-preview-copy"><span class="exercise-muscle">${context.escapeHtml(exercise.muscle)}</span><h3>${context.escapeHtml(exercise.name)}</h3><p>${trendText(sessions)}</p></div><div class="progress-preview-stats"><div><span>Best set</span><strong>${Number(best.weight)} × ${Number(best.reps)}</strong></div><div><span>Best e1RM</span><strong>${context.estimate1RM(Number(best.weight), Number(best.reps))} lb</strong></div><div><span>Latest</span><strong>${latest.estimated1RM} lb</strong></div></div><button type="button" class="ghost compact" data-progress-exercise="${exerciseId}">Open full progress</button>`;
   }
 
   function renderProgressPanel() {
+    const { select, button, preview } = elements();
     const exercises = loggedExercises();
-    const previous = progressSelect.value;
+    const previous = select.value;
     if (!exercises.length) {
-      progressSelect.innerHTML = '<option>No logged exercises yet</option>';
-      progressSelect.disabled = true;
-      progressButton.disabled = true;
-      progressPreview.className = 'progress-preview empty';
-      progressPreview.textContent = 'Finish a workout and your movement trends will begin here.';
+      select.innerHTML = '<option>No logged exercises yet</option>';
+      select.disabled = true;
+      button.disabled = true;
+      preview.className = 'progress-preview empty';
+      preview.textContent = 'Finish a workout and your movement trends will begin here.';
       return;
     }
-    progressSelect.disabled = false;
-    progressButton.disabled = false;
-    progressSelect.innerHTML = exercises.map(exercise => `<option value="${exercise.id}">${escapeHtml(exercise.name)}</option>`).join('');
-    if (exercises.some(exercise => exercise.id === previous)) progressSelect.value = previous;
-    renderProgressPreview(progressSelect.value);
+    select.disabled = false;
+    button.disabled = false;
+    select.innerHTML = exercises.map(exercise => `<option value="${exercise.id}">${context.escapeHtml(exercise.name)}</option>`).join('');
+    if (exercises.some(exercise => exercise.id === previous)) select.value = previous;
+    renderProgressPreview(select.value);
   }
 
   function closeProgress() {
-    if (progressDialog.close && progressDialog.open) progressDialog.close();
-    else progressDialog.removeAttribute('open');
+    const { dialog } = elements();
+    if (dialog.close && dialog.open) dialog.close();
+    else dialog.removeAttribute('open');
   }
 
   function openExerciseProgress(exerciseId) {
-    const exercise = EXERCISES.find(item => item.id === exerciseId);
+    const exercise = context.exercises.find(item => item.id === exerciseId);
     const sessions = sessionHistoryFor(exerciseId);
     if (!exercise) return;
     const historyDialog = document.getElementById('historyDialog');
-    if (historyDialog?.open && typeof closeHistory === 'function') closeHistory();
+    if (historyDialog?.open) context.closeHistory();
 
     document.getElementById('progressDialogTitle').textContent = exercise.name;
     document.getElementById('progressDialogMeta').textContent = `${exercise.muscle} · ${exercise.equipment}`;
@@ -123,12 +129,13 @@
       const best = bestSetAcross(sessions);
       const latest = sessions[0];
       const totalVolume = sessions.reduce((total, session) => total + session.volume, 0);
-      const recent = sessions.slice(0, 8).map(session => `<article class="progress-session"><div><strong>${fmtDate(session.date)}</strong><small>${session.sets.length} working set${session.sets.length === 1 ? '' : 's'} · ${Math.round(session.volume).toLocaleString('en-US')} lb volume</small></div><div class="progress-session-meta"><strong>${session.best.weight} × ${session.best.reps}</strong><small>${session.estimated1RM} lb e1RM</small></div><div class="progress-session-sets">${session.sets.map(set => `<span>${Number(set.weight)} × ${Number(set.reps)}</span>`).join('')}</div></article>`).join('');
-      content.innerHTML = `<div class="history-summary-grid progress-summary-grid"><div><span>Best set</span><strong>${Number(best.weight)} lb × ${Number(best.reps)}</strong></div><div><span>Best estimated 1RM</span><strong>${estimate1RM(Number(best.weight), Number(best.reps))} lb</strong></div><div><span>Training history</span><strong>${sessions.length} sessions · ${Math.round(totalVolume).toLocaleString('en-US')} lb</strong></div></div><div class="progress-trend-note"><strong>${latest.estimated1RM} lb latest e1RM</strong><span>${trendText(sessions)}</span></div>${progressChart(sessions)}<div class="progress-recent-head"><span class="label">Recent work</span><h3>Session-by-session</h3></div><div class="progress-session-list">${recent}</div>`;
+      const recent = sessions.slice(0, 8).map(session => `<article class="progress-session"><div><strong>${context.fmtDate(session.date)}</strong><small>${session.sets.length} working set${session.sets.length === 1 ? '' : 's'} · ${Math.round(session.volume).toLocaleString('en-US')} lb volume</small></div><div class="progress-session-meta"><strong>${session.best.weight} × ${session.best.reps}</strong><small>${session.estimated1RM} lb e1RM</small></div><div class="progress-session-sets">${session.sets.map(set => `<span>${Number(set.weight)} × ${Number(set.reps)}</span>`).join('')}</div></article>`).join('');
+      content.innerHTML = `<div class="history-summary-grid progress-summary-grid"><div><span>Best set</span><strong>${Number(best.weight)} lb × ${Number(best.reps)}</strong></div><div><span>Best estimated 1RM</span><strong>${context.estimate1RM(Number(best.weight), Number(best.reps))} lb</strong></div><div><span>Training history</span><strong>${sessions.length} sessions · ${Math.round(totalVolume).toLocaleString('en-US')} lb</strong></div></div><div class="progress-trend-note"><strong>${latest.estimated1RM} lb latest e1RM</strong><span>${trendText(sessions)}</span></div>${progressChart(sessions)}<div class="progress-recent-head"><span class="label">Recent work</span><h3>Session-by-session</h3></div><div class="progress-session-list">${recent}</div>`;
     }
 
-    if (progressDialog.showModal) progressDialog.showModal();
-    else progressDialog.setAttribute('open', '');
+    const { dialog } = elements();
+    if (dialog.showModal) dialog.showModal();
+    else dialog.setAttribute('open', '');
   }
 
   function decorateLibrary() {
@@ -152,12 +159,12 @@
     });
   }
 
-  function decorateActive() {
+  function decorateActive(activeWorkout) {
     document.querySelectorAll('#activeExercises .active-exercise').forEach((card, index) => {
       if (card.querySelector('[data-progress-exercise]')) return;
       const head = card.querySelector('.exercise-head');
       const remove = card.querySelector('[data-remove-exercise]');
-      const exercise = active?.exercises?.[index];
+      const exercise = activeWorkout?.exercises?.[index];
       if (!head || !remove || !exercise) return;
       let actions = remove.parentElement;
       if (!actions.classList.contains('exercise-head-actions')) {
@@ -184,66 +191,55 @@
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'ghost compact';
-      button.dataset.progressExercise = slug(name);
+      button.dataset.progressExercise = context.slug(name);
       button.textContent = 'Progress';
       head.appendChild(button);
     });
   }
 
-  const originalRenderLibrary = renderLibrary;
-  renderLibrary = function (...args) {
-    const result = originalRenderLibrary.apply(this, args);
+  function initialize(apiContext) {
+    context = apiContext;
+    if (initialized) return;
+    const { select, button, dialog } = elements();
+    if (!select || !button || !document.getElementById('progressPreview') || !dialog) return;
+
+    select.addEventListener('change', event => renderProgressPreview(event.target.value));
+    button.addEventListener('click', () => openExerciseProgress(select.value));
+    document.getElementById('closeProgressDialog')?.addEventListener('click', closeProgress);
+    dialog.addEventListener('click', event => { if (event.target === dialog) closeProgress(); });
+    document.getElementById('cancelRoutineDialog')?.addEventListener('click', () => context.closeRoutineEditor());
+    document.addEventListener('click', event => {
+      const progressButton = event.target.closest('[data-progress-exercise]');
+      if (!progressButton) return;
+      event.preventDefault();
+      openExerciseProgress(progressButton.dataset.progressExercise);
+    });
+    initialized = true;
+  }
+
+  function afterLibraryRender() {
     decorateLibrary();
-    return result;
-  };
+  }
 
-  const originalRenderActive = renderActive;
-  renderActive = function (...args) {
-    const result = originalRenderActive.apply(this, args);
-    decorateActive();
-    return result;
-  };
+  function afterActiveRender({ activeWorkout }) {
+    decorateActive(activeWorkout);
+  }
 
-  const originalOpenHistory = openHistory;
-  openHistory = function (...args) {
-    const result = originalOpenHistory.apply(this, args);
+  function afterHistoryOpen() {
     decorateHistoryDialog();
-    return result;
-  };
+  }
 
-  const originalRenderAll = renderAll;
-  renderAll = function (...args) {
-    const result = originalRenderAll.apply(this, args);
+  function afterFullRender({ activeWorkout }) {
     renderProgressPanel();
     decorateLibrary();
-    decorateActive();
-    return result;
+    decorateActive(activeWorkout);
+  }
+
+  return {
+    afterActiveRender,
+    afterFullRender,
+    afterHistoryOpen,
+    afterLibraryRender,
+    initialize
   };
-
-  progressSelect.addEventListener('change', event => renderProgressPreview(event.target.value));
-  progressButton.addEventListener('click', () => openExerciseProgress(progressSelect.value));
-  document.getElementById('closeProgressDialog')?.addEventListener('click', closeProgress);
-  progressDialog.addEventListener('click', event => { if (event.target === progressDialog) closeProgress(); });
-  document.getElementById('cancelRoutineDialog')?.addEventListener('click', () => closeRoutineEditor());
-
-  const mutationObserver = new MutationObserver(() => {
-    decorateLibrary();
-    decorateActive();
-    decorateHistoryDialog();
-  });
-  ['exerciseLibrary', 'activeExercises', 'historyDialogContent'].forEach(id => {
-    const element = document.getElementById(id);
-    if (element) mutationObserver.observe(element, { childList: true, subtree: true });
-  });
-
-  document.addEventListener('click', event => {
-    const button = event.target.closest('[data-progress-exercise]');
-    if (!button) return;
-    event.preventDefault();
-    openExerciseProgress(button.dataset.progressExercise);
-  });
-
-  renderProgressPanel();
-  decorateLibrary();
-  decorateActive();
 })();

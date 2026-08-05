@@ -6,9 +6,9 @@ const productionScriptOrder = [
   'profiles.js?v=18',
   'workout-controls.js?v=22',
   'notes.js?v=13',
-  'app.js?v=21',
+  'progress.js?v=13',
+  'app.js?v=22',
   'full-body.js?v=17',
-  'progress.js?v=12',
   'v2-shell.js?v=18',
   'alexa-shell.js?v=18',
   'training-pet.js?v=20',
@@ -40,9 +40,29 @@ test('notes expose explicit hooks without replacing app globals', async ({ page,
   expect(notesSource).not.toContain('originalStartRestTimer');
   expect(notesSource).not.toContain('originalOpenHistory');
 
-  const appSource = await (await request.get('/app.js?v=21')).text();
+  const appSource = await (await request.get('/app.js?v=22')).text();
   expect(appSource).toContain('notesApi.startRestTimer');
   expect(appSource).toContain('notesApi.renderHistoryNotes');
+});
+
+test('progress exposes explicit hooks without replacing app globals', async ({ page, request }) => {
+  await installLocalStorageFixture(page, 'completedWorkouts');
+  await openApp(page);
+
+  expect(await page.evaluate(() => Object.keys(window.workoutProgress))).toEqual([
+    'afterActiveRender', 'afterFullRender', 'afterHistoryOpen', 'afterLibraryRender', 'initialize'
+  ]);
+
+  const progressSource = await (await request.get('/progress.js?v=13')).text();
+  expect(progressSource).not.toMatch(/\b(?:renderLibrary|renderActive|openHistory|renderAll)\s*=/);
+  expect(progressSource).not.toContain('originalRender');
+  expect(progressSource).not.toContain('MutationObserver');
+
+  const appSource = await (await request.get('/app.js?v=22')).text();
+  expect(appSource).toContain('progressApi.afterLibraryRender');
+  expect(appSource).toContain('progressApi.afterActiveRender');
+  expect(appSource).toContain('progressApi.afterHistoryOpen');
+  expect(appSource).toContain('progressApi.afterFullRender');
 });
 
 test('workout controls expose explicit hooks without replacing app globals', async ({ page, request }) => {

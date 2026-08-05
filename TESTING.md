@@ -37,6 +37,8 @@ Workout-control coverage verifies the production hook order, render-only storage
 
 Notes coverage verifies the explicit notes hook API, active-session notes rendering and persistence, rest-timer start/resume/expiry messaging, history opening, and saved session-note rendering.
 
+Progress coverage verifies the explicit progress hook API and production script order, library and active-session decoration, history decoration, full progress-panel refresh, removal of global render replacement, and render-only storage behavior.
+
 ## Known expected failure
 
 - Legacy migration preserves weights but discards legacy workouts. The test accepts only the exact known defect or a migration that preserves both; other outcomes remain unexpected.
