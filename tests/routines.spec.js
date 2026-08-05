@@ -34,6 +34,7 @@ test('starts a selected session and resumes it after reload', async ({ page }) =
   await chooseSession(page, 'Pull');
   await startSelectedSession(page);
   await expect(page.locator('#activeWorkoutTitle')).toHaveText('Pull — Back + Biceps');
+  const original = (await jorgeState(page)).activeWorkout;
 
   await page.reload();
   await expect(page.locator('#sessionTypeSelector')).toBeAttached();
@@ -44,6 +45,9 @@ test('starts a selected session and resumes it after reload', async ({ page }) =
   await expect(page.locator('body')).toHaveAttribute('data-view', 'train');
   await expect(page.locator('#activeWorkoutTitle')).toHaveText('Pull — Back + Biceps');
   await expect(page.locator('#activeExercises .active-exercise')).toHaveCount(6);
+  const resumed = (await jorgeState(page)).activeWorkout;
+  expect(resumed.id).toBe(original.id);
+  expect(resumed.startedAt).toBe(original.startedAt);
 });
 
 test('repairs an empty persisted active session with its saved routine', async ({ page }) => {
@@ -54,12 +58,25 @@ test('repairs an empty persisted active session with its saved routine', async (
   await expect(page.locator('#activeWorkoutTitle')).toHaveText('Pull — Back + Biceps');
   await expect(page.locator('#activeExercises .active-exercise')).toHaveCount(6);
   await expect(page.locator('#quickStartSession')).toHaveText('Resume');
+  expect(await page.evaluate(() => window.workoutSessionController.repairEmpty(active))).toBe(false);
+  const repaired = (await jorgeState(page)).activeWorkout;
+  expect(new Set(repaired.exercises.map(exercise => exercise.id)).size).toBe(6);
+
+  await page.reload();
+  await expect(page.locator('#activeExercises .active-exercise')).toHaveCount(6);
+  expect((await jorgeState(page)).activeWorkout.exercises).toHaveLength(6);
 });
 
-test('loads a Library routine while a different workout is active', async ({ page }) => {
+test('resumes implicitly and replaces only through the explicit Library action', async ({ page }) => {
   await installLocalStorageFixture(page, 'activeWorkoutWithExercises');
   await openApp(page);
-  const originalId = (await jorgeState(page)).activeWorkout.id;
+  const original = (await jorgeState(page)).activeWorkout;
+
+  await page.locator('.bottom-nav [data-view="today"]').click();
+  await page.locator('#startWorkout').evaluate(button => button.click());
+  const resumed = (await jorgeState(page)).activeWorkout;
+  expect(resumed.id).toBe(original.id);
+  expect(resumed.startedAt).toBe(original.startedAt);
 
   await page.locator('.bottom-nav [data-view="library"]').click();
   await page.locator('#dayTabs [data-day="Pull"]').click();
@@ -71,6 +88,7 @@ test('loads a Library routine while a different workout is active', async ({ pag
   await expect(page.locator('#activeExercises .active-exercise')).toHaveCount(6);
 
   const stored = await jorgeState(page);
-  expect(stored.activeWorkout.id).not.toBe(originalId);
+  expect(stored.activeWorkout.id).not.toBe(original.id);
   expect(stored.activeWorkout.type).toBe('Pull');
+  expect(stored.workouts).toHaveLength(0);
 });

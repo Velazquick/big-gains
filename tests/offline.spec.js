@@ -14,7 +14,7 @@ test('reloads offline after the service worker is installed', async ({ context, 
       });
     }
   });
-  await expect.poll(() => page.evaluate(() => caches.keys())).toContain('big-gains-v28-routine-loading-fix');
+  await expect.poll(() => page.evaluate(() => caches.keys())).toContain('big-gains-v29-workout-session-api');
 
   await context.setOffline(true);
   try {

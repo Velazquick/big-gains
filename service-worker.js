@@ -1,4 +1,4 @@
-const CACHE='big-gains-v28-routine-loading-fix';
+const CACHE='big-gains-v29-workout-session-api';
 const CORE_ASSETS=[
   './',
   './index.html',
@@ -12,7 +12,7 @@ const CORE_ASSETS=[
   './alexa-contrast-v22.css?v=23',
   './session-selector-v26.css?v=28',
   './profiles.js?v=18',
-  './app.js?v=18',
+  './app.js?v=19',
   './full-body.js?v=17',
   './progress.js?v=12',
   './notes.js?v=12',

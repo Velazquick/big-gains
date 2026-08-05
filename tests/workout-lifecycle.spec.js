@@ -33,6 +33,10 @@ test('discards an active workout only after the two-step confirmation', async ({
   await installLocalStorageFixture(page, 'activeWorkoutWithExercises');
   await openApp(page);
 
+  await page.locator('[data-toggle-exercise="0"]').click();
+  await page.getByRole('button', { name: 'Complete Set 1 of 3' }).click();
+  expect((await jorgeState(page)).restTimerEndsAt).toBeGreaterThan(Date.now());
+
   await page.locator('#cancelWorkout').click();
   await expect(page.locator('#cancelWorkout')).toHaveText('Tap again to discard');
   expect((await jorgeState(page)).activeWorkout).not.toBeNull();
@@ -42,5 +46,6 @@ test('discards an active workout only after the two-step confirmation', async ({
 
   const discarded = await jorgeState(page);
   expect(discarded.activeWorkout).toBeNull();
+  expect(discarded.restTimerEndsAt).toBeNull();
   expect(discarded.workouts).toHaveLength(0);
 });

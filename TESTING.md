@@ -18,7 +18,7 @@ npm test
 npx playwright test --workers=1
 ```
 
-The expected baseline is green with 17 normal passes and one test reported as an expected failure.
+The expected baseline is green with the legacy migration test reported as the only expected failure.
 
 ## localStorage fixtures
 
