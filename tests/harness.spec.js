@@ -3,11 +3,12 @@ import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
 
 const productionScriptOrder = [
-  'profiles.js?v=18',
+  'state-persistence.js?v=1',
+  'profiles.js?v=19',
   'workout-controls.js?v=22',
   'notes.js?v=13',
   'progress.js?v=13',
-  'app.js?v=22',
+  'app.js?v=23',
   'full-body.js?v=17',
   'v2-shell.js?v=18',
   'alexa-shell.js?v=18',
@@ -40,7 +41,7 @@ test('notes expose explicit hooks without replacing app globals', async ({ page,
   expect(notesSource).not.toContain('originalStartRestTimer');
   expect(notesSource).not.toContain('originalOpenHistory');
 
-  const appSource = await (await request.get('/app.js?v=22')).text();
+  const appSource = await (await request.get('/app.js?v=23')).text();
   expect(appSource).toContain('notesApi.startRestTimer');
   expect(appSource).toContain('notesApi.renderHistoryNotes');
 });
@@ -58,7 +59,7 @@ test('progress exposes explicit hooks without replacing app globals', async ({ p
   expect(progressSource).not.toContain('originalRender');
   expect(progressSource).not.toContain('MutationObserver');
 
-  const appSource = await (await request.get('/app.js?v=22')).text();
+  const appSource = await (await request.get('/app.js?v=23')).text();
   expect(appSource).toContain('progressApi.afterLibraryRender');
   expect(appSource).toContain('progressApi.afterActiveRender');
   expect(appSource).toContain('progressApi.afterHistoryOpen');

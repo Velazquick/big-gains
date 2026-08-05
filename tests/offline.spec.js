@@ -14,7 +14,7 @@ test('reloads offline after the service worker is installed', async ({ context, 
       });
     }
   });
-  await expect.poll(() => page.evaluate(() => caches.keys())).toContain('big-gains-v32-progress-api');
+  await expect.poll(() => page.evaluate(() => caches.keys())).toContain('big-gains-v33-state-persistence-api');
 
   await context.setOffline(true);
   try {

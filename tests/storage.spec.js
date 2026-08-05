@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 import {
   blankState,
   completedWorkout,
@@ -16,6 +17,38 @@ async function switchProfile(page, profileId) {
   await expect(page.locator('#profileSelect')).toHaveValue(profileId);
   await expect(page.locator('#sessionTypeSelector')).toBeAttached();
 }
+
+test('loads, normalizes, and saves a profile through the persistence API', async ({ page }) => {
+  await installLocalStorageFixture(page, 'malformedButParseableState');
+  await openApp(page);
+
+  const roundTrip = await page.evaluate(() => {
+    const normalized = JSON.stringify(state);
+    statePersistenceApi.save(state, active);
+    const reloaded = statePersistenceApi.load();
+    return {
+      normalized,
+      reloaded: JSON.stringify(reloaded),
+      profileId: statePersistenceApi.profileId,
+      storageKey: statePersistenceApi.storageKey,
+      api: {
+        blankState: typeof statePersistenceApi.blankState,
+        normalizeState: typeof statePersistenceApi.normalizeState,
+        load: typeof statePersistenceApi.load,
+        save: typeof statePersistenceApi.save,
+        prepareExport: typeof statePersistenceApi.prepareExport,
+        validateImport: typeof statePersistenceApi.validateImport,
+        migration: typeof statePersistenceApi.migrations.legacyV1
+      }
+    };
+  });
+
+  expect(roundTrip.reloaded).toBe(roundTrip.normalized);
+  expect(roundTrip.profileId).toBe('jorge');
+  expect(roundTrip.storageKey).toBe(STORAGE_KEYS.jorge);
+  expect(Object.values(roundTrip.api)).toEqual(Array(7).fill('function'));
+  expect(await readStoredJson(page, STORAGE_KEYS.jorge)).toEqual(JSON.parse(roundTrip.normalized));
+});
 
 test('keeps Jorge and Alexa localStorage isolated', async ({ page }) => {
   await installLocalStorageFixture(page, ['blankJorge', 'blankAlexa'], { activeProfile: 'jorge' });
@@ -71,6 +104,42 @@ test('rejects a cross-profile import without modifying either profile', async ({
   expect(await readStoredJson(page, STORAGE_KEYS.alexa)).toEqual(alexaBefore);
 });
 
+test('exports the existing backup format and restores it without schema changes', async ({ page }) => {
+  await installLocalStorageFixture(page, 'completedWorkouts');
+  await openApp(page);
+  await page.locator('.bottom-nav [data-view="library"]').click();
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.locator('#exportData').click();
+  const download = await downloadPromise;
+  const downloadPath = await download.path();
+  const exported = JSON.parse(await readFile(downloadPath, 'utf8'));
+
+  expect(download.suggestedFilename()).toMatch(/^big-gains-backup-\d{4}-\d{2}-\d{2}\.json$/);
+  expect(exported).toMatchObject({
+    version: 5,
+    profileId: 'jorge',
+    workouts: [{ id: 'completed-push-1' }],
+    weights: [{ weight: 218.4 }],
+    activeWorkout: null,
+    restTimerEndsAt: null
+  });
+
+  await page.locator('.bottom-nav [data-view="progress"]').click();
+  await page.locator('#bodyweight').fill('211');
+  await page.locator('#weightForm button[type="submit"]').click();
+  expect((await readStoredJson(page, STORAGE_KEYS.jorge)).weights[0].weight).toBe(211);
+
+  await page.locator('.bottom-nav [data-view="library"]').click();
+  const dialogPromise = page.waitForEvent('dialog');
+  await page.locator('#importData').setInputFiles(downloadPath);
+  const dialog = await dialogPromise;
+  expect(dialog.message()).toBe('Backup restored for Jorge.');
+  await dialog.accept();
+
+  expect(await readStoredJson(page, STORAGE_KEYS.jorge)).toEqual(exported);
+});
+
 test('renders completed workout history from persisted state', async ({ page }) => {
   await installLocalStorageFixture(page, 'completedWorkouts');
   await openApp(page);
@@ -110,6 +179,82 @@ test('recovers a malformed but parseable current-profile state', async ({ page }
   await expect(page.locator('#routineSelect option')).toHaveCount(1);
   await expect(page.locator('#history')).toHaveText('Your completed workouts will appear here.');
   await expect(page.locator('#weightHistory')).toHaveText('No weigh-ins yet.');
+});
+
+test('persists pending state on pagehide and when the page becomes hidden', async ({ page }) => {
+  await installLocalStorageFixture(page, 'blankJorge');
+  await openApp(page);
+
+  await page.evaluate(() => {
+    state.weights.unshift({ weight: 207, date: '2026-08-05T13:00:00.000Z' });
+    window.dispatchEvent(new PageTransitionEvent('pagehide'));
+  });
+  expect((await readStoredJson(page, STORAGE_KEYS.jorge)).weights[0].weight).toBe(207);
+
+  await page.evaluate(() => {
+    state.weights.unshift({ weight: 206, date: '2026-08-05T14:00:00.000Z' });
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  expect((await readStoredJson(page, STORAGE_KEYS.jorge)).weights.map(entry => entry.weight)).toEqual([206, 207]);
+});
+
+test('routes profile storage reads and writes through the explicit API', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__profileStorageCalls = [];
+    const originalGetItem = Storage.prototype.getItem;
+    const originalSetItem = Storage.prototype.setItem;
+    Storage.prototype.getItem = function getItem(key) {
+      window.__profileStorageCalls.push({ method: 'getItem', key, stack: new Error().stack });
+      return originalGetItem.call(this, key);
+    };
+    Storage.prototype.setItem = function setItem(key, value) {
+      window.__profileStorageCalls.push({ method: 'setItem', key, stack: new Error().stack });
+      return originalSetItem.call(this, key, value);
+    };
+  });
+  await openApp(page);
+
+  const evidence = await page.evaluate(async keys => {
+    const appSource = await (await fetch('/app.js')).text();
+    const profilesSource = await (await fetch('/profiles.js')).text();
+    const calls = window.__profileStorageCalls.filter(call => keys.includes(call.key));
+    return {
+      calls,
+      appOwnsStorage: appSource.includes('localStorage'),
+      profilesOwnsStorage: profilesSource.includes('localStorage'),
+      ownedKeys: window.bigGainsStatePersistence.storageKeys
+    };
+  }, Object.values(STORAGE_KEYS));
+
+  expect(evidence.appOwnsStorage).toBe(false);
+  expect(evidence.profilesOwnsStorage).toBe(false);
+  expect(evidence.ownedKeys).toEqual(STORAGE_KEYS);
+  expect(evidence.calls.some(call => call.method === 'getItem' && call.key === STORAGE_KEYS.jorge)).toBe(true);
+  expect(evidence.calls.some(call => call.method === 'setItem' && call.key === STORAGE_KEYS.jorge)).toBe(true);
+  expect(evidence.calls.every(call => call.stack.includes('state-persistence.js'))).toBe(true);
+});
+
+test('rendering stateful views does not write persistence', async ({ page }) => {
+  await installLocalStorageFixture(page, 'completedWorkouts');
+  await openApp(page);
+
+  const writes = await page.evaluate(() => {
+    let count = 0;
+    const originalSetItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = function setItem(...args) {
+      count += 1;
+      return originalSetItem.apply(this, args);
+    };
+    renderHero();
+    renderLibrary();
+    renderHistory();
+    renderWeights();
+    renderAll();
+    return count;
+  });
+
+  expect(writes).toBe(0);
 });
 
 test('migrates legacy workouts and weights into Jorge state', async ({ page }) => {
