@@ -5,17 +5,17 @@ import { openApp } from './helpers/app.js';
 const productionScriptOrder = [
   'profiles.js?v=18',
   'workout-controls.js?v=22',
-  'app.js?v=20',
+  'notes.js?v=13',
+  'app.js?v=21',
   'full-body.js?v=17',
   'progress.js?v=12',
-  'notes.js?v=12',
   'v2-shell.js?v=18',
   'alexa-shell.js?v=18',
   'training-pet.js?v=20',
   'design-v21.js?v=21'
 ];
 
-test('serves the production document with workout controls loaded before the app', async ({ page }) => {
+test('serves the production document with explicit hook layers loaded before the app', async ({ page }) => {
   await installLocalStorageFixture(page, 'blankJorge');
   await openApp(page);
 
@@ -24,6 +24,25 @@ test('serves the production document with workout controls loaded before the app
   );
 
   expect(loadedOrder).toEqual(productionScriptOrder);
+});
+
+test('notes expose explicit hooks without replacing app globals', async ({ page, request }) => {
+  await installLocalStorageFixture(page, 'activeWorkoutWithExercises');
+  await openApp(page);
+
+  expect(await page.evaluate(() => Object.keys(window.workoutNotes))).toEqual([
+    'initialize', 'renderActiveNotes', 'renderHistoryNotes', 'saveCue', 'saveRest',
+    'saveSessionNote', 'startRestTimer'
+  ]);
+
+  const notesSource = await (await request.get('/notes.js?v=13')).text();
+  expect(notesSource).not.toMatch(/\b(?:startRestTimer|openHistory)\s*=/);
+  expect(notesSource).not.toContain('originalStartRestTimer');
+  expect(notesSource).not.toContain('originalOpenHistory');
+
+  const appSource = await (await request.get('/app.js?v=21')).text();
+  expect(appSource).toContain('notesApi.startRestTimer');
+  expect(appSource).toContain('notesApi.renderHistoryNotes');
 });
 
 test('workout controls expose explicit hooks without replacing app globals', async ({ page, request }) => {

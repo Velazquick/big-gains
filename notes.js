@@ -1,21 +1,16 @@
 (() => {
   const REST_OPTIONS = [60, 90, 120, 150, 180, 240, 300];
-  let lastCompletedExerciseIndex = null;
-  let currentHistoryId = null;
 
-  state.exercisePreferences = state.exercisePreferences || {};
-  saveState();
-
-  const preferenceFor = id => {
+  const preferenceFor = (state, id) => {
     state.exercisePreferences[id] = state.exercisePreferences[id] || {};
     return state.exercisePreferences[id];
   };
 
   const restLabel = seconds => seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 
-  function noteControls(exercise, index) {
-    const pref = preferenceFor(exercise.id);
-    const restSeconds = Number(exercise.restSeconds || pref.restSeconds || DEFAULT_REST);
+  function noteControls({ exercise, index, state, defaultRest, escapeHtml }) {
+    const pref = preferenceFor(state, exercise.id);
+    const restSeconds = Number(exercise.restSeconds || pref.restSeconds || defaultRest);
     return `<details class="exercise-notes" data-note-block="${index}">
       <summary>Notes & rest <span>${restLabel(restSeconds)}</span></summary>
       <div class="exercise-note-grid">
@@ -26,67 +21,27 @@
     </details>`;
   }
 
-  function decorateActiveNotes() {
-    document.querySelectorAll('#activeExercises .active-exercise').forEach((card, index) => {
+  function initialize({ state, saveState }) {
+    state.exercisePreferences = state.exercisePreferences || {};
+    saveState();
+  }
+
+  function renderActiveNotes({ activeWorkout, box, state, defaultRest, escapeHtml }) {
+    box?.querySelectorAll('.active-exercise').forEach((card, index) => {
       if (card.dataset.notesReady === '1') return;
-      const exercise = active?.exercises?.[index];
+      const exercise = activeWorkout?.exercises?.[index];
       if (!exercise) return;
       card.dataset.notesReady = '1';
+      const controls = noteControls({ exercise, index, state, defaultRest, escapeHtml });
       const addSet = card.querySelector('[data-add-set]');
-      if (addSet) addSet.insertAdjacentHTML('beforebegin', noteControls(exercise, index));
-      else card.insertAdjacentHTML('beforeend', noteControls(exercise, index));
+      if (addSet) addSet.insertAdjacentHTML('beforebegin', controls);
+      else card.insertAdjacentHTML('beforeend', controls);
     });
   }
 
-  function saveCue(index, value) {
-    const exercise = active?.exercises?.[index];
-    if (!exercise) return;
-    preferenceFor(exercise.id).cue = value.trim();
-    saveState();
-  }
-
-  function saveSessionNote(index, value) {
-    const exercise = active?.exercises?.[index];
-    if (!exercise) return;
-    exercise.note = value;
-    autosave();
-  }
-
-  function saveRest(index, value) {
-    const exercise = active?.exercises?.[index];
-    if (!exercise) return;
-    const seconds = Math.max(30, Number(value) || DEFAULT_REST);
-    exercise.restSeconds = seconds;
-    preferenceFor(exercise.id).restSeconds = seconds;
-    saveState();
-    const summary = document.querySelector(`[data-note-block="${index}"] summary span`);
-    if (summary) summary.textContent = restLabel(seconds);
-  }
-
-  const originalStartRestTimer = startRestTimer;
-  startRestTimer = function customExerciseRestTimer() {
-    const exercise = active?.exercises?.[lastCompletedExerciseIndex];
-    const pref = exercise ? preferenceFor(exercise.id) : {};
-    const seconds = Number(exercise?.restSeconds || pref.restSeconds || DEFAULT_REST);
-    state.restTimerEndsAt = Date.now() + seconds * 1000;
-    saveState();
-    runRestTimer();
-    const next = document.getElementById('timerNext');
-    if (next && exercise) next.textContent = `${exercise.name} · ${restLabel(seconds)} recovery.`;
-    lastCompletedExerciseIndex = null;
-  };
-
-  const originalOpenHistory = openHistory;
-  openHistory = function openHistoryWithNotes(id) {
-    currentHistoryId = id;
-    originalOpenHistory(id);
-    requestAnimationFrame(decorateHistoryNotes);
-  };
-
-  function decorateHistoryNotes() {
-    const workout = state.workouts.find(item => item.id === currentHistoryId);
-    if (!workout) return;
-    document.querySelectorAll('#historyDialogContent .history-exercise').forEach((card, index) => {
+  function renderHistoryNotes({ workout, container, escapeHtml }) {
+    if (!workout || !container) return;
+    container.querySelectorAll('.history-exercise').forEach((card, index) => {
       if (card.dataset.notesReady === '1') return;
       card.dataset.notesReady = '1';
       const exercise = workout.exercises?.[index];
@@ -95,31 +50,47 @@
     });
   }
 
-  const activeBox = document.getElementById('activeExercises');
-  activeBox?.addEventListener('click', event => {
-    const complete = event.target.closest('[data-complete-set]');
-    if (complete) lastCompletedExerciseIndex = Number(complete.dataset.ei);
-  }, true);
+  function saveCue({ activeWorkout, state, index, value, saveState }) {
+    const exercise = activeWorkout?.exercises?.[index];
+    if (!exercise) return;
+    preferenceFor(state, exercise.id).cue = value.trim();
+    saveState();
+  }
 
-  activeBox?.addEventListener('input', event => {
-    const cue = event.target.closest('[data-saved-cue]');
-    if (cue) saveCue(Number(cue.dataset.savedCue), cue.value);
-    const note = event.target.closest('[data-session-note]');
-    if (note) saveSessionNote(Number(note.dataset.sessionNote), note.value);
+  function saveSessionNote({ activeWorkout, index, value, autosave }) {
+    const exercise = activeWorkout?.exercises?.[index];
+    if (!exercise) return;
+    exercise.note = value;
+    autosave();
+  }
+
+  function saveRest({ activeWorkout, state, index, value, defaultRest, saveState, summary }) {
+    const exercise = activeWorkout?.exercises?.[index];
+    if (!exercise) return;
+    const seconds = Math.max(30, Number(value) || defaultRest);
+    exercise.restSeconds = seconds;
+    preferenceFor(state, exercise.id).restSeconds = seconds;
+    saveState();
+    if (summary) summary.textContent = restLabel(seconds);
+  }
+
+  function startRestTimer({ activeWorkout, state, exerciseIndex, defaultRest, saveState, runRestTimer, message }) {
+    const exercise = activeWorkout?.exercises?.[exerciseIndex];
+    const pref = exercise ? preferenceFor(state, exercise.id) : {};
+    const seconds = Number(exercise?.restSeconds || pref.restSeconds || defaultRest);
+    state.restTimerEndsAt = Date.now() + seconds * 1000;
+    saveState();
+    runRestTimer();
+    if (message && exercise) message.textContent = `${exercise.name} · ${restLabel(seconds)} recovery.`;
+  }
+
+  window.workoutNotes = Object.freeze({
+    initialize,
+    renderActiveNotes,
+    renderHistoryNotes,
+    saveCue,
+    saveRest,
+    saveSessionNote,
+    startRestTimer
   });
-
-  activeBox?.addEventListener('change', event => {
-    const rest = event.target.closest('[data-rest-seconds]');
-    if (rest) saveRest(Number(rest.dataset.restSeconds), rest.value);
-  });
-
-  const observer = new MutationObserver(() => {
-    decorateActiveNotes();
-    decorateHistoryNotes();
-  });
-  if (activeBox) observer.observe(activeBox, { childList: true, subtree: true });
-  const historyContent = document.getElementById('historyDialogContent');
-  if (historyContent) observer.observe(historyContent, { childList: true, subtree: true });
-
-  decorateActiveNotes();
 })();

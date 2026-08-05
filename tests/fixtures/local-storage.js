@@ -43,6 +43,7 @@ export function completedWorkout(overrides = {}) {
         name: 'Seated Machine Chest Press',
         muscle: 'Chest',
         equipment: 'Machine',
+        note: 'Strong setup and smooth reps.',
         sets: [
           { id: 'completed-set-1', weight: 100, reps: 10, warmup: false, completed: true }
         ]
