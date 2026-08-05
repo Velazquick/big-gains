@@ -13,7 +13,7 @@
     const selectorStyles = document.createElement('link');
     selectorStyles.id = selectorStyleId;
     selectorStyles.rel = 'stylesheet';
-    selectorStyles.href = 'session-selector-v26.css?v=27';
+    selectorStyles.href = 'session-selector-v26.css?v=28';
     document.head.appendChild(selectorStyles);
   }
 
@@ -21,7 +21,7 @@
   if (!document.getElementById(selectorScriptId)) {
     const selectorScript = document.createElement('script');
     selectorScript.id = selectorScriptId;
-    selectorScript.src = 'session-selector-v26.js?v=27';
+    selectorScript.src = 'session-selector-v26.js?v=28';
     document.head.appendChild(selectorScript);
   }
 
