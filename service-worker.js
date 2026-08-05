@@ -1,4 +1,4 @@
-const CACHE='big-gains-v23-alexa-complete-theme';
+const CACHE='big-gains-v24-moss-cards';
 const CORE_ASSETS=[
   './',
   './index.html',
@@ -8,6 +8,7 @@ const CORE_ASSETS=[
   './training-pet.css?v=20',
   './workout-controls.css?v=21',
   './design-v21.css?v=21',
+  './moss-cards-v24.css?v=24',
   './alexa-contrast-v22.css?v=23',
   './profiles.js?v=18',
   './app.js?v=18',
