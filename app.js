@@ -141,7 +141,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('.bottom-nav butt
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;$('installButton').classList.remove('hidden');});
 bind('installButton','click',async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;$('installButton').classList.add('hidden');});
 window.addEventListener('pagehide',saveState);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')saveState();});
-if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(console.warn));
+if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js',{updateViaCache:'none'}).catch(console.warn));
 notesApi.initialize({state,saveState});
 progressApi.initialize({getState:()=>state,exercises:EXERCISES,slug,estimate1RM,fmtDate,escapeHtml,closeHistory,closeRoutineEditor});
 renderAll();

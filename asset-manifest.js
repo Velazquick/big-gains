@@ -1,0 +1,70 @@
+((scope) => {
+  'use strict';
+
+  const release = 'v34-cache-update-hardening';
+  const cachePrefix = 'big-gains-shell-';
+  const runtimeCachePrefix = 'big-gains-runtime-';
+  const legacyCacheNames = ['big-gains-v33-state-persistence-api'];
+  const styles = [
+    './styles.css',
+    './v2-shell.css',
+    './profiles.css',
+    './training-pet.css',
+    './workout-controls.css',
+    './design-v21.css',
+    './moss-cards-v24.css',
+    './alexa-contrast-v22.css',
+    './session-selector-v26.css'
+  ];
+  const scripts = [
+    './state-persistence.js',
+    './profiles.js',
+    './workout-controls.js',
+    './notes.js',
+    './progress.js',
+    './app.js',
+    './full-body.js',
+    './v2-shell.js',
+    './alexa-shell.js',
+    './training-pet.js',
+    './design-v21.js',
+    './session-selector-v26.js',
+    './sync-gateway.js'
+  ];
+  const revision = path => `${path}?v=${encodeURIComponent(release)}`;
+  const revisionedStyles = styles.map(revision);
+  const revisionedScripts = scripts.map(revision);
+  const coreAssets = [
+    './index.html',
+    './asset-manifest.js',
+    './asset-loader.js',
+    './service-worker-core.js',
+    ...revisionedStyles,
+    ...revisionedScripts,
+    './manifest.webmanifest',
+    './icon.svg'
+  ];
+
+  if (new Set(coreAssets).size !== coreAssets.length) {
+    throw new Error('Big Gains asset manifest contains duplicate core assets.');
+  }
+
+  const manifest = Object.freeze({
+    release,
+    cachePrefix,
+    cacheName: `${cachePrefix}${release}`,
+    runtimeCachePrefix,
+    runtimeCacheName: `${runtimeCachePrefix}${release}`,
+    legacyCacheNames: Object.freeze([...legacyCacheNames]),
+    styles: Object.freeze(revisionedStyles),
+    scripts: Object.freeze(revisionedScripts),
+    coreAssets: Object.freeze(coreAssets)
+  });
+
+  Object.defineProperty(scope, 'BIG_GAINS_ASSET_MANIFEST', {
+    configurable: false,
+    enumerable: true,
+    value: manifest,
+    writable: false
+  });
+})(typeof self === 'object' ? self : globalThis);
