@@ -1,0 +1,54 @@
+name: Deploy static site to Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Validate static site
+        shell: bash
+        run: |
+          test -f index.html
+          test -f asset-manifest.js
+          test -f app.js
+          test -f retrospective-workout.js
+          test -f retrospective-workout.css
+          test -f service-worker.js
+          test -f service-worker-core.js
+          grep -Fq "v44-calendar-retrospective-workouts" asset-manifest.js
+          grep -Fq "logRetrospectiveWorkout" index.html
+          grep -Fq "./service-worker.js" app.js
+          grep -Fq "'./asset-manifest.js'" service-worker.js
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload static site artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: .
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
