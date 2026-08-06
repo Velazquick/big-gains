@@ -53,8 +53,9 @@
   function resolveActiveIndex(activeWorkout) {
     const preferred = activeWorkout.exercises.findIndex(exercise => exercise.id === activeWorkout.focusedExerciseId && incompleteWorking(exercise));
     const index = preferred >= 0 ? preferred : activeWorkout.exercises.findIndex(incompleteWorking);
+    const focusChanged = index >= 0 && activeWorkout.focusedExerciseId !== activeWorkout.exercises[index].id;
     activeWorkout.focusedExerciseId = index >= 0 ? activeWorkout.exercises[index].id : null;
-    if (index >= 0) activeWorkout.exercises[index].collapsed = false;
+    if (focusChanged) activeWorkout.exercises[index].collapsed = false;
     return index;
   }
 
@@ -155,7 +156,7 @@
               <div class="exercise-order">
                 <button type="button" data-move-exercise="up" data-index="${exerciseIndex}" ${exerciseIndex === 0 ? 'disabled' : ''} aria-label="Move ${escapeHtml(exercise.name)} up">↑</button>
                 <button type="button" data-move-exercise="down" data-index="${exerciseIndex}" ${exerciseIndex === activeWorkout.exercises.length - 1 ? 'disabled' : ''} aria-label="Move ${escapeHtml(exercise.name)} down">↓</button>
-                <button type="button" class="exercise-toggle" data-toggle-exercise="${exerciseIndex}" aria-expanded="${!collapsed}" aria-label="${collapsed ? 'Expand' : 'Collapse'} ${escapeHtml(exercise.name)}">${collapsed ? '+' : '−'}</button>
+                <button type="button" class="exercise-toggle" data-toggle-exercise="${exerciseIndex}" aria-expanded="${!collapsed}" aria-controls="exercise-body-${exerciseIndex}" aria-label="${collapsed ? 'Expand' : 'Collapse'} ${escapeHtml(exercise.name)}"><span class="exercise-toggle-chevron" aria-hidden="true">⌄</span></button>
               </div>
               <button type="button" class="remove-exercise" data-remove-exercise="${exerciseIndex}" aria-label="Remove ${escapeHtml(exercise.name)}">✕</button>
             </div>
@@ -163,7 +164,7 @@
           <div class="active-exercise-body" id="exercise-body-${exerciseIndex}">
             <div class="exercise-context"><span>Last</span><strong>${escapeHtml(previous)}</strong></div>
             <div class="set-grid">${sets}</div>
-            <button type="button" class="add-set" data-add-set="${exerciseIndex}">＋ Add set</button>
+            <button type="button" class="add-set" data-add-set="${exerciseIndex}">+ Add set</button>
           </div>
           <div class="collapsed-summary">
             <div><strong>${escapeHtml(summary.status)}</strong><small>${escapeHtml(summary.best)}</small></div>

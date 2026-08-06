@@ -2,7 +2,7 @@
 
 The Playwright harness serves the static PWA from `index.html` without rewriting it, so production scripts execute in their declared order.
 
-The current baseline is 73 passing Chromium tests with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
+The current baseline is 79 passing Chromium tests with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
 
 ## Install
 
@@ -20,7 +20,7 @@ npm test
 npx playwright test --workers=1
 ```
 
-Both commands must pass all 73 tests with no expected failures.
+Both commands must pass all 79 tests with no expected failures.
 
 ## localStorage fixtures
 
@@ -36,6 +36,8 @@ Reusable fixtures live in `tests/fixtures/local-storage.js`:
 8. Legacy state
 
 Workout-control coverage verifies the production hook order, render-only storage behavior, active-session rendering, collapse and expand, exercise ordering and removal, set editing, and completion-driven advancement.
+
+V42 coverage verifies the real delegated chevron path, manual active-card collapse, preserved focus and edits, add-set inheritance/fresh IDs/single insertion/reload persistence, local-time date grouping, multiple workouts per day, empty days, month controls, today/selected accessibility state, shared history detail, return-bar preservation, profile isolation, and offline calendar loading.
 
 Notes coverage verifies the explicit notes hook API, active-session notes rendering and persistence, rest-timer start/resume/expiry messaging, history opening, and saved session-note rendering.
 

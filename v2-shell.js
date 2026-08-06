@@ -70,7 +70,7 @@
     const saved = (() => { try { return sessionStorage.getItem('big-gains-view'); } catch { return null; } })();
     const hasActiveWorkout = activePanel && !activePanel.classList.contains('hidden');
     const explicitlyExited = window.bigGainsWorkoutMode?.wasExplicitlyExited();
-    const initial = ['today','train','progress','library'].includes(requested)
+    const initial = ['today','train','calendar','progress','library'].includes(requested)
       ? requested
       : (hasActiveWorkout && !explicitlyExited ? 'train' : saved || 'today');
     showView(initial, { instant: true, scroll: false, workout: !explicitlyExited });
