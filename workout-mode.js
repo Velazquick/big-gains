@@ -9,6 +9,7 @@
   const pet = document.getElementById('trainingPetCard');
   const petHome = document.getElementById('trainingPetHome');
   const petSlot = document.getElementById('workoutPetSlot');
+  const completionPetSlot = document.getElementById('completionPetSlot');
   const exitStorageKey = 'big-gains-workout-mode-exit';
   let initialized = false;
   let elapsedTicker = null;
@@ -49,7 +50,7 @@
   }
 
   function movePet(inWorkoutMode) {
-    const target = inWorkoutMode ? petSlot : petHome;
+    const target = body.classList.contains('workout-completion-open') ? completionPetSlot : (inWorkoutMode ? petSlot : petHome);
     if (pet && target && pet.parentElement !== target) target.appendChild(pet);
   }
 
@@ -113,7 +114,8 @@
   function sync() {
     const workout = session();
     if (!workout) {
-      suspend();
+      if (body.classList.contains('workout-mode') || body.classList.contains('workout-focus')) suspend();
+      else movePet(false);
       returnBar?.classList.add('hidden');
       return;
     }

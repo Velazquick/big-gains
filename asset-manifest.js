@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v40-phase3-workout-hierarchy';
+  const release = 'v41-phase3-completion-experience';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];

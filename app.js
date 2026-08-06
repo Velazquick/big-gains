@@ -38,6 +38,7 @@ let selectedDay=(state.activeWorkout&&state.activeWorkout.type)||(todaysWorkout(
 let active=state.activeWorkout||null;
 let workoutTicker=null,timerTicker=null,timerRemaining=DEFAULT_REST,deferredPrompt=null,cancelArmedUntil=0;
 let routineDraftDay=selectedDay,routineDraft=[];
+let completionReceipt=null;
 function timerPreferences(){if(!state.timerPreferences)state.timerPreferences={sound:true,vibration:true};return state.timerPreferences;}
 function setWorkoutPetState(next){if(next)document.body.dataset.workoutPetState=next;else delete document.body.dataset.workoutPetState;if(typeof window.trainingPet?.render==='function')window.trainingPet.render(true);}
 const workoutTimerFeedback=(()=>{
@@ -59,17 +60,37 @@ const workoutTimerFeedback=(()=>{
     if(error)console.warn(`Timer sound ${reason}`,error);
     return {ok:false,reason};
   }
-  async function verifyFromGesture(event){
+  function attemptFromGesture(event,{quiet=false,markFailure=false}={}){
     if(!timerPreferences().sound)return {ok:false,reason:'disabled'};
     if(!isDirectUserGesture(event))return {ok:false,reason:'gesture'};
     if(soundSessionState==='unavailable')return {ok:false,reason:'unavailable'};
     const audio=audioElement();
-    if(!audioSupported())return markUnavailable('unsupported');
+    if(!audioSupported())return markFailure?markUnavailable('unsupported'):{ok:false,reason:'unsupported'};
     resetAudio(audio);
+    const previousVolume=audio.volume;
+    if(quiet){
+      // Keep the element technically audible for iOS/WebKit media unlocking, but
+      // reduce the arm to the least perceptible level and stop it on `playing`.
+      try{audio.volume=.01;}catch{}
+    }
 
-    let timeoutId=null,playingListener=null;
+    let timeoutId=null,playingListener=null,settled=false;
+    const restore=()=>{
+      if(!quiet)return;
+      resetAudio(audio);
+      try{audio.volume=previousVolume;}catch{}
+    };
+    const cleanup=()=>{
+      if(settled)return;
+      settled=true;
+      audio.removeEventListener('playing',playingListener);
+      clearTimeout(timeoutId);
+    };
     const started=new Promise(resolve=>{
-      playingListener=()=>resolve();
+      playingListener=()=>{
+        restore();
+        resolve();
+      };
       audio.addEventListener('playing',playingListener);
     });
     const timedOut=new Promise(resolve=>{
@@ -77,27 +98,42 @@ const workoutTimerFeedback=(()=>{
     });
     let playPromise;
     try{
-      // This call intentionally remains in the trusted click task. iOS may reject
-      // or ignore later playback even after this direct-gesture verification.
+      // This call intentionally remains in the trusted click task. Moving it past
+      // an await breaks iOS/WebKit playback permission.
       playPromise=audio.play();
     }catch(error){
-      audio.removeEventListener('playing',playingListener);
-      clearTimeout(timeoutId);
-      resetAudio(audio);
-      return markUnavailable('rejected',error);
+      cleanup();
+      restore();
+      return markFailure?markUnavailable('rejected',error):{ok:false,reason:'rejected'};
     }
     const playback=Promise.all([Promise.resolve(playPromise),started])
       .then(()=>({ok:true,reason:'success'}),error=>({ok:false,reason:'rejected',error}));
-    const result=await Promise.race([playback,timedOut]);
-    audio.removeEventListener('playing',playingListener);
-    clearTimeout(timeoutId);
-    if(!result.ok){
-      resetAudio(audio);
-      return markUnavailable(result.reason,result.error);
-    }
-    soundSessionState='verified';
-    renderTimerPreferences();
-    return result;
+    return Promise.race([playback,timedOut]).then(result=>{
+      cleanup();
+      if(!result.ok){
+        restore();
+        if(markFailure)return markUnavailable(result.reason,result.error);
+        soundSessionState='unverified';
+        if(result.error)console.warn(`Timer sound arm ${result.reason}`,result.error);
+        return {ok:false,reason:result.reason};
+      }
+      soundSessionState='verified';
+      renderTimerPreferences();
+      return result;
+    });
+  }
+  function armFromGesture(event){
+    if(soundSessionState==='verified')return Promise.resolve({ok:true,reason:'already-verified'});
+    if(soundSessionState==='arming')return Promise.resolve({ok:false,reason:'arming'});
+    soundSessionState='arming';
+    const attempt=attemptFromGesture(event,{quiet:true,markFailure:false});
+    return Promise.resolve(attempt).then(result=>{
+      if(!result.ok&&soundSessionState==='arming')soundSessionState='unverified';
+      return result;
+    });
+  }
+  async function verifyFromGesture(event){
+    return attemptFromGesture(event,{quiet:false,markFailure:true});
   }
   function playVerifiedCompletion(){
     if(soundSessionState!=='verified'||!timerPreferences().sound)return false;
@@ -134,12 +170,12 @@ const workoutTimerFeedback=(()=>{
     lastCompletionKey=completionKey||null;
     let sounded=false,vibrated=false;
     // Completion never verifies or retries audio. It requests one playback only
-    // after a successful trusted-gesture test and never blocks the visual cue.
+    // after successful session arming and never blocks the visual cue.
     if(timerPreferences().sound)sounded=playVerifiedCompletion();
     if(timerPreferences().vibration&&vibrationAvailable()){try{vibrated=navigator.vibrate([150,80,150])!==false;}catch{vibrated=false;}}
     return {sounded,vibrated};
   }
-  return Object.freeze({verifyFromGesture,complete,audioAvailable,vibrationAvailable,getSoundSessionState:()=>soundSessionState});
+  return Object.freeze({armFromGesture,verifyFromGesture,complete,audioAvailable,vibrationAvailable,getSoundSessionState:()=>soundSessionState});
 })();
 window.workoutTimerFeedback=workoutTimerFeedback;
 function saveState(){statePersistenceApi.save(state,active);}
@@ -156,6 +192,7 @@ function volumeForWorkout(w){return (w.exercises||[]).flatMap(e=>e.sets||[]).fil
 function volumeForExercise(e){return (e.sets||[]).filter(s=>!s.warmup).reduce((n,s)=>n+(Number(s.weight)||0)*(Number(s.reps)||0),0);}
 function estimate1RM(w,r){return r>0?Math.round(w*(1+r/30)):0;}
 function displayWorkout(day){return day==='Legs'?'Legs + Core':(DEFAULT_ROUTINES[day]?.label||day);}
+function completionWorkoutLabel(day){return ({Legs:'Legs + Core',FullBody:'Full Body',Cardio:'Conditioning',PilatesPull:'Pilates + Pull',LegsLowImpact:'Legs + Low-Impact Class',PilatesCardioAccessory:'Pilates + Cardio + Accessories',Optional:'Optional Movement'})[day]||day;}
 function renderGreeting(){const h=new Date().getHours();$('greeting').textContent=`Good ${h<12?'morning':h<18?'afternoon':'evening'}, ${PROFILE.name}.`;$('profileSelect').value=PROFILE.id;const today=todaysWorkout();$('nextWorkout').textContent=displayWorkout(today);document.body.classList.toggle('alexa-mode',PROFILE.id==='alexa');document.querySelectorAll('[data-profile-only]').forEach(el=>el.hidden=el.dataset.profileOnly!==PROFILE.id);}
 function renderHero(){const button=$('startWorkout'),note=$('heroNote'),today=todaysWorkout();if(active){button.disabled=false;button.textContent=`Resume ${displayWorkout(active.type)}`;note.textContent=`Workout in progress · ${active.exercises.length} exercises saved`;return;}if(today==='Rest'){button.disabled=true;button.textContent='Recovery day';note.textContent=PROFILE.id==='alexa'?'Rest is part of your plan. Your garden is still safe.':'Recovery supports the work.';return;}button.disabled=false;button.textContent=PROFILE.id==='alexa'?'Begin today’s movement':'Start planned workout';note.textContent=PROFILE.id==='alexa'?'A gentle plan is ready whenever you are.':'Your plan is ready. Tap once and train.';}
 function renderStats(){$('weeklyWorkouts').textContent=state.workouts.filter(w=>new Date(w.completedAt)>=startOfWeek()).length;$('trainingVolume').textContent=`${Math.round(state.workouts.reduce((n,w)=>n+volumeForWorkout(w),0)).toLocaleString('en-US')} lb`;$('prCount').textContent=Object.keys(state.prs||{}).length;$('latestWeight').textContent=state.weights[0]?`${state.weights[0].weight} lb`:'—';}
@@ -165,6 +202,42 @@ function renderLibrary(){renderSelectors();const q=$('exerciseSearch').value.tri
 function lastPerformance(name){for(const w of state.workouts){const e=(w.exercises||[]).find(x=>x.name.toLowerCase()===name.toLowerCase());if(e){const sets=e.sets.filter(s=>s.completed&&!s.warmup);if(sets.length)return {date:w.completedAt,sets};}}return null;}
 function makeExercise(ex){const last=lastPerformance(ex.name),prior=last?last.sets:[],working=prior[0]?Number(prior[0].weight)||0:0,warm=working?Math.round(working*.6/5)*5:0;return {id:ex.id,name:ex.name,muscle:ex.muscle,equipment:ex.equipment,collapsed:true,sets:[{id:uid(),weight:warm,reps:10,warmup:true,completed:false},...Array.from({length:3},(_,i)=>({id:uid(),weight:prior[i]?Number(prior[i].weight)||working:working,reps:prior[i]?Number(prior[i].reps)||'':'',warmup:false,completed:false}))]};}
 function renderActiveSession(scroll=true){if(!active)return;selectedDay=active.type;$('activePanel').classList.remove('hidden');$('cancelWorkout').classList.remove('hidden');$('cancelWorkout').textContent='Cancel';$('activeWorkoutTitle').textContent=displayWorkout(active.type);clearInterval(workoutTicker);workoutTicker=setInterval(renderWorkoutClock,1000);renderWorkoutClock();renderActive();renderLibrary();renderTimerPreferences();if(document.body.dataset.workoutPetState!=='ready')setWorkoutPetState(state.restTimerEndsAt?'attentive':'calm');resumeRestTimer();if(scroll)$('activePanel').scrollIntoView({behavior:'smooth',block:'start'});}
+function renderCompletion(workout){
+  if(!workout)return false;
+  completionReceipt={workoutId:workout.id,workout};
+  const workingSets=(workout.exercises||[]).flatMap(exercise=>exercise.sets||[]).filter(set=>set.completed&&!set.warmup);
+  const type=completionWorkoutLabel(workout.type);
+  $('workoutCompletionTitle').textContent=`${type} complete`;
+  $('completionWorkoutType').textContent=type;
+  $('completionDuration').textContent=fmtTime(workout.durationSeconds||0);
+  $('completionExercises').textContent=String((workout.exercises||[]).length);
+  $('completionWorkingSets').textContent=String(workingSets.length);
+  $('completionVolume').textContent=`${Math.round(volumeForWorkout(workout)).toLocaleString('en-US')} lb`;
+  $('completionPrCount').textContent=String(workout.prs||0);
+  $('completionPrCopy').textContent=workout.prs?`${workout.prs} new PR${workout.prs===1?'':'s'}.`:'';
+  $('completionPrCopy').hidden=!workout.prs;
+  document.body.classList.add('workout-completion-open');
+  document.body.dataset.workoutCompletionPetState=workout.prs?'pr':'complete';
+  $('workoutCompletion').classList.remove('hidden');
+  window.bigGainsViewShell?.showView('today',{instant:true,scroll:false,workout:false});
+  $('completionPetSlot').appendChild($('trainingPetCard'));
+  window.trainingPet?.render(true);
+  requestAnimationFrame(()=>$('workoutCompletionTitle').focus({preventScroll:true}));
+  return true;
+}
+function dismissCompletion(){
+  if(!completionReceipt)return false;
+  completionReceipt=null;
+  document.body.classList.remove('workout-completion-open');
+  delete document.body.dataset.workoutCompletionPetState;
+  $('workoutCompletion').classList.add('hidden');
+  $('trainingPetHome').appendChild($('trainingPetCard'));
+  window.trainingPet?.render(true);
+  window.bigGainsViewShell?.showView('today',{workout:false});
+  $('top').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
+  return true;
+}
+function reviewCompletedWorkout(){if(!completionReceipt)return false;openHistory(completionReceipt.workoutId);return true;}
 const workoutSessionController=(()=>{
   function begin(day){selectedDay=day;active={id:uid(),type:day,startedAt:new Date().toISOString(),exercises:[]};return active;}
   function appendRoutine(day){const before=active.exercises.length;routineFor(day).forEach(id=>{const ex=EXERCISES.find(e=>e.id===id);if(ex&&!active.exercises.some(item=>item.id===ex.id))active.exercises.push(makeExercise(ex));});return active.exercises.length-before;}
@@ -176,7 +249,7 @@ const workoutSessionController=(()=>{
   function loadRoutine(day=selectedDay,{scroll=true}={}){if(!active)return start(day,{loadRoutine:true,scroll});appendRoutine(day);autosave();renderLoaded(scroll);return active;}
   function repairEmpty(session=active,{scroll=false}={}){if(session!==active||!session||!Array.isArray(session.exercises)||session.exercises.length||!DEFAULT_ROUTINES[session.type])return false;const added=appendRoutine(session.type);if(!added)return false;autosave();renderLoaded(scroll);return true;}
   function addExercise(id,{scroll=true}={}){const ex=EXERCISES.find(exercise=>exercise.id===id);if(!ex)return active;const created=!active;if(created)begin(selectedDay);if(active.exercises.some(exercise=>exercise.id===id))return active;active.exercises.push(makeExercise(ex));autosave();if(created)renderActiveSession(scroll);else renderLoaded(scroll);return active;}
-  function complete(){if(!active)return false;const completed=active.exercises.map(e=>({...e,sets:e.sets.filter(s=>s.completed)})).filter(e=>e.sets.length);if(!completed.length)return false;const completedAt=new Date().toISOString(),durationSeconds=Math.floor((Date.now()-new Date(active.startedAt))/1000),workout={...active,completedAt,durationSeconds,exercises:completed};let newPRs=0;completed.forEach(e=>e.sets.filter(s=>!s.warmup).forEach(s=>{const score=estimate1RM(Number(s.weight),Number(s.reps));if(score>((state.prs[e.id]&&state.prs[e.id].estimated1RM)||0)){state.prs[e.id]={exercise:e.name,estimated1RM:score,weight:Number(s.weight),reps:Number(s.reps),date:completedAt};newPRs++;}}));workout.prs=newPRs;state.workouts.unshift(workout);clearRuntime();saveState();$('heroNote').textContent=`Workout saved${newPRs?` · ${newPRs} new PR${newPRs===1?'':'s'}`:''}.`;renderAll();$('top').scrollIntoView({behavior:'smooth'});return true;}
+  function complete(){if(!active)return false;const completed=active.exercises.map(e=>({...e,sets:e.sets.filter(s=>s.completed)})).filter(e=>e.sets.length);if(!completed.length)return false;const completedAt=new Date().toISOString(),durationSeconds=Math.floor((Date.now()-new Date(active.startedAt))/1000),workout={...active,completedAt,durationSeconds,exercises:completed};let newPRs=0;completed.forEach(e=>e.sets.filter(s=>!s.warmup).forEach(s=>{const score=estimate1RM(Number(s.weight),Number(s.reps));if(score>((state.prs[e.id]&&state.prs[e.id].estimated1RM)||0)){state.prs[e.id]={exercise:e.name,estimated1RM:score,weight:Number(s.weight),reps:Number(s.reps),date:completedAt};newPRs++;}}));workout.prs=newPRs;state.workouts.unshift(workout);clearRuntime();saveState();$('heroNote').textContent=`Workout saved${newPRs?` · ${newPRs} new PR${newPRs===1?'':'s'}`:''}.`;renderAll();renderCompletion(workout);return true;}
   function discard(){if(!active)return false;clearRuntime();saveState();renderHero();renderLibrary();$('workoutPanel').scrollIntoView({behavior:'smooth'});return true;}
   return Object.freeze({start,resume,replace,loadRoutine,repairEmpty,addExercise,complete,discard});
 })();
@@ -199,9 +272,9 @@ function runRestTimer(){clearInterval(timerTicker);clearTimerCompletionFallback(
 function renderTimer(){$('timerDisplay').textContent=fmtTime(timerRemaining);}
 function setTimerPresetsOpen(open){$('timerPresets').classList.toggle('hidden',!open);$('timerAdjust').setAttribute('aria-expanded',String(open));}
 function acknowledgeTimerReady(){if(document.body.dataset.workoutPetState==='ready')setWorkoutPetState('calm');}
-function renderTimerPreferences(){const preferences=timerPreferences(),sound=$('timerSoundToggle'),vibration=$('timerVibrationToggle'),testSound=$('timerTestSound'),audioAvailable=workoutTimerFeedback.audioAvailable();if(sound){sound.disabled=!audioAvailable;sound.setAttribute('aria-disabled',String(!audioAvailable));sound.setAttribute('aria-pressed',String(audioAvailable&&preferences.sound));sound.textContent=audioAvailable?`Sound ${preferences.sound?'on':'off'}`:'Sound unavailable';}if(testSound){testSound.hidden=!audioAvailable;testSound.disabled=!preferences.sound||!audioAvailable;}if(vibration){const available=workoutTimerFeedback.vibrationAvailable();vibration.hidden=!available;vibration.disabled=!available;vibration.setAttribute('aria-disabled',String(!available));vibration.setAttribute('aria-pressed',String(available&&preferences.vibration));vibration.textContent=`Vibration ${preferences.vibration?'on':'off'}`;}}
+function renderTimerPreferences(){const preferences=timerPreferences(),sound=$('timerSoundToggle'),vibration=$('timerVibrationToggle'),audioAvailable=workoutTimerFeedback.audioAvailable();if(sound){sound.disabled=!audioAvailable;sound.setAttribute('aria-disabled',String(!audioAvailable));sound.setAttribute('aria-pressed',String(audioAvailable&&preferences.sound));sound.textContent=audioAvailable?`Sound ${preferences.sound?'on':'off'}`:'Sound unavailable';}if(vibration){const available=workoutTimerFeedback.vibrationAvailable();vibration.hidden=!available;vibration.disabled=!available;vibration.setAttribute('aria-disabled',String(!available));vibration.setAttribute('aria-pressed',String(available&&preferences.vibration));vibration.textContent=`Vibration ${preferences.vibration?'on':'off'}`;}}
 function toggleTimerPreference(name){const preferences=timerPreferences();preferences[name]=!preferences[name];saveState();renderTimerPreferences();return preferences[name];}
-function timerSoundResultMessage(result,source){if(result.ok)return source==='toggle'?'Sound on. Test chime played.':'Test sound played.';if(result.reason==='timeout')return 'Sound unavailable this session: playback did not start.';if(result.reason==='rejected')return 'Sound unavailable this session: playback was rejected.';if(result.reason==='gesture')return 'Sound test requires a direct tap or click.';return 'Sound is unavailable for this browser session.';}
+function timerSoundResultMessage(result){if(result.ok)return 'Sound on. Chime confirmed.';if(result.reason==='timeout')return 'Sound unavailable this session: playback did not start.';if(result.reason==='rejected')return 'Sound unavailable this session: playback was rejected.';if(result.reason==='gesture')return 'Sound verification requires a direct tap or click.';return 'Sound is unavailable for this browser session.';}
 function discardWorkout(){return workoutSessionController.discard();}
 function finishWorkout(){return workoutSessionController.complete();}
 function renderHistory(){const box=$('history');if(!state.workouts.length){box.className='history-list empty';box.textContent='Your completed workouts will appear here.';return;}box.className='history-list';box.innerHTML=state.workouts.slice(0,20).map(w=>`<button type="button" class="history-item" data-history-id="${w.id}"><div><strong>${escapeHtml(w.type==='Legs'?'Legs + Core':w.type)}</strong><small>${fmtDate(w.completedAt)} · ${(w.exercises||[]).flatMap(e=>e.sets||[]).length} sets · ${fmtTime(w.durationSeconds||0)}</small><div class="history-open">View full workout →</div></div><div class="history-meta"><strong>${Math.round(volumeForWorkout(w)).toLocaleString('en-US')} lb</strong><small>${(w.exercises||[]).length} exercises${w.prs?` · ${w.prs} PR${w.prs===1?'':'s'}`:''}</small></div></button>`).join('');}
@@ -215,6 +288,10 @@ function resetRoutine(){delete state.customRoutines[routineDraftDay];routineDraf
 function renderWeights(){const box=$('weightHistory');if(!state.weights.length){box.className='mini-list empty';box.textContent='No weigh-ins yet.';return;}box.className='mini-list';box.innerHTML=state.weights.slice(0,5).map(x=>`<div class="weight-row"><strong>${x.weight} lb</strong><small>${fmtDate(x.date)}</small></div>`).join('');}
 function renderAll(){renderGreeting();renderHero();renderStats();renderEquipment();renderLibrary();renderHistory();renderWeights();renderTimerPreferences();if(active)showActive(false);progressApi.afterFullRender({activeWorkout:active});}
 function bind(id,event,handler){const el=$(id);if(el)el.addEventListener(event,handler);}
+document.addEventListener('click',event=>{
+  if(!event.target.closest('#startWorkout,#quickStartSession,#loadRoutine,#addSelectedExercise,[data-add],[data-complete-set],[data-timer-preset],#returnToWorkout'))return;
+  workoutTimerFeedback.armFromGesture(event).catch(error=>console.warn('Timer sound arm failed safely',error));
+},true);
 bind('dayTabs','click',e=>{const b=e.target.closest('[data-day]');if(!b)return;selectedDay=b.dataset.day;$('equipmentFilter').value='all';$('exerciseSearch').value='';renderLibrary();});
 bind('startWorkout','click',()=>{const today=todaysWorkout();if(active)workoutSessionController.resume(true);else if(today!=='Rest')workoutSessionController.start(today,{loadRoutine:true,scroll:true});});
 bind('profileSelect','change',e=>switchProfile(e.target.value));
@@ -244,12 +321,12 @@ bind('finishWorkout','click',()=>workoutSessionController.complete());
 bind('timerAdjust','click',()=>setTimerPresetsOpen($('timerAdjust').getAttribute('aria-expanded')!=='true'));
 bind('timerPresets','click',e=>{const preset=e.target.closest('[data-timer-preset]');if(!preset)return;state.restTimerEndsAt=Date.now()+Number(preset.dataset.timerPreset)*1000;saveState();setTimerPresetsOpen(false);runRestTimer();});
 bind('timerSkip','click',()=>{clearInterval(timerTicker);state.restTimerEndsAt=null;saveState();$('timerCard').classList.add('hidden');setWorkoutPetState('calm');});
-bind('timerSoundToggle','click',async event=>{const enabled=toggleTimerPreference('sound');if(!enabled){setTimerFeedbackStatus('Sound off. Visual feedback stays on.');return;}const result=await workoutTimerFeedback.verifyFromGesture(event);setTimerFeedbackStatus(timerSoundResultMessage(result,'toggle'));});
-bind('timerTestSound','click',async event=>{const result=await workoutTimerFeedback.verifyFromGesture(event);setTimerFeedbackStatus(timerSoundResultMessage(result,'test'));});
+bind('timerSoundToggle','click',async event=>{const enabled=toggleTimerPreference('sound');if(!enabled){setTimerFeedbackStatus('Sound off. Visual feedback stays on.');return;}const result=await workoutTimerFeedback.verifyFromGesture(event);setTimerFeedbackStatus(timerSoundResultMessage(result));});
 bind('timerVibrationToggle','click',()=>{if(workoutTimerFeedback.vibrationAvailable())toggleTimerPreference('vibration');});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&state.restTimerEndsAt&&state.restTimerEndsAt<=Date.now())completeRestTimer(state.restTimerEndsAt);});
 bind('history','click',e=>{const b=e.target.closest('[data-history-id]');if(b)openHistory(b.dataset.historyId);});
 bind('closeHistoryDialog','click',closeHistory);bind('historyDialog','click',e=>{if(e.target===$('historyDialog'))closeHistory();});
+bind('completionDone','click',dismissCompletion);bind('completionReview','click',reviewCompletedWorkout);
 bind('routineEditorList','click',e=>{const b=e.target.closest('button');if(!b)return;const i=Number(b.dataset.index);if(b.dataset.routineMove==='up'&&i>0)[routineDraft[i-1],routineDraft[i]]=[routineDraft[i],routineDraft[i-1]];else if(b.dataset.routineMove==='down'&&i<routineDraft.length-1)[routineDraft[i+1],routineDraft[i]]=[routineDraft[i],routineDraft[i+1]];else if(b.dataset.routineRemove!==undefined)routineDraft.splice(Number(b.dataset.routineRemove),1);renderRoutineEditor();});
 bind('addRoutineExercise','click',()=>{const id=$('routineExerciseSelect').value;if(id&&!routineDraft.includes(id)){routineDraft.push(id);renderRoutineEditor();}});
 bind('saveRoutine','click',saveRoutine);bind('resetRoutine','click',resetRoutine);bind('closeRoutineDialog','click',closeRoutineEditor);bind('routineDialog','click',e=>{if(e.target===$('routineDialog'))closeRoutineEditor();});

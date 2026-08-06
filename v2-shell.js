@@ -46,7 +46,8 @@
 
     document.getElementById('finishWorkout')?.addEventListener('click', () => {
       setTimeout(() => {
-        if (activePanel?.classList.contains('hidden')) showView('today');
+        const completion = document.getElementById('workoutCompletion');
+        if (activePanel?.classList.contains('hidden') && completion?.classList.contains('hidden')) showView('today');
       }, 80);
     });
 
