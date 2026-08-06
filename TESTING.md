@@ -2,7 +2,7 @@
 
 The Playwright harness serves the static PWA from `index.html` without rewriting it, so production scripts execute in their declared order.
 
-The current baseline is 79 passing Chromium tests with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
+The current baseline is 91 passing Chromium tests with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
 
 ## Install
 
@@ -20,7 +20,7 @@ npm test
 npx playwright test --workers=1
 ```
 
-Both commands must pass all 79 tests with no expected failures.
+Both commands must pass all 91 tests with no expected failures.
 
 ## localStorage fixtures
 
@@ -38,6 +38,8 @@ Reusable fixtures live in `tests/fixtures/local-storage.js`:
 Workout-control coverage verifies the production hook order, render-only storage behavior, active-session rendering, collapse and expand, exercise ordering and removal, set editing, and completion-driven advancement.
 
 V42 coverage verifies the real delegated chevron path, manual active-card collapse, preserved focus and edits, add-set inheritance/fresh IDs/single insertion/reload persistence, local-time date grouping, multiple workouts per day, empty days, month controls, today/selected accessibility state, shared history detail, return-bar preservation, profile isolation, and offline calendar loading.
+
+V44 coverage in `tests/retrospective-workout.spec.js` verifies past/today eligibility and future exclusion, account-owned weekday defaults and rest-day blanks, routine/blank paths, exercise and set editing/reordering/removal, working-set validation, warm-up exclusion, optional local completion time and duration near UTC midnight, fresh IDs, notes and Entered later history reuse, PR evaluation on/off, volume/progress/calendar/history/workout-count updates, double-click exact-once save, cancel/reload safety, live-workout and return-bar preservation, Jorge/Alexa/synthetic-account isolation, backup normalization, and offline save. Existing shell and offline tests verify the module and stylesheet load once in the v44 app shell.
 
 Notes coverage verifies the explicit notes hook API, active-session notes rendering and persistence, rest-timer start/resume/expiry messaging, history opening, and saved session-note rendering.
 

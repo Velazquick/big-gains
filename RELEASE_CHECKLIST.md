@@ -69,6 +69,7 @@ For any production app-shell change:
 - [ ] On timer-feedback changes, verify unsupported browsers hide vibration without overwriting the saved preference; verify automatic arming occurs inside a trusted workout gesture, failed arms retain the preference and retry safely, turning Sound on audibly confirms or reports rejection/timeout, completion chimes once only after successful arming, and the visible READY fallback always works. Remember that installed iOS PWAs may ignore the temporary one-percent arm volume, omit vibration, or suppress the local audio asset because of silent mode, lifecycle state, or OS routing.
 - [ ] On workout-completion changes, verify persistence precedes the receipt, warmups are excluded from working-set count and volume, the active session/timer/focus/pet rest state clear once, Done and reload do not duplicate workouts or PRs, Review reuses history detail, and sync catch-up still publishes once after save.
 - [ ] On calendar changes, verify local-time grouping near midnight, multiple workouts on one date, profile isolation, session-only selection, existing history-detail reuse, active-workout return navigation, and offline shell availability.
+- [ ] On retrospective logging changes, verify future dates remain unavailable; planned/rest defaults are account-driven; drafts never mutate live sessions or timers; save is transactional and exact-once; warmups stay out of working volume; PR evaluation honors its toggle; local completion timestamps remain on the selected day; cancel/reload never save; and optional metadata survives backup and snapshot output.
 - [ ] Preserve the current legacy policy: import only valid `big-gains-v1` weights when Jorge has no current state, do not reconstruct undocumented workouts, and leave the original payload byte-for-byte untouched.
 
 ## Backup and sync compatibility
@@ -96,3 +97,11 @@ For any production app-shell change:
 - Run the synthetic third-account isolation and cross-account import tests.
 - Confirm no authentication, backend SDK, credentials, network account calls, cloud sync, or friend-facing account UI was added.
 - Run `npm test` and `npx playwright test --workers=1` with no skips or expected failures.
+
+# v44 Calendar retrospective workouts
+
+- Confirm `retrospective-workout.js` and its stylesheet appear once in the manifest and offline cache under `v44-calendar-retrospective-workouts`.
+- Confirm an active live workout, return bar, rest deadline, pet state, timer preferences, and iOS WAV audio behavior are unchanged while a retrospective draft opens, cancels, reloads, or saves.
+- Confirm Jorge, Alexa, and a synthetic third account retain isolated version-5 state, and invalid `entryMethod` values normalize away.
+- Confirm Calendar, History detail, Progress, workout counts, working-set volume, backup/import, and `big-gains.snapshot.v1` consume the saved completed workout through their existing paths.
+- Run `npm test` and `npx playwright test --workers=1` with all 91 tests passing and no skips or expected failures.

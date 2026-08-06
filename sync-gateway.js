@@ -405,6 +405,7 @@
 
     const finishButton = document.getElementById('finishWorkout');
     finishButton?.addEventListener('click', () => scheduleCatchUp(450));
+    document.addEventListener('big-gains-workout-saved', () => scheduleCatchUp(450));
 
     window.addEventListener('online', () => scheduleCatchUp(250));
     window.addEventListener('pageshow', () => scheduleCatchUp(800));
