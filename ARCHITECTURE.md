@@ -160,3 +160,12 @@ npx playwright test --workers=1
 The suite covers startup and explicit APIs, workout lifecycle and controls, notes, progress, routines, profile shells, storage normalization and isolation, backups and imports, legacy migration, cache installation and replacement, and offline reload. `.github/workflows/browser-tests.yml` runs on pushes, pull requests, and manual dispatch with Node.js 22, installs Chromium and Linux dependencies, runs `npm test` with one CI worker, and retains the HTML report artifact for seven days.
 
 The automated target is Chromium. See [TESTING.md](TESTING.md) for the exact coverage boundaries.
+# Phase 4A account foundation
+
+`account-context.js` is the single identity and ownership boundary. An account descriptor contains a stable `accountId`, the persisted `profileId`, display name, storage namespace/key, and `profileConfigRef`. The production registry contains only Jorge and Alexa. `profiles.js` resolves presentation/training configuration from the active account, while `state-persistence.js` owns state normalization, migration, backup validation, and reads/writes for that account.
+
+The deployed compatibility contract is unchanged: Jorge uses `big-gains-v2`, Alexa uses `big-gains-alexa-v1`, active selection uses `big-gains-active-profile` with `jorge`/`alexa` values, and calendar session state retains `big-gains-calendar-date-jorge` / `big-gains-calendar-date-alexa`. Resolving an account is read-only. The registry can accept another descriptor without changing persistence internals or workout schema version 5.
+
+Profile-specific behavior intentionally remains configuration-driven: weekly plans, goals, theme, wellness copy/presentation, exercise-library breadth, and the rest-day fallback workout. Alexa-only garden markup is still selected by `data-profile-only` because it is presentation, not ownership. Existing sync snapshot paths and profile payloads remain profile-compatible by design.
+
+GitHub is source control and an optional snapshot-backup destination. It is not the future user database.

@@ -1,9 +1,9 @@
 (() => {
+  const accountRegistry = window.bigGainsAccounts.registry;
   const STORAGE_KEYS = Object.freeze({
-    activeProfile: 'big-gains-active-profile',
-    alexa: 'big-gains-alexa-v1',
-    jorge: 'big-gains-v2',
-    legacy: 'big-gains-v1'
+    activeProfile: window.bigGainsAccounts.activeSelectionKey,
+    ...Object.fromEntries(accountRegistry.accounts.map(account => [account.profileId, account.storageKey])),
+    legacy: window.bigGainsAccounts.legacyStateKey
   });
 
   const isRecord = value => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -17,19 +17,21 @@
   const write = (key, value) => localStorage.setItem(key, value);
 
   function storageKeyForProfile(profileId) {
-    return STORAGE_KEYS[profileId] || null;
+    return accountRegistry.resolve(profileId)?.storageKey || null;
   }
 
   function loadActiveProfileId() {
-    return read(STORAGE_KEYS.activeProfile) === 'alexa' ? 'alexa' : 'jorge';
+    return accountRegistry.loadActive().profileId;
   }
 
   function saveActiveProfileId(profileId) {
-    write(STORAGE_KEYS.activeProfile, profileId);
+    return accountRegistry.saveActive(profileId);
   }
 
-  function create({ profile, profileConfig, validWorkoutTypes, createId, slug }) {
-    const storageKey = storageKeyForProfile(profile.id);
+  function create({ account, profile, profileConfig, validWorkoutTypes, createId, slug }) {
+    const ownerAccount = account || accountRegistry.resolve(profile.id);
+    if (!ownerAccount) throw new Error(`Unknown account for profile: ${profile.id}`);
+    const storageKey = ownerAccount.storageKey;
     const workoutTypes = new Set(validWorkoutTypes);
 
     function blankState(profileId = profile.id) {
@@ -195,8 +197,8 @@
       try {
         const saved = JSON.parse(read(storageKey));
         if (saved) return normalizeState(saved);
-        if (profile.id === 'jorge') {
-          const legacy = JSON.parse(read(STORAGE_KEYS.legacy));
+        if (ownerAccount.legacyStateKey) {
+          const legacy = JSON.parse(read(ownerAccount.legacyStateKey));
           if (legacy) {
             const migrated = migrateLegacyV1(legacy);
             write(storageKey, JSON.stringify(migrated));
@@ -239,6 +241,8 @@
 
     return Object.freeze({
       profileId: profile.id,
+      accountId: ownerAccount.accountId,
+      account: ownerAccount,
       storageKey,
       blankState,
       normalizeState,

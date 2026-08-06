@@ -3,6 +3,7 @@ import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
 
 const productionScriptOrder = [
+  'account-context.js',
   'state-persistence.js',
   'profiles.js',
   'workout-controls.js',
