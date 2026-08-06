@@ -35,6 +35,8 @@ npx playwright test --workers=1
 
 ## Asset-manifest release update
 
+Phase 3 Sprint 1 / issue #16 reference: release `v40-phase3-workout-hierarchy` contains the timer auto-dismiss and compact presets plus the stronger exercise hierarchy. Keep issue #16 open until this branch is merged/deployed; the implementation and regression coverage are complete on the feature branch.
+
 For any production app-shell change:
 
 - [ ] Update the `release` value in `asset-manifest.js` to a new, unique, descriptive release ID.

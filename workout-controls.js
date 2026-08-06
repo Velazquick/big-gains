@@ -33,6 +33,9 @@
     const volume = completed.reduce((total, set) => total + Number(set.weight || 0) * Number(set.reps || 0), 0);
     return {
       complete: working.length > 0 && completed.length === working.length,
+      completed: completed.length,
+      total: working.length,
+      progress: working.length ? `Set ${Math.min(completed.length + 1, working.length)} of ${working.length}` : 'No working sets',
       status: working.length ? `${completed.length}/${working.length} working sets` : 'No working sets',
       best: best ? `Best ${Number(best.weight)} × ${Number(best.reps)}` : 'Tap to open and start',
       volume: `${Math.round(volume).toLocaleString('en-US')} lb volume`
@@ -43,18 +46,32 @@
     return exercise.collapsed !== false;
   }
 
+  function incompleteWorking(exercise) {
+    return (exercise?.sets || []).filter(set => !set.warmup).some(set => !set.completed);
+  }
+
+  function resolveActiveIndex(activeWorkout) {
+    const preferred = activeWorkout.exercises.findIndex(exercise => exercise.id === activeWorkout.focusedExerciseId && incompleteWorking(exercise));
+    const index = preferred >= 0 ? preferred : activeWorkout.exercises.findIndex(incompleteWorking);
+    activeWorkout.focusedExerciseId = index >= 0 ? activeWorkout.exercises[index].id : null;
+    if (index >= 0) activeWorkout.exercises[index].collapsed = false;
+    return index;
+  }
+
   function openOnly(activeWorkout, index) {
     if (!activeWorkout?.exercises?.[index]) return false;
     activeWorkout.exercises.forEach((exercise, exerciseIndex) => {
       exercise.collapsed = exerciseIndex !== index;
     });
+    activeWorkout.focusedExerciseId = activeWorkout.exercises[index].id;
     return true;
   }
 
   function toggleExercise(activeWorkout, index) {
     const exercise = activeWorkout?.exercises?.[index];
     if (!exercise) return false;
-    if (isCollapsed(exercise)) openOnly(activeWorkout, index);
+    if (!incompleteWorking(exercise)) exercise.collapsed = !isCollapsed(exercise);
+    else if (isCollapsed(exercise)) openOnly(activeWorkout, index);
     else exercise.collapsed = true;
     return true;
   }
@@ -74,11 +91,8 @@
     const working = (exercise.sets || []).filter(set => !set.warmup);
     if (!working.length || !working.every(set => set.completed)) return { advanced: false, nextIndex: -1 };
     exercise.collapsed = true;
-    const nextIndex = activeWorkout.exercises.findIndex((candidate, index) => {
-      if (index <= exerciseIndex) return false;
-      return (candidate.sets || []).filter(set => !set.warmup).some(set => !set.completed);
-    });
-    if (nextIndex >= 0) openOnly(activeWorkout, nextIndex);
+    activeWorkout.focusedExerciseId = null;
+    const nextIndex = resolveActiveIndex(activeWorkout);
     return { advanced: true, nextIndex };
   }
 
@@ -97,11 +111,14 @@
       return;
     }
 
+    const activeIndex = resolveActiveIndex(activeWorkout);
+
     box.innerHTML = activeWorkout.exercises.map((exercise, exerciseIndex) => {
       const last = lastPerformance(exercise.name);
-      const previous = last ? last.sets.map(set => `${set.weight} × ${set.reps}`).join(' · ') : 'First time logged. Establish the baseline.';
+      const previous = last ? last.sets.map(set => `${set.weight} × ${set.reps}`).join(' · ') : 'First time logged';
       const summary = summaryFor(exercise, estimate1RM);
       const collapsed = isCollapsed(exercise);
+      const isActive = exerciseIndex === activeIndex;
       const firstIncomplete = exercise.sets.findIndex(set => !set.completed);
       const currentIndex = firstIncomplete >= 0 ? firstIncomplete : Math.max(0, exercise.sets.length - 1);
 
@@ -127,24 +144,24 @@
       }).join('');
 
       return `
-        <article class="active-exercise ${collapsed ? 'is-collapsed' : ''} ${summary.complete ? 'is-complete' : ''}">
+        <article class="active-exercise ${collapsed ? 'is-collapsed' : ''} ${summary.complete ? 'is-complete' : ''} ${isActive ? 'is-active' : 'is-upcoming'}" aria-current="${isActive ? 'step' : 'false'}">
           <div class="exercise-head" data-exercise-head="${exerciseIndex}">
             <div>
               <span class="exercise-muscle">${escapeHtml(exercise.muscle)}</span>
               <h3>${escapeHtml(exercise.name)}</h3>
-              <p>${escapeHtml(exercise.equipment)} · ${escapeHtml(summary.status)}</p>
+              <p>${escapeHtml(exercise.equipment)} · ${escapeHtml(summary.complete ? `${summary.completed} of ${summary.total} complete` : summary.progress)}</p>
             </div>
             <div class="exercise-head-actions">
               <div class="exercise-order">
                 <button type="button" data-move-exercise="up" data-index="${exerciseIndex}" ${exerciseIndex === 0 ? 'disabled' : ''} aria-label="Move ${escapeHtml(exercise.name)} up">↑</button>
                 <button type="button" data-move-exercise="down" data-index="${exerciseIndex}" ${exerciseIndex === activeWorkout.exercises.length - 1 ? 'disabled' : ''} aria-label="Move ${escapeHtml(exercise.name)} down">↓</button>
-                <button type="button" class="exercise-toggle" data-toggle-exercise="${exerciseIndex}" aria-label="${collapsed ? 'Expand' : 'Collapse'} ${escapeHtml(exercise.name)}">${collapsed ? '+' : '−'}</button>
+                <button type="button" class="exercise-toggle" data-toggle-exercise="${exerciseIndex}" aria-expanded="${!collapsed}" aria-label="${collapsed ? 'Expand' : 'Collapse'} ${escapeHtml(exercise.name)}">${collapsed ? '+' : '−'}</button>
               </div>
               <button type="button" class="remove-exercise" data-remove-exercise="${exerciseIndex}" aria-label="Remove ${escapeHtml(exercise.name)}">✕</button>
             </div>
           </div>
-          <div class="active-exercise-body">
-            <div class="exercise-context"><span>Previous performance</span><strong>${escapeHtml(previous)}</strong></div>
+          <div class="active-exercise-body" id="exercise-body-${exerciseIndex}">
+            <div class="exercise-context"><span>Last</span><strong>${escapeHtml(previous)}</strong></div>
             <div class="set-grid">${sets}</div>
             <button type="button" class="add-set" data-add-set="${exerciseIndex}">＋ Add set</button>
           </div>

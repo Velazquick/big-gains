@@ -45,6 +45,8 @@ Shell coverage verifies deterministic production script order, idempotent single
 
 Workout Mode coverage verifies start/resume entry, session-safe explicit exit, elapsed return-bar behavior, Library add/return through `workoutSessionController`, calm/rest/ready/PR pet states, and independent per-profile sound and vibration preferences. Timer-feedback cases cover hidden unsupported-vibration UI, supported vibration calls, direct-click `HTMLAudioElement` playback from both Sound and Test Sound, rejected `play()`, playback-start timeout, session-only failure state, exactly one completion playback after verification, no completion playback after failure, one persistent audio element, listener cleanup, the accessible READY fallback, and duplicate feedback prevention.
 
+Phase 3 Sprint 1 coverage in `tests/phase3-workout-hierarchy.spec.js` verifies the three-second READY hold and dismissal, background-return deduplication, reduced motion, hidden preset tray, absolute preset deadlines, active/upcoming/completed card states, honest prior performance, live set progress, manual focus/review, automatic fallback, pet-ready persistence, and session-data preservation. This implements the regression reference for issue #16 without changing the iOS audio fixture or schema version 5.
+
 ## Cache and update coverage
 
 Offline coverage verifies a complete first install, deterministic manifest revisions, unique core assets, migration from the previous Big Gains cache, preservation of unrelated origin caches, awaited precache and runtime writes, visible cache-write failures, ordinary offline reload, active-session reload directly into Workout Mode, and offline loading of the repository-owned WAV chime.

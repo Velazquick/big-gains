@@ -117,7 +117,7 @@
         </section>
         <div class="train-empty"><strong>No active workout.</strong><span>Start today's plan or build one from Library.</span></div>
         <section class="panel timer-card hidden" id="timerCard" aria-live="polite">
-          <div><span class="label">Rest timer</span><strong id="timerDisplay">2:30</strong><p id="timerNext">Recover. Your next set is waiting.</p></div>
+          <div><span class="label">Rest timer</span><button id="timerAdjust" class="timer-duration" type="button" aria-expanded="false" aria-controls="timerPresets" aria-label="Adjust rest timer duration"><strong id="timerDisplay">2:30</strong><span>Adjust</span></button><p id="timerNext">Recover. Your next set is waiting.</p></div>
           <div class="timer-control-stack">
             <div class="timer-preferences" aria-label="Timer feedback">
               <button id="timerSoundToggle" class="ghost compact" type="button" aria-label="Timer completion sound" aria-pressed="true">Sound on</button>
@@ -126,7 +126,8 @@
               <audio id="timerCompletionAudio" src="assets/timer-ready.wav" preload="auto" aria-hidden="true" hidden></audio>
             </div>
             <div id="timerFeedbackStatus" class="timer-feedback-status" role="status" aria-live="polite"></div>
-            <div class="timer-actions"><button id="timerMinus" class="ghost compact" type="button">− 15s</button><button id="timerSkip" class="secondary compact" type="button">Skip</button><button id="timerPlus" class="ghost compact" type="button">+ 15s</button></div>
+            <div id="timerPresets" class="timer-presets hidden" aria-label="Rest timer presets"><button type="button" data-timer-preset="30">0:30</button><button type="button" data-timer-preset="60">1:00</button><button type="button" data-timer-preset="90">1:30</button><button type="button" data-timer-preset="120">2:00</button><button type="button" data-timer-preset="180">3:00</button></div>
+            <div class="timer-actions"><button id="timerSkip" class="secondary compact" type="button">Skip</button></div>
           </div>
         </section>
       </section>
