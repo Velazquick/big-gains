@@ -62,3 +62,35 @@ test('renders completion state and advances to the next exercise', async ({ page
   expect(stored.activeWorkout.exercises[0].sets.filter(set => !set.warmup).every(set => set.completed)).toBe(true);
   expect(stored.activeWorkout.exercises.map(exercise => exercise.collapsed)).toEqual([true, false]);
 });
+
+test('chevron collapse respects a manual active-card choice without losing focus or edits', async ({ page }) => {
+  const card = page.locator('#activeExercises .active-exercise').first();
+  const toggle = page.getByRole('button', { name: 'Collapse Seated Machine Chest Press' });
+  await expect(toggle).toHaveAttribute('aria-controls', 'exercise-body-0');
+  await page.locator('input[data-field="weight"][data-ei="0"][data-si="1"]').fill('125');
+  await toggle.click();
+  await expect(card).toHaveClass(/is-collapsed/);
+  await expect(page.getByRole('button', { name: 'Expand Seated Machine Chest Press' })).toHaveAttribute('aria-expanded', 'false');
+  const stored = await jorgeState(page);
+  expect(stored.activeWorkout.focusedExerciseId).toBe('seated-machine-chest-press');
+  expect(stored.activeWorkout.exercises[0].sets[1].weight).toBe(125);
+});
+
+test('Add set inherits the latest working values once, persists, and updates progress', async ({ page }) => {
+  const add = page.getByRole('button', { name: '+ Add set' }).first();
+  await expect(add).toBeVisible();
+  await add.click();
+  let stored = await jorgeState(page);
+  const working = stored.activeWorkout.exercises[0].sets.filter(set => !set.warmup);
+  expect(working).toHaveLength(4);
+  expect(working.at(-1)).toMatchObject({ weight: 100, reps: 8, warmup: false, completed: false });
+  expect(new Set(working.map(set => set.id)).size).toBe(4);
+  await expect(page.getByText('Set 1 of 4').first()).toBeVisible();
+  await page.reload();
+  stored = await jorgeState(page);
+  expect(stored.activeWorkout.exercises[0].sets.filter(set => !set.warmup)).toHaveLength(4);
+  for (let set = 1; set <= 4; set += 1) await page.getByRole('button', { name: `Complete Set ${set} of 4` }).click();
+  await page.locator('#finishWorkout').click();
+  stored = await jorgeState(page);
+  expect(stored.workouts[0].exercises[0].sets.filter(set => !set.warmup)).toHaveLength(4);
+});

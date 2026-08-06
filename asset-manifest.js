@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v41-phase3-completion-experience';
+  const release = 'v42-training-calendar-controls';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];
@@ -16,7 +16,8 @@
     './moss-cards-v24.css',
     './alexa-contrast-v22.css',
     './session-selector-v26.css',
-    './sync-gateway.css'
+    './sync-gateway.css',
+    './training-calendar.css'
   ];
   const scripts = [
     './state-persistence.js',

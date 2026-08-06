@@ -144,6 +144,17 @@
         </section>
       </section>
 
+      <section class="view" id="viewCalendar">
+        <div class="v2-page-head"><div><span class="label">Calendar</span><h2>Training, by day.</h2><p>A quiet record of the work already done.</p></div></div>
+        <section class="panel calendar-panel" aria-labelledby="calendarMonthHeading">
+          <div class="calendar-toolbar"><button id="calendarPrevious" class="ghost compact" type="button" aria-label="Previous month">←</button><h3 id="calendarMonthHeading" aria-live="polite"></h3><button id="calendarNext" class="ghost compact" type="button" aria-label="Next month">→</button></div>
+          <button id="calendarToday" class="secondary compact" type="button">Current month</button>
+          <div class="calendar-weekdays" aria-hidden="true"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
+          <div id="trainingCalendar" class="training-calendar" role="grid" aria-labelledby="calendarMonthHeading"></div>
+        </section>
+        <section class="panel calendar-day-panel" aria-labelledby="calendarDayHeading"><div class="section-heading"><div><span class="label">Selected day</span><h2 id="calendarDayHeading">Today</h2></div></div><div id="calendarDayWorkouts"></div></section>
+      </section>
+
       <section class="view" id="viewLibrary">
         <div class="v2-page-head"><div><span class="label">Library</span><h2>Build the work.</h2><p>Choose routines, edit your lineup, or find a movement.</p></div></div>
         <section class="panel garden-panel" id="gardenPanel" data-profile-only="alexa" hidden></section>
@@ -190,6 +201,7 @@
     <nav class="bottom-nav" aria-label="Primary navigation">
       <button class="active" data-view="today" type="button">Today</button>
       <button data-view="train" type="button">Train</button>
+      <button data-view="calendar" type="button">Calendar</button>
       <button data-view="progress" type="button">Progress</button>
       <button data-view="library" type="button">Library</button>
     </nav>

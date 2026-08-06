@@ -6,7 +6,6 @@ test('completes a set, starts rest, and finishes the workout', async ({ page }) 
   await installLocalStorageFixture(page, 'activeWorkoutWithExercises');
   await openApp(page);
 
-  await page.locator('[data-toggle-exercise="0"]').click();
   await page.getByRole('button', { name: 'Complete Set 1 of 3' }).click();
 
   await expect(page.locator('#timerCard')).not.toHaveClass(/hidden/);
@@ -33,7 +32,6 @@ test('discards an active workout only after the two-step confirmation', async ({
   await installLocalStorageFixture(page, 'activeWorkoutWithExercises');
   await openApp(page);
 
-  await page.locator('[data-toggle-exercise="0"]').click();
   await page.getByRole('button', { name: 'Complete Set 1 of 3' }).click();
   expect((await jorgeState(page)).restTimerEndsAt).toBeGreaterThan(Date.now());
 

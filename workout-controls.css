@@ -35,6 +35,8 @@
 .set-line.completed .stepper input{height:38px;font-size:1rem;background:rgba(216,255,62,.025);border-color:rgba(216,255,62,.12)}
 .set-line.completed .set-done{height:38px}
 .add-set{display:inline-flex;align-items:center;gap:7px;margin-top:12px;padding:9px 12px;border:1px dashed rgba(216,255,62,.24);border-radius:12px;background:rgba(216,255,62,.025);color:var(--accent)}
+.exercise-toggle{min-width:48px!important;min-height:48px!important;touch-action:manipulation}.exercise-toggle-chevron{display:block;font-size:1.35rem;line-height:1;transform:rotate(180deg);transition:transform .16s ease}.exercise-toggle[aria-expanded="true"] .exercise-toggle-chevron{transform:rotate(0)}
+@media(prefers-reduced-motion:reduce){.exercise-toggle-chevron{transition:none}}
 
 @media(max-width:720px){
   .set-line{grid-template-columns:32px minmax(0,1fr) 46px;padding:10px 9px}

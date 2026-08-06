@@ -6,13 +6,15 @@ Timer completion always uses the visual and accessible READY cue as its primary 
 
 Finishing a workout saves it first, clears the live session once, and then shows a focused, session-only completion summary with duration, completed exercises and working sets, working-set volume, and PR count. Done returns to Today; Review workout reuses the existing history detail.
 
+Expanded exercise cards use an accessible chevron that can keep even the focused exercise manually collapsed until the user reopens it or automatic completion advances focus. “+ Add set” appends one working set seeded from the latest valid working-set values. The Calendar groups completed history by the browser's local calendar date and opens the same workout detail used by Progress; its month and date selection are session-only.
+
 ## Project documentation
 
 - [Architecture](ARCHITECTURE.md) — production load order, module boundaries, state and workout lifecycles, profile isolation, backup and sync behavior, offline assets, and CI
 - [Release checklist](RELEASE_CHECKLIST.md) — the required checks for production, storage, backup, and service-worker changes
 - [Browser testing](TESTING.md) — local commands, fixtures, coverage, and known limits
 
-The stabilized browser-test baseline is 73 passing tests in Chromium with no expected failures.
+The stabilized browser-test baseline is 79 passing tests in Chromium with no expected failures.
 
 ## Storage compatibility
 
