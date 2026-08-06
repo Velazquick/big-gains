@@ -2,7 +2,10 @@ import { expect, test } from '@playwright/test';
 import { activeWorkout, blankState, completedWorkout, installLocalStorageFixture, STORAGE_KEYS } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
 
+test.use({ timezoneId: 'America/New_York' });
+
 async function seedCalendar(page, { active = null, alexa = false } = {}) {
+  // These timestamps fall on different UTC dates but the same local date in New York.
   const first = completedWorkout({ id: 'late-workout', completedAt: '2026-08-05T03:30:00.000Z', durationSeconds: 1800, prs: 2 });
   const second = completedWorkout({ id: 'second-workout', type: 'Pull', completedAt: '2026-08-04T23:15:00.000Z', durationSeconds: 2400, prs: 0 });
   await page.addInitScript(({ key, alexaKey, state, alexaState }) => {
@@ -34,10 +37,11 @@ test('calendar navigates months, marks today, handles empty days, and remembers 
 test('selected-day summaries are accurate and reuse history detail', async ({ page }) => {
   await seedCalendar(page); await openApp(page); await page.locator('.bottom-nav [data-view="calendar"]').click();
   await page.locator('[data-calendar-date="2026-08-04"]').click();
-  await expect(page.locator('#calendarDayWorkouts')).toContainText('30:00');
-  await expect(page.locator('#calendarDayWorkouts')).toContainText('1 exercises · 1 working sets');
-  await expect(page.locator('#calendarDayWorkouts')).toContainText('2 PRs');
-  await page.locator('#calendarDayWorkouts [data-history-id="late-workout"]').click();
+  const lateWorkout = page.locator('#calendarDayWorkouts [data-history-id="late-workout"]');
+  await expect(lateWorkout).toContainText('30:00');
+  await expect(lateWorkout).toContainText('1 exercises · 1 working sets');
+  await expect(lateWorkout).toContainText('2 PRs');
+  await lateWorkout.click();
   await expect(page.locator('#historyDialog')).toBeVisible();
   await expect(page.locator('#historyDialogContent .history-exercise')).toHaveCount(1);
 });
