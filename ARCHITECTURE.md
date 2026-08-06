@@ -90,7 +90,7 @@ When Jorge has no current state, the persistence layer imports only valid legacy
 
 ## Shell initialization and UI hooks
 
-`app.js` initializes notes and progress, calls `renderAll()`, and then `shell-init.js` performs the one-time shell pass.
+`app.js` initializes notes, progress, and the retrospective editor, calls `renderAll()`, and then `shell-init.js` performs the one-time shell pass.
 
 - `bigGainsWorkoutMode` owns focused-session presentation, safe explicit exit, Library departure, and the workout-in-progress return path.
 - `bigGainsViewShell` owns the Today/Train/Progress/Library view and session-scoped last-view memory. Finish leaves the new completion screen in control; Done explicitly returns to Today.
@@ -111,11 +111,15 @@ The notes and progress features attach through explicit app-owned hooks:
 
 ## Asset and service-worker lifecycle
 
-`asset-manifest.js` is the single asset inventory. Release `v42-training-calendar-controls` adds the training calendar and clarified workout controls while retaining `assets/timer-ready.wav` unchanged in the deterministic precache. The manifest applies the release query parameter to every production CSS and application script, rejects duplicate core assets, and supplies the same immutable manifest to the page loader and service worker. `index.html`, the loader, manifest, service-worker core, web manifest, icon, local chime, and all revisioned CSS and scripts form the precached app shell.
+`asset-manifest.js` is the single asset inventory. Release `v44-calendar-retrospective-workouts` adds the retrospective editor assets while retaining `assets/timer-ready.wav` unchanged in the deterministic precache. The manifest applies the release query parameter to every production CSS and application script, rejects duplicate core assets, and supplies the same immutable manifest to the page loader and service worker. `index.html`, the loader, manifest, service-worker core, web manifest, icon, local chime, and all revisioned CSS and scripts form the precached app shell.
 
 Workout-card focus is live-session metadata, not schema migration. `focusedExerciseId` prefers the last interacted exercise while it has incomplete working sets, then falls back to the first incomplete exercise. A manual collapse is authoritative and does not clear focus or session data; automatic advancement opens the next incomplete exercise. Upcoming cards remain collapsed and subdued, while completed cards recede but can be expanded for review. Added sets are ordinary incomplete working sets with fresh IDs and values copied only from the latest valid working set.
 
 Calendar month/date selection lives only in `sessionStorage`, namespaced by profile. Completed workouts remain the sole data source. Local `Date` components—not UTC string slicing—form grouping keys, so the calendar follows the browser's local timezone. Calendar workout buttons call the existing history-detail renderer and add no new saved or synchronized fields.
+
+`retrospective-workout.js` owns one in-memory draft and never reads or writes `activeWorkout`, rest timers, Workout Mode, pet state, or timer feedback. The selected local date is parsed into local year/month/day components; optional time is applied with the local `Date` constructor and checked against the original local date key before save. Empty time defaults to local noon for past dates and the current local time for today. Save filters to performed sets, requires a valid completed working set, prepares PR changes on a copied map, then writes one normal completed workout and the PR map through the account-bound persistence API. A failed persistence write restores the previous arrays/maps and leaves the draft open. Successful save closes without the live completion receipt and renders the selected Calendar day.
+
+Retrospective exercise and set records receive fresh IDs; `definitionId` retains the canonical exercise identity for PR lookup while name-based Progress compatibility remains intact. `entryMethod: "retrospective"` is optional, normalized only for that recognized value, preserved by version-5 backups and the existing snapshot payload, and rendered as restrained “Entered later” text by Calendar and the shared History detail. Older workouts remain unchanged.
 
 `app.js` registers `service-worker.js` on window load with `updateViaCache: 'none'`. The worker imports the unrevisioned asset manifest and service-worker core.
 
@@ -140,7 +144,7 @@ Sync is outbound snapshot publishing, not two-way state synchronization.
 - `sync-gateway.js` owns its separate `big-gains-sync-gateway-v1` local-storage key for the fine-grained GitHub token, last sync time, and latest published workout ID per profile.
 - A token is tested against `Velazquick/firstcut-validator` and requires Contents read/write access. It remains on the device and is not included in a snapshot.
 - Each profile publishes to `big-gains-data` at `big-gains/profiles/<profileId>/snapshot.json` through the GitHub Contents API.
-- Snapshot schema `big-gains.snapshot.v1` includes summary data, up to 120 completed workouts, up to 200 weights, and all PRs. Active workouts, rest timers, custom routines, exercise preferences, timer feedback preferences, and the token are excluded.
+- Snapshot schema `big-gains.snapshot.v1` includes summary data, up to 120 completed workouts (including optional retrospective metadata), up to 200 weights, and all PRs. Active workouts, retrospective drafts, rest timers, custom routines, exercise preferences, timer feedback preferences, and the token are excluded.
 - Publishing occurs on connect or manual request and catches up after workout completion, reconnection, page show, or return to a visible tab when the latest workout ID differs. The completion receipt is shown only after the local save and does not delay or invoke a second publication path. One 409 conflict is retried with a refreshed file SHA.
 - Forgetting the token clears the local credential but does not delete an existing remote snapshot. The app does not read snapshots back, merge remote changes, or sync live sets.
 

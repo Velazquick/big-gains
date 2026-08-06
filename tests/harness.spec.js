@@ -9,6 +9,7 @@ const productionScriptOrder = [
   'workout-controls.js',
   'notes.js',
   'progress.js',
+  'retrospective-workout.js',
   'app.js',
   'workout-mode.js',
   'v2-shell.js',

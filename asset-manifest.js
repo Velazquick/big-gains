@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v43-phase4-account-foundation';
+  const release = 'v44-calendar-retrospective-workouts';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];
@@ -17,7 +17,8 @@
     './alexa-contrast-v22.css',
     './session-selector-v26.css',
     './sync-gateway.css',
-    './training-calendar.css'
+    './training-calendar.css',
+    './retrospective-workout.css'
   ];
   const scripts = [
     './account-context.js',
@@ -26,6 +27,7 @@
     './workout-controls.js',
     './notes.js',
     './progress.js',
+    './retrospective-workout.js',
     './app.js',
     './workout-mode.js',
     './v2-shell.js',

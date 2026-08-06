@@ -1,0 +1,36 @@
+.entered-later { color: var(--muted); font-size: .76rem; font-weight: 600; letter-spacing: .02em; }
+.retrospective-dialog { width: min(980px, calc(100% - 1rem)); max-height: calc(100dvh - 1rem); padding: 0; border: 0; border-radius: 24px; background: var(--panel); color: var(--text); }
+.retrospective-dialog::backdrop { background: rgb(20 27 23 / .62); backdrop-filter: blur(5px); }
+.retrospective-shell { padding: clamp(1rem, 3vw, 2rem); }
+.retrospective-head { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; margin-bottom: 1.25rem; }
+.retrospective-head h2 { margin: .2rem 0; }
+.retrospective-head p { margin: 0; color: var(--muted); }
+.retrospective-fields { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: .8rem; }
+.retrospective-fields label, .retrospective-note { display: grid; gap: .35rem; font-size: .8rem; font-weight: 700; color: var(--muted); }
+.retrospective-fields input, .retrospective-fields select, .retrospective-note textarea, .retrospective-add select, .retrospective-set input[type="number"] { width: 100%; }
+.retrospective-source-actions, .retrospective-add, .retrospective-footer { display: flex; gap: .65rem; flex-wrap: wrap; align-items: center; margin: 1rem 0; }
+.retrospective-add select { flex: 1 1 260px; }
+.retrospective-exercises { display: grid; gap: 1rem; margin: 1rem 0; }
+.retrospective-exercise { padding: 1rem; }
+.retrospective-set-list { display: grid; gap: .55rem; margin: 1rem 0; }
+.retrospective-set { display: grid; grid-template-columns: minmax(130px, 1.2fr) 1fr 1fr minmax(105px, auto) auto; gap: .6rem; align-items: end; padding: .7rem; border: 1px solid var(--line); border-radius: 14px; }
+.retrospective-set > label { display: grid; gap: .25rem; font-size: .75rem; color: var(--muted); }
+.retrospective-set-kind, .retrospective-set-complete { display: flex !important; align-items: center; gap: .45rem !important; padding-bottom: .65rem; color: var(--text) !important; }
+.retrospective-set-kind input, .retrospective-set-complete input { width: 1.1rem; height: 1.1rem; }
+.retrospective-set.is-complete { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.retrospective-toggle { display: flex; gap: .6rem; align-items: center; font-weight: 700; }
+.retrospective-toggle input { width: 1.2rem; height: 1.2rem; }
+.retrospective-error { min-height: 1.4em; color: #8f2f2f; font-weight: 700; }
+.retrospective-footer { justify-content: space-between; position: sticky; bottom: 0; padding-top: 1rem; background: linear-gradient(transparent, var(--panel) 18%); }
+.retrospective-footer-actions { display: flex; gap: .65rem; }
+@media (max-width: 720px) {
+  .retrospective-fields { grid-template-columns: 1fr; }
+  .retrospective-set { grid-template-columns: 1fr 1fr; }
+  .retrospective-set-kind { grid-column: 1 / -1; }
+  .retrospective-set-complete { padding: .5rem 0; }
+  .retrospective-set > button { align-self: center; }
+  .retrospective-footer { align-items: stretch; }
+  .retrospective-footer-actions { width: 100%; }
+  .retrospective-footer-actions button { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .retrospective-dialog { scroll-behavior: auto; } }

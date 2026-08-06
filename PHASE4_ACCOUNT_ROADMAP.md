@@ -9,3 +9,5 @@ Phase 4A makes local ownership explicit without changing the product surface or 
 5. Add friend onboarding only after identity, authorization, migration, and sync behavior are proven.
 
 Unresolved product decision: Alexa may become a separate login or may initially remain a managed profile under Jorge's account. Phase 4A does not assume either answer; the account descriptor and profile configuration are separate so the later decision does not require a workout-schema fork.
+
+Calendar retrospective logging follows the Phase 4A boundary: the active account supplies profile configuration, weekday plans, capabilities, storage ownership, backup validation, and snapshot path. Its draft remains session-only and the saved completed workout stays in the owner's existing version-5 record. Future cloud authorization and conflict rules must treat retrospective workouts like other completed workouts, using their stable workout IDs for deduplication and preserving optional metadata.

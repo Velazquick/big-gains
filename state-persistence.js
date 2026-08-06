@@ -77,7 +77,7 @@
 
     function normalizeWorkout(value) {
       if (!isRecord(value) || typeof value.type !== 'string' || !value.type || !validDate(value.completedAt)) return null;
-      return {
+      const workout = {
         ...value,
         id: typeof value.id === 'string' && value.id ? value.id : createId(),
         type: value.type,
@@ -87,6 +87,9 @@
         prs: safeNumber(value.prs),
         exercises: Array.isArray(value.exercises) ? value.exercises.map(normalizeExercise).filter(Boolean) : []
       };
+      if (value.entryMethod === 'retrospective') workout.entryMethod = 'retrospective';
+      else delete workout.entryMethod;
+      return workout;
     }
 
     function normalizeActiveWorkout(value) {

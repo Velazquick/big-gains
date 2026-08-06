@@ -8,13 +8,15 @@ Finishing a workout saves it first, clears the live session once, and then shows
 
 Expanded exercise cards use an accessible chevron that can keep even the focused exercise manually collapsed until the user reopens it or automatic completion advances focus. “+ Add set” appends one working set seeded from the latest valid working-set values. The Calendar groups completed history by the browser's local calendar date and opens the same workout detail used by Progress; its month and date selection are session-only.
 
+Past and current Calendar dates can also open a focused retrospective editor. It preloads the selected profile's planned weekday routine (or a blank workout on rest days), remains independent from any live workout, and saves an ordinary completed workout with the optional `entryMethod: "retrospective"` marker. Completed working sets flow through Calendar, History, Progress, volume, workout counts, backups, and optional PR evaluation without a second database or history path.
+
 ## Project documentation
 
 - [Architecture](ARCHITECTURE.md) — production load order, module boundaries, state and workout lifecycles, profile isolation, backup and sync behavior, offline assets, and CI
 - [Release checklist](RELEASE_CHECKLIST.md) — the required checks for production, storage, backup, and service-worker changes
 - [Browser testing](TESTING.md) — local commands, fixtures, coverage, and known limits
 
-The stabilized browser-test baseline is 79 passing tests in Chromium with no expected failures.
+The stabilized browser-test baseline is 91 passing tests in Chromium with no expected failures.
 
 ## Storage compatibility
 
