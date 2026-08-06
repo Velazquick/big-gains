@@ -122,7 +122,6 @@
             <div class="timer-preferences" aria-label="Timer feedback">
               <button id="timerSoundToggle" class="ghost compact" type="button" aria-label="Timer completion sound" aria-pressed="true">Sound on</button>
               <button id="timerVibrationToggle" class="ghost compact" type="button" aria-label="Timer completion vibration" aria-pressed="true">Vibration on</button>
-              <button id="timerTestSound" class="ghost compact" type="button">Test Sound</button>
               <audio id="timerCompletionAudio" src="assets/timer-ready.wav" preload="auto" aria-hidden="true" hidden></audio>
             </div>
             <div id="timerFeedbackStatus" class="timer-feedback-status" role="status" aria-live="polite"></div>
@@ -159,6 +158,29 @@
         <section class="panel data-panel" id="settingsPanel"><div class="section-heading"><div><span class="label">Your data</span><h2>Backup and restore</h2></div></div><p>Everything stays on this device unless you export it.</p><div class="data-actions"><button id="exportData" class="secondary" type="button">Export JSON</button><label class="secondary file-button">Restore JSON<input id="importData" type="file" accept="application/json" /></label></div></section>
       </section>
     </main>
+
+    <section id="workoutCompletion" class="workout-completion hidden" aria-labelledby="workoutCompletionTitle">
+      <div class="workout-completion-shell">
+        <div class="workout-completion-copy">
+          <span class="label">Workout saved</span>
+          <h1 id="workoutCompletionTitle" tabindex="-1">Workout complete</h1>
+          <p id="completionPrCopy" class="completion-pr-copy" hidden></p>
+        </div>
+        <div id="completionPetSlot" class="completion-pet-slot" aria-label="Workout companion"></div>
+        <dl class="completion-summary" aria-label="Completed workout summary">
+          <div><dt>Workout type</dt><dd id="completionWorkoutType">Workout</dd></div>
+          <div><dt>Duration</dt><dd id="completionDuration">00:00</dd></div>
+          <div><dt>Exercises</dt><dd id="completionExercises">0</dd></div>
+          <div><dt>Working sets</dt><dd id="completionWorkingSets">0</dd></div>
+          <div><dt>Working-set volume</dt><dd id="completionVolume">0 lb</dd></div>
+          <div><dt>Personal records</dt><dd id="completionPrCount">0</dd></div>
+        </dl>
+        <div class="completion-actions">
+          <button id="completionDone" class="primary" type="button">Done</button>
+          <button id="completionReview" class="ghost compact" type="button">Review workout</button>
+        </div>
+      </div>
+    </section>
 
     <aside class="workout-return-bar hidden" id="workoutReturnBar" aria-label="Workout in progress">
       <div><span class="label">Workout in progress</span><strong id="workoutReturnType">Push</strong><span id="workoutReturnElapsed">00:00</span></div>

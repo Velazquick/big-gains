@@ -202,7 +202,7 @@ test('turning Sound on directly tests the persistent HTMLAudio element', async (
   await page.locator('#timerSoundToggle').evaluate(button => button.click());
 
   await page.locator('#timerSoundToggle').click();
-  await expect(page.locator('#timerFeedbackStatus')).toHaveText('Sound on. Test chime played.');
+  await expect(page.locator('#timerFeedbackStatus')).toHaveText('Sound on. Chime confirmed.');
   expect(await page.evaluate(() => ({
     audioElements: document.querySelectorAll('#timerCompletionAudio').length,
     activations: window.__feedbackAudio.activations,
@@ -210,48 +210,31 @@ test('turning Sound on directly tests the persistent HTMLAudio element', async (
   }))).toEqual({ audioElements: 1, activations: [true], playCalls: 1 });
 });
 
-test('Test Sound directly awaits successful HTMLAudio playback and cleans up listeners', async ({ page }) => {
-  await installAudioMock(page);
-  await installLocalStorageFixture(page, 'activeWorkoutWithExercises');
-  await openApp(page);
-  await showRestTimer(page);
-
-  await page.locator('#timerTestSound').click();
-  await expect(page.locator('#timerFeedbackStatus')).toHaveText('Test sound played.');
-  expect(await page.evaluate(() => ({
-    activeListeners: window.__feedbackAudio.activeListeners,
-    activations: window.__feedbackAudio.activations,
-    audioElements: document.querySelectorAll('#timerCompletionAudio').length,
-    maxListeners: window.__feedbackAudio.maxListeners,
-    playCalls: window.__feedbackAudio.playCalls
-  }))).toEqual({ activeListeners: 0, activations: [true], audioElements: 1, maxListeners: 1, playCalls: 1 });
-});
-
-test('a rejected play promise marks sound unavailable only for the current session', async ({ page }) => {
+test('a rejected Sound-toggle verification marks sound unavailable only for the current session', async ({ page }) => {
   await installAudioMock(page, { outcome: 'rejected' });
   await installLocalStorageFixture(page, 'activeWorkoutWithExercises');
   await openApp(page);
   await showRestTimer(page);
 
-  await page.locator('#timerTestSound').click();
+  await page.locator('#timerSoundToggle').evaluate(button => button.click());
+  await page.locator('#timerSoundToggle').click();
   await expect(page.locator('#timerFeedbackStatus')).toHaveText('Sound unavailable this session: playback was rejected.');
   await expect(page.locator('#timerSoundToggle')).toBeDisabled();
-  await expect(page.locator('#timerTestSound')).toBeHidden();
   expect((await jorgeState(page)).timerPreferences.sound).toBe(true);
   await page.evaluate(() => { state.restTimerEndsAt = Date.now(); runRestTimer(); });
   expect(await page.evaluate(() => window.__feedbackAudio.playCalls)).toBe(1);
 });
 
-test('a play promise without playback start times out and leaves the saved preference intact', async ({ page }) => {
+test('a Sound-toggle playback timeout leaves the saved preference intact', async ({ page }) => {
   await installAudioMock(page, { outcome: 'timeout' });
   await installLocalStorageFixture(page, 'activeWorkoutWithExercises');
   await openApp(page);
   await showRestTimer(page);
 
-  await page.locator('#timerTestSound').click();
+  await page.locator('#timerSoundToggle').evaluate(button => button.click());
+  await page.locator('#timerSoundToggle').click();
   await expect(page.locator('#timerFeedbackStatus')).toHaveText('Sound unavailable this session: playback did not start.');
   await expect(page.locator('#timerSoundToggle')).toBeDisabled();
-  await expect(page.locator('#timerTestSound')).toBeHidden();
   expect((await jorgeState(page)).timerPreferences.sound).toBe(true);
   expect(await page.evaluate(() => window.__feedbackAudio.activeListeners)).toBe(0);
 });
@@ -261,8 +244,8 @@ test('rest completion requests exactly one verified audio playback and shows the
   await installVibrationMock(page);
   await installLocalStorageFixture(page, 'activeWorkoutWithExercises');
   await openApp(page);
-  await showRestTimer(page);
-  await page.locator('#timerTestSound').click();
+  await page.getByRole('button', { name: 'Complete Set 1 of 3' }).click();
+  await expect.poll(() => page.evaluate(() => workoutTimerFeedback.getSoundSessionState())).toBe('verified');
   await page.evaluate(() => { window.__feedbackAudio.playCalls = 0; window.__feedbackAudio.activations = []; window.__vibrationCalls = []; });
 
   await page.evaluate(() => { state.restTimerEndsAt = Date.now(); runRestTimer(); });
@@ -274,15 +257,15 @@ test('rest completion requests exactly one verified audio playback and shows the
   expect((await jorgeState(page)).restTimerEndsAt).toBeNull();
 });
 
-test('failed HTMLAudio verification never prevents safe visual timer completion', async ({ page }) => {
+test('failed automatic HTMLAudio arming never prevents safe visual timer completion', async ({ page }) => {
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
   await installAudioMock(page, { outcome: 'rejected' });
   await installLocalStorageFixture(page, 'activeWorkoutWithExercises');
   await openApp(page);
-  await showRestTimer(page);
-  await page.locator('#timerTestSound').click();
-  await expect(page.locator('#timerFeedbackStatus')).toContainText('playback was rejected');
+  await page.getByRole('button', { name: 'Complete Set 1 of 3' }).click();
+  await expect(page.locator('#timerSoundToggle')).toBeEnabled();
+  expect((await jorgeState(page)).timerPreferences.sound).toBe(true);
   await page.evaluate(() => { state.restTimerEndsAt = Date.now(); runRestTimer(); });
 
   await expect(page.locator('#timerNext')).toHaveText("Rest complete. You're up.");
@@ -297,8 +280,8 @@ test('duplicate completion requests produce only one sound and one vibration', a
   await installVibrationMock(page);
   await installLocalStorageFixture(page, 'activeWorkoutWithExercises');
   await openApp(page);
-  await showRestTimer(page);
-  await page.locator('#timerTestSound').click();
+  await page.getByRole('button', { name: 'Complete Set 1 of 3' }).click();
+  await expect.poll(() => page.evaluate(() => workoutTimerFeedback.getSoundSessionState())).toBe('verified');
   await page.evaluate(() => { window.__feedbackAudio.playCalls = 0; window.__vibrationCalls = []; });
   expect(await page.evaluate(() => ({ shell: BigGainsShell.initialize(), mode: bigGainsWorkoutMode.initialize() }))).toEqual({ shell: false, mode: false });
   expect(await page.locator('#workoutReturnBar').count()).toBe(1);

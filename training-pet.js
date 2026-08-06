@@ -35,6 +35,8 @@
 
   function resolveState() {
     const workout = latestToday();
+    const completionState = document.body.dataset.workoutCompletionPetState;
+    if (completionState && definitions[completionState]) return completionState;
     if (active || state?.activeWorkout) {
       const workoutState = document.body.dataset.workoutPetState;
       if (workoutState === 'attentive') return 'attentive';

@@ -2,7 +2,7 @@
 
 The Playwright harness serves the static PWA from `index.html` without rewriting it, so production scripts execute in their declared order.
 
-The current baseline is 58 passing Chromium tests with no expected failures: the stabilized 49-test suite plus nine Stage 2 regressions. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
+The current baseline is 73 passing Chromium tests with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
 
 ## Install
 
@@ -20,7 +20,7 @@ npm test
 npx playwright test --workers=1
 ```
 
-Both commands must pass all 58 tests with no expected failures.
+Both commands must pass all 73 tests with no expected failures.
 
 ## localStorage fixtures
 
@@ -43,9 +43,11 @@ Progress coverage verifies the explicit progress hook API and production script 
 
 Shell coverage verifies deterministic production script order, idempotent single initialization, one listener effect per interaction, unique production assets, static selector markup, pet behavior, Alexa shell behavior, and sync snapshot compatibility.
 
-Workout Mode coverage verifies start/resume entry, session-safe explicit exit, elapsed return-bar behavior, Library add/return through `workoutSessionController`, calm/rest/ready/PR pet states, and independent per-profile sound and vibration preferences. Timer-feedback cases cover hidden unsupported-vibration UI, supported vibration calls, direct-click `HTMLAudioElement` playback from both Sound and Test Sound, rejected `play()`, playback-start timeout, session-only failure state, exactly one completion playback after verification, no completion playback after failure, one persistent audio element, listener cleanup, the accessible READY fallback, and duplicate feedback prevention.
+Workout Mode coverage verifies start/resume entry, session-safe explicit exit, elapsed return-bar behavior, Library add/return through `workoutSessionController`, calm/rest/ready/PR pet states, and independent per-profile sound and vibration preferences. Timer-feedback cases cover hidden unsupported-vibration UI, supported vibration calls, removal of the standalone sound-test control, near-silent automatic arming inside trusted workout interactions, safe retries after rejected or non-starting arms, audible Sound-toggle confirmation, session-only explicit-toggle failure state, exactly one completion playback after successful arming, no completion playback after failed arming, one persistent audio element, listener cleanup, the accessible READY fallback, and duplicate feedback prevention.
 
 Phase 3 Sprint 1 coverage in `tests/phase3-workout-hierarchy.spec.js` verifies the three-second READY hold and dismissal, background-return deduplication, reduced motion, hidden preset tray, absolute preset deadlines, active/upcoming/completed card states, honest prior performance, live set progress, manual focus/review, automatic fallback, pet-ready persistence, and session-data preservation. This implements the regression reference for issue #16 without changing the iOS audio fixture or schema version 5.
+
+Phase 3 Sprint 2 coverage in `tests/phase3-completion-experience.spec.js` verifies save-before-display ordering, accurate saved-workout duration/exercise/working-set/volume/PR summaries, warmup exclusion, exactly-once completion and PR persistence, Done navigation, history-detail reuse, reload safety, sync catch-up while the receipt remains visible, pet completion states, reduced motion, heading focus, removal of the standalone sound-test control, trusted-interaction arming, safe retry, one completion chime, and unique audio/listener cleanup. The receipt remains session-only and schema version 5 is unchanged.
 
 ## Cache and update coverage
 
@@ -65,4 +67,4 @@ Storage coverage verifies load/normalize/save round trips, profile-key ownership
 
 ## Not covered
 
-The harness runs Chromium only. It does not validate Safari or Firefox service-worker lifecycle differences, native PWA install prompts, OS-managed update timing, physical vibration hardware, browser background-timer throttling, device silent mode, OS audio routing, or the full real-time 2:30 rest-timer expiry. iOS/WebKit may not expose `navigator.vibrate`, including in installed PWAs, and installed iOS PWAs may still suppress the local WAV even after a successful direct-click test. The harness does cover hidden unsupported-vibration UI, trusted-click `HTMLAudioElement` verification, rejected and non-starting playback safety, Chromium service-worker installation and cache replacement, the guaranteed visual READY fallback, and offline Workout Mode plus sound-asset loading.
+The harness runs Chromium only. It does not validate Safari or Firefox service-worker lifecycle differences, native PWA install prompts, OS-managed update timing, physical vibration hardware, browser background-timer throttling, device silent mode, OS audio routing, whether iOS ignores the temporary one-percent element volume, or the full real-time 2:30 rest-timer expiry. iOS/WebKit may not expose `navigator.vibrate`, including in installed PWAs, and installed iOS PWAs may still suppress the local WAV after a successful trusted-interaction arm. The harness does cover hidden unsupported-vibration UI, trusted-click `HTMLAudioElement` arming and Sound-toggle verification, rejected and non-starting playback safety, Chromium service-worker installation and cache replacement, the guaranteed visual READY fallback, and offline Workout Mode plus sound-asset loading.

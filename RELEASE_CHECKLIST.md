@@ -35,7 +35,7 @@ npx playwright test --workers=1
 
 ## Asset-manifest release update
 
-Phase 3 Sprint 1 / issue #16 reference: release `v40-phase3-workout-hierarchy` contains the timer auto-dismiss and compact presets plus the stronger exercise hierarchy. Keep issue #16 open until this branch is merged/deployed; the implementation and regression coverage are complete on the feature branch.
+Phase 3 Sprint 2 release `v41-phase3-completion-experience` removes the standalone sound-test control, adds trusted-interaction audio arming, and introduces the save-first workout completion receipt. The preceding `v40-phase3-workout-hierarchy` release remains the cache-migration source.
 
 For any production app-shell change:
 
@@ -66,7 +66,8 @@ For any production app-shell change:
 - [ ] Verify malformed but parseable state recovers safely and invalid records cannot break startup.
 - [ ] Verify `pagehide` and hidden-page persistence still capture pending active-session changes.
 - [ ] Verify Jorge and Alexa remain isolated across state, workouts, weights, routines, preferences, active sessions, and timers.
-- [ ] On timer-feedback changes, verify unsupported browsers hide vibration without overwriting the saved preference; verify direct-click Sound and Test Sound playback, rejected/timeout UI, one completion chime after a successful test, no completion playback after a failed test, and the visible READY fallback on a real device. Remember that installed iOS PWAs may omit vibration and may still suppress the local audio asset because of silent mode, lifecycle state, or OS routing.
+- [ ] On timer-feedback changes, verify unsupported browsers hide vibration without overwriting the saved preference; verify automatic arming occurs inside a trusted workout gesture, failed arms retain the preference and retry safely, turning Sound on audibly confirms or reports rejection/timeout, completion chimes once only after successful arming, and the visible READY fallback always works. Remember that installed iOS PWAs may ignore the temporary one-percent arm volume, omit vibration, or suppress the local audio asset because of silent mode, lifecycle state, or OS routing.
+- [ ] On workout-completion changes, verify persistence precedes the receipt, warmups are excluded from working-set count and volume, the active session/timer/focus/pet rest state clear once, Done and reload do not duplicate workouts or PRs, Review reuses history detail, and sync catch-up still publishes once after save.
 - [ ] Preserve the current legacy policy: import only valid `big-gains-v1` weights when Jorge has no current state, do not reconstruct undocumented workouts, and leave the original payload byte-for-byte untouched.
 
 ## Backup and sync compatibility
