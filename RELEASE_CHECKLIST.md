@@ -88,3 +88,11 @@ For any production app-shell change:
 - [ ] Delete the merged remote branch and remove or repurpose the local branch.
 - [ ] Fetch and prune, then confirm local `main` matches `origin/main`.
 - [ ] Record any follow-up work for browser-specific PWA behavior, deployment, rollback, or manual checks that are not represented in this repository.
+# v43 Phase 4 account foundation
+
+- Confirm `account-context.js` loads before persistence and profiles exactly once.
+- Confirm Jorge and Alexa retain their existing storage keys, selected-account value, backup shape, sync paths, and offline behavior.
+- Confirm account resolution or rendering alone performs no ownership-storage writes.
+- Run the synthetic third-account isolation and cross-account import tests.
+- Confirm no authentication, backend SDK, credentials, network account calls, cloud sync, or friend-facing account UI was added.
+- Run `npm test` and `npx playwright test --workers=1` with no skips or expected failures.

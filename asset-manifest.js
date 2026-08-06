@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v42-training-calendar-controls';
+  const release = 'v43-phase4-account-foundation';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];
@@ -20,6 +20,7 @@
     './training-calendar.css'
   ];
   const scripts = [
+    './account-context.js',
     './state-persistence.js',
     './profiles.js',
     './workout-controls.js',

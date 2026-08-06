@@ -70,3 +70,13 @@ Storage coverage verifies load/normalize/save round trips, profile-key ownership
 ## Not covered
 
 The harness runs Chromium only. It does not validate Safari or Firefox service-worker lifecycle differences, native PWA install prompts, OS-managed update timing, physical vibration hardware, browser background-timer throttling, device silent mode, OS audio routing, whether iOS ignores the temporary one-percent element volume, or the full real-time 2:30 rest-timer expiry. iOS/WebKit may not expose `navigator.vibrate`, including in installed PWAs, and installed iOS PWAs may still suppress the local WAV after a successful trusted-interaction arm. The harness does cover hidden unsupported-vibration UI, trusted-click `HTMLAudioElement` arming and Sound-toggle verification, rejected and non-starting playback safety, Chromium service-worker installation and cache replacement, the guaranteed visual READY fallback, and offline Workout Mode plus sound-asset loading.
+# Phase 4A account coverage
+
+`tests/account-context.spec.js` verifies deterministic Jorge/Alexa descriptor mapping, read-only resolution, selection persistence, and a test-only third account. The synthetic account proves isolated storage, state version 5 normalization/save/load, timer preferences, active workout and routines, backup round trips, cross-account rejection, and calendar session namespacing without production navigation changes. Existing storage, workout, notes, progress, calendar, sync, shell-idempotence, migration, and offline tests remain the regression contract.
+
+Release validation remains:
+
+```text
+npm test
+npx playwright test --workers=1
+```

@@ -21,3 +21,8 @@ The stabilized browser-test baseline is 79 passing tests in Chromium with no exp
 Current profile state and backups use schema version 5. When Jorge has no current state, valid weight entries from an existing undocumented `big-gains-v1` payload are normalized into the current Jorge profile. The original legacy key/value is left untouched.
 
 Legacy workout records are not imported into schema version 5 because their historical shape was never defined as a supported schema. Those records are retained only inside the untouched `big-gains-v1` payload.
+# Phase 4A: account-ready, still local-first
+
+Big Gains now separates local account identity/data ownership from training-profile presentation. Jorge and Alexa look and behave exactly as before and keep their original on-device data keys. There is no login, backend, cloud database, account creation, or friend-facing account in this phase.
+
+See `PHASE4_ACCOUNT_ROADMAP.md` for the decisions and sequence after this foundation.
