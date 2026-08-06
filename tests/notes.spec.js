@@ -6,7 +6,6 @@ test('renders active notes and persists cue, session note, and rest preference',
   await installLocalStorageFixture(page, 'activeWorkoutWithExercises');
   await openApp(page);
 
-  await page.getByRole('button', { name: 'Expand Seated Machine Chest Press' }).click();
   const notes = page.locator('[data-note-block="0"]');
   await expect(notes).toContainText('Notes & rest');
   await notes.locator('summary').click();
@@ -28,7 +27,6 @@ test('starts, resumes, and expires rest with the existing messages', async ({ pa
   await installLocalStorageFixture(page, 'activeWorkoutWithExercises');
   await openApp(page);
 
-  await page.getByRole('button', { name: 'Expand Seated Machine Chest Press' }).click();
   await page.locator('[data-note-block="0"] summary').click();
   await page.locator('[data-rest-seconds="0"]').selectOption('60');
   await page.getByRole('button', { name: 'Complete Set 1 of 3' }).click();
@@ -42,7 +40,7 @@ test('starts, resumes, and expires rest with the existing messages', async ({ pa
   await expect(page.locator('#timerCard')).not.toHaveClass(/hidden/);
   await expect(page.locator('#timerNext')).toHaveText('Recover. Your next set is waiting.');
 
-  for (let click = 0; click < 4; click += 1) await page.locator('#timerMinus').click();
+  await page.evaluate(() => { state.restTimerEndsAt = Date.now(); runRestTimer(); });
   await expect(page.locator('#timerDisplay')).toHaveText('00:00');
   await expect(page.locator('#timerNext')).toHaveText("Rest complete. You're up.");
   expect((await jorgeState(page)).restTimerEndsAt).toBeNull();

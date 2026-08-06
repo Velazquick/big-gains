@@ -7,26 +7,19 @@ test.beforeEach(async ({ page }) => {
   await openApp(page);
 });
 
-test('renders the active session and preserves collapse and expand behavior', async ({ page }) => {
+test('renders the active exercise expanded with upcoming work collapsed', async ({ page }) => {
   const cards = page.locator('#activeExercises .active-exercise');
   await expect(cards).toHaveCount(2);
   await expect(cards.locator('h3')).toHaveText(['Seated Machine Chest Press', 'Lat Pulldown']);
-  await expect(cards.first()).toHaveClass(/is-collapsed/);
-  await expect(cards.first().locator('.collapsed-summary')).toContainText('0/3 working sets');
-
-  await page.getByRole('button', { name: 'Expand Seated Machine Chest Press' }).click();
   await expect(cards.first()).not.toHaveClass(/is-collapsed/);
   await expect(cards.first().locator('.active-exercise-body')).toBeVisible();
   await expect(cards.nth(1)).toHaveClass(/is-collapsed/);
-
-  await page.getByRole('button', { name: 'Collapse Seated Machine Chest Press' }).click();
-  await expect(cards.first()).toHaveClass(/is-collapsed/);
-  expect((await jorgeState(page)).activeWorkout.exercises[0].collapsed).toBe(true);
+  await expect(cards.first().locator('.exercise-toggle')).toHaveAttribute('aria-expanded', 'true');
 });
 
 test('reorders and removes exercises without changing selector compatibility', async ({ page }) => {
   const cards = page.locator('#activeExercises .active-exercise');
-  await page.getByRole('button', { name: 'Move Lat Pulldown up' }).click();
+  await page.getByRole('button', { name: 'Move Lat Pulldown up', exact: true }).click();
 
   await expect(cards.locator('h3')).toHaveText(['Lat Pulldown', 'Seated Machine Chest Press']);
   expect((await jorgeState(page)).activeWorkout.exercises.map(exercise => exercise.id)).toEqual([
@@ -41,7 +34,6 @@ test('reorders and removes exercises without changing selector compatibility', a
 });
 
 test('edits set values through inputs and steppers', async ({ page }) => {
-  await page.getByRole('button', { name: 'Expand Seated Machine Chest Press' }).click();
   const weight = page.locator('input[data-field="weight"][data-ei="0"][data-si="1"]');
   const reps = page.locator('input[data-field="reps"][data-ei="0"][data-si="1"]');
   await weight.fill('125');
@@ -55,7 +47,6 @@ test('edits set values through inputs and steppers', async ({ page }) => {
 });
 
 test('renders completion state and advances to the next exercise', async ({ page }) => {
-  await page.getByRole('button', { name: 'Expand Seated Machine Chest Press' }).click();
   await page.getByRole('button', { name: 'Complete Set 1 of 3' }).click();
   await page.getByRole('button', { name: 'Complete Set 2 of 3' }).click();
   await page.getByRole('button', { name: 'Complete Set 3 of 3' }).click();

@@ -56,7 +56,7 @@ The application uses classic scripts, so `app.js` helpers such as `state`, `acti
 6. `complete()` keeps only exercises with completed sets, calculates duration and new estimated-one-rep-max records, prepends the completed workout, clears the active session and timer, saves, and refreshes the UI. A workout with no completed sets cannot finish.
 7. Cancel requires a second click within 2.5 seconds. `discard()` clears the active workout and rest timer without creating history.
 
-An active workout and its absolute `restTimerEndsAt` timestamp survive reloads. Expired timers are cleared on resume. Live timer expiry saves the cleared timestamp, preserves the pet's ready state, and always shows a brief accessible ready message and visual flash. Sound and vibration then run as independent best-effort enhancements.
+An active workout and its absolute `restTimerEndsAt` timestamp survive reloads. Live or background-return expiry clears the timestamp once, preserves the pet's ready state until the next meaningful set interaction, and shows the accessible READY stack for three seconds before the timer card collapses. A hidden-by-default preset tray replaces the visible duration steppers without changing per-exercise defaults or deadline persistence. Sound and vibration remain independent best-effort enhancements.
 
 Timer audio uses one persistent `HTMLAudioElement` and the repository-owned `assets/timer-ready.wav` chime. Turning Sound on and Test Sound each call and await `audio.play()` directly from the trusted click, require a `playing` event within a short timeout, and distinguish rejected playback from playback that never starts. A successful test verifies audio only for the current browser session. Completion then resets and requests exactly one playback on that same element, deduplicates repeated requests for the same rest deadline, and never blocks timer completion on audio failure. A failed test marks Sound unavailable only in memory; it disables the Sound control, hides Test Sound, and does not overwrite the saved per-profile preference. Unsupported devices hide the vibration control while preserving the saved preference for browsers that expose `navigator.vibrate`.
 
@@ -111,7 +111,9 @@ The notes and progress features attach through explicit app-owned hooks:
 
 ## Asset and service-worker lifecycle
 
-`asset-manifest.js` is the single asset inventory. Release `v39-ios-timer-audio-fallback` advances the app shell for the persistent local-audio fallback and includes `assets/timer-ready.wav` in the deterministic precache. The WAV is a restrained 0.42-second, mono, 22.05 kHz, 16-bit PCM two-note chime generated deterministically by `node scripts/generate-timer-chime.mjs`. The manifest applies the release query parameter to every production CSS and application script, rejects duplicate core assets, and supplies the same immutable manifest to the page loader and service worker. `index.html`, the loader, manifest, service-worker core, web manifest, icon, local chime, and all revisioned CSS and scripts form the precached app shell.
+`asset-manifest.js` is the single asset inventory. Release `v40-phase3-workout-hierarchy` advances the app shell for Phase 3 Sprint 1 while retaining `assets/timer-ready.wav` unchanged in the deterministic precache. The manifest applies the release query parameter to every production CSS and application script, rejects duplicate core assets, and supplies the same immutable manifest to the page loader and service worker. `index.html`, the loader, manifest, service-worker core, web manifest, icon, local chime, and all revisioned CSS and scripts form the precached app shell.
+
+Workout-card focus is live-session metadata, not schema migration. `focusedExerciseId` prefers the last interacted exercise while it has incomplete working sets, then falls back to the first incomplete exercise. The active card stays expanded and dominant; upcoming cards remain collapsed and subdued; completed cards recede but can be expanded for editing. Prior working-set text is derived only from completed history, and current progress is computed from the session sets. No target or coaching data is invented.
 
 `app.js` registers `service-worker.js` on window load with `updateViaCache: 'none'`. The worker imports the unrevisioned asset manifest and service-worker core.
 
@@ -142,7 +144,7 @@ Sync is outbound snapshot publishing, not two-way state synchronization.
 
 ## Testing and CI
 
-The Playwright harness serves the repository as static files, so tests exercise `index.html` and the production manifest order without a test-only application bundle. The current baseline is 58 passing Chromium tests with no expected failures: the stabilized 49-test suite plus nine Stage 2 regressions.
+The Playwright harness serves the repository as static files, so tests exercise `index.html` and the production manifest order without a test-only application bundle. Phase 3 adds regressions for timer hold/dismissal, background return, presets, reduced motion, hierarchy, progress, prior performance, manual focus, and fallback focus with no skips or expected failures.
 
 Local verification:
 

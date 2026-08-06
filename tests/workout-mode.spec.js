@@ -81,7 +81,6 @@ test('Exit Workout Mode preserves the session and timer, survives reload, and ex
   await openApp(page);
   const before = await jorgeState(page);
 
-  await page.getByRole('button', { name: 'Expand Seated Machine Chest Press' }).click();
   await page.getByRole('button', { name: 'Complete Set 1 of 3' }).click();
   const restTimerEndsAt = (await jorgeState(page)).restTimerEndsAt;
   await page.locator('#exitWorkoutMode').click();
@@ -106,7 +105,6 @@ test('Exit Workout Mode preserves the session and timer, survives reload, and ex
 test('Library access adds through the session controller and returns without resetting session timing', async ({ page }) => {
   await installLocalStorageFixture(page, 'activeWorkoutWithExercises');
   await openApp(page);
-  await page.getByRole('button', { name: 'Expand Seated Machine Chest Press' }).click();
   await page.getByRole('button', { name: 'Complete Set 1 of 3' }).click();
   const before = await jorgeState(page);
 
@@ -135,7 +133,6 @@ test('the integrated pet stays restrained through calm, rest, rest-complete, and
   await expect(page.locator('#workoutPetSlot #trainingPet')).toHaveAttribute('data-state', 'calm');
   await expect(page.locator('#trainingPetMessage')).toHaveText('Lock in.');
 
-  await page.getByRole('button', { name: 'Expand Seated Machine Chest Press' }).click();
   await page.getByRole('button', { name: 'Complete Set 1 of 3' }).click();
   await expect(page.locator('#trainingPet')).toHaveAttribute('data-state', 'attentive');
   await expect(page.locator('#trainingPetMessage')).toHaveText('Breathe.');

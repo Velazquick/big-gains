@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v39-ios-timer-audio-fallback';
+  const release = 'v40-phase3-workout-hierarchy';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];
