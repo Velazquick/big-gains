@@ -8,7 +8,8 @@
     window.trainingPet,
     window.bigGainsDirection,
     window.sessionSelector,
-    window.BigGainsSync
+    window.BigGainsSync,
+    window.BigGainsCloudSync
   ];
   let initialized = false;
 

@@ -12,22 +12,26 @@ Big Gains is a static, local-first progressive web app. `index.html`, CSS, and c
 The production script order is:
 
 1. `account-context.js`
-2. `cloud-storage.js`
-3. `state-persistence.js`
-4. `profiles.js`
-5. `workout-controls.js`
-6. `notes.js`
-7. `progress.js`
-8. `retrospective-workout.js`
-9. `app.js`
-10. `workout-mode.js`
-11. `v2-shell.js`
-12. `alexa-shell.js`
-13. `training-pet.js`
-14. `design-v21.js`
-15. `session-selector-v26.js`
-16. `sync-gateway.js`
-17. `shell-init.js`
+2. `cloud-config.js`
+3. `vendor/supabase.js`
+4. `supabase-client.js`
+5. `cloud-storage.js`
+6. `state-persistence.js`
+7. `profiles.js`
+8. `workout-controls.js`
+9. `notes.js`
+10. `progress.js`
+11. `retrospective-workout.js`
+12. `app.js`
+13. `workout-mode.js`
+14. `v2-shell.js`
+15. `alexa-shell.js`
+16. `training-pet.js`
+17. `design-v21.js`
+18. `session-selector-v26.js`
+19. `sync-gateway.js`
+20. `cloud-sync.js`
+21. `shell-init.js`
 
 This order is a runtime contract. Persistence and hook APIs exist before `app.js` consumes them. `app.js` loads and renders the current profile before the shell modules initialize. The final script, `shell-init.js`, initializes the shell modules exactly once in this order: Workout Mode, view shell, profile shell, training pet, direction/momentum, session selector, and sync.
 
@@ -37,7 +41,10 @@ This order is a runtime contract. Persistence and hook APIs exist before `app.js
 | --- | --- | --- |
 | `asset-manifest.js` | `BIG_GAINS_ASSET_MANIFEST` | Release identifier, cache names, ordered CSS and script URLs, and the complete offline core-asset list. |
 | `account-context.js` | `bigGainsAccounts` | Existing on-device descriptor registry, selected profile, storage namespaces, and session-key ownership. |
-| `cloud-storage.js` | `BigGainsCloud` | Disabled Phase 4B cloud status, explicit account/profile sync operations, in-memory queue contract, deterministic idempotency keys, local-first coordinator, acknowledgements, and conflict resolution. It contains no Supabase SDK or network transport. |
+| `cloud-config.js` | `__BIG_GAINS_CLOUD_CONFIG__` | Empty checked-in browser configuration. The Pages workflow may replace it in the deployment artifact using only repository variables for the project URL and publishable key. |
+| `supabase-client.js` | `BigGainsSupabase` | Lazily creates the vendored browser client, owns persisted Auth sessions, requests an existing-user-only Jorge magic link, signs out, and idempotently provisions Jorge's account with Jorge and Alexa profiles. |
+| `cloud-storage.js` | `BigGainsCloud` | Explicit account/profile sync operations, memory and durable queue contracts, deterministic idempotency keys, local-first coordinator, acknowledgements, and conflict resolution. It contains no network transport. |
+| `cloud-sync.js` | `BigGainsCloudSync` | Synthetic-only completed-workout transport, offline/retry/ack runtime, durable queue instance, online catch-up, and non-blocking Jorge Auth controls. It is not called by ordinary workout completion. |
 | `state-persistence.js` | `bigGainsStatePersistence` and the per-profile object returned by `create(...)` | Profile storage keys, load/normalize/save, legacy weight migration, backup serialization, and import validation. |
 | `profiles.js` | `PROFILE_CONFIG`, `PROFILE`, `switchProfile(...)` | Profile metadata, active-profile selection, theme marker, and reload-based profile switching. Profile-key reads and writes still go through the persistence API. |
 | `workout-controls.js` | `workoutControls` | Render-only active-workout controls plus exercise movement, collapse, and completion advancement. It does not persist state. |
@@ -116,7 +123,7 @@ The notes and progress features attach through explicit app-owned hooks:
 
 ## Asset and service-worker lifecycle
 
-`asset-manifest.js` is the single asset inventory. Release `v45-phase4b-cloud-foundation` adds the disabled `cloud-storage.js` boundary while retaining the retrospective editor and `assets/timer-ready.wav` in the deterministic precache. The manifest applies the release query parameter to every production CSS and application script, rejects duplicate core assets, and supplies the same immutable manifest to the page loader and service worker. `index.html`, the loader, manifest, service-worker core, web manifest, icon, local chime, and all revisioned CSS and scripts form the precached app shell.
+`asset-manifest.js` is the single asset inventory. Release `v46-phase4c-auth-synthetic-sync` adds the vendored Supabase client, safe configuration, Auth boundary, durable queue, synthetic transport, and cloud settings card while retaining the retrospective editor and `assets/timer-ready.wav` in the deterministic precache. The manifest applies the release query parameter to every production CSS and application script, rejects duplicate core assets, and supplies the same immutable manifest to the page loader and service worker. `index.html`, the loader, manifest, service-worker core, web manifest, icon, local chime, and all revisioned CSS and scripts form the precached app shell.
 
 Workout-card focus is live-session metadata, not schema migration. `focusedExerciseId` prefers the last interacted exercise while it has incomplete working sets, then falls back to the first incomplete exercise. A manual collapse is authoritative and does not clear focus or session data; automatic advancement opens the next incomplete exercise. Upcoming cards remain collapsed and subdued, while completed cards recede but can be expanded for review. Added sets are ordinary incomplete working sets with fresh IDs and values copied only from the latest valid working set.
 
@@ -179,9 +186,9 @@ Profile-specific behavior intentionally remains configuration-driven: weekly pla
 
 GitHub is source control and an optional snapshot-backup destination. It is not the future user database.
 
-## Phase 4B cloud boundary
+## Phase 4C cloud boundary
 
-Phase 4B adds design and executable contracts without connecting a backend. The production singleton reports `enabled: false` even if placeholder configuration is present. It does not import a Supabase client, call `fetch`, persist a sync queue, register online listeners, alter local saves, or start migration. Loading it and calling its status/queue/conflict helpers perform no storage writes.
+Phase 4C preserves the Phase 4B ownership and conflict contracts while adding a narrow live boundary. With empty checked-in configuration, no Supabase client is created and no cloud request occurs. With deployment configuration, signed-out local use remains available; only explicit Jorge sign-in touches Auth. Ordinary Jorge/Alexa workout saves are not wired to cloud code in this release, and the completed-workout transport rejects operations unless `synthetic === true`.
 
 The future ownership model is intentionally different from the compatibility-only local descriptors:
 
@@ -192,7 +199,7 @@ Jorge auth user -> Jorge account -> Jorge profile
 friend auth user -> friend account -> friend profile
 ```
 
-The mapping is deferred to the explicit migration flow. Existing `local-jorge` and `local-alexa` descriptors are not silently collapsed because that could alter current storage and switching behavior.
+After Jorge signs in, the client creates or reuses one account owned by his Auth user and two rows with client IDs `jorge` and `alexa`. Existing local descriptors and data are not read, transformed, or uploaded.
 
 The SQL migration defines `accounts`, `profiles`, `workouts`, `routines`, `preferences`, `active_sessions`, `sync_metadata`, and `tombstones`. All profile data carries the pair `(account_id, profile_id)`, and composite foreign keys prove that the profile belongs to that account. Ownership columns are immutable after creation. Completed workouts have unique account/profile/client IDs and account-scoped idempotency keys. Active sessions are unique per account/profile.
 
@@ -209,7 +216,9 @@ The future adapter sequence is fixed before transport exists:
 5. When online, send pending operations quietly and retry failures with the same idempotency key.
 6. After remote acceptance, remove the pending operation and retain its acknowledged remote version.
 
-The Phase 4B coordinator implements this sequence for tests and future adapters, but production local persistence is not wired to it yet. Its default queue is memory-only and its default transport is disabled, so current behavior remains exactly local.
+The durable queue serializes `{ version, pending, acknowledgements }` at `big-gains-cloud-sync-queue-v1`. It validates each restored operation and its deterministic key, deduplicates pending and acknowledged keys, caps acknowledgement history, and writes only on enqueue/retry/acknowledgement—not during rendering. The synthetic proof API waits for its supplied local persistence function before enqueue. Network errors increment attempt metadata and leave both the proof record and queue entry intact.
+
+Phase 4C is push-only. There is no remote pull or merge path, so remote state cannot overwrite local state. A retry after an uncertain response inserts once or treats the existing row as success only when account, profile, client ID, and idempotency key match. A different existing key is a conflict, never an overwrite.
 
 ### Conflict contract
 

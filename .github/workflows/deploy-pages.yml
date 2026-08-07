@@ -26,6 +26,13 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
+      - name: Write browser-safe Supabase configuration
+        if: ${{ vars.SUPABASE_URL != '' && vars.SUPABASE_PUBLISHABLE_KEY != '' }}
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+        run: node scripts/write-cloud-config.mjs
+
       - name: Validate static site
         shell: bash
         run: |
@@ -36,7 +43,9 @@ jobs:
           test -f retrospective-workout.css
           test -f service-worker.js
           test -f service-worker-core.js
-          grep -Fq "v44-calendar-retrospective-workouts" asset-manifest.js
+          test -f cloud-sync.js
+          test -f vendor/supabase.js
+          grep -Fq "v46-phase4c-auth-synthetic-sync" asset-manifest.js
           grep -Fq "logRetrospectiveWorkout" index.html
           grep -Fq "./service-worker.js" app.js
           grep -Fq "'./asset-manifest.js'" service-worker.js

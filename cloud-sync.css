@@ -1,0 +1,14 @@
+.cloud-foundation-card {
+  margin-top: 16px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--panel);
+}
+
+.cloud-foundation-card h3 { margin: 6px 0; }
+.cloud-foundation-card p { color: var(--muted); }
+.cloud-foundation-card small { display: block; margin-top: 12px; color: var(--muted); }
+.cloud-auth-form { display: grid; gap: 12px; margin: 16px 0; }
+.cloud-auth-form label { display: grid; gap: 6px; }
+.cloud-auth-form input { width: 100%; }

@@ -4,6 +4,9 @@ import { openApp } from './helpers/app.js';
 
 const productionScriptOrder = [
   'account-context.js',
+  'cloud-config.js',
+  'supabase.js',
+  'supabase-client.js',
   'cloud-storage.js',
   'state-persistence.js',
   'profiles.js',
@@ -19,6 +22,7 @@ const productionScriptOrder = [
   'design-v21.js',
   'session-selector-v26.js',
   'sync-gateway.js',
+  'cloud-sync.js',
   'shell-init.js'
 ];
 
@@ -112,7 +116,8 @@ test('shell modules initialize once without duplicate listeners or assets', asyn
     pet: window.trainingPet.initialize(),
     direction: window.bigGainsDirection.initialize(),
     selector: window.sessionSelector.initialize(),
-    sync: window.BigGainsSync.initialize()
+    sync: window.BigGainsSync.initialize(),
+    cloudSync: window.BigGainsCloudSync.initialize()
   }));
   expect(initialization).toEqual({
     shell: false,
@@ -122,7 +127,8 @@ test('shell modules initialize once without duplicate listeners or assets', asyn
     pet: false,
     direction: false,
     selector: false,
-    sync: false
+    sync: false,
+    cloudSync: false
   });
 
   const viewWrites = await page.evaluate(() => {

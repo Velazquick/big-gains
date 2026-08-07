@@ -16,19 +16,21 @@ Past and current Calendar dates can also open a focused retrospective editor. It
 - [Release checklist](RELEASE_CHECKLIST.md) — the required checks for production, storage, backup, and service-worker changes
 - [Browser testing](TESTING.md) — local commands, fixtures, coverage, and known limits
 - [Phase 4 account roadmap](PHASE4_ACCOUNT_ROADMAP.md) — cloud ownership, conflict rules, migration, and friend onboarding
-- [Supabase setup for Phase 4C](SUPABASE_SETUP.md) — the exact future project setup; nothing in Phase 4B requires a project
+- [Supabase setup for Phase 4C](SUPABASE_SETUP.md) — hosted project, Auth redirect, CLI migration, RLS verification, and Pages configuration
 
-The stabilized browser-test baseline is 104 passing tests in Chromium with no expected failures.
+The stabilized browser-test baseline is 109 passing tests in Chromium with no expected failures.
 
 ## Storage compatibility
 
 Current profile state and backups use schema version 5. When Jorge has no current state, valid weight entries from an existing undocumented `big-gains-v1` payload are normalized into the current Jorge profile. The original legacy key/value is left untouched.
 
 Legacy workout records are not imported into schema version 5 because their historical shape was never defined as a supported schema. Those records are retained only inside the untouched `big-gains-v1` payload.
-## Phase 4B: private-cloud foundation, still local-first
+## Phase 4C: Jorge auth and synthetic completed-workout sync
 
-Big Gains now has a dormant Supabase boundary, versioned SQL schema, Row Level Security policies, adversarial policy examples, deterministic sync-operation contracts, and documented conflict rules. No Supabase SDK is shipped, no live project is configured, no migration runs, and no user data leaves the device.
+Big Gains now ships a browser-safe Supabase client, Jorge-only magic-link sign-in, a durable outbound queue, and a completed-workout transport. The transport has a hard synthetic-only gate: normal Jorge and Alexa workout completion still uses only the existing local schema-version-5 path and cannot enter the cloud queue in this release.
 
 The future cloud model gives Jorge one authenticated account containing separate Jorge and Alexa profiles. A future friend receives a different account containing only the friend's profile. Every profile-scoped cloud row carries both `account_id` and `profile_id`; knowing or guessing a profile ID cannot grant access.
 
-The existing local contract remains unchanged: schema version 5, Jorge and Alexa storage keys, JSON backups, `big-gains.snapshot.v1`, offline logging, Workout Mode, Calendar, retrospective workouts, timers, PRs, notes, progress, and the pet all use their current paths. Cloud failure must never block workout logging. GitHub remains source control plus an optional outbound snapshot backup; Supabase will become private authentication and user-data storage in Phase 4C.
+The queue lives at `big-gains-cloud-sync-queue-v1`, outside both profile state objects, JSON backups, and `big-gains.snapshot.v1`. A synthetic mutation persists its explicit proof record locally before enqueue, retries with the same idempotency key, and acknowledges only after Supabase accepts or identifies the same remote row. Signed-out and unconfigured use stays fully local and makes no cloud request.
+
+The existing local contract remains unchanged: schema version 5, Jorge and Alexa storage keys, JSON backups, `big-gains.snapshot.v1`, offline logging, Workout Mode, Calendar, retrospective workouts, timers, PRs, notes, progress, and the pet all use their current paths. Cloud failure must never block workout logging. GitHub is source control plus optional snapshot backup; Supabase is private Auth and user-data storage.

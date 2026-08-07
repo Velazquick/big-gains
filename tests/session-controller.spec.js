@@ -18,8 +18,8 @@ async function expectStartedSession(page, { type, exerciseCount }) {
 
 test('Today uses the shared saved-routine start semantics', async ({ page }) => {
   await installLocalStorageFixture(page, 'blankJorge');
-  await page.clock.setFixedTime(new Date('2026-08-05T16:00:00.000Z'));
   await openApp(page);
+  await page.evaluate(() => { window.todaysWorkout = () => 'Legs'; });
 
   expect(await page.evaluate(() => Object.keys(window.workoutSessionController))).toEqual([
     'start', 'resume', 'replace', 'loadRoutine', 'repairEmpty', 'addExercise', 'complete', 'discard'

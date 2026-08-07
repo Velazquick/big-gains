@@ -2,7 +2,7 @@
 
 The Playwright harness serves the static PWA from `index.html` without rewriting it, so production scripts execute in their declared order.
 
-The current baseline is 104 passing Chromium tests with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
+The current baseline is 109 passing Chromium tests with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
 
 ## Install
 
@@ -20,7 +20,7 @@ npm test
 npx playwright test --workers=1
 ```
 
-Both commands must pass all 104 tests with no expected failures.
+Both commands must pass all 109 tests with no expected failures.
 
 ## localStorage fixtures
 
@@ -42,6 +42,8 @@ V42 coverage verifies the real delegated chevron path, manual active-card collap
 V44 coverage in `tests/retrospective-workout.spec.js` verifies past/today eligibility and future exclusion, account-owned weekday defaults and rest-day blanks, routine/blank paths, exercise and set editing/reordering/removal, working-set validation, warm-up exclusion, optional local completion time and duration near UTC midnight, fresh IDs, notes and Entered later history reuse, PR evaluation on/off, volume/progress/calendar/history/workout-count updates, double-click exact-once save, cancel/reload safety, live-workout and return-bar preservation, Jorge/Alexa/synthetic-account isolation, backup normalization, and offline save. Existing shell and offline tests verify the module and stylesheet load once in the v44 app shell.
 
 V45 coverage in `tests/cloud-foundation.spec.js` verifies the disabled-by-default boundary, no network transport even when placeholder configuration exists, explicit account/profile operation ownership, Jorge/Alexa/friend cloud topology, persist-before-enqueue ordering, acknowledgements, offline/disabled queue retention, stable retry idempotency, stale-remote rejection, append-only workout ties, tombstone precedence, immutable ownership, untouched version-5 backups and `big-gains.snapshot.v1`, storage-free cloud helpers, complete RLS enablement, composite owner/profile constraints, anonymous grant removal, and adversarial cross-account SQL examples.
+
+V46 coverage in `tests/cloud-sync.spec.js` verifies queue survival across reload, queue exclusion from schema-version-5 backup data, local-persist-before-enqueue ordering, harmless remote failure, stable keys across retries, offline/reconnect recovery, lost-acknowledgement idempotency with exactly one synthetic remote row, durable acknowledgements, the hard non-synthetic transport rejection, and Jorge magic-link options with signup disabled and the exact GitHub Pages redirect.
 
 Notes coverage verifies the explicit notes hook API, active-session notes rendering and persistence, rest-timer start/resume/expiry messaging, history opening, and saved session-note rendering.
 
@@ -85,11 +87,11 @@ npm test
 npx playwright test --workers=1
 ```
 
-## Phase 4B database coverage
+## Phase 4C database coverage
 
 The normal Playwright runs inspect the checked-in migration and adversarial pgTAP file but do not start Docker or connect to Supabase. This keeps Phase 4B fully offline and credential-free.
 
-In Phase 4C, after installing and pinning the Supabase CLI, the database-specific suite becomes required:
+The Supabase CLI is pinned as a dev dependency. A Docker-compatible runtime is still required for the optional local stack:
 
 ```sh
 npx supabase start
@@ -99,3 +101,14 @@ npx supabase db lint --level error
 ```
 
 `supabase/tests/database/phase4b_rls.test.sql` creates synthetic Jorge and friend Auth identities inside a rolled-back transaction. It proves Jorge sees the Jorge and Alexa profiles under his own account, cannot see/write/update/delete friend data, cannot attach a foreign profile ID to his account, cannot reassign profile ownership, and receives no anonymous table access. It never uses real user data.
+
+After the CLI is securely linked to the intended hosted project, run the same rolled-back test against hosted Postgres:
+
+```sh
+DO_NOT_TRACK=1 npx supabase migration list --linked
+DO_NOT_TRACK=1 npx supabase test db --linked supabase/tests/database/phase4b_rls.test.sql
+```
+
+Do not pass a database password on the command line. Enter it only in the CLI's secure prompt or a short-lived environment controlled by the operator. Hosted tests must use only the checked-in synthetic UUIDs/emails and must finish with `rollback`.
+
+Phase 4C hosted verification passed all 18 pgTAP assertions. A separate publishable-key proof authenticated two ephemeral users, rejected cross-account reads and writes, recovered one completed workout after an idempotent retry, and then deleted both users. Follow-up verification found zero Auth users, zero application rows, eight forced-RLS tables, and 32 ownership policies.

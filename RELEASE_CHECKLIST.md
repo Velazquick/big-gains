@@ -28,8 +28,8 @@ npm test
 npx playwright test --workers=1
 ```
 
-- [ ] The normal suite passes all 104 current tests with no expected failures, retries, focused tests, or skipped regression coverage.
-- [ ] The single-worker suite passes all 104 current tests.
+- [ ] The normal suite passes all 109 current tests with no expected failures, retries, focused tests, or skipped regression coverage.
+- [ ] The single-worker suite passes all 109 current tests.
 - [ ] Any intentional test-count change is explained by added or removed coverage, not by a silent skip.
 - [ ] GitHub Actions is green on the pushed commit. Inspect the uploaded Playwright report if local and CI behavior differ.
 
@@ -118,3 +118,16 @@ For any production app-shell change:
 - Confirm `.env.example` contains only `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`, real environment files are ignored, and no privileged credential exists anywhere in browser code.
 - Confirm no live Supabase project was created/linked, no database migration was applied, and no local data was uploaded.
 - Run `npm test` and `npx playwright test --workers=1` with all 104 tests passing and no skips or expected failures.
+
+# v46 Phase 4C auth and synthetic sync
+
+- Confirm the pinned Supabase UMD client, `cloud-config.js`, `supabase-client.js`, `cloud-storage.js`, `cloud-sync.js`, and `cloud-sync.css` each appear once in the `v46-phase4c-auth-synthetic-sync` app shell and offline cache.
+- Confirm the checked-in config is empty, Pages uses only `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` repository variables, and no database password, access token, secret key, or service-role key is committed or exposed to the browser.
+- Confirm signed-out and unconfigured use remains local, schema version 5 is unchanged, rendering does not write the queue, and existing backups/snapshots exclude the queue.
+- Confirm Jorge magic links use `shouldCreateUser: false`, the exact production redirect, and a hosted project with public signup disabled. Do not create Alexa Auth or friend signup.
+- Confirm ordinary Jorge/Alexa workout completion cannot reach the cloud transport; only explicit synthetic operations are accepted.
+- Confirm the durable queue survives reload, records explicit account/profile ownership, retries with the same idempotency key, retains failed operations, acknowledges successful duplicates, and produces one remote row after a lost acknowledgement.
+- Apply the reviewed migration through the pinned CLI, verify the hosted migration ledger, run the rolled-back pgTAP RLS suite, and retain only test output—not synthetic rows.
+- Recheck cross-account/profile denial, anonymous denial, immutable ownership, composite foreign keys, and uniqueness constraints against hosted Postgres.
+- Run `npm test` and `npx playwright test --workers=1` with all 109 tests passing and no skips or expected failures.
+- Confirm no real Jorge or Alexa record was read for migration, enqueued, uploaded, changed, or deleted.
