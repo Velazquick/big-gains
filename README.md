@@ -17,9 +17,16 @@ Past and current Calendar dates can also open a focused retrospective editor. It
 - [Browser testing](TESTING.md) — local commands, fixtures, coverage, and known limits
 - [Phase 4 account roadmap](PHASE4_ACCOUNT_ROADMAP.md) — cloud ownership, conflict rules, migration, and friend onboarding
 - [Phase 4E migration contract](PHASE4E_MIGRATION_CONTRACT.md) — approved-audit gate, deterministic target rows, recovery journal, readback verification, and post-migration audit
+- [Phase 4F shadow-sync contract](PHASE4F_SHADOW_SYNC_CONTRACT.md) — read-only reconstruction, one-way local-first queue, migrated-row adoption, tombstones, drift, and Phase 4G handoff
 - [Supabase setup for Phase 4C](SUPABASE_SETUP.md) — hosted project, Auth redirect, CLI migration, RLS verification, and Pages configuration
 
-The stabilized browser-test baseline is 143 passing tests in Chromium with no expected failures, covering the full local-first app plus the Phase 4D fingerprint and Phase 4E controlled migration boundary.
+The stabilized browser-test baseline is 150 passing tests in Chromium with no expected failures, covering the full local-first app plus the Phase 4D fingerprint, Phase 4E controlled migration, and Phase 4F shadow-sync boundary.
+
+## Phase 4F: verified one-way cloud shadow
+
+Release `v49-phase4f-shadow-sync-readiness` reconstructs Jorge and Alexa from account-scoped Supabase rows, computes deterministic `big-gains.shadow.v1` checksums, adopts the completed Phase 4E migration without rewriting it, and quietly pushes later local source mutations through the durable queue. Every push verifies ownership, base revision, exact idempotency, and affected-row readback before ACK; a full comparison follows.
+
+Local schema version 5 remains authoritative. The UI never waits for cloud work, cloud reads never write profile storage, and cloud values never restore, repair, normalize, or merge local state. Deletions use versioned tombstones and drift is reported without automatic correction.
 
 ## Storage compatibility
 

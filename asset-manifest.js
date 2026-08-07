@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v48-phase4e-controlled-migration';
+  const release = 'v49-phase4f-shadow-sync-readiness';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];
@@ -43,8 +43,9 @@
     './design-v21.js',
     './session-selector-v26.js',
     './sync-gateway.js',
-    './cloud-sync.js',
     './migration-preview.js',
+    './cloud-shadow.js',
+    './cloud-sync.js',
     './migration-engine.js',
     './controlled-migration.js',
     './shell-init.js'

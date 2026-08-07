@@ -188,7 +188,7 @@ const workoutTimerFeedback=(()=>{
   return Object.freeze({armFromGesture,verifyFromGesture,complete,audioAvailable,vibrationAvailable,getSoundSessionState:()=>soundSessionState});
 })();
 window.workoutTimerFeedback=workoutTimerFeedback;
-function saveState(){statePersistenceApi.save(state,active);}
+function saveState(){statePersistenceApi.save(state,active);queueMicrotask(()=>window.BigGainsCloudSync?.captureLocalSnapshot(PROFILE.id));}
 function autosave(){saveState();renderHero();}
 function todaysWorkout(){return WEEK_PLAN[new Date().getDay()];}
 function routineFor(day){const custom=state.customRoutines&&state.customRoutines[day];return Array.isArray(custom)?custom:DEFAULT_ROUTINES[day].exercises.map(name=>slug(name));}

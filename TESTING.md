@@ -2,7 +2,7 @@
 
 The Playwright harness serves the static PWA from `index.html` without rewriting it, so production scripts execute in their declared order.
 
-The current baseline is 143 passing Chromium tests with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
+The current baseline is 150 passing Chromium tests with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
 
 ## Install
 
@@ -20,7 +20,9 @@ npm test
 npx playwright test --workers=1
 ```
 
-Both commands must pass all 143 tests with no expected failures. In command-limited environments, use the deterministic `--shard=1/2` and `--shard=2/2` split for both normal and `--workers=1` runs.
+Both modes must pass all 150 tests with no expected failures. In command-limited environments, use the deterministic `--shard=1/2` and `--shard=2/2` split for both normal and `--workers=1` runs.
+
+V49 coverage in `tests/cloud-shadow.spec.js` verifies migration-envelope adoption without rewrites, `big-gains.shadow.v1` checksums, derived-PR exclusion, no cloud-read profile writes, exact missing/extra/tampered/wrong-profile/stale/newer drift, tombstone tie and recreation rules, local-save-before-queue behavior, signed-out offline queue survival, wrong-account refusal, production lost-ACK recovery, migrated-row transition, and affected-row verification.
 
 ## localStorage fixtures
 

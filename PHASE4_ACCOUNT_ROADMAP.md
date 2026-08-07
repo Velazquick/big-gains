@@ -47,3 +47,13 @@ Phase 4C deliberately implements authentication and a narrow transport adapter, 
 Configure the exact hosted production redirect, disable public/anonymous signup, create only Jorge's Auth user, and add the two browser-safe GitHub Pages repository variables. After separate review and deployment, confirm signed-out offline logging first and then test Jorge's magic link plus empty account/profile provisioning. Do not connect normal workout completion and do not upload Jorge/Alexa backups in this step.
 
 The next separately approved sprint should be a preview-only real-data migration dry run: export fresh Jorge/Alexa backups, calculate per-profile counts and checksums without remote writes, display the proposed account/profile mapping, and require explicit approval. Friend onboarding should follow only after Jorge's two-profile account has survived recovery and migration verification.
+
+## Phase 4F delivered boundary
+
+Phase 4F adopts the completed Phase 4E rows as a read-only baseline, reconstructs both profiles under `big-gains.shadow.v1`, and enables production local-to-cloud source mutations only after the Auth/account/profile mapping and migration journal are verified. Local schema version 5 stays authoritative; ACK requires an exact affected-row readback and is followed by parity comparison. Offline, signed-out, wrong-account, outage, conflict, and drift paths never block or modify local training data.
+
+Tombstones now include bodyweight entities, win exact revision ties, and require an explicit strictly later recreation. The browser does not pull, restore, repair, normalize, or merge from Supabase. Phase 4F does not create a friend user.
+
+## Exact Phase 4G step
+
+Create one independent friend Auth user, one friend-owned account, and one profile under that account. Add allowlisted profile presentation configuration so the friend can use a different accent/theme with the pet disabled. Keep authorization based only on the account owner's Auth UUID and the existing RLS ownership chain; presentation values never grant access. Run sustained Jorge/Alexa and friend usage with account-scoped queues and shadow comparisons before considering multi-device merge or cloud authority.
