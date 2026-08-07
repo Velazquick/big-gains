@@ -52,39 +52,20 @@
     return true;
   }
 
-  async function ensureJorgeCloudProfiles() {
+  async function readJorgeCloudProfiles() {
     const current = getClient();
     const currentSession = await session();
     if (!current || !currentSession?.user?.id) throw new Error('Jorge must be signed in.');
-
-    let { data: accounts, error } = await current.from('accounts').select('id,owner_user_id').limit(1);
-    if (error) throw error;
-    let account = accounts?.[0] || null;
-    if (!account) {
-      const created = await current.from('accounts').insert({
-        owner_user_id: currentSession.user.id,
-        display_name: 'Jorge account'
-      }).select('id,owner_user_id').single();
-      if (created.error?.code === '23505') {
-        const existing = await current.from('accounts').select('id,owner_user_id').limit(1).single();
-        if (existing.error) throw existing.error;
-        account = existing.data;
-      } else {
-        if (created.error) throw created.error;
-        account = created.data;
-      }
-    }
-
-    const profileRows = [
-      { account_id: account.id, client_id: 'jorge', display_name: 'Jorge' },
-      { account_id: account.id, client_id: 'alexa', display_name: 'Alexa' }
-    ];
-    const inserted = await current.from('profiles').upsert(profileRows, {
-      onConflict: 'account_id,client_id',
-      ignoreDuplicates: true
-    });
-    if (inserted.error) throw inserted.error;
-    const profiles = await current.from('profiles').select('id,account_id,client_id,display_name').eq('account_id', account.id);
+    const accounts = await current.from('accounts')
+      .select('id,owner_user_id')
+      .eq('owner_user_id', currentSession.user.id)
+      .limit(2);
+    if (accounts.error) throw accounts.error;
+    const account = accounts.data?.length === 1 ? accounts.data[0] : null;
+    if (!account) throw new Error('Exactly one signed-in cloud account is required.');
+    const profiles = await current.from('profiles')
+      .select('id,account_id,client_id,display_name')
+      .eq('account_id', account.id);
     if (profiles.error) throw profiles.error;
     const byClientId = Object.fromEntries((profiles.data || []).map(profile => [profile.client_id, profile]));
     if (!byClientId.jorge || !byClientId.alexa) throw new Error('Both Jorge and Alexa cloud profiles are required.');
@@ -105,7 +86,7 @@
     session,
     requestJorgeMagicLink,
     signOut,
-    ensureJorgeCloudProfiles,
+    readJorgeCloudProfiles,
     onAuthStateChange
   });
 })();

@@ -9,7 +9,8 @@
     window.bigGainsDirection,
     window.sessionSelector,
     window.BigGainsSync,
-    window.BigGainsCloudSync
+    window.BigGainsCloudSync,
+    window.BigGainsMigrationPreview
   ];
   let initialized = false;
 
