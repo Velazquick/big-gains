@@ -45,7 +45,28 @@ jobs:
           test -f service-worker-core.js
           test -f cloud-sync.js
           test -f vendor/supabase.js
-          grep -Fq "v46-phase4c-auth-synthetic-sync" asset-manifest.js
+          test -f migration-preview.js
+          test -f migration-preview.css
+          node --input-type=module <<'NODE'
+          await import('./asset-manifest.js');
+
+          const manifest = globalThis.BIG_GAINS_ASSET_MANIFEST;
+          if (!manifest || typeof manifest.release !== 'string' || !manifest.release.trim()) {
+            throw new Error('asset-manifest.js must declare a non-empty release.');
+          }
+
+          const requiredAssets = [
+            ['./migration-preview.js', manifest.scripts],
+            ['./migration-preview.css', manifest.styles]
+          ];
+          for (const [asset, collection] of requiredAssets) {
+            const isListed = collection.some(entry => entry.split('?')[0] === asset);
+            const isCoreAsset = manifest.coreAssets.some(entry => entry.split('?')[0] === asset);
+            if (!isListed || !isCoreAsset) {
+              throw new Error(`asset-manifest.js must include ${asset}.`);
+            }
+          }
+          NODE
           grep -Fq "logRetrospectiveWorkout" index.html
           grep -Fq "./service-worker.js" app.js
           grep -Fq "'./asset-manifest.js'" service-worker.js
