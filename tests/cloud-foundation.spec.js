@@ -31,7 +31,7 @@ test('cloud boundary is disabled by default and makes no network request', async
   expect(result.fetchCalls).toEqual([]);
 });
 
-test('even supplied placeholders cannot enable Phase 4B transport', async ({ page }) => {
+test('supplied browser-safe config waits for Phase 4C authentication', async ({ page }) => {
   await page.addInitScript(() => {
     window.__BIG_GAINS_CLOUD_CONFIG__ = {
       supabaseUrl: 'https://example.supabase.co',
@@ -44,7 +44,7 @@ test('even supplied placeholders cannot enable Phase 4B transport', async ({ pag
   expect(await page.evaluate(() => BigGainsCloud.status())).toEqual({
     enabled: false,
     configured: true,
-    reason: 'phase-4b-transport-not-implemented'
+    reason: 'phase-4c-awaiting-auth'
   });
 });
 
@@ -319,6 +319,9 @@ test('Supabase schema enables RLS everywhere and adversarial examples cover cros
   expect(adversarial).toContain('Jorge sees both Jorge and Alexa profiles');
   expect(adversarial).toContain('friend workout is invisible to Jorge');
   expect(adversarial).toContain('Jorge cannot insert into the friend account');
+  expect(adversarial).toContain('friend sees only the friend profile');
+  expect(adversarial).toContain('Jorge and Alexa workouts are invisible to friend');
+  expect(adversarial).toContain('friend cannot insert into the Jorge account');
   expect(adversarial).toContain('a profile id from another account cannot be paired');
   expect(adversarial).toContain('anonymous users have no table access');
 });
@@ -330,7 +333,7 @@ test('browser cloud module contains no transport, SDK, or privileged credential 
   expect(source).not.toMatch(/\bfetch\s*\(/);
   expect(source).not.toContain('createClient(');
   expect(source).not.toMatch(/service[_-]?role/i);
-  expect(envExample.trim().split('\n').filter(line => !line.startsWith('#'))).toEqual([
+  expect(envExample.trim().split(/\r?\n/).filter(line => !line.startsWith('#'))).toEqual([
     'SUPABASE_URL=',
     'SUPABASE_PUBLISHABLE_KEY='
   ]);

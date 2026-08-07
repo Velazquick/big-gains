@@ -1,5 +1,5 @@
--- Phase 4B only: private cloud schema and authorization boundary.
--- This migration is intentionally not linked to or applied against a live project.
+-- Phase 4B private cloud schema and authorization boundary.
+-- First applied to the Big Gains hosted project in Phase 4C before any real-data migration.
 
 create schema if not exists private;
 revoke all on schema private from public, anon, authenticated;

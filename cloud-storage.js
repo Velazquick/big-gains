@@ -2,6 +2,7 @@
   'use strict';
 
   const CONTRACT_VERSION = 1;
+  const DURABLE_QUEUE_KEY = 'big-gains-cloud-sync-queue-v1';
   const ENTITY_TYPES = Object.freeze([
     'workouts',
     'routines',
@@ -62,7 +63,8 @@
       mutation: input.mutation,
       version: input.version,
       updatedAt: input.updatedAt,
-      payload: input.mutation === 'delete' ? null : input.payload ?? null
+      payload: input.mutation === 'delete' ? null : input.payload ?? null,
+      synthetic: input.synthetic === true
     };
   }
 
@@ -101,6 +103,15 @@
     return Object.freeze({ ...operation, attempts: Number(operation.attempts || 0) + 1 });
   }
 
+  function acknowledgementFor(operation, acknowledgement) {
+    return Object.freeze({
+      idempotencyKey: operation.idempotencyKey,
+      remoteId: acknowledgement?.remoteId || null,
+      remoteVersion: acknowledgement?.remoteVersion ?? operation.version,
+      acknowledgedAt: acknowledgement?.acknowledgedAt || new Date().toISOString()
+    });
+  }
+
   function createMemoryQueue() {
     const pendingByKey = new Map();
     const acknowledgements = new Map();
@@ -125,15 +136,92 @@
         const operation = pendingByKey.get(idempotencyKey);
         if (!operation) return false;
         pendingByKey.delete(idempotencyKey);
-        acknowledgements.set(idempotencyKey, Object.freeze({
-          idempotencyKey,
-          remoteVersion: acknowledgement?.remoteVersion ?? operation.version,
-          acknowledgedAt: acknowledgement?.acknowledgedAt || new Date().toISOString()
-        }));
+        acknowledgements.set(idempotencyKey, acknowledgementFor(operation, acknowledgement));
         return true;
       },
       acknowledgement(idempotencyKey) {
         return acknowledgements.get(idempotencyKey) || null;
+      }
+    });
+  }
+
+  function validPersistedOperation(value) {
+    try {
+      const owner = normalizeOwner(value?.owner);
+      if (!ENTITY_TYPES.includes(value?.entityType)
+        || !MUTATIONS.includes(value?.mutation)
+        || typeof value?.entityId !== 'string'
+        || typeof value?.idempotencyKey !== 'string') return null;
+      const expected = createOperation({ ...value, owner, queuedAt: value.queuedAt });
+      if (expected.idempotencyKey !== value.idempotencyKey) return null;
+      return Object.freeze({
+        ...expected,
+        attempts: Number.isSafeInteger(Number(value.attempts)) && Number(value.attempts) >= 0 ? Number(value.attempts) : 0
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  function createDurableQueue({ storage = window.localStorage, key = DURABLE_QUEUE_KEY, acknowledgementLimit = 250 } = {}) {
+    let parsed = null;
+    try { parsed = JSON.parse(storage.getItem(key) || 'null'); } catch { parsed = null; }
+    const pendingByKey = new Map();
+    const acknowledgements = new Map();
+    if (parsed?.version === 1 && Array.isArray(parsed.pending)) {
+      parsed.pending.forEach(value => {
+        const operation = validPersistedOperation(value);
+        if (operation) pendingByKey.set(operation.idempotencyKey, operation);
+      });
+    }
+    if (parsed?.version === 1 && Array.isArray(parsed.acknowledgements)) {
+      parsed.acknowledgements.forEach(value => {
+        if (typeof value?.idempotencyKey === 'string') acknowledgements.set(value.idempotencyKey, Object.freeze({ ...value }));
+      });
+    }
+
+    function persist() {
+      storage.setItem(key, JSON.stringify({
+        version: 1,
+        pending: [...pendingByKey.values()],
+        acknowledgements: [...acknowledgements.values()].slice(-acknowledgementLimit)
+      }));
+    }
+
+    return Object.freeze({
+      key,
+      enqueue(operation) {
+        const valid = validPersistedOperation(operation);
+        if (!valid) throw new TypeError('A valid cloud operation is required.');
+        const acknowledged = acknowledgements.get(valid.idempotencyKey);
+        if (acknowledged) return operation;
+        const existing = pendingByKey.get(valid.idempotencyKey);
+        if (existing) return existing;
+        pendingByKey.set(valid.idempotencyKey, valid);
+        persist();
+        return valid;
+      },
+      pending() { return [...pendingByKey.values()]; },
+      markRetried(idempotencyKey) {
+        const operation = pendingByKey.get(idempotencyKey);
+        if (!operation) return null;
+        const retried = retryOperation(operation);
+        pendingByKey.set(idempotencyKey, retried);
+        persist();
+        return retried;
+      },
+      acknowledge(idempotencyKey, acknowledgement) {
+        const operation = pendingByKey.get(idempotencyKey);
+        if (!operation) return false;
+        pendingByKey.delete(idempotencyKey);
+        acknowledgements.set(idempotencyKey, acknowledgementFor(operation, acknowledgement));
+        while (acknowledgements.size > acknowledgementLimit) acknowledgements.delete(acknowledgements.keys().next().value);
+        persist();
+        return true;
+      },
+      acknowledgement(idempotencyKey) { return acknowledgements.get(idempotencyKey) || null; },
+      snapshot() {
+        return clone({ version: 1, pending: [...pendingByKey.values()], acknowledgements: [...acknowledgements.values()] });
       }
     });
   }
@@ -206,7 +294,10 @@
         if (!transport.enabled) return Object.freeze({ ok: true, disabled: true, sent: 0, reason: transport.reason });
         let sent = 0;
         for (const operation of queue.pending()) {
-          const response = await transport.send(operation);
+          let response;
+          try { response = await transport.send(operation); } catch (error) {
+            response = { ok: false, error: error?.message || 'transport-failed' };
+          }
           if (!response?.ok) {
             queue.markRetried(operation.idempotencyKey);
             continue;
@@ -229,7 +320,7 @@
 
   const config = readSafeConfig();
   const disabledReason = config.hasUrl && config.hasPublishableKey
-    ? 'phase-4b-transport-not-implemented'
+    ? 'phase-4c-awaiting-auth'
     : 'supabase-not-configured';
 
   window.BigGainsCloud = Object.freeze({
@@ -247,6 +338,8 @@
     idempotencyKeyFor,
     retryOperation,
     createMemoryQueue,
+    createDurableQueue,
+    durableQueueKey: DURABLE_QUEUE_KEY,
     resolveConflict,
     createDisabledTransport,
     createLocalFirstCoordinator

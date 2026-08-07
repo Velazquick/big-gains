@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(13);
+select plan(18);
 
 select has_table('public', 'accounts', 'accounts table exists');
 select has_table('public', 'profiles', 'profiles table exists');
@@ -40,8 +40,16 @@ select throws_ok(
   'new row violates row-level security policy for table "workouts"',
   'Jorge cannot insert into the friend account'
 );
-select is((with affected as (update public.workouts set version = 2 where client_id = 'friend-workout' returning 1) select count(*) from affected), 0::bigint, 'Jorge cannot update the friend workout');
-select is((with affected as (delete from public.workouts where client_id = 'friend-workout' returning 1) select count(*) from affected), 0::bigint, 'Jorge cannot delete the friend workout');
+select results_eq(
+  $$update public.workouts set version = 2 where client_id = 'friend-workout' returning 1$$,
+  $$select 1 where false$$,
+  'Jorge cannot update the friend workout'
+);
+select results_eq(
+  $$delete from public.workouts where client_id = 'friend-workout' returning 1$$,
+  $$select 1 where false$$,
+  'Jorge cannot delete the friend workout'
+);
 select throws_ok(
   $$insert into public.workouts (account_id, profile_id, client_id, idempotency_key, completed_at) values ('a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000003', 'profile-forgery', 'forged-2', now())$$,
   '23503',
@@ -53,6 +61,22 @@ select throws_ok(
   '23514',
   'profile ownership is immutable',
   'Alexa ownership cannot be reassigned by a normal update'
+);
+
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '20000000-0000-0000-0000-000000000002', true);
+select set_config('request.jwt.claims', '{"sub":"20000000-0000-0000-0000-000000000002","role":"authenticated"}', true);
+
+select is((select count(*) from public.accounts), 1::bigint, 'friend sees only the friend account');
+select is((select count(*) from public.profiles), 1::bigint, 'friend sees only the friend profile');
+select is((select count(*) from public.workouts), 1::bigint, 'friend sees only the friend workout');
+select is((select count(*) from public.workouts where client_id in ('jorge-workout', 'alexa-workout')), 0::bigint, 'Jorge and Alexa workouts are invisible to friend');
+select throws_ok(
+  $$insert into public.workouts (account_id, profile_id, client_id, idempotency_key, completed_at) values ('a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'friend-forgery', 'friend-forged-1', now())$$,
+  '42501',
+  'new row violates row-level security policy for table "workouts"',
+  'friend cannot insert into the Jorge account'
 );
 
 reset role;

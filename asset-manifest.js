@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v45-phase4b-cloud-foundation';
+  const release = 'v46-phase4c-auth-synthetic-sync';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];
@@ -18,10 +18,14 @@
     './session-selector-v26.css',
     './sync-gateway.css',
     './training-calendar.css',
-    './retrospective-workout.css'
+    './retrospective-workout.css',
+    './cloud-sync.css'
   ];
   const scripts = [
     './account-context.js',
+    './cloud-config.js',
+    './vendor/supabase.js',
+    './supabase-client.js',
     './cloud-storage.js',
     './state-persistence.js',
     './profiles.js',
@@ -37,6 +41,7 @@
     './design-v21.js',
     './session-selector-v26.js',
     './sync-gateway.js',
+    './cloud-sync.js',
     './shell-init.js'
   ];
   const revision = path => `${path}?v=${encodeURIComponent(release)}`;
