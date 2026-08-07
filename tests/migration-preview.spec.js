@@ -45,7 +45,7 @@ async function build(page, snapshots = localSnapshots(), remote = remoteFixture(
     localSnapshots: snapshots,
     remote,
     generatedAt: options.generatedAt || '2026-08-07T18:00:00.000Z',
-    appRelease: 'v47-phase4d-migration-preview'
+    appRelease: 'v47.1-phase4d-legacy-source-preview'
   }), { snapshots, remote, options });
 }
 
@@ -75,6 +75,30 @@ test('maps synthetic Jorge and Alexa profiles to one signed-in account and becom
   expect(preview.profiles.jorge.entities.completedWorkouts.count).toBe(1);
   expect(preview.profiles.jorge.entities.customRoutines.count).toBe(1);
   expect(preview.profiles.alexa.entities.bodyweightEntries.count).toBe(1);
+});
+
+test('accepts historical schema markers only when raw records satisfy the current migration contract', async ({ page }) => {
+  const current = await build(page, localSnapshots({ jorge: { workouts: [completedWorkout()] } }));
+
+  for (const version of [2, 3, 4]) {
+    const preview = await build(page, localSnapshots({
+      jorge: { version, workouts: [completedWorkout()] }
+    }));
+
+    expect(preview.ready).toBe(true);
+    expect(preview.profiles.jorge.valid).toBe(true);
+    expect(preview.profiles.jorge.storedSchemaVersion).toBe(version);
+    expect(preview.profiles.jorge.checksum).toBe(current.profiles.jorge.checksum);
+  }
+});
+
+test('blocks missing, nonnumeric, and future source schema markers', async ({ page }) => {
+  for (const version of [undefined, '5', 6]) {
+    const preview = await build(page, localSnapshots({ jorge: { version } }));
+
+    expect(preview.ready).toBe(false);
+    expect(preview.blockingReasons).toContain('Jorge: version — Source schema must be numeric version 2, 3, 4, or 5.');
+  }
 });
 
 test('blocks a cloud profile whose account ownership does not match', async ({ page }) => {
@@ -229,8 +253,13 @@ test('remote verification issues SELECT-only account-scoped queries and has no w
   }
 });
 
-test('reading and hashing both local profiles performs no local writes', async ({ page }) => {
+test('reading and hashing a historical schema marker performs no local writes', async ({ page }) => {
   const result = await page.evaluate(async remote => {
+    const jorgeStorageKey = bigGainsStatePersistence.storageKeyForProfile('jorge');
+    const historicalState = JSON.parse(localStorage.getItem(jorgeStorageKey));
+    historicalState.version = 4;
+    localStorage.setItem(jorgeStorageKey, JSON.stringify(historicalState));
+    const rawBefore = localStorage.getItem(jorgeStorageKey);
     const originalSetItem = Storage.prototype.setItem;
     const originalRemoveItem = Storage.prototype.removeItem;
     const writes = [];
@@ -242,7 +271,12 @@ test('reading and hashing both local profiles performs no local writes', async (
         alexa: bigGainsStatePersistence.readProfileSnapshot('alexa')
       };
       const preview = await BigGainsMigrationPreview.buildPreview({ localSnapshots, remote });
-      return { writes, status: preview.status };
+      return {
+        writes,
+        status: preview.status,
+        storedSchemaVersion: preview.profiles.jorge.storedSchemaVersion,
+        rawUnchanged: localStorage.getItem(jorgeStorageKey) === rawBefore
+      };
     } finally {
       Storage.prototype.setItem = originalSetItem;
       Storage.prototype.removeItem = originalRemoveItem;
@@ -251,6 +285,8 @@ test('reading and hashing both local profiles performs no local writes', async (
 
   expect(result.writes).toEqual([]);
   expect(result.status).toBe('READY FOR MIGRATION');
+  expect(result.storedSchemaVersion).toBe(4);
+  expect(result.rawUnchanged).toBe(true);
 });
 
 test('authenticated Settings UI shows quiet mapping, counts, audit details, and no migration action', async ({ page }) => {
@@ -321,10 +357,11 @@ test('audit export contains identifiers, counts, and checksums but no personal r
   expect(audit).toMatchObject({
     format: 'big-gains.migration-preview.v1',
     version: 1,
-    source: { schemaVersion: 5, appRelease: 'v47-phase4d-migration-preview' },
+    source: { schemaVersion: 5, appRelease: 'v47.1-phase4d-legacy-source-preview' },
     status: 'READY FOR MIGRATION'
   });
   expect(audit.profiles.jorge.counts.completedWorkouts).toBe(1);
+  expect(audit.profiles.jorge.storedSchemaVersion).toBe(5);
   expect(audit.profiles.jorge.entityChecksums.completedWorkouts).toHaveLength(64);
   expect(serialized).not.toContain('private workout note sentinel');
   expect(serialized).not.toContain('private exercise cue sentinel');

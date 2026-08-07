@@ -191,6 +191,7 @@
       return {
         ...defaults,
         ...saved,
+        version: 5,
         profileId,
         goals: normalizeGoals(saved.goals),
         workouts: Array.isArray(saved.workouts) ? saved.workouts.map(normalizeWorkout).filter(Boolean) : [],

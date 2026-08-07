@@ -51,6 +51,17 @@ test('loads, normalizes, and saves a profile through the persistence API', async
   expect(await readStoredJson(page, STORAGE_KEYS.jorge)).toEqual(JSON.parse(roundTrip.normalized));
 });
 
+test('normalizes historical schema markers to version 5 in memory', async ({ page }) => {
+  await installLocalStorageFixture(page, 'blankJorge');
+  await openApp(page);
+
+  const versions = await page.evaluate(() => [2, 3, 4].map(version => (
+    statePersistenceApi.normalizeState({ ...state, version }).version
+  )));
+
+  expect(versions).toEqual([5, 5, 5]);
+});
+
 test('keeps Jorge and Alexa localStorage isolated', async ({ page }) => {
   await installLocalStorageFixture(page, ['blankJorge', 'blankAlexa'], { activeProfile: 'jorge' });
   await openApp(page);
