@@ -140,7 +140,7 @@
         const record = {
           profileClientId, table, entityType: parsed.entityType, clientId: row.client_id,
           data: parsed.data, payloadContract: parsed.contract || 'columns',
-          idempotencyKey: row.idempotency_key, ...revision,
+          remoteId: row.id, idempotencyKey: row.idempotency_key, ...revision,
           fingerprint: await fingerprint(profileClientId, table, row.client_id, parsed.data)
         };
         const result = profileResults[profileClientId];
@@ -157,7 +157,7 @@
       const revision = revisionFor(row, true);
       const record = {
         profileClientId, table: row.entity_type, entityType: row.entity_type,
-        clientId: row.entity_id, data: null, idempotencyKey: row.idempotency_key,
+        clientId: row.entity_id, data: null, remoteId: row.id, idempotencyKey: row.idempotency_key,
         ...revision,
         fingerprint: await fingerprint(profileClientId, row.entity_type, row.entity_id, null, true)
       };
