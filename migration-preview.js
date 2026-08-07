@@ -9,6 +9,7 @@
   const APPLICATION_TABLES = Object.freeze([
     'workouts',
     'routines',
+    'bodyweight_entries',
     'preferences',
     'active_sessions',
     'sync_metadata',

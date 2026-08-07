@@ -1,0 +1,61 @@
+.controlled-migration-card {
+  display: grid;
+  gap: 1rem;
+}
+
+.migration-file-picker,
+.migration-confirm {
+  display: flex;
+  gap: .75rem;
+  align-items: center;
+  padding: .9rem;
+  border: 1px solid rgba(157, 255, 91, .24);
+  border-radius: 14px;
+  background: rgba(157, 255, 91, .05);
+}
+
+.migration-file-picker {
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.migration-file-picker input {
+  max-width: 100%;
+  color: var(--text);
+}
+
+.migration-write-plan,
+.migration-safety-copy {
+  padding: 1rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .035);
+}
+
+.migration-write-plan h4,
+.migration-safety-copy p {
+  margin: 0 0 .7rem;
+}
+
+.migration-target-counts {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.migration-count-total {
+  border-color: rgba(157, 255, 91, .35) !important;
+}
+
+.migration-confirm input {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: 0 0 auto;
+  accent-color: #9dff5b;
+}
+
+.migration-inline-message {
+  margin: 0;
+  color: var(--muted);
+}
+
+.controlled-migration-card code {
+  overflow-wrap: anywhere;
+}

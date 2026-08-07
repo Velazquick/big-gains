@@ -5,6 +5,7 @@ import { openApp } from './helpers/app.js';
 const ZERO_COUNTS = Object.freeze({
   workouts: 0,
   routines: 0,
+  bodyweight_entries: 0,
   preferences: 0,
   active_sessions: 0,
   sync_metadata: 0,

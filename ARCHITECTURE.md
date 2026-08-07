@@ -31,7 +31,10 @@ The production script order is:
 18. `session-selector-v26.js`
 19. `sync-gateway.js`
 20. `cloud-sync.js`
-21. `shell-init.js`
+21. `migration-preview.js`
+22. `migration-engine.js`
+23. `controlled-migration.js`
+24. `shell-init.js`
 
 This order is a runtime contract. Persistence and hook APIs exist before `app.js` consumes them. `app.js` loads and renders the current profile before the shell modules initialize. The final script, `shell-init.js`, initializes the shell modules exactly once in this order: Workout Mode, view shell, profile shell, training pet, direction/momentum, session selector, and sync.
 
@@ -46,6 +49,8 @@ This order is a runtime contract. Persistence and hook APIs exist before `app.js
 | `cloud-storage.js` | `BigGainsCloud` | Explicit account/profile sync operations, memory and durable queue contracts, deterministic idempotency keys, local-first coordinator, acknowledgements, and conflict resolution. It contains no network transport. |
 | `cloud-sync.js` | `BigGainsCloudSync` | Synthetic-only completed-workout transport, offline/retry/ack runtime, durable queue instance, online catch-up, and non-blocking Jorge Auth controls. It is not called by ordinary workout completion. |
 | `migration-preview.js` | `BigGainsMigrationPreview` | Phase 4D read-only local inspection, owned cloud destination verification, canonical SHA-256 checksums, readiness validation, and metadata-only audit export. It has no mutation or sync API. |
+| `migration-engine.js` | `BigGainsMigrationEngine` | Phase 4E strict audit parsing, deterministic target planning, insert/recover execution, metadata-only journal state, readback reconstruction, and post-migration audit generation. |
+| `controlled-migration.js` | `BigGainsControlledMigration` | Authenticated file-selection gate, exact write plan, two-step confirmation, explicit first-run/resume actions, progress, and completion/audit UI. |
 | `state-persistence.js` | `bigGainsStatePersistence` and the per-profile object returned by `create(...)` | Profile storage keys, load/normalize/save, legacy weight migration, backup serialization, and import validation. |
 | `profiles.js` | `PROFILE_CONFIG`, `PROFILE`, `switchProfile(...)` | Profile metadata, active-profile selection, theme marker, and reload-based profile switching. Profile-key reads and writes still go through the persistence API. |
 | `workout-controls.js` | `workoutControls` | Render-only active-workout controls plus exercise movement, collapse, and completion advancement. It does not persist state. |
@@ -103,13 +108,19 @@ When Jorge has no current state, the persistence layer imports only valid legacy
 
 ## Phase 4D migration preview
 
-The migration preview is visible only when browser-safe Supabase configuration is present and Jorge has an authenticated session. It reads both local profile documents through `bigGainsStatePersistence.readProfileSnapshot(...)`; that API parses an exact copy without normalization, legacy migration, or storage writes. Remote verification uses authenticated `SELECT` queries only. It requires one account owned by the signed-in user, exactly the Jorge and Alexa profiles on that account, and account-scoped zero counts in `workouts`, `routines`, `preferences`, `active_sessions`, `sync_metadata`, and `tombstones`.
+The migration preview is visible only when browser-safe Supabase configuration is present and Jorge has an authenticated session. It reads both local profile documents through `bigGainsStatePersistence.readProfileSnapshot(...)`; that API parses an exact copy without normalization, legacy migration, or storage writes. Remote verification uses authenticated `SELECT` queries only. It requires one account owned by the signed-in user, exactly the Jorge and Alexa profiles on that account, and account-scoped zero counts in `workouts`, `routines`, `bodyweight_entries`, `preferences`, `active_sessions`, `sync_metadata`, and `tombstones`.
 
 Source-of-truth migration entities are completed workouts, custom routines, bodyweight entries, goal preferences, timer preferences, per-exercise preferences, and an optional active session (including its rest deadline). Workout/session notes remain embedded in their parent entity. Persisted PR entries are validated but are not migration entities because PRs, progress, volume, calendar groupings, and summaries are derived from source records.
 
 The checksum contract is `big-gains.migration-preview.v1` with source schema version 5. Canonical serialization recursively sorts object keys, preserves array order, converts CRLF and CR text line endings to LF, and preserves meaningful `null`, `false`, `0`, and empty-string values. Non-finite numbers and non-JSON values are rejected. SHA-256 digests deterministic UTF-8 bytes through the browser Web Crypto API. Every entity checksum includes the contract, source schema version, local profile client id, entity type, and records. Profile checksums derive from their ordered entity counts and checksums; the combined account checksum derives from Jorge then Alexa. The generated preview timestamp and all cloud UUIDs are excluded from checksum inputs.
 
 The audit export contains only version/release metadata, account/profile mapping identifiers, counts, checksums, scoped remote counts, and readiness/blocking status. It never contains workout, set, note, cue, or bodyweight payload values. Phase 4D exposes no migration action and never queues or sends local records.
+
+## Phase 4E controlled migration
+
+Phase 4E keeps the Phase 4D source checksum contract stable and defines a separate `big-gains.migration.v1` target. The UI requires the user-selected approved v47.1 audit, exact current source/account/profile matches, and a fresh empty-destination check immediately before its first journal write. It then requires a second inline confirmation with exact application and journal row counts. See [PHASE4E_MIGRATION_CONTRACT.md](PHASE4E_MIGRATION_CONTRACT.md) for payloads, stable client IDs, the bodyweight `lb` contract, journal/resume rules, readback checksums, and the metadata-only post-migration audit.
+
+The migration engine is independent from `BigGainsCloudSync`. Ordinary workout completion remains local-only and the existing cloud transport still rejects non-synthetic operations. Phase 4E transforms exact local snapshots in memory and never calls persistence save, import, or normalization APIs.
 
 ## Shell initialization and UI hooks
 
@@ -134,7 +145,7 @@ The notes and progress features attach through explicit app-owned hooks:
 
 ## Asset and service-worker lifecycle
 
-`asset-manifest.js` is the single asset inventory. Release `v47.1-phase4d-legacy-source-preview` extends the read-only Phase 4D preview to recognize supported historical source markers only after their raw records satisfy the current migration contract. It retains the canonical checksum contract, audit export, Phase 4C Auth boundary, durable synthetic queue, and `assets/timer-ready.wav` in the deterministic precache. The manifest applies the release query parameter to every production CSS and application script, rejects duplicate core assets, and supplies the same immutable manifest to the page loader and service worker. `index.html`, the loader, manifest, service-worker core, web manifest, icon, local chime, and all revisioned CSS and scripts form the precached app shell.
+`asset-manifest.js` is the single asset inventory. Release `v48-phase4e-controlled-migration` adds the reviewed controlled migration target, bodyweight destination, journal/recovery UI, and readback audit while retaining the v47.1 Phase 4D source checksum contract, Phase 4C Auth boundary, synthetic-only normal transport, and `assets/timer-ready.wav` in the deterministic precache. The manifest applies the release query parameter to every production CSS and application script, rejects duplicate core assets, and supplies the same immutable manifest to the page loader and service worker. `index.html`, the loader, manifest, service-worker core, web manifest, icon, local chime, and all revisioned CSS and scripts form the precached app shell.
 
 Workout-card focus is live-session metadata, not schema migration. `focusedExerciseId` prefers the last interacted exercise while it has incomplete working sets, then falls back to the first incomplete exercise. A manual collapse is authoritative and does not clear focus or session data; automatic advancement opens the next incomplete exercise. Upcoming cards remain collapsed and subdued, while completed cards recede but can be expanded for review. Added sets are ordinary incomplete working sets with fresh IDs and values copied only from the latest valid working set.
 
@@ -212,7 +223,7 @@ friend auth user -> friend account -> friend profile
 
 After Jorge signs in, the client creates or reuses one account owned by his Auth user and two rows with client IDs `jorge` and `alexa`. Existing local descriptors and data are not read, transformed, or uploaded.
 
-The SQL migration defines `accounts`, `profiles`, `workouts`, `routines`, `preferences`, `active_sessions`, `sync_metadata`, and `tombstones`. All profile data carries the pair `(account_id, profile_id)`, and composite foreign keys prove that the profile belongs to that account. Ownership columns are immutable after creation. Completed workouts have unique account/profile/client IDs and account-scoped idempotency keys. Active sessions are unique per account/profile.
+The SQL migrations define `accounts`, `profiles`, `workouts`, `routines`, `bodyweight_entries`, `preferences`, `active_sessions`, `sync_metadata`, and `tombstones`. All profile data carries the pair `(account_id, profile_id)`, and composite foreign keys prove that the profile belongs to that account. Ownership columns are immutable after creation. Completed workouts and bodyweight entries have unique account/profile/client IDs and account-scoped idempotency keys. Active sessions are unique per account/profile. `sync_metadata.metadata` stores only migration journal metadata.
 
 RLS is enabled and forced on every table. The browser-facing `authenticated` role receives table operations, but policies permit them only when `auth.uid()` owns the row's `account_id`; the account table itself checks `owner_user_id`. Anonymous/public table grants are revoked. Jorge therefore reaches both profiles within his account, while a friend cannot see or mutate either. A profile UUID alone is insufficient because authorization always resolves account ownership and the database enforces the composite owner/profile relationship.
 

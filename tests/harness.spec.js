@@ -24,6 +24,8 @@ const productionScriptOrder = [
   'sync-gateway.js',
   'cloud-sync.js',
   'migration-preview.js',
+  'migration-engine.js',
+  'controlled-migration.js',
   'shell-init.js'
 ];
 
@@ -118,7 +120,9 @@ test('shell modules initialize once without duplicate listeners or assets', asyn
     direction: window.bigGainsDirection.initialize(),
     selector: window.sessionSelector.initialize(),
     sync: window.BigGainsSync.initialize(),
-    cloudSync: window.BigGainsCloudSync.initialize()
+    cloudSync: window.BigGainsCloudSync.initialize(),
+    migrationPreview: window.BigGainsMigrationPreview.initialize(),
+    controlledMigration: window.BigGainsControlledMigration.initialize()
   }));
   expect(initialization).toEqual({
     shell: false,
@@ -129,7 +133,9 @@ test('shell modules initialize once without duplicate listeners or assets', asyn
     direction: false,
     selector: false,
     sync: false,
-    cloudSync: false
+    cloudSync: false,
+    migrationPreview: false,
+    controlledMigration: false
   });
 
   const viewWrites = await page.evaluate(() => {

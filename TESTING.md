@@ -2,7 +2,7 @@
 
 The Playwright harness serves the static PWA from `index.html` without rewriting it, so production scripts execute in their declared order.
 
-The current baseline is 109 passing Chromium tests with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
+The current baseline is 143 passing Chromium tests with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
 
 ## Install
 
@@ -20,7 +20,7 @@ npm test
 npx playwright test --workers=1
 ```
 
-Both commands must pass all 109 tests with no expected failures.
+Both commands must pass all 143 tests with no expected failures. In command-limited environments, use the deterministic `--shard=1/2` and `--shard=2/2` split for both normal and `--workers=1` runs.
 
 ## localStorage fixtures
 
@@ -44,6 +44,8 @@ V44 coverage in `tests/retrospective-workout.spec.js` verifies past/today eligib
 V45 coverage in `tests/cloud-foundation.spec.js` verifies the disabled-by-default boundary, no network transport even when placeholder configuration exists, explicit account/profile operation ownership, Jorge/Alexa/friend cloud topology, persist-before-enqueue ordering, acknowledgements, offline/disabled queue retention, stable retry idempotency, stale-remote rejection, append-only workout ties, tombstone precedence, immutable ownership, untouched version-5 backups and `big-gains.snapshot.v1`, storage-free cloud helpers, complete RLS enablement, composite owner/profile constraints, anonymous grant removal, and adversarial cross-account SQL examples.
 
 V46 coverage in `tests/cloud-sync.spec.js` verifies queue survival across reload, queue exclusion from schema-version-5 backup data, local-persist-before-enqueue ordering, harmless remote failure, stable keys across retries, offline/reconnect recovery, lost-acknowledgement idempotency with exactly one synthetic remote row, durable acknowledgements, the hard non-synthetic transport rejection, and Jorge magic-link options with signup disabled and the exact GitHub Pages redirect.
+
+V48 coverage in `tests/controlled-migration.spec.js` verifies strict metadata-only audit parsing, exact checksum and mapping gates, changed workout/bodyweight/preference blockers, empty-remote requirements, deterministic target payloads and collision-safe bodyweight IDs, exact planned writes, explicit confirmation, first-run verification, lost-response exact-once recovery, safe mid-run resume, conflict refusal, readback count/checksum failures, source-change failure, journal completion ordering, raw-free post-migration audits, and unchanged local storage/backups/snapshots/schema v5. `supabase/tests/database/phase4e_bodyweight_rls.test.sql` adds hosted adversarial ownership, anonymous denial, composite-FK, unit, and immutability coverage.
 
 Notes coverage verifies the explicit notes hook API, active-session notes rendering and persistence, rest-timer start/resume/expiry messaging, history opening, and saved session-note rendering.
 
