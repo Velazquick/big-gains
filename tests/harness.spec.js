@@ -23,6 +23,7 @@ const productionScriptOrder = [
   'session-selector-v26.js',
   'sync-gateway.js',
   'cloud-sync.js',
+  'migration-preview.js',
   'shell-init.js'
 ];
 

@@ -167,7 +167,7 @@
 
   async function handleSignedIn() {
     try {
-      cloudOwner = await supabaseBoundary.ensureJorgeCloudProfiles();
+      cloudOwner = await supabaseBoundary.readJorgeCloudProfiles();
       await flush();
     } catch (error) {
       lastResult = Object.freeze({ ok: false, error: error?.message || String(error), pending: queue.pending().length });

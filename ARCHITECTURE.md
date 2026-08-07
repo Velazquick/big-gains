@@ -42,9 +42,10 @@ This order is a runtime contract. Persistence and hook APIs exist before `app.js
 | `asset-manifest.js` | `BIG_GAINS_ASSET_MANIFEST` | Release identifier, cache names, ordered CSS and script URLs, and the complete offline core-asset list. |
 | `account-context.js` | `bigGainsAccounts` | Existing on-device descriptor registry, selected profile, storage namespaces, and session-key ownership. |
 | `cloud-config.js` | `__BIG_GAINS_CLOUD_CONFIG__` | Empty checked-in browser configuration. The Pages workflow may replace it in the deployment artifact using only repository variables for the project URL and publishable key. |
-| `supabase-client.js` | `BigGainsSupabase` | Lazily creates the vendored browser client, owns persisted Auth sessions, requests an existing-user-only Jorge magic link, signs out, and idempotently provisions Jorge's account with Jorge and Alexa profiles. |
+| `supabase-client.js` | `BigGainsSupabase` | Lazily creates the vendored browser client, owns persisted Auth sessions, requests an existing-user-only Jorge magic link, signs out, and reads the already-provisioned Jorge account/profile metadata. Phase 4D removed browser-side account/profile provisioning. |
 | `cloud-storage.js` | `BigGainsCloud` | Explicit account/profile sync operations, memory and durable queue contracts, deterministic idempotency keys, local-first coordinator, acknowledgements, and conflict resolution. It contains no network transport. |
 | `cloud-sync.js` | `BigGainsCloudSync` | Synthetic-only completed-workout transport, offline/retry/ack runtime, durable queue instance, online catch-up, and non-blocking Jorge Auth controls. It is not called by ordinary workout completion. |
+| `migration-preview.js` | `BigGainsMigrationPreview` | Phase 4D read-only local inspection, owned cloud destination verification, canonical SHA-256 checksums, readiness validation, and metadata-only audit export. It has no mutation or sync API. |
 | `state-persistence.js` | `bigGainsStatePersistence` and the per-profile object returned by `create(...)` | Profile storage keys, load/normalize/save, legacy weight migration, backup serialization, and import validation. |
 | `profiles.js` | `PROFILE_CONFIG`, `PROFILE`, `switchProfile(...)` | Profile metadata, active-profile selection, theme marker, and reload-based profile switching. Profile-key reads and writes still go through the persistence API. |
 | `workout-controls.js` | `workoutControls` | Render-only active-workout controls plus exercise movement, collapse, and completion advancement. It does not persist state. |
@@ -100,6 +101,16 @@ The storage keys are:
 
 When Jorge has no current state, the persistence layer imports only valid legacy weights into a new version-5 state. It does not reconstruct undocumented legacy workouts, does not modify the legacy key/value, and persists the new Jorge state so the migration is idempotent.
 
+## Phase 4D migration preview
+
+The migration preview is visible only when browser-safe Supabase configuration is present and Jorge has an authenticated session. It reads both local profile documents through `bigGainsStatePersistence.readProfileSnapshot(...)`; that API parses an exact copy without normalization, legacy migration, or storage writes. Remote verification uses authenticated `SELECT` queries only. It requires one account owned by the signed-in user, exactly the Jorge and Alexa profiles on that account, and account-scoped zero counts in `workouts`, `routines`, `preferences`, `active_sessions`, `sync_metadata`, and `tombstones`.
+
+Source-of-truth migration entities are completed workouts, custom routines, bodyweight entries, goal preferences, timer preferences, per-exercise preferences, and an optional active session (including its rest deadline). Workout/session notes remain embedded in their parent entity. Persisted PR entries are validated but are not migration entities because PRs, progress, volume, calendar groupings, and summaries are derived from source records.
+
+The checksum contract is `big-gains.migration-preview.v1` with source schema version 5. Canonical serialization recursively sorts object keys, preserves array order, converts CRLF and CR text line endings to LF, and preserves meaningful `null`, `false`, `0`, and empty-string values. Non-finite numbers and non-JSON values are rejected. SHA-256 digests deterministic UTF-8 bytes through the browser Web Crypto API. Every entity checksum includes the contract, source schema version, local profile client id, entity type, and records. Profile checksums derive from their ordered entity counts and checksums; the combined account checksum derives from Jorge then Alexa. The generated preview timestamp and all cloud UUIDs are excluded from checksum inputs.
+
+The audit export contains only version/release metadata, account/profile mapping identifiers, counts, checksums, scoped remote counts, and readiness/blocking status. It never contains workout, set, note, cue, or bodyweight payload values. Phase 4D exposes no migration action and never queues or sends local records.
+
 ## Shell initialization and UI hooks
 
 `app.js` initializes notes, progress, and the retrospective editor, calls `renderAll()`, and then `shell-init.js` performs the one-time shell pass.
@@ -123,7 +134,7 @@ The notes and progress features attach through explicit app-owned hooks:
 
 ## Asset and service-worker lifecycle
 
-`asset-manifest.js` is the single asset inventory. Release `v46-phase4c-auth-synthetic-sync` adds the vendored Supabase client, safe configuration, Auth boundary, durable queue, synthetic transport, and cloud settings card while retaining the retrospective editor and `assets/timer-ready.wav` in the deterministic precache. The manifest applies the release query parameter to every production CSS and application script, rejects duplicate core assets, and supplies the same immutable manifest to the page loader and service worker. `index.html`, the loader, manifest, service-worker core, web manifest, icon, local chime, and all revisioned CSS and scripts form the precached app shell.
+`asset-manifest.js` is the single asset inventory. Release `v47-phase4d-migration-preview` adds the read-only preview, canonical checksum contract, audit export, and preview presentation while retaining the Phase 4C Auth boundary, durable synthetic queue, and `assets/timer-ready.wav` in the deterministic precache. The manifest applies the release query parameter to every production CSS and application script, rejects duplicate core assets, and supplies the same immutable manifest to the page loader and service worker. `index.html`, the loader, manifest, service-worker core, web manifest, icon, local chime, and all revisioned CSS and scripts form the precached app shell.
 
 Workout-card focus is live-session metadata, not schema migration. `focusedExerciseId` prefers the last interacted exercise while it has incomplete working sets, then falls back to the first incomplete exercise. A manual collapse is authoritative and does not clear focus or session data; automatic advancement opens the next incomplete exercise. Upcoming cards remain collapsed and subdued, while completed cards recede but can be expanded for review. Added sets are ordinary incomplete working sets with fresh IDs and values copied only from the latest valid working set.
 

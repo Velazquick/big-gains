@@ -28,6 +28,24 @@
     return accountRegistry.saveActive(profileId);
   }
 
+  function readProfileSnapshot(profileId) {
+    const storageKey = storageKeyForProfile(profileId);
+    if (!storageKey) return Object.freeze({ ok: false, reason: 'unknown-profile', profileId });
+    let raw;
+    try {
+      raw = read(storageKey);
+    } catch (error) {
+      return Object.freeze({ ok: false, reason: 'storage-read-failed', profileId, error: error?.message || String(error) });
+    }
+    if (raw === null) return Object.freeze({ ok: false, reason: 'missing-local-profile', profileId });
+    try {
+      const value = JSON.parse(raw);
+      return Object.freeze({ ok: true, profileId, storageKey, value });
+    } catch {
+      return Object.freeze({ ok: false, reason: 'invalid-json', profileId });
+    }
+  }
+
   function create({ account, profile, profileConfig, validWorkoutTypes, createId, slug }) {
     const ownerAccount = account || accountRegistry.resolve(profile.id);
     if (!ownerAccount) throw new Error(`Unknown account for profile: ${profile.id}`);
@@ -260,6 +278,7 @@
   window.bigGainsStatePersistence = Object.freeze({
     storageKeys: STORAGE_KEYS,
     storageKeyForProfile,
+    readProfileSnapshot,
     loadActiveProfileId,
     saveActiveProfileId,
     create
