@@ -163,6 +163,36 @@ test('checksum is stable across reloads', async ({ page }) => {
   expect(after.combinedChecksum).toBe(before.combinedChecksum);
 });
 
+test('bodyweight audit details name the dedicated table without changing the v47.1 source checksum', async ({ page }) => {
+  const preview = await build(page, localSnapshots({
+    jorge: { weights: [{ weight: 218.4, date: '2026-08-04T18:30:00.000Z' }] }
+  }));
+  const compatibilityChecksum = await page.evaluate(async profile => {
+    const destinations = {
+      completedWorkouts: 'workouts',
+      customRoutines: 'routines',
+      bodyweightEntries: 'preferences',
+      goals: 'preferences',
+      timerPreferences: 'preferences',
+      exercisePreferences: 'preferences',
+      activeSession: 'active_sessions'
+    };
+    return BigGainsMigrationPreview.sha256({
+      contract: BigGainsMigrationPreview.format,
+      sourceSchemaVersion: BigGainsMigrationPreview.sourceSchemaVersion,
+      profileClientId: 'jorge',
+      entities: Object.fromEntries(BigGainsMigrationPreview.entityOrder.map(entityType => [entityType, {
+        count: profile.entities[entityType].count,
+        checksum: profile.entities[entityType].checksum,
+        destination: destinations[entityType]
+      }]))
+    });
+  }, preview.profiles.jorge);
+
+  expect(preview.profiles.jorge.entities.bodyweightEntries.destination).toBe('bodyweight_entries');
+  expect(preview.profiles.jorge.checksum).toBe(compatibilityChecksum);
+});
+
 test('meaningful workout changes and meaningful array order change checksums', async ({ page }) => {
   const baseWorkout = completedWorkout();
   const changedWorkout = completedWorkout({ exercises: [{

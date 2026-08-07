@@ -27,11 +27,21 @@
   const ENTITY_META = Object.freeze({
     completedWorkouts: Object.freeze({ label: 'Completed workouts', destination: 'workouts' }),
     customRoutines: Object.freeze({ label: 'Custom routines', destination: 'routines' }),
-    bodyweightEntries: Object.freeze({ label: 'Bodyweight entries', destination: 'preferences' }),
+    bodyweightEntries: Object.freeze({ label: 'Bodyweight entries', destination: 'bodyweight_entries' }),
     goals: Object.freeze({ label: 'Goal preferences', destination: 'preferences' }),
     timerPreferences: Object.freeze({ label: 'Timer preferences', destination: 'preferences' }),
     exercisePreferences: Object.freeze({ label: 'Exercise preferences', destination: 'preferences' }),
     activeSession: Object.freeze({ label: 'Active session', destination: 'active_sessions' })
+  });
+  // Freeze the exact v47.1 profile-checksum input independently of presentation metadata.
+  const V47_PROFILE_CHECKSUM_DESTINATIONS = Object.freeze({
+    completedWorkouts: 'workouts',
+    customRoutines: 'routines',
+    bodyweightEntries: 'preferences',
+    goals: 'preferences',
+    timerPreferences: 'preferences',
+    exercisePreferences: 'preferences',
+    activeSession: 'active_sessions'
   });
   const KNOWN_STATE_KEYS = new Set([
     'version', 'profileId', 'goals', 'workouts', 'weights', 'prs', 'activeWorkout',
@@ -264,7 +274,11 @@
       contract: PREVIEW_FORMAT,
       sourceSchemaVersion: SOURCE_SCHEMA_VERSION,
       profileClientId: profileId,
-      entities: Object.fromEntries(ENTITY_ORDER.map(entityType => [entityType, entities[entityType]]))
+      entities: Object.fromEntries(ENTITY_ORDER.map(entityType => [entityType, {
+        count: entities[entityType].count,
+        checksum: entities[entityType].checksum,
+        destination: V47_PROFILE_CHECKSUM_DESTINATIONS[entityType]
+      }]))
     });
     return Object.freeze({
       clientId: profileId,
