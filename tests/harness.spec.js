@@ -4,6 +4,7 @@ import { openApp } from './helpers/app.js';
 
 const productionScriptOrder = [
   'account-context.js',
+  'cloud-storage.js',
   'state-persistence.js',
   'profiles.js',
   'workout-controls.js',

@@ -28,8 +28,8 @@ npm test
 npx playwright test --workers=1
 ```
 
-- [ ] The normal suite passes all 58 current tests with no expected failures, retries, focused tests, or skipped regression coverage.
-- [ ] The single-worker suite passes all 58 current tests.
+- [ ] The normal suite passes all 104 current tests with no expected failures, retries, focused tests, or skipped regression coverage.
+- [ ] The single-worker suite passes all 104 current tests.
 - [ ] Any intentional test-count change is explained by added or removed coverage, not by a silent skip.
 - [ ] GitHub Actions is green on the pushed commit. Inspect the uploaded Playwright report if local and CI behavior differ.
 
@@ -105,3 +105,16 @@ For any production app-shell change:
 - Confirm Jorge, Alexa, and a synthetic third account retain isolated version-5 state, and invalid `entryMethod` values normalize away.
 - Confirm Calendar, History detail, Progress, workout counts, working-set volume, backup/import, and `big-gains.snapshot.v1` consume the saved completed workout through their existing paths.
 - Run `npm test` and `npx playwright test --workers=1` with all 91 tests passing and no skips or expected failures.
+
+# v45 Phase 4B cloud foundation
+
+- Confirm `cloud-storage.js` appears once, immediately after `account-context.js`, and is cached under `v45-phase4b-cloud-foundation`.
+- Confirm the production cloud singleton is disabled with and without placeholder configuration, has no Supabase SDK or `fetch` transport, registers no online listener, and performs no browser-storage writes.
+- Confirm schema version 5, Jorge/Alexa keys, profile switching, backups, imports, `big-gains.snapshot.v1`, optional GitHub snapshots, and every workout feature remain byte/behavior compatible.
+- Confirm queued operations require explicit account/profile ownership, preserve idempotency keys across retries, persist locally before enqueue, and acknowledge remote versions only after a successful synthetic transport response.
+- Confirm stale remote versions/timestamps cannot overwrite newer local state, append-only workout ties retain local state, tombstones win exact ties, and ownership changes throw.
+- Review every cloud table for explicit ownership, composite account/profile foreign keys, RLS enable/force statements, authenticated-only ownership policies, revoked anonymous/public grants, immutable ownership triggers, completed-workout uniqueness, and one-active-session-per-profile uniqueness.
+- Inspect the pgTAP adversarial cases for Jorge/Alexa same-account access, friend isolation, cross-account read/write/update/delete denial, forged profile-pair denial, immutable profile ownership, and anonymous denial.
+- Confirm `.env.example` contains only `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`, real environment files are ignored, and no privileged credential exists anywhere in browser code.
+- Confirm no live Supabase project was created/linked, no database migration was applied, and no local data was uploaded.
+- Run `npm test` and `npx playwright test --workers=1` with all 104 tests passing and no skips or expected failures.
