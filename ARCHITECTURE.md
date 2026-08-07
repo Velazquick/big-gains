@@ -11,20 +11,23 @@ Big Gains is a static, local-first progressive web app. `index.html`, CSS, and c
 
 The production script order is:
 
-1. `state-persistence.js`
-2. `profiles.js`
-3. `workout-controls.js`
-4. `notes.js`
-5. `progress.js`
-6. `app.js`
-7. `workout-mode.js`
-8. `v2-shell.js`
-9. `alexa-shell.js`
-10. `training-pet.js`
-11. `design-v21.js`
-12. `session-selector-v26.js`
-13. `sync-gateway.js`
-14. `shell-init.js`
+1. `account-context.js`
+2. `cloud-storage.js`
+3. `state-persistence.js`
+4. `profiles.js`
+5. `workout-controls.js`
+6. `notes.js`
+7. `progress.js`
+8. `retrospective-workout.js`
+9. `app.js`
+10. `workout-mode.js`
+11. `v2-shell.js`
+12. `alexa-shell.js`
+13. `training-pet.js`
+14. `design-v21.js`
+15. `session-selector-v26.js`
+16. `sync-gateway.js`
+17. `shell-init.js`
 
 This order is a runtime contract. Persistence and hook APIs exist before `app.js` consumes them. `app.js` loads and renders the current profile before the shell modules initialize. The final script, `shell-init.js`, initializes the shell modules exactly once in this order: Workout Mode, view shell, profile shell, training pet, direction/momentum, session selector, and sync.
 
@@ -33,6 +36,8 @@ This order is a runtime contract. Persistence and hook APIs exist before `app.js
 | Owner | Explicit API | Responsibility |
 | --- | --- | --- |
 | `asset-manifest.js` | `BIG_GAINS_ASSET_MANIFEST` | Release identifier, cache names, ordered CSS and script URLs, and the complete offline core-asset list. |
+| `account-context.js` | `bigGainsAccounts` | Existing on-device descriptor registry, selected profile, storage namespaces, and session-key ownership. |
+| `cloud-storage.js` | `BigGainsCloud` | Disabled Phase 4B cloud status, explicit account/profile sync operations, in-memory queue contract, deterministic idempotency keys, local-first coordinator, acknowledgements, and conflict resolution. It contains no Supabase SDK or network transport. |
 | `state-persistence.js` | `bigGainsStatePersistence` and the per-profile object returned by `create(...)` | Profile storage keys, load/normalize/save, legacy weight migration, backup serialization, and import validation. |
 | `profiles.js` | `PROFILE_CONFIG`, `PROFILE`, `switchProfile(...)` | Profile metadata, active-profile selection, theme marker, and reload-based profile switching. Profile-key reads and writes still go through the persistence API. |
 | `workout-controls.js` | `workoutControls` | Render-only active-workout controls plus exercise movement, collapse, and completion advancement. It does not persist state. |
@@ -111,7 +116,7 @@ The notes and progress features attach through explicit app-owned hooks:
 
 ## Asset and service-worker lifecycle
 
-`asset-manifest.js` is the single asset inventory. Release `v44-calendar-retrospective-workouts` adds the retrospective editor assets while retaining `assets/timer-ready.wav` unchanged in the deterministic precache. The manifest applies the release query parameter to every production CSS and application script, rejects duplicate core assets, and supplies the same immutable manifest to the page loader and service worker. `index.html`, the loader, manifest, service-worker core, web manifest, icon, local chime, and all revisioned CSS and scripts form the precached app shell.
+`asset-manifest.js` is the single asset inventory. Release `v45-phase4b-cloud-foundation` adds the disabled `cloud-storage.js` boundary while retaining the retrospective editor and `assets/timer-ready.wav` in the deterministic precache. The manifest applies the release query parameter to every production CSS and application script, rejects duplicate core assets, and supplies the same immutable manifest to the page loader and service worker. `index.html`, the loader, manifest, service-worker core, web manifest, icon, local chime, and all revisioned CSS and scripts form the precached app shell.
 
 Workout-card focus is live-session metadata, not schema migration. `focusedExerciseId` prefers the last interacted exercise while it has incomplete working sets, then falls back to the first incomplete exercise. A manual collapse is authoritative and does not clear focus or session data; automatic advancement opens the next incomplete exercise. Upcoming cards remain collapsed and subdued, while completed cards recede but can be expanded for review. Added sets are ordinary incomplete working sets with fresh IDs and values copied only from the latest valid working set.
 
@@ -173,3 +178,49 @@ The deployed compatibility contract is unchanged: Jorge uses `big-gains-v2`, Ale
 Profile-specific behavior intentionally remains configuration-driven: weekly plans, goals, theme, wellness copy/presentation, exercise-library breadth, and the rest-day fallback workout. Alexa-only garden markup is still selected by `data-profile-only` because it is presentation, not ownership. Existing sync snapshot paths and profile payloads remain profile-compatible by design.
 
 GitHub is source control and an optional snapshot-backup destination. It is not the future user database.
+
+## Phase 4B cloud boundary
+
+Phase 4B adds design and executable contracts without connecting a backend. The production singleton reports `enabled: false` even if placeholder configuration is present. It does not import a Supabase client, call `fetch`, persist a sync queue, register online listeners, alter local saves, or start migration. Loading it and calling its status/queue/conflict helpers perform no storage writes.
+
+The future ownership model is intentionally different from the compatibility-only local descriptors:
+
+```text
+Jorge auth user -> Jorge account -> Jorge profile
+                               \-> Alexa profile
+
+friend auth user -> friend account -> friend profile
+```
+
+The mapping is deferred to the explicit migration flow. Existing `local-jorge` and `local-alexa` descriptors are not silently collapsed because that could alter current storage and switching behavior.
+
+The SQL migration defines `accounts`, `profiles`, `workouts`, `routines`, `preferences`, `active_sessions`, `sync_metadata`, and `tombstones`. All profile data carries the pair `(account_id, profile_id)`, and composite foreign keys prove that the profile belongs to that account. Ownership columns are immutable after creation. Completed workouts have unique account/profile/client IDs and account-scoped idempotency keys. Active sessions are unique per account/profile.
+
+RLS is enabled and forced on every table. The browser-facing `authenticated` role receives table operations, but policies permit them only when `auth.uid()` owns the row's `account_id`; the account table itself checks `owner_user_id`. Anonymous/public table grants are revoked. Jorge therefore reaches both profiles within his account, while a friend cannot see or mutate either. A profile UUID alone is insufficient because authorization always resolves account ownership and the database enforces the composite owner/profile relationship.
+
+### Local-first mutation contract
+
+The future adapter sequence is fixed before transport exists:
+
+1. Build an owned, versioned operation with a stable entity ID.
+2. Persist the user mutation locally and wait for that write to succeed.
+3. Enqueue the sync operation with explicit account/profile ownership and a deterministic idempotency key.
+4. Return control to the workout UI; remote availability is irrelevant to success.
+5. When online, send pending operations quietly and retry failures with the same idempotency key.
+6. After remote acceptance, remove the pending operation and retain its acknowledged remote version.
+
+The Phase 4B coordinator implements this sequence for tests and future adapters, but production local persistence is not wired to it yet. Its default queue is memory-only and its default transport is disabled, so current behavior remains exactly local.
+
+### Conflict contract
+
+| Case | Rule |
+| --- | --- |
+| Completed workout creation | Append-only by default. Stable workout `client_id` plus the operation idempotency key gives exact-once remote insertion. |
+| Completed workout edit | Same entity ID only; higher `version` wins, then later `updatedAt`. Equal revisions keep local state. |
+| Active session | At most one row per profile. Higher version wins, then later `updatedAt`. It never crosses profile ownership. |
+| Delete | Create a tombstone instead of relying on absence. Newer version/time wins; a tombstone wins an exact tie so deleted data is not resurrected. |
+| Stale remote data | Never overwrites a newer local version or timestamp. |
+| Ownership | `accountId` and `profileId` cannot change after creation except through a future controlled migration with elevated, non-browser tooling. |
+| Retry | Increment attempt metadata only; preserve the original idempotency key and entity identity. |
+
+Transport must use conditional version updates in Phase 4C, not blind upserts. The database uniqueness constraints are the final duplicate barrier for completed workouts and idempotent retries.

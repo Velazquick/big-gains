@@ -1,13 +1,45 @@
 # Phase 4 account roadmap
 
-Phase 4A makes local ownership explicit without changing the product surface or moving data. The next work should proceed in this order:
+## Settled model
 
-1. Select an authentication provider based on privacy, platform support, account recovery, operational cost, and exportability.
-2. Define private per-user cloud records and authorization rules. GitHub remains source control and optional snapshot backup, not the user database.
-3. Specify local-first sync and conflict rules for workouts, routines, notes, preferences, active sessions, and deletions before implementing transport.
-4. Design an explicit, reversible linking/migration flow for existing Jorge and Alexa local data, with previews and recovery paths.
-5. Add friend onboarding only after identity, authorization, migration, and sync behavior are proven.
+Supabase is the selected future authentication and private-data provider. GitHub remains source control and may remain an optional snapshot backup; it is not the user database. Big Gains remains local-first, and cloud failure must never block starting, editing, or completing a workout.
 
-Unresolved product decision: Alexa may become a separate login or may initially remain a managed profile under Jorge's account. Phase 4A does not assume either answer; the account descriptor and profile configuration are separate so the later decision does not require a workout-schema fork.
+Jorge's future login owns one cloud account with two independent profiles: Jorge and Alexa. Their workouts, routines, preferences, active sessions, metadata, and tombstones remain profile-scoped. A future friend login creates a separate account with one friend-owned profile and cannot access Jorge or Alexa data.
 
-Calendar retrospective logging follows the Phase 4A boundary: the active account supplies profile configuration, weekday plans, capabilities, storage ownership, backup validation, and snapshot path. Its draft remains session-only and the saved completed workout stays in the owner's existing version-5 record. Future cloud authorization and conflict rules must treat retrospective workouts like other completed workouts, using their stable workout IDs for deduplication and preserving optional metadata.
+Phase 4B does not create any of those remote records. It adds the SQL/RLS design, disabled client boundary, queue/idempotency contracts, conflict rules, migration plan, and tests only. Local schema version 5 and every existing storage/backup/snapshot format remain unchanged.
+
+## Future migration of existing data
+
+Migration must be explicit, visible, reversible, and safe to retry:
+
+1. Export and retain separate version-5 backups for local Jorge and local Alexa before authentication or remote writes.
+2. Authenticate Jorge with Supabase Auth and verify the expected user ID/session.
+3. Create exactly one Jorge cloud `accounts` row owned by that Auth user, using a deterministic migration marker.
+4. Create Jorge and Alexa cloud `profiles` rows under that same account, retaining stable client profile IDs.
+5. Transform and upload each profile's workouts, routines, preferences, and current active session with both ownership IDs. Do not delete or rewrite either local state.
+6. Compare local and remote entity counts plus deterministic checksums per profile/entity type. Any mismatch stops completion and reports the exact category.
+7. Write profile-scoped `sync_metadata` only after every verification passes, marking the migration version and completion time.
+8. Keep both local copies as the immediate source of truth and as rollback material.
+9. Permit retry. Reuse the same account/profile/client IDs and idempotency keys so unique constraints turn repeats into acknowledgements rather than duplicates.
+
+No migration code or automatic migration trigger belongs in Phase 4B.
+
+## Friend onboarding
+
+After Jorge migration and two-way sync are proven, friend signup should authenticate one new Supabase user, create one account whose `owner_user_id` is that user, and create one profile inside that account in a single controlled transaction. The UI then stores only the authenticated account/profile mapping needed by the local profile. No Jorge/Alexa profile picker or identifiers are shared with the friend. RLS—not client filtering—provides isolation.
+
+No production friend UI belongs in Phase 4B.
+
+## Exact Phase 4C recommendation
+
+Phase 4C should implement authentication and a narrow transport adapter, not full onboarding plus migration plus friend UI in one swing:
+
+1. Reproduce the migration and pgTAP RLS suite against a local Supabase stack.
+2. Create and link one hosted free Supabase project, apply the reviewed migration, and rerun adversarial tests before any personal data upload.
+3. Add Supabase Auth for Jorge only and a browser client built from project URL plus publishable key.
+4. Add a durable on-device queue outside the version-5 backup object, then wire local saves to persist-first/enqueue-second.
+5. Implement push and acknowledgement for one synthetic profile/entity at a time, starting with completed workouts; require conditional version checks and idempotent retry.
+6. Prove pull/conflict/tombstone behavior using synthetic accounts before touching Jorge or Alexa data.
+7. Build a preview-only migration dry run with counts/checksums. Actual Jorge/Alexa upload should be a later, separately approved step.
+
+Friend onboarding should follow in Phase 4D after Jorge's two-profile account has survived offline, retry, conflict, and recovery testing.

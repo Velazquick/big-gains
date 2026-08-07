@@ -2,7 +2,7 @@
 
 The Playwright harness serves the static PWA from `index.html` without rewriting it, so production scripts execute in their declared order.
 
-The current baseline is 91 passing Chromium tests with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
+The current baseline is 104 passing Chromium tests with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
 
 ## Install
 
@@ -20,7 +20,7 @@ npm test
 npx playwright test --workers=1
 ```
 
-Both commands must pass all 91 tests with no expected failures.
+Both commands must pass all 104 tests with no expected failures.
 
 ## localStorage fixtures
 
@@ -40,6 +40,8 @@ Workout-control coverage verifies the production hook order, render-only storage
 V42 coverage verifies the real delegated chevron path, manual active-card collapse, preserved focus and edits, add-set inheritance/fresh IDs/single insertion/reload persistence, local-time date grouping, multiple workouts per day, empty days, month controls, today/selected accessibility state, shared history detail, return-bar preservation, profile isolation, and offline calendar loading.
 
 V44 coverage in `tests/retrospective-workout.spec.js` verifies past/today eligibility and future exclusion, account-owned weekday defaults and rest-day blanks, routine/blank paths, exercise and set editing/reordering/removal, working-set validation, warm-up exclusion, optional local completion time and duration near UTC midnight, fresh IDs, notes and Entered later history reuse, PR evaluation on/off, volume/progress/calendar/history/workout-count updates, double-click exact-once save, cancel/reload safety, live-workout and return-bar preservation, Jorge/Alexa/synthetic-account isolation, backup normalization, and offline save. Existing shell and offline tests verify the module and stylesheet load once in the v44 app shell.
+
+V45 coverage in `tests/cloud-foundation.spec.js` verifies the disabled-by-default boundary, no network transport even when placeholder configuration exists, explicit account/profile operation ownership, Jorge/Alexa/friend cloud topology, persist-before-enqueue ordering, acknowledgements, offline/disabled queue retention, stable retry idempotency, stale-remote rejection, append-only workout ties, tombstone precedence, immutable ownership, untouched version-5 backups and `big-gains.snapshot.v1`, storage-free cloud helpers, complete RLS enablement, composite owner/profile constraints, anonymous grant removal, and adversarial cross-account SQL examples.
 
 Notes coverage verifies the explicit notes hook API, active-session notes rendering and persistence, rest-timer start/resume/expiry messaging, history opening, and saved session-note rendering.
 
@@ -82,3 +84,18 @@ Release validation remains:
 npm test
 npx playwright test --workers=1
 ```
+
+## Phase 4B database coverage
+
+The normal Playwright runs inspect the checked-in migration and adversarial pgTAP file but do not start Docker or connect to Supabase. This keeps Phase 4B fully offline and credential-free.
+
+In Phase 4C, after installing and pinning the Supabase CLI, the database-specific suite becomes required:
+
+```sh
+npx supabase start
+npx supabase db reset
+npx supabase test db
+npx supabase db lint --level error
+```
+
+`supabase/tests/database/phase4b_rls.test.sql` creates synthetic Jorge and friend Auth identities inside a rolled-back transaction. It proves Jorge sees the Jorge and Alexa profiles under his own account, cannot see/write/update/delete friend data, cannot attach a foreign profile ID to his account, cannot reassign profile ownership, and receives no anonymous table access. It never uses real user data.

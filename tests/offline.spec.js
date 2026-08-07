@@ -2,8 +2,8 @@ import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
 
-const CURRENT_CACHE = 'big-gains-shell-v44-calendar-retrospective-workouts';
-const PREVIOUS_CACHE = 'big-gains-shell-v43-phase4-account-foundation';
+const CURRENT_CACHE = 'big-gains-shell-v45-phase4b-cloud-foundation';
+const PREVIOUS_CACHE = 'big-gains-shell-v44-calendar-retrospective-workouts';
 
 async function waitForServiceWorker(page) {
   await page.evaluate(async () => {
@@ -32,7 +32,7 @@ test('first install precaches one complete, revision-consistent app shell', asyn
     };
   }, CURRENT_CACHE);
 
-  expect(state.release).toBe('v44-calendar-retrospective-workouts');
+  expect(state.release).toBe('v45-phase4b-cloud-foundation');
   expect(state.cacheNames).toContain(CURRENT_CACHE);
   expect(state.cachedUrls).toEqual(state.expectedUrls);
   expect(state.cachedUrls).toContain(new URL('/assets/timer-ready.wav', page.url()).href);
