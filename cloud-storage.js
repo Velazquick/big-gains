@@ -6,6 +6,7 @@
   const ENTITY_TYPES = Object.freeze([
     'workouts',
     'routines',
+    'bodyweight_entries',
     'preferences',
     'active_sessions',
     'sync_metadata',
@@ -56,6 +57,7 @@
 
   function operationIdentity(input) {
     return {
+      contract: 'big-gains.sync-op.v1',
       contractVersion: CONTRACT_VERSION,
       owner: normalizeOwner(input.owner),
       entityType: input.entityType,
@@ -64,6 +66,14 @@
       version: input.version,
       updatedAt: input.updatedAt,
       payload: input.mutation === 'delete' ? null : input.payload ?? null,
+      payloadFingerprint: input.payloadFingerprint || stableHash(input.mutation === 'delete' ? null : input.payload ?? null),
+      baseRevision: input.baseRevision == null ? null : {
+        version: Number(input.baseRevision.version),
+        updatedAt: input.baseRevision.updatedAt,
+        fingerprint: input.baseRevision.fingerprint,
+        tombstone: input.baseRevision.tombstone === true
+      },
+      allowRecreation: input.allowRecreation === true,
       synthetic: input.synthetic === true
     };
   }
@@ -89,6 +99,14 @@
     if (!Number.isSafeInteger(version) || version < 1) throw new TypeError('Mutation version must be a positive integer.');
     if (typeof input.updatedAt !== 'string' || !Number.isFinite(Date.parse(input.updatedAt))) {
       throw new TypeError('Mutation updatedAt must be an ISO-compatible timestamp.');
+    }
+    if (input.baseRevision != null) {
+      const base = input.baseRevision;
+      if (!Number.isSafeInteger(Number(base.version)) || Number(base.version) < 1
+        || typeof base.updatedAt !== 'string' || !Number.isFinite(Date.parse(base.updatedAt))
+        || typeof base.fingerprint !== 'string' || !base.fingerprint) {
+        throw new TypeError('A base revision requires version, updatedAt, and fingerprint values.');
+      }
     }
     const identity = operationIdentity({ ...input, version });
     return Object.freeze({

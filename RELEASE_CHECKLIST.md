@@ -145,3 +145,18 @@ For any production app-shell change:
 - Run both hosted pgTAP files with synthetic identities inside rollback transactions; confirm cleanup returns every application table to the pre-test count and rerun security/performance advisors.
 - Run the complete Playwright suite in normal and single-worker/safe-sharded modes with no skips or expected failures.
 - Before the real migration, make a fresh backup, load the approved audit, inspect exact counts, and stop on any blocker. Never use a service-role key or execute from an unreviewed deployment.
+
+# v49 Phase 4F shadow-sync readiness
+
+- Confirm `cloud-shadow.js` loads after `migration-preview.js` and before `cloud-sync.js`, appears once in the `v49-phase4f-shadow-sync-readiness` shell, and is precached for offline reload.
+- Confirm local schema version 5, deployed storage keys, backup/import, `big-gains.snapshot.v1`, Phase 4E migration rows, journal, and audit formats are unchanged.
+- Confirm every normal mutation saves locally before asynchronous capture and remains usable signed out, offline, during outage, and with a blocked queue.
+- Review `big-gains.shadow.v1` source mappings and SHA-256 inputs; derived PR/progress/volume/calendar values must not become cloud source records.
+- Confirm initial adoption requires the completed Phase 4E journal plus exact Jorge/Alexa parity and does not rewrite migrated application rows.
+- Confirm all production operations freeze owned identity, stable retry key, desired fingerprint, monotonic version/timestamp, and exact base revision; wrong account/profile or mismatched payload blocks.
+- Confirm insert/update/delete ACK only after affected-row readback and full parity is checked even when the queue is empty.
+- Confirm tombstones include bodyweight, win exact ties, remain account/profile scoped, retain the old source row, and require an explicit strictly later recreation.
+- Run the Phase 4F rolled-back hosted RLS proof, confirm synthetic cleanup, compare production counts before/after, and run security/performance advisors.
+- Run all 150 Playwright tests in normal and single-worker safe-sharded modes with no skips or expected failures.
+- After deployment, require baseline **In sync** for Jorge and Alexa before making one safe timer-preference mutation; wait for zero pending and **In sync** again after reload.
+- Do not open friend signup, enable a cloud pull, restore local state, merge a second device, or make cloud authoritative.

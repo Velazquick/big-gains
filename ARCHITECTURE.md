@@ -30,11 +30,12 @@ The production script order is:
 17. `design-v21.js`
 18. `session-selector-v26.js`
 19. `sync-gateway.js`
-20. `cloud-sync.js`
-21. `migration-preview.js`
-22. `migration-engine.js`
-23. `controlled-migration.js`
-24. `shell-init.js`
+20. `migration-preview.js`
+21. `cloud-shadow.js`
+22. `cloud-sync.js`
+23. `migration-engine.js`
+24. `controlled-migration.js`
+25. `shell-init.js`
 
 This order is a runtime contract. Persistence and hook APIs exist before `app.js` consumes them. `app.js` loads and renders the current profile before the shell modules initialize. The final script, `shell-init.js`, initializes the shell modules exactly once in this order: Workout Mode, view shell, profile shell, training pet, direction/momentum, session selector, and sync.
 
@@ -47,7 +48,8 @@ This order is a runtime contract. Persistence and hook APIs exist before `app.js
 | `cloud-config.js` | `__BIG_GAINS_CLOUD_CONFIG__` | Empty checked-in browser configuration. The Pages workflow may replace it in the deployment artifact using only repository variables for the project URL and publishable key. |
 | `supabase-client.js` | `BigGainsSupabase` | Lazily creates the vendored browser client, owns persisted Auth sessions, requests an existing-user-only Jorge magic link, signs out, and reads the already-provisioned Jorge account/profile metadata. Phase 4D removed browser-side account/profile provisioning. |
 | `cloud-storage.js` | `BigGainsCloud` | Explicit account/profile sync operations, memory and durable queue contracts, deterministic idempotency keys, local-first coordinator, acknowledgements, and conflict resolution. It contains no network transport. |
-| `cloud-sync.js` | `BigGainsCloudSync` | Synthetic-only completed-workout transport, offline/retry/ack runtime, durable queue instance, online catch-up, and non-blocking Jorge Auth controls. It is not called by ordinary workout completion. |
+| `cloud-shadow.js` | `BigGainsCloudShadow` | Read-only local/cloud semantic reconstruction, migrated/production envelope parsing, tombstone winner selection, SHA-256 shadow checksums, and exact parity/drift reporting. |
+| `cloud-sync.js` | `BigGainsCloudSync` | Phase 4F metadata catalog, asynchronous local capture, owned production transport, conditional revisions, durable retry/ACK, post-ACK comparison, and quiet Auth/shadow controls. |
 | `migration-preview.js` | `BigGainsMigrationPreview` | Phase 4D read-only local inspection, owned cloud destination verification, canonical SHA-256 checksums, readiness validation, and metadata-only audit export. It has no mutation or sync API. |
 | `migration-engine.js` | `BigGainsMigrationEngine` | Phase 4E strict audit parsing, deterministic target planning, insert/recover execution, metadata-only journal state, readback reconstruction, and post-migration audit generation. |
 | `controlled-migration.js` | `BigGainsControlledMigration` | Authenticated file-selection gate, exact write plan, two-step confirmation, explicit first-run/resume actions, progress, and completion/audit UI. |
@@ -145,7 +147,7 @@ The notes and progress features attach through explicit app-owned hooks:
 
 ## Asset and service-worker lifecycle
 
-`asset-manifest.js` is the single asset inventory. Release `v48-phase4e-controlled-migration` adds the reviewed controlled migration target, bodyweight destination, journal/recovery UI, and readback audit while retaining the v47.1 Phase 4D source checksum contract, Phase 4C Auth boundary, synthetic-only normal transport, and `assets/timer-ready.wav` in the deterministic precache. The manifest applies the release query parameter to every production CSS and application script, rejects duplicate core assets, and supplies the same immutable manifest to the page loader and service worker. `index.html`, the loader, manifest, service-worker core, web manifest, icon, local chime, and all revisioned CSS and scripts form the precached app shell.
+`asset-manifest.js` is the single asset inventory. Release `v49-phase4f-shadow-sync-readiness` adds the read-only shadow adapter and production one-way local-first transport while retaining the Phase 4E migration/audit boundary and `assets/timer-ready.wav` in the deterministic precache. The manifest applies the release query parameter to every production CSS and application script, rejects duplicate core assets, and supplies the same immutable manifest to the page loader and service worker. `index.html`, the loader, manifest, service-worker core, web manifest, icon, local chime, and all revisioned CSS and scripts form the precached app shell.
 
 Workout-card focus is live-session metadata, not schema migration. `focusedExerciseId` prefers the last interacted exercise while it has incomplete working sets, then falls back to the first incomplete exercise. A manual collapse is authoritative and does not clear focus or session data; automatic advancement opens the next incomplete exercise. Upcoming cards remain collapsed and subdued, while completed cards recede but can be expanded for review. Added sets are ordinary incomplete working sets with fresh IDs and values copied only from the latest valid working set.
 
@@ -255,3 +257,8 @@ Phase 4C is push-only. There is no remote pull or merge path, so remote state ca
 | Retry | Increment attempt metadata only; preserve the original idempotency key and entity identity. |
 
 Transport must use conditional version updates in Phase 4C, not blind upserts. The database uniqueness constraints are the final duplicate barrier for completed workouts and idempotent retries.
+# Phase 4F cloud shadow
+
+`cloud-shadow.js` is a read-only semantic adapter over local schema-v5 snapshots and account-scoped Supabase rows. `cloud-sync.js` owns the separate metadata catalog, durable outbound operations, authenticated owner verification, production transport, ACK readback, retry, comparison, and quiet Library card. Neither module has a cloud-to-local write path.
+
+The mutation boundary remains `saveState()` in `app.js`: profile storage writes synchronously, then shadow capture is scheduled in a microtask. Cloud source records use stable local logical IDs. Derived PR, progress, volume, and calendar values are excluded. See `PHASE4F_SHADOW_SYNC_CONTRACT.md` for the frozen checksum, operation, adoption, conflict, and tombstone rules.
