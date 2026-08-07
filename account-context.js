@@ -8,6 +8,7 @@
     accents: Object.freeze(['ember', 'rose', 'cobalt']),
     themes: Object.freeze(['performance-dark', 'wellness-light'])
   });
+  const INDEPENDENT_PROFILE_PREFIX = 'independent-';
   const managedDescriptors = Object.freeze([
     Object.freeze({
       accountId: 'local-jorge', profileId: 'jorge', displayName: 'Jorge', storageNamespace: 'jorge',
@@ -31,6 +32,20 @@
     accent: PRESENTATION.accents.includes(value?.accent) ? value.accent : 'cobalt',
     theme: PRESENTATION.themes.includes(value?.theme) ? value.theme : 'performance-dark'
   });
+
+  function cloudProfileShape(profiles) {
+    const rows = Array.isArray(profiles) ? profiles : Object.values(profiles || {});
+    const clientIds = rows.map(profile => profile?.client_id).sort();
+    if (rows.length === 2 && clientIds[0] === 'alexa' && clientIds[1] === 'jorge') return 'managed';
+    if (rows.length === 1 && typeof clientIds[0] === 'string' && clientIds[0].startsWith(INDEPENDENT_PROFILE_PREFIX)) return 'independent';
+    return 'unexpected';
+  }
+
+  function unexpectedProfileShapeMessage(profiles) {
+    const rows = Array.isArray(profiles) ? profiles : Object.values(profiles || {});
+    const clientIds = rows.map(profile => typeof profile?.client_id === 'string' ? profile.client_id : '(missing)').sort();
+    return `Expected exactly Jorge + Alexa or one independent-* profile; found ${rows.length}${rows.length ? ` (${clientIds.join(', ')})` : ''}.`;
+  }
 
   function createRegistry(sourceDescriptors, {
     defaultAccountId = sourceDescriptors[0]?.accountId,
@@ -67,9 +82,10 @@
   function independentRuntime(record) {
     const accountId = safeToken(record?.cloudAccountId);
     const profileId = safeToken(record?.cloudProfileId);
-    if (!accountId || !profileId || !record?.authUserId || !record?.displayName) return null;
+    const clientId = typeof record?.clientId === 'string' ? record.clientId : '';
+    if (!accountId || !profileId || !record?.authUserId || !record?.displayName
+      || !clientId.startsWith(INDEPENDENT_PROFILE_PREFIX)) return null;
     const storageNamespace = `cloud-${accountId}-${profileId}`;
-    const clientId = typeof record.clientId === 'string' && record.clientId ? record.clientId : profileId;
     const descriptor = Object.freeze({
       accountId: `cloud:${record.cloudAccountId}`,
       profileId: clientId,
@@ -146,15 +162,15 @@
   });
 
   function cloudRuntimeRecord(owner, authUserId) {
-    const profileIds = Object.keys(owner?.profiles || {}).sort();
-    if (profileIds.length === 2 && profileIds[0] === 'alexa' && profileIds[1] === 'jorge') {
+    const shape = cloudProfileShape(owner?.profiles);
+    if (shape === 'managed') {
       return Object.freeze({
         kind: 'managed', authUserId, cloudAccountId: owner.account.id,
         expectedProfileIds: Object.freeze(['jorge', 'alexa'])
       });
     }
-    if (profileIds.length !== 1) throw new Error(`Expected one independent profile or the managed Jorge/Alexa pair; found ${profileIds.length}.`);
-    const profile = owner.profiles[profileIds[0]];
+    if (shape !== 'independent') throw new Error(unexpectedProfileShapeMessage(owner?.profiles));
+    const profile = Object.values(owner.profiles)[0];
     return Object.freeze({
       kind: 'independent', authUserId, cloudAccountId: owner.account.id,
       cloudProfileId: profile.id, clientId: profile.client_id, displayName: profile.display_name,
@@ -178,13 +194,15 @@
 
   function matchesCloudOwner(owner, authUserId) {
     if (!owner?.account || owner.account.owner_user_id !== authUserId) return false;
+    const shape = cloudProfileShape(owner.profiles);
     if (runtime.kind === 'managed') {
-      return Object.keys(owner.profiles || {}).sort().join(',') === 'alexa,jorge';
+      return shape === 'managed';
     }
-    if (runtime.kind !== 'independent' || runtime.authUserId !== authUserId || runtime.cloudAccountId !== owner.account.id) return false;
+    if (runtime.kind !== 'independent' || shape !== 'independent'
+      || runtime.authUserId !== authUserId || runtime.cloudAccountId !== owner.account.id) return false;
     const profile = Object.values(owner.profiles || {})[0];
-    return Object.keys(owner.profiles || {}).length === 1
-      && profile?.id === runtime.descriptors[0].cloudProfileId;
+    return profile?.id === runtime.descriptors[0].cloudProfileId
+      && profile?.client_id === runtime.descriptors[0].profileId;
   }
 
   window.bigGainsAccounts = Object.freeze({
@@ -197,6 +215,8 @@
     runtime,
     managedDescriptors,
     presentationFor,
+    cloudProfileShape,
+    unexpectedProfileShapeMessage,
     activateCloudOwner,
     matchesCloudOwner,
     cloudRuntimeRecord

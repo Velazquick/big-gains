@@ -43,6 +43,94 @@ async function installIndependentRuntime(page, { state = friendState(), includeS
   }, { authUserId, cloudAccountId, cloudProfileId, clientId, storageKey, state, includeState });
 }
 
+async function installCloudIdentityShape(page, profileClientId) {
+  const now = '2026-08-07T20:00:00.000Z';
+  await page.addInitScript(({ authUserId, now }) => {
+    window.__BIG_GAINS_CLOUD_CONFIG__ = {
+      supabaseUrl: 'https://synthetic-phase4g-shape.supabase.co',
+      supabasePublishableKey: 'sb_publishable_phase4g_shape',
+      authRedirectUrl: 'https://velazquick.github.io/big-gains/'
+    };
+    const encode = value => btoa(JSON.stringify(value)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+    const expiresAt = Math.floor(Date.now() / 1000) + 3600;
+    const accessToken = `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode({ sub: authUserId, role: 'authenticated', exp: expiresAt })}.synthetic`;
+    localStorage.setItem('big-gains-supabase-auth-v1', JSON.stringify({
+      access_token: accessToken, refresh_token: 'synthetic-shape-refresh', token_type: 'bearer',
+      expires_in: 3600, expires_at: expiresAt,
+      user: { id: authUserId, aud: 'authenticated', role: 'authenticated', email: 'shape@example.test',
+        email_confirmed_at: now, app_metadata: { provider: 'email', providers: ['email'] }, user_metadata: {}, identities: [], created_at: now }
+    }));
+  }, { authUserId, now });
+
+  await page.route('https://synthetic-phase4g-shape.supabase.co/**', async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const headers = { 'access-control-allow-origin': '*', 'content-type': 'application/json' };
+    if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+    if (url.pathname.endsWith('/accounts')) {
+      return route.fulfill({ status: 200, headers: { ...headers, 'content-range': '0-0/1' }, body: JSON.stringify([{
+        id: cloudAccountId, owner_user_id: authUserId, display_name: 'Shape fixture', created_at: now
+      }]) });
+    }
+    if (url.pathname.endsWith('/profiles')) {
+      return route.fulfill({ status: 200, headers: { ...headers, 'content-range': '0-0/1' }, body: JSON.stringify([{
+        id: cloudProfileId, account_id: cloudAccountId, client_id: profileClientId, display_name: 'Shape fixture',
+        pet_enabled: false, accent: 'cobalt', theme: 'performance-dark', created_at: now
+      }]) });
+    }
+    return route.fulfill({ status: 200, headers: { ...headers, 'content-range': '*/0' }, body: '[]' });
+  });
+}
+
+for (const identityShape of [
+  { label: 'lone Jorge', profileClientId: 'jorge', expectedStatus: 'unexpected', expectedShape: 'unexpected' },
+  { label: 'lone Alexa', profileClientId: 'alexa', expectedStatus: 'unexpected', expectedShape: 'unexpected' },
+  { label: 'arbitrary single profile', profileClientId: 'riley', expectedStatus: 'unexpected', expectedShape: 'unexpected' },
+  { label: 'valid independent-*', profileClientId: 'independent-riley', expectedStatus: 'ready', expectedShape: 'independent' }
+]) {
+  test(`${identityShape.label} obeys the browser identity-shape invariant`, async ({ page }) => {
+    await installCloudIdentityShape(page, identityShape.profileClientId);
+    await openApp(page);
+
+    if (identityShape.expectedStatus === 'unexpected') {
+      await expect(page.locator('#independentAccountOnboarding')).toBeVisible();
+      await expect(page.locator('#independentAccountOnboarding')).toHaveClass(/is-blocking/);
+      await expect(page.locator('#independentAccountOnboarding')).toContainText('Account setup needs attention');
+    } else {
+      await expect(page.locator('html')).toHaveAttribute('data-account-mode', 'independent');
+      await expect(page.locator('#independentAccountOnboarding')).toBeHidden();
+    }
+
+    const result = await page.evaluate(async () => {
+      const state = await BigGainsSupabase.readAccountState();
+      const owner = { account: state.account, profiles: state.profiles };
+      let runtimeRecord = null;
+      let runtimeError = null;
+      try { runtimeRecord = bigGainsAccounts.cloudRuntimeRecord(owner, state.authUserId); }
+      catch (error) { runtimeError = error.message; }
+      return {
+        status: state.status,
+        stateShape: state.shape || null,
+        classifiedShape: bigGainsAccounts.cloudProfileShape(state.profiles),
+        runtimeKind: runtimeRecord?.kind || null,
+        runtimeError,
+        ownerMatchesRuntime: bigGainsAccounts.matchesCloudOwner(owner, state.authUserId)
+      };
+    });
+
+    expect(result.status).toBe(identityShape.expectedStatus);
+    expect(result.stateShape).toBe(identityShape.expectedStatus === 'ready' ? identityShape.expectedShape : null);
+    expect(result.classifiedShape).toBe(identityShape.expectedShape);
+    if (identityShape.expectedStatus === 'ready') {
+      expect(result).toMatchObject({ runtimeKind: 'independent', runtimeError: null, ownerMatchesRuntime: true });
+    } else {
+      expect(result.runtimeKind).toBeNull();
+      expect(result.runtimeError).toContain('one independent-* profile');
+      expect(result.ownerMatchesRuntime).toBe(false);
+    }
+  });
+}
+
 test('independent runtime renders one identity with cobalt performance tokens and no managed-profile or pet leakage', async ({ page }) => {
   await installIndependentRuntime(page);
   await page.addInitScript(() => {

@@ -75,17 +75,15 @@
     if (profiles.error) throw profiles.error;
     const rows = profiles.data || [];
     const byClientId = Object.fromEntries(rows.map(profile => [profile.client_id, Object.freeze(profile)]));
-    const clientIds = Object.keys(byClientId).sort();
-    const managed = rows.length === 2 && clientIds.join(',') === 'alexa,jorge';
-    const independent = rows.length === 1;
-    if (!managed && !independent) {
+    const shape = window.bigGainsAccounts.cloudProfileShape(rows);
+    if (shape === 'unexpected') {
       return Object.freeze({
-        status: 'unexpected', reason: `Expected one independent profile or the managed Jorge/Alexa pair; found ${rows.length}.`,
+        status: 'unexpected', reason: window.bigGainsAccounts.unexpectedProfileShapeMessage(rows),
         account: Object.freeze(account), profiles: Object.freeze(byClientId), authUserId: currentSession.user.id
       });
     }
     return Object.freeze({
-      status: 'ready', shape: managed ? 'managed' : 'independent',
+      status: 'ready', shape,
       account: Object.freeze(account), profiles: Object.freeze(byClientId), authUserId: currentSession.user.id
     });
   }

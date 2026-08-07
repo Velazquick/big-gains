@@ -57,16 +57,9 @@
 
   function currentRuntimeMatches(owner, userId) {
     const runtime = window.bigGainsAccounts.runtime;
-    if (runtime.kind === 'managed') {
-      return runtime.authUserId === userId && runtime.cloudAccountId === owner.account.id
-        && Object.keys(owner.profiles).sort().join(',') === 'alexa,jorge';
-    }
-    const profile = Object.values(owner.profiles)[0];
-    return runtime.kind === 'independent'
-      && runtime.authUserId === userId
+    return runtime.authUserId === userId
       && runtime.cloudAccountId === owner.account.id
-      && Object.keys(owner.profiles).length === 1
-      && runtime.descriptors[0].cloudProfileId === profile?.id;
+      && window.bigGainsAccounts.matchesCloudOwner(owner, userId);
   }
 
   async function refresh() {

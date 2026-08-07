@@ -46,6 +46,7 @@
 
   function sameOwnerMapping(owner) {
     return Boolean(catalog
+      && window.bigGainsAccounts.cloudProfileShape(owner?.profiles) === accountRuntime.kind
       && owner?.account?.id === catalog.accountId
       && owner?.account?.owner_user_id === catalog.authUserId
       && shadow.profileIds.every(profileClientId => owner?.profiles?.[profileClientId]?.id === catalog.profiles[profileClientId].profileId)
