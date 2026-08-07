@@ -486,6 +486,10 @@
   }
 
   async function refresh() {
+    if (window.bigGainsAccounts?.runtime?.kind !== 'managed') {
+      removeCard();
+      return null;
+    }
     const boundary = window.BigGainsSupabase;
     if (!boundary?.configured) {
       removeCard();
@@ -519,6 +523,7 @@
   function initialize() {
     if (initialized) return false;
     initialized = true;
+    if (window.bigGainsAccounts?.runtime?.kind !== 'managed') return true;
     if (!window.BigGainsSupabase?.configured) return true;
     document.addEventListener('click', event => {
       const copy = event.target.closest('[data-copy-checksum]');

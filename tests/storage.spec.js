@@ -212,7 +212,11 @@ test('persists pending state on pagehide and when the page becomes hidden', asyn
 });
 
 test('routes profile storage reads and writes through the explicit API', async ({ page }) => {
-  await page.addInitScript(() => {
+  await page.addInitScript(({ activeProfileKey, jorgeKey, state }) => {
+    localStorage.clear();
+    sessionStorage.clear();
+    localStorage.setItem(activeProfileKey, 'jorge');
+    localStorage.setItem(jorgeKey, JSON.stringify(state));
     window.__profileStorageCalls = [];
     const originalGetItem = Storage.prototype.getItem;
     const originalSetItem = Storage.prototype.setItem;
@@ -224,7 +228,7 @@ test('routes profile storage reads and writes through the explicit API', async (
       window.__profileStorageCalls.push({ method: 'setItem', key, stack: new Error().stack });
       return originalSetItem.call(this, key, value);
     };
-  });
+  }, { activeProfileKey: STORAGE_KEYS.activeProfile, jorgeKey: STORAGE_KEYS.jorge, state: blankState('jorge') });
   await openApp(page);
 
   const evidence = await page.evaluate(async keys => {
@@ -244,7 +248,10 @@ test('routes profile storage reads and writes through the explicit API', async (
   expect(evidence.ownedKeys).toEqual(STORAGE_KEYS);
   expect(evidence.calls.some(call => call.method === 'getItem' && call.key === STORAGE_KEYS.jorge)).toBe(true);
   expect(evidence.calls.some(call => call.method === 'setItem' && call.key === STORAGE_KEYS.jorge)).toBe(true);
-  expect(evidence.calls.every(call => call.stack.includes('state-persistence.js'))).toBe(true);
+  expect(evidence.calls.filter(call => call.method === 'setItem').every(call => call.stack.includes('state-persistence.js'))).toBe(true);
+  expect(evidence.calls.filter(call => call.method === 'getItem').every(call => (
+    call.stack.includes('state-persistence.js') || call.stack.includes('account-context.js')
+  ))).toBe(true);
 });
 
 test('rendering stateful views does not write persistence', async ({ page }) => {

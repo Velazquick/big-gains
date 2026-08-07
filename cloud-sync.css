@@ -32,3 +32,8 @@
 .cloud-shadow-drift { margin: 13px 0; }
 .cloud-shadow-drift summary { cursor: pointer; font-weight: 700; }
 .cloud-shadow-drift ul { margin: 9px 0 0; padding-left: 20px; }
+
+.account-onboarding{position:fixed;inset:0;z-index:100;display:grid;place-items:center;padding:20px;background:rgba(5,8,13,.82);backdrop-filter:blur(16px)}
+.account-onboarding[hidden]{display:none}.account-onboarding-card{width:min(520px,100%);padding:28px;border:1px solid var(--line);border-radius:22px;background:var(--panel);box-shadow:var(--shadow)}
+.account-onboarding-card h2{margin:7px 0 10px}.account-onboarding-card p{color:var(--muted);line-height:1.5}.account-onboarding-card small{display:block;color:var(--muted);margin-top:12px}.account-presentation-preview{display:flex;flex-wrap:wrap;gap:8px}.account-presentation-preview span{padding:7px 10px;border:1px solid rgba(98,168,255,.35);border-radius:999px;color:var(--muted);font-size:.8rem}.account-onboarding-error{color:var(--danger)!important}
+body.account-onboarding-open{overflow:hidden}

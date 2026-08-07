@@ -1,8 +1,10 @@
-# Supabase setup for Phase 4C–4E
+# Supabase setup for Phase 4C–4G
 
 Phase 4C uses the existing private Supabase project, but it must never receive real Jorge or Alexa workout data. The only hosted write proof in this phase is ephemeral synthetic data. Big Gains remains usable while signed out, offline, or when Supabase is unavailable.
 
 Phase 4E adds the reviewed `bodyweight_entries` table and metadata-only migration journal support. Development and hosted verification still use synthetic identities and payloads only. The real Jorge/Alexa migration is a separate manual action after review and deployment.
+
+Phase 4G adds the production path for an invited independent user but does not create the real friend's Auth user during implementation. The browser calls only the `SECURITY INVOKER` `bootstrap_independent_account(text)` RPC after an already-created Auth user signs in. Direct browser inserts into `accounts` and `profiles` are RLS-blocked outside that transaction.
 
 ## 1. Browser-safe values
 
@@ -115,3 +117,14 @@ Do not connect ordinary workout completion or upload a backup during these check
 - The device: immediate workout source of truth plus a separate durable outbound queue.
 
 Cloud failure must never block workout logging.
+
+## Phase 4G post-deploy friend step
+
+After review, merge, v50 deployment, and a final managed two-profile **In sync** check:
+
+1. Obtain the friend's exact email from Jorge at that time.
+2. Reconfirm public email signup and anonymous sign-in are disabled.
+3. Explicitly create or invite that one Auth user in Supabase Authentication. Do not create application rows manually.
+4. The friend requests an existing-user magic link on a fresh device, enters a display name, and selects **Create private profile**.
+5. Verify exactly one new account and one `independent-*` profile exist, with `pet_enabled=false`, `accent='cobalt'`, and `theme='performance-dark'`.
+6. Run the offline/reconnect/in-sync smoke proof in `PHASE4G_INDEPENDENT_USER_CONTRACT.md`, then begin the sustained proof. Do not add the friend to Jorge's account and do not enable cloud pull.

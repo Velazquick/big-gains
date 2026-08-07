@@ -3,7 +3,7 @@
 
   const CONTRACT = 'big-gains.shadow.v1';
   const VERSION = 1;
-  const PROFILE_IDS = Object.freeze(['jorge', 'alexa']);
+  const PROFILE_IDS = Object.freeze([...window.bigGainsAccounts.runtime.expectedProfileIds]);
   const TABLES = Object.freeze(['workouts', 'routines', 'bodyweight_entries', 'preferences', 'active_sessions']);
   const PAYLOAD_TABLES = new Set(['workouts', 'routines', 'preferences', 'active_sessions']);
   const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
@@ -13,7 +13,7 @@
     return window.BigGainsMigrationPreview;
   };
   const keyFor = (table, clientId) => `${table}\u0000${clientId}`;
-  const displayProfile = profileId => profileId === 'jorge' ? 'Jorge' : 'Alexa';
+  const displayProfile = profileId => window.bigGainsAccounts.registry.resolve(profileId)?.displayName || profileId;
 
   function fail(code, message, details = {}) {
     const error = new Error(message);
@@ -300,8 +300,20 @@
     return {
       format: 'big-gains.shadow-catalog.v1', version: 1,
       accountId: owner.account.id, authUserId: owner.account.owner_user_id,
-      migrationId: journal.metadata.migrationId,
+      migrationId: journal?.metadata?.migrationId || 'independent-parity',
       adoptedAt: new Date().toISOString(), profiles
+    };
+  }
+
+  function emptyCatalogFromOwner(owner) {
+    return {
+      format: 'big-gains.shadow-catalog.v1', version: 1,
+      accountId: owner.account.id, authUserId: owner.account.owner_user_id,
+      migrationId: 'independent-empty-bootstrap', adoptedAt: new Date().toISOString(),
+      profiles: Object.fromEntries(PROFILE_IDS.map(profileClientId => [profileClientId, {
+        profileId: owner.profiles[profileClientId].id,
+        records: {}
+      }]))
     };
   }
 
@@ -328,6 +340,7 @@
     createRepository,
     completedMigrationJournal,
     catalogFromCloud,
+    emptyCatalogFromOwner,
     envelopeFor
   });
 })();

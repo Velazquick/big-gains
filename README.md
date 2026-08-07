@@ -1,6 +1,6 @@
 # big-gains
 
-Big Gains is a static, local-first strength-training PWA with isolated Jorge and Alexa profiles, JSON backup and restore, optional outbound workout snapshots, and a tested offline app shell.
+Big Gains is a static, local-first strength-training PWA with the existing managed Jorge/Alexa account plus invited, one-profile independent accounts, JSON backup and restore, one-way private cloud shadows, and a tested offline app shell.
 
 Timer completion always uses the visual and accessible READY cue as its primary feedback. A short repository-owned chime is a best-effort enhancement after the persistent audio element is armed by a trusted workout interaction; installed iOS PWAs may still suppress audio because of device or WebKit policy.
 
@@ -18,9 +18,16 @@ Past and current Calendar dates can also open a focused retrospective editor. It
 - [Phase 4 account roadmap](PHASE4_ACCOUNT_ROADMAP.md) — cloud ownership, conflict rules, migration, and friend onboarding
 - [Phase 4E migration contract](PHASE4E_MIGRATION_CONTRACT.md) — approved-audit gate, deterministic target rows, recovery journal, readback verification, and post-migration audit
 - [Phase 4F shadow-sync contract](PHASE4F_SHADOW_SYNC_CONTRACT.md) — read-only reconstruction, one-way local-first queue, migrated-row adoption, tombstones, drift, and Phase 4G handoff
+- [Phase 4G independent-user contract](PHASE4G_INDEPENDENT_USER_CONTRACT.md) — runtime account shapes, bootstrap-only provisioning, presentation tokens, isolated local namespaces, post-deploy onboarding, and sustained proof
 - [Supabase setup for Phase 4C](SUPABASE_SETUP.md) — hosted project, Auth redirect, CLI migration, RLS verification, and Pages configuration
 
-The stabilized browser-test baseline is 150 passing tests in Chromium with no expected failures, covering the full local-first app plus the Phase 4D fingerprint, Phase 4E controlled migration, and Phase 4F shadow-sync boundary.
+The browser suite covers the full local-first app plus the Phase 4D fingerprint, Phase 4E controlled migration, Phase 4F shadow boundary, and Phase 4G independent-user runtime.
+
+## Phase 4G: invited independent user
+
+Release `v50-phase4g-independent-user` adds a neutral fresh-device shell, first-sign-in provisioning for an already-created Auth user, one isolated schema-v5 profile, constrained cobalt/performance presentation with the pet disabled, and an account-scoped Phase 4F shadow queue. Public signup remains disabled and the browser contains no privileged key.
+
+Jorge and Alexa retain their original keys, switcher, presentation, migration baseline, and two-profile parity requirement. An independent profile uses a stable namespace derived from its verified cloud account/profile UUIDs. The database—not client filtering—prevents either account from reading or mutating the other.
 
 ## Phase 4F: verified one-way cloud shadow
 

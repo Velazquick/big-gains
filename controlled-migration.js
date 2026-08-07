@@ -252,6 +252,7 @@
   function initialize() {
     if (runtime.initialized) return false;
     runtime.initialized = true;
+    if (window.bigGainsAccounts?.runtime?.kind !== 'managed') return true;
     document.addEventListener('change', event => {
       if (event.target.id === 'approvedMigrationAudit' && event.target.files?.[0]) loadAudit(event.target.files[0]);
       if (event.target.id === 'confirmMigrationWrites') {

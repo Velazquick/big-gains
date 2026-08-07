@@ -22,6 +22,7 @@ const productionScriptOrder = [
   'design-v21.js',
   'session-selector-v26.js',
   'sync-gateway.js',
+  'account-onboarding.js',
   'migration-preview.js',
   'cloud-shadow.js',
   'cloud-sync.js',
