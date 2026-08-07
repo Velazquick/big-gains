@@ -4,6 +4,7 @@
   const PREVIEW_FORMAT = 'big-gains.migration-preview.v1';
   const PREVIEW_VERSION = 1;
   const SOURCE_SCHEMA_VERSION = 5;
+  const SUPPORTED_SOURCE_SCHEMA_VERSIONS = Object.freeze([2, 3, 4, 5]);
   const PROFILE_IDS = Object.freeze(['jorge', 'alexa']);
   const APPLICATION_TABLES = Object.freeze([
     'workouts',
@@ -162,7 +163,9 @@
       issue(issues, expectedProfileId, '$', 'Local profile state must be an object.');
       return issues;
     }
-    if (value.version !== SOURCE_SCHEMA_VERSION) issue(issues, expectedProfileId, 'version', 'Source schema must remain version 5.');
+    if (!SUPPORTED_SOURCE_SCHEMA_VERSIONS.includes(value.version)) {
+      issue(issues, expectedProfileId, 'version', 'Source schema must be numeric version 2, 3, 4, or 5.');
+    }
     if (value.profileId !== expectedProfileId) issue(issues, expectedProfileId, 'profileId', `Local state must belong to ${expectedProfileId}.`);
     Object.keys(value).filter(key => !KNOWN_STATE_KEYS.has(key)).sort().forEach(key => {
       issue(issues, expectedProfileId, key, 'Unsupported top-level local field.');
@@ -265,6 +268,7 @@
     return Object.freeze({
       clientId: profileId,
       displayName: profileId === 'jorge' ? 'Jorge' : 'Alexa',
+      storedSchemaVersion: Number.isSafeInteger(value?.version) ? value.version : null,
       valid: issues.length === 0,
       issues: Object.freeze(issues),
       entities: Object.freeze(entities),
@@ -376,6 +380,7 @@
       account: preview.account ? { id: preview.account.id, ownerUserId: preview.account.ownerUserId } : null,
       mappings: Object.fromEntries(PROFILE_IDS.map(profileId => [profileId, preview.mappings[profileId] ? { ...preview.mappings[profileId] } : null])),
       profiles: Object.fromEntries(PROFILE_IDS.map(profileId => [profileId, {
+        storedSchemaVersion: preview.profiles[profileId].storedSchemaVersion,
         counts: Object.fromEntries(ENTITY_ORDER.map(entityType => [entityType, preview.profiles[profileId].entities[entityType].count])),
         entityChecksums: Object.fromEntries(ENTITY_ORDER.map(entityType => [entityType, preview.profiles[profileId].entities[entityType].checksum])),
         profileChecksum: preview.profiles[profileId].checksum,
@@ -405,7 +410,7 @@
       <div class="migration-profile-head"><div><span class="label">${escapeHtml(profile.displayName)}</span><h4>Local ${escapeHtml(profile.displayName)} → ${mapping ? `Cloud ${escapeHtml(profile.displayName)}` : 'Cloud profile missing'}</h4></div><span class="migration-check ${mapping ? 'is-verified' : ''}">${mapping ? 'Verified' : 'Blocked'}</span></div>
       <ul class="migration-counts">${summary}</ul>
       <div class="migration-checksum"><span>Profile checksum</span><code title="${escapeHtml(profile.checksum)}">${escapeHtml(shortChecksum(profile.checksum))}</code><button class="ghost compact" type="button" data-copy-checksum="${escapeHtml(profile.checksum)}">Copy</button></div>
-      <details><summary>Audit details</summary><div class="migration-audit-list">${details}</div><p class="migration-derived">${escapeHtml(profile.derived.note)} Persisted derived PR entries: ${profile.derived.personalRecords}.</p></details>
+      <details><summary>Audit details</summary><div class="migration-audit-list">${details}</div><p class="migration-derived">Stored schema version ${escapeHtml(profile.storedSchemaVersion ?? 'unrecognized')}; records validated against migration contract version ${SOURCE_SCHEMA_VERSION}. ${escapeHtml(profile.derived.note)} Persisted derived PR entries: ${profile.derived.personalRecords}.</p></details>
     </article>`;
   }
 
@@ -517,6 +522,7 @@
     format: PREVIEW_FORMAT,
     version: PREVIEW_VERSION,
     sourceSchemaVersion: SOURCE_SCHEMA_VERSION,
+    supportedSourceSchemaVersions: SUPPORTED_SOURCE_SCHEMA_VERSIONS,
     applicationTables: APPLICATION_TABLES,
     entityOrder: ENTITY_ORDER,
     canonicalize,

@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v47-phase4d-migration-preview';
+  const release = 'v47.1-phase4d-legacy-source-preview';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];
