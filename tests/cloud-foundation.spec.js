@@ -333,7 +333,7 @@ test('browser cloud module contains no transport, SDK, or privileged credential 
   expect(source).not.toMatch(/\bfetch\s*\(/);
   expect(source).not.toContain('createClient(');
   expect(source).not.toMatch(/service[_-]?role/i);
-  expect(envExample.trim().split('\n').filter(line => !line.startsWith('#'))).toEqual([
+  expect(envExample.trim().split(/\r?\n/).filter(line => !line.startsWith('#'))).toEqual([
     'SUPABASE_URL=',
     'SUPABASE_PUBLISHABLE_KEY='
   ]);
