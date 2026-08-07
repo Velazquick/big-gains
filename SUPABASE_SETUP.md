@@ -1,6 +1,8 @@
-# Supabase setup for Phase 4C
+# Supabase setup for Phase 4C–4E
 
 Phase 4C uses the existing private Supabase project, but it must never receive real Jorge or Alexa workout data. The only hosted write proof in this phase is ephemeral synthetic data. Big Gains remains usable while signed out, offline, or when Supabase is unavailable.
+
+Phase 4E adds the reviewed `bodyweight_entries` table and metadata-only migration journal support. Development and hosted verification still use synthetic identities and payloads only. The real Jorge/Alexa migration is a separate manual action after review and deployment.
 
 ## 1. Browser-safe values
 
@@ -29,12 +31,13 @@ After Jorge signs in, the browser idempotently creates or reuses one empty accou
 
 ## 3. Hosted schema status
 
-Phase 4C applied both checked-in migrations to the Big Gains hosted project:
+The Big Gains hosted project records all three reviewed migrations:
 
 - `20260807000000_phase4b_cloud_foundation.sql`
 - `20260807120000_phase4c_harden_rls_event_trigger.sql`
+- `20260807175037_phase4e_bodyweight_entries.sql`
 
-The hosted migration ledger records both changes. All eight application tables have forced RLS, all 32 ownership policies are present, and the post-migration Supabase security and performance advisors reported no findings. Do not reapply either file manually in SQL Editor.
+The hosted migration ledger records all three changes. All nine application tables have forced RLS and all 36 ownership policies are present. The post-Phase-4E performance advisor reported no findings. The security advisor reported only the project-level leaked-password-protection warning; no table, RLS, function, or index finding was introduced by the DDL. Do not reapply these files manually in SQL Editor.
 
 For a future environment or an operator recheck, the repository pins the Supabase CLI. Link only the intended project. If CLI authentication or the database password is required, enter it directly in the CLI's secure prompt or a short-lived operator-controlled environment; never pass it as a visible command argument or commit it.
 
@@ -43,6 +46,15 @@ DO_NOT_TRACK=1 npx supabase login
 DO_NOT_TRACK=1 npx supabase link --project-ref YOUR_PROJECT_REF
 DO_NOT_TRACK=1 npx supabase db push --linked
 DO_NOT_TRACK=1 npx supabase migration list --linked
+```
+
+After the Phase 4E DDL, run both database tests and the security/performance advisors. The Phase 4E pgTAP transaction creates only fixed synthetic identities and rolls everything back.
+
+```sh
+DO_NOT_TRACK=1 npx supabase test db --linked supabase/tests/database/phase4b_rls.test.sql
+DO_NOT_TRACK=1 npx supabase test db --linked supabase/tests/database/phase4e_bodyweight_rls.test.sql
+DO_NOT_TRACK=1 npx supabase db advisors --linked --type security
+DO_NOT_TRACK=1 npx supabase db advisors --linked --type performance
 ```
 
 `db push` compares the checked-in files with the hosted ledger and makes retry status visible.
@@ -85,7 +97,7 @@ Do not connect ordinary workout completion or upload a backup during these check
 
 ## Pre-data checklist
 
-- All eight public tables have RLS enabled and forced.
+- All nine public tables have RLS enabled and forced.
 - `anon` and `public` have no table grants.
 - Every profile-owned row carries both `account_id` and `profile_id`.
 - Composite foreign keys reject cross-account profile pairing.

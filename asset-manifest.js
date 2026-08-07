@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v47.1-phase4d-legacy-source-preview';
+  const release = 'v48-phase4e-controlled-migration';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];
@@ -20,7 +20,8 @@
     './training-calendar.css',
     './retrospective-workout.css',
     './cloud-sync.css',
-    './migration-preview.css'
+    './migration-preview.css',
+    './controlled-migration.css'
   ];
   const scripts = [
     './account-context.js',
@@ -44,6 +45,8 @@
     './sync-gateway.js',
     './cloud-sync.js',
     './migration-preview.js',
+    './migration-engine.js',
+    './controlled-migration.js',
     './shell-init.js'
   ];
   const revision = path => `${path}?v=${encodeURIComponent(release)}`;

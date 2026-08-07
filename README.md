@@ -16,15 +16,22 @@ Past and current Calendar dates can also open a focused retrospective editor. It
 - [Release checklist](RELEASE_CHECKLIST.md) — the required checks for production, storage, backup, and service-worker changes
 - [Browser testing](TESTING.md) — local commands, fixtures, coverage, and known limits
 - [Phase 4 account roadmap](PHASE4_ACCOUNT_ROADMAP.md) — cloud ownership, conflict rules, migration, and friend onboarding
+- [Phase 4E migration contract](PHASE4E_MIGRATION_CONTRACT.md) — approved-audit gate, deterministic target rows, recovery journal, readback verification, and post-migration audit
 - [Supabase setup for Phase 4C](SUPABASE_SETUP.md) — hosted project, Auth redirect, CLI migration, RLS verification, and Pages configuration
 
-The stabilized browser-test baseline is 109 passing tests in Chromium with no expected failures.
+The stabilized browser-test baseline is 143 passing tests in Chromium with no expected failures, covering the full local-first app plus the Phase 4D fingerprint and Phase 4E controlled migration boundary.
 
 ## Storage compatibility
 
 Current profile state and backups use schema version 5. When Jorge has no current state, valid weight entries from an existing undocumented `big-gains-v1` payload are normalized into the current Jorge profile. The original legacy key/value is left untouched.
 
 Legacy workout records are not imported into schema version 5 because their historical shape was never defined as a supported schema. Those records are retained only inside the untouched `big-gains-v1` payload.
+## Phase 4E: controlled real-data migration
+
+Release `v48-phase4e-controlled-migration` adds a separate, user-triggered cloud-copy boundary. It accepts only the selected approved Phase 4D metadata audit plus a fresh exact local checksum and empty-destination verification. It shows exact per-profile/table writes, requires a second inline confirmation, inserts deterministic idempotent rows, resumes matching partial runs, verifies complete account-scoped readback checksums, and exports a metadata-only completion audit. Bodyweight history has a dedicated forced-RLS `bodyweight_entries` table with an explicit pounds (`lb`) contract.
+
+The release does not execute a migration automatically. Local schema version 5, storage keys, backups, snapshots, and ordinary workout behavior remain unchanged; normal cloud sync remains synthetic-only.
+
 ## Phase 4C: Jorge auth and synthetic completed-workout sync
 
 Big Gains now ships a browser-safe Supabase client, Jorge-only magic-link sign-in, a durable outbound queue, and a completed-workout transport. The transport has a hard synthetic-only gate: normal Jorge and Alexa workout completion still uses only the existing local schema-version-5 path and cannot enter the cloud queue in this release.

@@ -131,3 +131,17 @@ For any production app-shell change:
 - Recheck cross-account/profile denial, anonymous denial, immutable ownership, composite foreign keys, and uniqueness constraints against hosted Postgres.
 - Run `npm test` and `npx playwright test --workers=1` with all 109 tests passing and no skips or expected failures.
 - Confirm no real Jorge or Alexa record was read for migration, enqueued, uploaded, changed, or deleted.
+
+# v48 Phase 4E controlled migration
+
+- Confirm `migration-preview.js`, `migration-engine.js`, `controlled-migration.js`, and both migration stylesheets appear once in the `v48-phase4e-controlled-migration` shell and offline cache.
+- Confirm the v47.1 approved Phase 4D combined/profile/entity checksums and counts still match; the new bodyweight destination must not alter the source checksum contract.
+- Review `big-gains.migration.v1` payloads, deterministic client IDs, duplicate bodyweight occurrence IDs, stable migration/idempotency keys, exact table counts, and metadata-only journal/audit shapes.
+- Confirm no action appears until browser config, Jorge Auth, owner/profile mapping, READY preview, empty application tables, no unexpected marker, and the selected approved audit all match.
+- Confirm the first write still requires the explicit migration button plus the second exact-count checkbox; page load, Auth, profile switching, workout completion, online events, and normal sync never execute migration.
+- Review `bodyweight_entries` for explicit `lb` semantics, composite ownership FK, immutable ownership trigger, unique migration identities, enabled/forced RLS, owner-only authenticated policies, and revoked anonymous/public grants.
+- Exercise first run, lost response, mid-run resume, mismatched row conflict, readback count/checksum failures, source change during upload, complete-only-after-verification journal behavior, and metadata-only post-migration audit.
+- Verify local storage bytes, schema version 5, backup/import, `big-gains.snapshot.v1`, signed-out/offline logging, and the synthetic-only normal transport remain unchanged.
+- Run both hosted pgTAP files with synthetic identities inside rollback transactions; confirm cleanup returns every application table to the pre-test count and rerun security/performance advisors.
+- Run the complete Playwright suite in normal and single-worker/safe-sharded modes with no skips or expected failures.
+- Before the real migration, make a fresh backup, load the approved audit, inspect exact counts, and stop on any blocker. Never use a service-role key or execute from an unreviewed deployment.
