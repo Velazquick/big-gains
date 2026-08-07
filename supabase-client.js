@@ -28,11 +28,11 @@
     return data.session || null;
   }
 
-  async function requestJorgeMagicLink(email) {
+  async function requestMagicLink(email) {
     const current = getClient();
-    if (!current) throw new Error('Supabase is not configured.');
+    if (!current) throw new Error('Private cloud is not configured.');
     const normalized = String(email || '').trim();
-    if (!normalized) throw new Error('Enter Jorge’s email address.');
+    if (!normalized) throw new Error('Enter your email address.');
     const { error } = await current.auth.signInWithOtp({
       email: normalized,
       options: {
@@ -52,24 +52,77 @@
     return true;
   }
 
-  async function readJorgeCloudProfiles() {
+  async function readAccountState() {
     const current = getClient();
     const currentSession = await session();
-    if (!current || !currentSession?.user?.id) throw new Error('Jorge must be signed in.');
+    if (!current || !currentSession?.user?.id) return Object.freeze({ status: 'signed-out', account: null, profiles: Object.freeze({}) });
     const accounts = await current.from('accounts')
-      .select('id,owner_user_id')
+      .select('id,owner_user_id,display_name,created_at')
       .eq('owner_user_id', currentSession.user.id)
-      .limit(2);
+      .limit(3);
     if (accounts.error) throw accounts.error;
-    const account = accounts.data?.length === 1 ? accounts.data[0] : null;
-    if (!account) throw new Error('Exactly one signed-in cloud account is required.');
+    if ((accounts.data || []).length === 0) {
+      return Object.freeze({ status: 'needs-provisioning', account: null, profiles: Object.freeze({}), authUserId: currentSession.user.id });
+    }
+    if (accounts.data.length !== 1) {
+      return Object.freeze({ status: 'unexpected', reason: `Expected one owned account; found ${accounts.data.length}.`, account: null, profiles: Object.freeze({}), authUserId: currentSession.user.id });
+    }
+    const account = accounts.data[0];
     const profiles = await current.from('profiles')
-      .select('id,account_id,client_id,display_name')
-      .eq('account_id', account.id);
+      .select('id,account_id,client_id,display_name,pet_enabled,accent,theme,created_at')
+      .eq('account_id', account.id)
+      .limit(4);
     if (profiles.error) throw profiles.error;
-    const byClientId = Object.fromEntries((profiles.data || []).map(profile => [profile.client_id, profile]));
-    if (!byClientId.jorge || !byClientId.alexa) throw new Error('Both Jorge and Alexa cloud profiles are required.');
-    return Object.freeze({ account: Object.freeze(account), profiles: Object.freeze(byClientId) });
+    const rows = profiles.data || [];
+    const byClientId = Object.fromEntries(rows.map(profile => [profile.client_id, Object.freeze(profile)]));
+    const clientIds = Object.keys(byClientId).sort();
+    const managed = rows.length === 2 && clientIds.join(',') === 'alexa,jorge';
+    const independent = rows.length === 1;
+    if (!managed && !independent) {
+      return Object.freeze({
+        status: 'unexpected', reason: `Expected one independent profile or the managed Jorge/Alexa pair; found ${rows.length}.`,
+        account: Object.freeze(account), profiles: Object.freeze(byClientId), authUserId: currentSession.user.id
+      });
+    }
+    return Object.freeze({
+      status: 'ready', shape: managed ? 'managed' : 'independent',
+      account: Object.freeze(account), profiles: Object.freeze(byClientId), authUserId: currentSession.user.id
+    });
+  }
+
+  async function readCloudAccount() {
+    const state = await readAccountState();
+    if (state.status !== 'ready') {
+      const error = new Error(state.reason || (state.status === 'needs-provisioning'
+        ? 'Create your private profile to continue.'
+        : 'Sign in to use the private cloud.'));
+      error.code = state.status;
+      error.accountState = state;
+      throw error;
+    }
+    return Object.freeze({ account: state.account, profiles: state.profiles, shape: state.shape });
+  }
+
+  function validatedDisplayName(value) {
+    const displayName = String(value || '').trim().replace(/\s+/g, ' ');
+    if (!displayName || displayName.length > 60 || /[\u0000-\u001f\u007f]/.test(displayName)) {
+      throw new Error('Enter a display name between 1 and 60 normal characters.');
+    }
+    return displayName;
+  }
+
+  async function bootstrapIndependentAccount(displayName) {
+    const current = getClient();
+    const currentSession = await session();
+    if (!current || !currentSession?.user?.id) throw new Error('Sign in before creating a private profile.');
+    const normalized = validatedDisplayName(displayName);
+    const result = await current.rpc('bootstrap_independent_account', { requested_display_name: normalized });
+    if (result.error) throw result.error;
+    const state = await readAccountState();
+    if (state.status !== 'ready' || state.shape !== 'independent') {
+      throw new Error(state.reason || 'The private profile could not be verified.');
+    }
+    return Object.freeze({ account: state.account, profiles: state.profiles, shape: state.shape, bootstrap: result.data });
   }
 
   function onAuthStateChange(callback) {
@@ -84,9 +137,14 @@
     status: () => Object.freeze({ configured, signedIn: false }),
     getClient,
     session,
-    requestJorgeMagicLink,
+    requestMagicLink,
+    requestJorgeMagicLink: requestMagicLink,
     signOut,
-    readJorgeCloudProfiles,
+    readAccountState,
+    readCloudAccount,
+    readJorgeCloudProfiles: readCloudAccount,
+    bootstrapIndependentAccount,
+    validatedDisplayName,
     onAuthStateChange
   });
 })();

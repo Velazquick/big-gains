@@ -9,6 +9,7 @@
     window.bigGainsDirection,
     window.sessionSelector,
     window.BigGainsSync,
+    window.BigGainsAccountOnboarding,
     window.BigGainsCloudSync,
     window.BigGainsMigrationPreview,
     window.BigGainsControlledMigration

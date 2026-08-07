@@ -51,6 +51,7 @@
   }
 
   function render(forceMessage = false) {
+    if (PRESENTATION?.petEnabled === false) return;
     card.dataset.profile = currentProfile();
     const nextState = resolveState();
     if (nextState !== currentState) {
@@ -80,6 +81,10 @@
   function initialize() {
     if (initialized) return false;
     initialized = true;
+    if (PRESENTATION?.petEnabled === false) {
+      card.hidden = true;
+      return true;
+    }
     pet.addEventListener('click', poke);
     ['startWorkout','finishWorkout','cancelWorkout'].forEach(id => document.getElementById(id)?.addEventListener('click', () => setTimeout(() => render(true), 80)));
     document.getElementById('profileSelect')?.addEventListener('change', () => setTimeout(() => render(true), 0));

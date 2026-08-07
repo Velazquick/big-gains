@@ -173,7 +173,7 @@ test('completed-workout transport rejects real operations before a client call',
   expect(result).toEqual({ response: { ok: false, rejected: true, reason: 'synthetic-only' }, calls: 0 });
 });
 
-test('Jorge magic-link auth disables signup and uses the GitHub Pages redirect', async ({ page }) => {
+test('existing-user magic-link auth disables signup and uses the GitHub Pages redirect', async ({ page }) => {
   await page.addInitScript(value => { window.__BIG_GAINS_CLOUD_CONFIG__ = value; }, configured);
   let requestBody = null;
   let requestUrl = null;
@@ -192,7 +192,7 @@ test('Jorge magic-link auth disables signup and uses the GitHub Pages redirect',
   await page.locator('.bottom-nav [data-view="library"]').click();
   await page.locator('#cloudAuthEmail').fill('jorge.synthetic@example.com');
   await page.locator('#cloudAuthForm button').click();
-  await expect(page.locator('#cloudAuthDetail')).toContainText('Check Jorge’s email');
+  await expect(page.locator('#cloudAuthDetail')).toContainText('Check your email');
   expect(requestBody).toMatchObject({
     email: 'jorge.synthetic@example.com',
     create_user: false

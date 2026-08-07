@@ -4,9 +4,10 @@
   const cloud = window.BigGainsCloud;
   const shadow = window.BigGainsCloudShadow;
   const supabaseBoundary = window.BigGainsSupabase;
-  const queue = cloud.createDurableQueue();
-  const CATALOG_KEY = 'big-gains-cloud-shadow-catalog-v1';
-  const COMPARISON_KEY = 'big-gains-cloud-shadow-comparison-v1';
+  const accountRuntime = window.bigGainsAccounts.runtime;
+  const queue = cloud.createDurableQueue({ key: accountRuntime.cloudKeys.queue });
+  const CATALOG_KEY = accountRuntime.cloudKeys.catalog;
+  const COMPARISON_KEY = accountRuntime.cloudKeys.comparison;
   let initialized = false;
   let authSubscription = null;
   let cloudOwner = null;
@@ -31,8 +32,9 @@
   function validCatalog(value) {
     return value?.format === 'big-gains.shadow-catalog.v1'
       && typeof value.accountId === 'string'
-      && value.profiles?.jorge?.profileId
-      && value.profiles?.alexa?.profileId;
+      && shadow.profileIds.length > 0
+      && shadow.profileIds.every(profileClientId => value.profiles?.[profileClientId]?.profileId)
+      && Object.keys(value.profiles || {}).length === shadow.profileIds.length;
   }
 
   if (!validCatalog(catalog)) catalog = null;
@@ -46,8 +48,8 @@
     return Boolean(catalog
       && owner?.account?.id === catalog.accountId
       && owner?.account?.owner_user_id === catalog.authUserId
-      && owner?.profiles?.jorge?.id === catalog.profiles.jorge.profileId
-      && owner?.profiles?.alexa?.id === catalog.profiles.alexa.profileId);
+      && shadow.profileIds.every(profileClientId => owner?.profiles?.[profileClientId]?.id === catalog.profiles[profileClientId].profileId)
+      && Object.keys(owner?.profiles || {}).length === shadow.profileIds.length);
   }
 
   function baseRevision(record) {
@@ -191,7 +193,8 @@
         profiles: owner.profiles,
         accountId: owner.account.id
       });
-      const profileClientId = owner.profiles.jorge.id === operation.owner.profileId ? 'jorge' : 'alexa';
+      const profileClientId = Object.keys(owner.profiles).find(id => owner.profiles[id].id === operation.owner.profileId);
+      if (!profileClientId) throw new Error('The operation profile is not part of the signed-in runtime account.');
       return {
         source: entityResult.data || null,
         tombstone: tombstoneResult.data || null,
@@ -358,7 +361,9 @@
       const repository = shadow.createRepository({ client: supabaseBoundary.getClient(), accountId: cloudOwner.account.id });
       const remote = await repository.readAll();
       const journal = shadow.completedMigrationJournal(remote.journals, cloudOwner.account.id);
-      if (!journal) throw Object.assign(new Error('The completed Phase 4E baseline journal was not found.'), { code: 'baseline-missing' });
+      if (accountRuntime.kind === 'managed' && !journal) {
+        throw Object.assign(new Error('The completed Phase 4E baseline journal was not found.'), { code: 'baseline-missing' });
+      }
       const cloudState = await shadow.reconstructCloud({ ...remote, profiles: cloudOwner.profiles, accountId: cloudOwner.account.id });
       const localProfiles = await shadow.readLocalProfiles();
       const comparison = await shadow.compare({ localProfiles, cloud: cloudState, expectedCatalog: catalog });
@@ -376,6 +381,11 @@
       if (comparison.parity && (!catalog || adopt)) {
         catalog = shadow.catalogFromCloud({ cloud: cloudState, owner: cloudOwner, journal });
         writeJson(CATALOG_KEY, catalog);
+      } else if (accountRuntime.kind === 'independent' && !catalog
+        && shadow.profileIds.every(profileClientId => cloudState.profiles[profileClientId].current.length === 0)) {
+        catalog = shadow.emptyCatalogFromOwner(cloudOwner);
+        writeJson(CATALOG_KEY, catalog);
+        await Promise.all(shadow.profileIds.map(profileClientId => captureLocalSnapshot(profileClientId)));
       }
       return comparison;
     } catch (error) {
@@ -390,8 +400,11 @@
   async function verifiedOwnerForSession() {
     const session = await supabaseBoundary.session();
     if (!session?.user?.id) return null;
-    const owner = await supabaseBoundary.readJorgeCloudProfiles();
+    const owner = await supabaseBoundary.readCloudAccount();
     if (owner.account.owner_user_id !== session.user.id) throw new Error('Signed-in account ownership could not be verified.');
+    if (!window.bigGainsAccounts.matchesCloudOwner(owner, session.user.id)) {
+      throw new Error('Signed-in account does not match this device runtime. Reload after account verification.');
+    }
     if (catalog && !sameOwnerMapping(owner)) throw new Error('Signed-in cloud account/profile mapping does not match this queue.');
     return owner;
   }
@@ -431,7 +444,7 @@
       <div id="cloudShadowProfiles" class="cloud-shadow-profiles" hidden></div>
       <details id="cloudShadowDrift" class="cloud-shadow-drift" hidden><summary>What needs attention</summary><ul id="cloudShadowDriftList"></ul></details>
       <form id="cloudAuthForm" class="cloud-auth-form" hidden>
-        <label><span>Jorge’s email</span><input id="cloudAuthEmail" type="email" autocomplete="email" required></label>
+        <label><span>Email</span><input id="cloudAuthEmail" type="email" autocomplete="email" required></label>
         <button class="secondary" type="submit">Email sign-in link</button>
       </form>
       <div class="data-actions"><button id="cloudSyncNow" class="secondary" type="button" hidden>Check now</button><button id="cloudSignOut" class="ghost" type="button" hidden>Sign out</button></div>
@@ -470,7 +483,8 @@
     else if (pending) state = 'LOCAL CHANGES PENDING';
     else if (lastComparison?.parity === true) state = 'IN SYNC';
     heading.textContent = state === 'IN SYNC' ? 'In sync' : state;
-    detail.textContent = state === 'IN SYNC' ? 'Jorge and Alexa match their private cloud shadow.'
+    const profileNames = shadow.profileIds.map(id => window.bigGainsAccounts.registry.resolve(id)?.displayName || id);
+    detail.textContent = state === 'IN SYNC' ? `${profileNames.join(' and ')} ${profileNames.length === 1 ? 'matches' : 'match'} the private cloud shadow.`
       : state === 'LOCAL CHANGES PENDING' ? `${pending} change${pending === 1 ? '' : 's'} waiting for connection.`
         : state === 'CLOUD BEHIND / RETRYING' ? 'Cloud is catching up. Training stays local.'
           : state === 'DRIFT DETECTED' ? 'Drift detected — local data is unchanged.'
@@ -484,7 +498,7 @@
     queueStatus.textContent = `${pending} outbound change${pending === 1 ? '' : 's'} pending${lastComparison?.comparedAt ? ` · Last checked ${new Date(lastComparison.comparedAt).toLocaleString()}` : ''}.`;
     const profileResults = lastComparison?.profiles;
     profileBox.hidden = !profileResults;
-    if (profileResults) profileBox.innerHTML = shadow.profileIds.map(id => `<span><strong>${id === 'jorge' ? 'Jorge' : 'Alexa'}</strong>${profileResults[id]?.parity ? 'In sync' : 'Needs attention'}</span>`).join('');
+    if (profileResults) profileBox.innerHTML = shadow.profileIds.map(id => `<span><strong>${window.bigGainsAccounts.registry.resolve(id)?.displayName || id}</strong>${profileResults[id]?.parity ? 'In sync' : 'Needs attention'}</span>`).join('');
     const reasons = lastComparison?.reasons || [];
     drift.hidden = state !== 'DRIFT DETECTED' || reasons.length === 0;
     driftList.innerHTML = reasons.map(reason => `<li>${String(reason).replace(/[&<>]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[character])}</li>`).join('');
@@ -509,8 +523,8 @@
     document.getElementById('cloudAuthForm')?.addEventListener('submit', async event => {
       event.preventDefault();
       try {
-        await supabaseBoundary.requestJorgeMagicLink(document.getElementById('cloudAuthEmail').value);
-        document.getElementById('cloudAuthDetail').textContent = 'Check Jorge’s email for the private sign-in link.';
+        await supabaseBoundary.requestMagicLink(document.getElementById('cloudAuthEmail').value);
+        document.getElementById('cloudAuthDetail').textContent = 'Check your email for the private sign-in link.';
       } catch (error) {
         document.getElementById('cloudAuthDetail').textContent = error?.message || 'Sign-in link could not be sent.';
       }

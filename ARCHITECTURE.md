@@ -202,7 +202,7 @@ The suite covers startup and explicit APIs, workout lifecycle and controls, note
 The automated target is Chromium. See [TESTING.md](TESTING.md) for the exact coverage boundaries.
 # Phase 4A account foundation
 
-`account-context.js` is the single identity and ownership boundary. An account descriptor contains a stable `accountId`, the persisted `profileId`, display name, storage namespace/key, and `profileConfigRef`. The production registry contains only Jorge and Alexa. `profiles.js` resolves presentation/training configuration from the active account, while `state-persistence.js` owns state normalization, migration, backup validation, and reads/writes for that account.
+`account-context.js` is the single local identity and ownership boundary. It selects a managed Jorge/Alexa runtime, a one-profile independent runtime, or a neutral fresh-device guest runtime before persistence binds. An account descriptor contains a stable `accountId`, persisted `profileId`, display name, storage namespace/key, presentation tokens, and `profileConfigRef`. `profiles.js` resolves presentation/training configuration from the active runtime, while `state-persistence.js` owns state normalization, migration, backup validation, and reads/writes for that profile.
 
 The deployed compatibility contract is unchanged: Jorge uses `big-gains-v2`, Alexa uses `big-gains-alexa-v1`, active selection uses `big-gains-active-profile` with `jorge`/`alexa` values, and calendar session state retains `big-gains-calendar-date-jorge` / `big-gains-calendar-date-alexa`. Resolving an account is read-only. The registry can accept another descriptor without changing persistence internals or workout schema version 5.
 
@@ -212,7 +212,7 @@ GitHub is source control and an optional snapshot-backup destination. It is not 
 
 ## Phase 4C cloud boundary
 
-Phase 4C preserves the Phase 4B ownership and conflict contracts while adding a narrow live boundary. With empty checked-in configuration, no Supabase client is created and no cloud request occurs. With deployment configuration, signed-out local use remains available; only explicit Jorge sign-in touches Auth. Ordinary Jorge/Alexa workout saves are not wired to cloud code in this release, and the completed-workout transport rejects operations unless `synthetic === true`.
+With empty checked-in configuration, no Supabase client is created and no cloud request occurs. With deployment configuration, signed-out local use remains available. Magic links are existing-user-only (`shouldCreateUser:false`), so the app never opens public registration.
 
 The future ownership model is intentionally different from the compatibility-only local descriptors:
 
@@ -223,7 +223,7 @@ Jorge auth user -> Jorge account -> Jorge profile
 friend auth user -> friend account -> friend profile
 ```
 
-After Jorge signs in, the client creates or reuses one account owned by his Auth user and two rows with client IDs `jorge` and `alexa`. Existing local descriptors and data are not read, transformed, or uploaded.
+The deployed Jorge account is discovered as exactly two profiles with client IDs `jorge` and `alexa`. A signed-in user with no account sees the Phase 4G independent onboarding action; its security-invoker RPC atomically creates one owned account and one server-issued independent profile. Any other account/profile shape blocks.
 
 The SQL migrations define `accounts`, `profiles`, `workouts`, `routines`, `bodyweight_entries`, `preferences`, `active_sessions`, `sync_metadata`, and `tombstones`. All profile data carries the pair `(account_id, profile_id)`, and composite foreign keys prove that the profile belongs to that account. Ownership columns are immutable after creation. Completed workouts and bodyweight entries have unique account/profile/client IDs and account-scoped idempotency keys. Active sessions are unique per account/profile. `sync_metadata.metadata` stores only migration journal metadata.
 
@@ -240,7 +240,7 @@ The future adapter sequence is fixed before transport exists:
 5. When online, send pending operations quietly and retry failures with the same idempotency key.
 6. After remote acceptance, remove the pending operation and retain its acknowledged remote version.
 
-The durable queue serializes `{ version, pending, acknowledgements }` at `big-gains-cloud-sync-queue-v1`. It validates each restored operation and its deterministic key, deduplicates pending and acknowledged keys, caps acknowledgement history, and writes only on enqueue/retry/acknowledgement—not during rendering. The synthetic proof API waits for its supplied local persistence function before enqueue. Network errors increment attempt metadata and leave both the proof record and queue entry intact.
+The durable queue serializes `{ version, pending, acknowledgements }` at the managed compatibility key `big-gains-cloud-sync-queue-v1` or an independent account/profile UUID-derived key. It validates each restored operation and its deterministic key, deduplicates pending and acknowledged keys, caps acknowledgement history, and writes only on enqueue/retry/acknowledgement—not during rendering. The synthetic proof API waits for its supplied local persistence function before enqueue. Network errors increment attempt metadata and leave both the proof record and queue entry intact.
 
 Phase 4C is push-only. There is no remote pull or merge path, so remote state cannot overwrite local state. A retry after an uncertain response inserts once or treats the existing row as success only when account, profile, client ID, and idempotency key match. A different existing key is a conflict, never an overwrite.
 

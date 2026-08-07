@@ -233,6 +233,10 @@
       return blankState();
     }
 
+    function hasStoredState() {
+      try { return read(storageKey) !== null; } catch { return false; }
+    }
+
     function save(value, activeWorkout = value.activeWorkout) {
       value.activeWorkout = activeWorkout;
       write(storageKey, JSON.stringify(value));
@@ -268,6 +272,7 @@
       storageKey,
       blankState,
       normalizeState,
+      hasStoredState,
       load,
       save,
       prepareExport,

@@ -57,3 +57,11 @@ Tombstones now include bodyweight entities, win exact revision ties, and require
 ## Exact Phase 4G step
 
 Create one independent friend Auth user, one friend-owned account, and one profile under that account. Add allowlisted profile presentation configuration so the friend can use a different accent/theme with the pet disabled. Keep authorization based only on the account owner's Auth UUID and the existing RLS ownership chain; presentation values never grant access. Run sustained Jorge/Alexa and friend usage with account-scoped queues and shadow comparisons before considering multi-device merge or cloud authority.
+
+## Phase 4G delivered boundary
+
+Phase 4G implements the production path without creating the real friend Auth user. A fresh device is neutral; an already-created Auth user with no account can invoke one security-invoker, RLS-guarded, idempotent account/profile bootstrap. The resulting independent runtime has one profile, no managed selector, a cloud-UUID local namespace, a separate queue/catalog, generic training defaults, cobalt/performance presentation, and no pet. Jorge/Alexa compatibility keys and two-profile baseline rules are unchanged.
+
+## Exact Phase 4H step
+
+After sustained multi-user proof begins, add a metadata-only sync health and incident ledger plus explicit recovery rehearsals. Expose queue age, retry category, last parity, runtime shape, and client release without storing workout payloads. Add user-guided export/restore and blocked-queue recovery drills. Do not add cloud-to-local merge, automatic repair, multi-device reconciliation, or cloud authority in Phase 4H.

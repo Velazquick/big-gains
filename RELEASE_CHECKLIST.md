@@ -160,3 +160,16 @@ For any production app-shell change:
 - Run all 150 Playwright tests in normal and single-worker safe-sharded modes with no skips or expected failures.
 - After deployment, require baseline **In sync** for Jorge and Alexa before making one safe timer-preference mutation; wait for zero pending and **In sync** again after reload.
 - Do not open friend signup, enable a cloud pull, restore local state, merge a second device, or make cloud authoritative.
+
+# v50 Phase 4G independent user
+
+- Confirm the branch is based on the v49/Phase 4F merge and the managed keys, switcher, presentation, schema v5, backups, snapshots, migration journal, queue key, and two-profile parity rules are unchanged.
+- Confirm a truly fresh device renders a neutral guest shell and invited-user sign-in, not Jorge/Alexa data or identifiers.
+- Review the security-invoker bootstrap, transaction-local RLS guard, one-account uniqueness, one-profile retry reuse, unexpected-shape blockers, display-name validation, and anonymous/public execution revokes.
+- Confirm presentation columns are constrained, render-only, absent from every RLS/ownership decision, and preserve Jorge/Alexa appearance.
+- Confirm independent state, calendar session, queue, catalog, and comparison keys derive from the verified cloud account/profile UUID pair and never collide with managed keys.
+- Confirm the independent shell has one identity, generic routine labels, no Alexa sections, no pet initialization, cobalt accent, performance-dark theme, and all five app views.
+- Exercise fresh invited-session onboarding, offline local completion, reconnect push, one-profile parity, sign-out/reload persistence, wrong-session queue denial, lost ACK recovery, and tombstone/recreation rules using synthetic identities only.
+- Run the 43-assertion rollback-only hosted pgTAP suite, both advisors, and production count-only summaries before and after. Do not read Jorge/Alexa payloads.
+- Run complete normal and single-worker Playwright suites with no skips or expected failures.
+- Do not create the real friend Auth user until post-deploy manual onboarding. Do not open a PR, merge, or delete the feature branch as part of the implementation handoff.

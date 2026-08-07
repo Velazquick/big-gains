@@ -50,6 +50,7 @@
   }
 
   function movePet(inWorkoutMode) {
+    if (typeof PRESENTATION !== 'undefined' && PRESENTATION?.petEnabled === false) return;
     const target = body.classList.contains('workout-completion-open') ? completionPetSlot : (inWorkoutMode ? petSlot : petHome);
     if (pet && target && pet.parentElement !== target) target.appendChild(pet);
   }
