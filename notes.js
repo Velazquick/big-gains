@@ -1,15 +1,15 @@
 (() => {
   const REST_OPTIONS = [60, 90, 120, 150, 180, 240, 300];
 
-  const preferenceFor = (state, id) => {
-    state.exercisePreferences[id] = state.exercisePreferences[id] || {};
-    return state.exercisePreferences[id];
+  const preferenceFor = (state, id, { create = true } = {}) => {
+    if (create) state.exercisePreferences[id] = state.exercisePreferences[id] || {};
+    return state.exercisePreferences[id] || {};
   };
 
   const restLabel = seconds => seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 
   function noteControls({ exercise, index, state, defaultRest, escapeHtml }) {
-    const pref = preferenceFor(state, exercise.id);
+    const pref = preferenceFor(state, exercise.id, { create: false });
     const restSeconds = Number(exercise.restSeconds || pref.restSeconds || defaultRest);
     return `<details class="exercise-notes" data-note-block="${index}">
       <summary>Notes & rest <span>${restLabel(restSeconds)}</span></summary>
@@ -76,7 +76,7 @@
 
   function startRestTimer({ activeWorkout, state, exerciseIndex, defaultRest, saveState, runRestTimer, message }) {
     const exercise = activeWorkout?.exercises?.[exerciseIndex];
-    const pref = exercise ? preferenceFor(state, exercise.id) : {};
+    const pref = exercise ? preferenceFor(state, exercise.id, { create: false }) : {};
     const seconds = Number(exercise?.restSeconds || pref.restSeconds || defaultRest);
     state.restTimerEndsAt = Date.now() + seconds * 1000;
     saveState();

@@ -486,7 +486,7 @@
   }
 
   async function refresh() {
-    if (window.bigGainsAccounts?.runtime?.kind !== 'managed') {
+    if (window.bigGainsAccounts?.runtime?.kind !== 'managed-owner') {
       removeCard();
       return null;
     }
@@ -523,7 +523,7 @@
   function initialize() {
     if (initialized) return false;
     initialized = true;
-    if (window.bigGainsAccounts?.runtime?.kind !== 'managed') return true;
+    if (window.bigGainsAccounts?.runtime?.kind !== 'managed-owner') return true;
     if (!window.BigGainsSupabase?.configured) return true;
     document.addEventListener('click', event => {
       const copy = event.target.closest('[data-copy-checksum]');

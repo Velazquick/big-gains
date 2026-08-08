@@ -190,6 +190,121 @@
     });
   }
 
+  function derivePersonalRecords(workouts) {
+    const personalRecords = {};
+    const chronological = [...workouts].sort((left, right) => new Date(left.completedAt) - new Date(right.completedAt)
+      || String(left.id).localeCompare(String(right.id)));
+    for (const workout of chronological) {
+      for (const exercise of workout.exercises || []) {
+        for (const set of exercise.sets || []) {
+          if (set.warmup) continue;
+          const weight = Number(set.weight);
+          const reps = Number(set.reps);
+          const estimated1RM = reps > 0 ? Math.round(weight * (1 + reps / 30)) : 0;
+          if (estimated1RM > Number(personalRecords[exercise.id]?.estimated1RM || 0)) {
+            personalRecords[exercise.id] = {
+              exercise: exercise.name,
+              estimated1RM,
+              weight,
+              reps,
+              date: workout.completedAt
+            };
+          }
+        }
+      }
+    }
+    return personalRecords;
+  }
+
+  async function schemaV5FromCloud({ cloud, profileClientId }) {
+    const profileCloud = cloud?.profiles?.[profileClientId];
+    if (!profileCloud || cloud.ownershipIssues?.length) {
+      fail('fresh-recovery-ownership-mismatch', 'Fresh cloud recovery contains unexpected account or profile ownership.');
+    }
+    const state = {
+      version: 5,
+      profileId: profileClientId,
+      goals: null,
+      workouts: [],
+      weights: [],
+      prs: {},
+      activeWorkout: null,
+      restTimerEndsAt: null,
+      customRoutines: {},
+      timerPreferences: null
+    };
+    const exercisePreferences = {};
+    let goalsCount = 0;
+    let timerCount = 0;
+    let activeCount = 0;
+    for (const record of profileCloud.current) {
+      if (record.table === 'workouts' && record.entityType === 'completedWorkout'
+        && record.data?.id === record.clientId) {
+        state.workouts.push(clone(record.data));
+        continue;
+      }
+      if (record.table === 'routines' && record.entityType === 'customRoutine'
+        && typeof record.data?.name === 'string'
+        && Array.isArray(record.data?.exerciseIds)
+        && await routineClientId(record.data.name) === record.clientId) {
+        if (Object.hasOwn(state.customRoutines, record.data.name)) {
+          fail('fresh-recovery-duplicate-routine', `Cloud contains duplicate routine ${record.data.name}.`);
+        }
+        state.customRoutines[record.data.name] = clone(record.data.exerciseIds);
+        continue;
+      }
+      if (record.table === 'bodyweight_entries' && record.entityType === 'bodyweightEntry') {
+        state.weights.push({ date: record.data?.measuredAt, weight: record.data?.weightValue });
+        continue;
+      }
+      if (record.table === 'preferences' && record.entityType === 'goals' && record.clientId === 'goals') {
+        goalsCount += 1;
+        state.goals = clone(record.data);
+        continue;
+      }
+      if (record.table === 'preferences' && record.entityType === 'timerPreferences' && record.clientId === 'timer') {
+        timerCount += 1;
+        state.timerPreferences = clone(record.data);
+        continue;
+      }
+      if (record.table === 'preferences' && record.entityType === 'exercisePreference'
+        && typeof record.data?.exerciseId === 'string'
+        && record.clientId === `exercise:${encodeURIComponent(record.data.exerciseId)}`) {
+        if (Object.hasOwn(exercisePreferences, record.data.exerciseId)) {
+          fail('fresh-recovery-duplicate-exercise-preference', `Cloud contains duplicate preferences for ${record.data.exerciseId}.`);
+        }
+        exercisePreferences[record.data.exerciseId] = clone(record.data.preference);
+        continue;
+      }
+      if (record.table === 'active_sessions' && record.entityType === 'activeSession'
+        && record.data?.workout?.id === record.clientId) {
+        activeCount += 1;
+        state.activeWorkout = clone(record.data.workout);
+        state.restTimerEndsAt = record.data.restTimerEndsAt ?? null;
+        continue;
+      }
+      fail('fresh-recovery-unsupported-cloud-record', `Cloud record ${record.table}/${record.clientId} cannot reconstruct schema v5.`);
+    }
+    if (goalsCount !== 1 || timerCount !== 1 || activeCount > 1) {
+      fail('fresh-recovery-incomplete-cloud-state', 'Fresh cloud recovery requires exactly one goals row, one timer row, and at most one active session.');
+    }
+    state.workouts.sort((left, right) => new Date(right.completedAt) - new Date(left.completedAt)
+      || String(left.id).localeCompare(String(right.id)));
+    state.weights.sort((left, right) => new Date(right.date) - new Date(left.date)
+      || Number(right.weight) - Number(left.weight));
+    if (Object.keys(exercisePreferences).length) state.exercisePreferences = exercisePreferences;
+    state.prs = derivePersonalRecords(state.workouts);
+
+    const issues = preview().validateLocalState(state, profileClientId);
+    if (issues.length) fail('fresh-recovery-invalid-schema-v5', 'Cloud rows do not reconstruct a valid schema-v5 profile.', { issues });
+    const records = await localRecords(profileClientId, state);
+    const comparison = await compare({ localProfiles: { [profileClientId]: { stateVersion: 5, records } }, cloud });
+    if (!comparison.parity) {
+      fail('fresh-recovery-semantic-mismatch', 'Reconstructed schema-v5 data does not exactly match the verified cloud state.', { reasons: comparison.reasons });
+    }
+    return Object.freeze({ state: Object.freeze(clone(state)), records: Object.freeze(records), comparison });
+  }
+
   async function compare({ localProfiles, cloud, expectedCatalog = null }) {
     const profiles = {};
     const allReasons = [...cloud.ownershipIssues];
@@ -299,7 +414,7 @@
     }
     return {
       format: 'big-gains.shadow-catalog.v1', version: 1,
-      accountId: owner.account.id, authUserId: owner.account.owner_user_id,
+      accountId: owner.account.id, authUserId: owner.authUserId || owner.account.owner_user_id,
       migrationId: journal?.metadata?.migrationId || 'independent-parity',
       adoptedAt: new Date().toISOString(), profiles
     };
@@ -308,7 +423,7 @@
   function emptyCatalogFromOwner(owner) {
     return {
       format: 'big-gains.shadow-catalog.v1', version: 1,
-      accountId: owner.account.id, authUserId: owner.account.owner_user_id,
+      accountId: owner.account.id, authUserId: owner.authUserId || owner.account.owner_user_id,
       migrationId: 'independent-empty-bootstrap', adoptedAt: new Date().toISOString(),
       profiles: Object.fromEntries(PROFILE_IDS.map(profileClientId => [profileClientId, {
         profileId: owner.profiles[profileClientId].id,
@@ -336,6 +451,8 @@
     readLocalProfiles,
     reconstructCloud,
     checksumProfile,
+    derivePersonalRecords,
+    schemaV5FromCloud,
     compare,
     createRepository,
     completedMigrationJournal,

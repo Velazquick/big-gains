@@ -25,6 +25,7 @@ const productionScriptOrder = [
   'account-onboarding.js',
   'migration-preview.js',
   'cloud-shadow.js',
+  'managed-profile-recovery.js',
   'cloud-sync.js',
   'migration-engine.js',
   'controlled-migration.js',

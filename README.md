@@ -19,9 +19,16 @@ Past and current Calendar dates can also open a focused retrospective editor. It
 - [Phase 4E migration contract](PHASE4E_MIGRATION_CONTRACT.md) — approved-audit gate, deterministic target rows, recovery journal, readback verification, and post-migration audit
 - [Phase 4F shadow-sync contract](PHASE4F_SHADOW_SYNC_CONTRACT.md) — read-only reconstruction, one-way local-first queue, migrated-row adoption, tombstones, drift, and Phase 4G handoff
 - [Phase 4G independent-user contract](PHASE4G_INDEPENDENT_USER_CONTRACT.md) — runtime account shapes, bootstrap-only provisioning, presentation tokens, isolated local namespaces, post-deploy onboarding, and sustained proof
+- [Phase 4H managed-profile access contract](PHASE4H_MANAGED_PROFILE_ACCESS_CONTRACT.md) — explicit membership, exact-profile RLS, isolated member runtime, and guarded empty-device recovery
 - [Supabase setup for Phase 4C](SUPABASE_SETUP.md) — hosted project, Auth redirect, CLI migration, RLS verification, and Pages configuration
 
-The browser suite covers the full local-first app plus the Phase 4D fingerprint, Phase 4E controlled migration, Phase 4F shadow boundary, and Phase 4G independent-user runtime.
+The browser suite covers the full local-first app plus the Phase 4D fingerprint, Phase 4E controlled migration, Phase 4F shadow boundary, Phase 4G independent-user runtime, and Phase 4H managed-profile recovery.
+
+## Phase 4H: managed-profile member
+
+Release `v53-phase4h-managed-profile-access` adds an administrative membership from a separate Auth user to one existing managed profile. Account ownership stays with Jorge; a verified Alexa member resolves only the existing Alexa profile with no switcher and an Auth/account/profile-derived storage namespace. The browser cannot create memberships or convert a managed member into an independent account.
+
+Cloud remains non-authoritative except for one guarded recovery: a verified managed member may adopt exact cloud-shadow state only into a never-initialized, empty namespace after a fresh ownership-valid readback reconstructs valid schema v5 at semantic parity. Existing local state is never overwritten or merged, and the adopted remote catalog starts with zero pending operations.
 
 ## Phase 4G: invited independent user
 

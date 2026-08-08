@@ -56,18 +56,72 @@
     const current = getClient();
     const currentSession = await session();
     if (!current || !currentSession?.user?.id) return Object.freeze({ status: 'signed-out', account: null, profiles: Object.freeze({}) });
-    const accounts = await current.from('accounts')
-      .select('id,owner_user_id,display_name,created_at')
-      .eq('owner_user_id', currentSession.user.id)
-      .limit(3);
+    const [accounts, memberships] = await Promise.all([
+      current.from('accounts')
+        .select('id,owner_user_id,display_name,created_at')
+        .eq('owner_user_id', currentSession.user.id)
+        .limit(3),
+      current.from('profile_memberships')
+        .select('user_id,account_id,profile_id,access_kind,created_at')
+        .eq('user_id', currentSession.user.id)
+        .limit(3)
+    ]);
     if (accounts.error) throw accounts.error;
-    if ((accounts.data || []).length === 0) {
+    if (memberships.error) throw memberships.error;
+    const ownedRows = accounts.data || [];
+    const membershipRows = memberships.data || [];
+    if (ownedRows.length > 1 || membershipRows.length > 1 || (ownedRows.length && membershipRows.length)) {
+      return Object.freeze({
+        status: 'unexpected', reason: 'Expected exactly one owner account or one managed-profile membership.',
+        account: null, profiles: Object.freeze({}), authUserId: currentSession.user.id
+      });
+    }
+    if (ownedRows.length === 0 && membershipRows.length === 0) {
       return Object.freeze({ status: 'needs-provisioning', account: null, profiles: Object.freeze({}), authUserId: currentSession.user.id });
     }
-    if (accounts.data.length !== 1) {
-      return Object.freeze({ status: 'unexpected', reason: `Expected one owned account; found ${accounts.data.length}.`, account: null, profiles: Object.freeze({}), authUserId: currentSession.user.id });
+
+    if (membershipRows.length === 1) {
+      const membership = membershipRows[0];
+      const [memberAccounts, memberProfiles] = await Promise.all([
+        current.from('accounts')
+          .select('id,owner_user_id,display_name,created_at')
+          .eq('id', membership.account_id)
+          .limit(2),
+        current.from('profiles')
+          .select('id,account_id,client_id,display_name,pet_enabled,accent,theme,created_at')
+          .eq('account_id', membership.account_id)
+          .eq('id', membership.profile_id)
+          .limit(2)
+      ]);
+      if (memberAccounts.error) throw memberAccounts.error;
+      if (memberProfiles.error) throw memberProfiles.error;
+      const account = (memberAccounts.data || [])[0];
+      const profile = (memberProfiles.data || [])[0];
+      const exact = (memberAccounts.data || []).length === 1
+        && (memberProfiles.data || []).length === 1
+        && membership.user_id === currentSession.user.id
+        && membership.access_kind === 'managed-member'
+        && membership.account_id === account?.id
+        && membership.profile_id === profile?.id
+        && profile?.account_id === account?.id
+        && account?.owner_user_id !== currentSession.user.id
+        && window.bigGainsAccounts.managedProfileIds.includes(profile?.client_id);
+      if (!exact) {
+        return Object.freeze({
+          status: 'unexpected', reason: 'Managed profile membership does not match exactly one existing managed profile.',
+          account: account ? Object.freeze(account) : null, profiles: Object.freeze({}),
+          membership: Object.freeze(membership), authUserId: currentSession.user.id
+        });
+      }
+      return Object.freeze({
+        status: 'ready', shape: 'managed-member', accessKind: 'managed-member',
+        account: Object.freeze(account),
+        profiles: Object.freeze({ [profile.client_id]: Object.freeze(profile) }),
+        membership: Object.freeze(membership), authUserId: currentSession.user.id
+      });
     }
-    const account = accounts.data[0];
+
+    const account = ownedRows[0];
     const profiles = await current.from('profiles')
       .select('id,account_id,client_id,display_name,pet_enabled,accent,theme,created_at')
       .eq('account_id', account.id)
@@ -83,7 +137,7 @@
       });
     }
     return Object.freeze({
-      status: 'ready', shape,
+      status: 'ready', shape, accessKind: shape === 'managed' ? 'managed-owner' : 'independent',
       account: Object.freeze(account), profiles: Object.freeze(byClientId), authUserId: currentSession.user.id
     });
   }
@@ -98,7 +152,14 @@
       error.accountState = state;
       throw error;
     }
-    return Object.freeze({ account: state.account, profiles: state.profiles, shape: state.shape });
+    return Object.freeze({
+      account: state.account,
+      profiles: state.profiles,
+      shape: state.shape,
+      accessKind: state.accessKind,
+      membership: state.membership || null,
+      authUserId: state.authUserId
+    });
   }
 
   function validatedDisplayName(value) {
