@@ -123,6 +123,42 @@
     }, 80);
   }
 
+  function renderTrainPreview({ session, plannedType }) {
+    const preview = document.getElementById('trainPreview');
+    if (!preview) return;
+    preview.hidden = Boolean(session);
+    if (session) return;
+
+    const selected = SESSION_TYPES.find(item => item.key === selectedType) || SESSION_TYPES[0];
+    const routineIds = typeof routineFor === 'function' ? routineFor(selectedType) : [];
+    const exercises = routineIds.map(id => typeof EXERCISES !== 'undefined'
+      ? EXERCISES.find(exercise => exercise.id === id)
+      : null).filter(Boolean);
+    const safe = typeof escapeHtml === 'function' ? escapeHtml : value => String(value);
+    const picker = document.getElementById('trainPlanPicker');
+    const title = document.getElementById('trainPreviewTitle');
+    const kicker = document.getElementById('trainPreviewKicker');
+    const meta = document.getElementById('trainPreviewMeta');
+    const count = document.getElementById('trainPreviewCount');
+    const list = document.getElementById('trainPreviewExercises');
+
+    preview.dataset.workoutType = selectedType;
+    if (picker) picker.innerHTML = SESSION_TYPES.map(item => `
+      <button type="button" data-train-plan="${item.key}" aria-pressed="${item.key === selectedType}">${item.label}</button>
+    `).join('');
+    if (title) title.textContent = selected.label;
+    if (kicker) kicker.textContent = plannedType === selectedType ? 'Today’s plan' : 'Selected workout';
+    if (meta) meta.textContent = `${exercises.length} movement${exercises.length === 1 ? '' : 's'} · ${state.customRoutines?.[selectedType] ? 'Custom lineup' : 'Saved lineup'}`;
+    if (count) count.textContent = String(exercises.length).padStart(2, '0');
+    if (list) list.innerHTML = exercises.length ? exercises.map((exercise, index) => `
+      <article class="train-preview-row">
+        <span class="train-preview-index">${String(index + 1).padStart(2, '0')}</span>
+        <div><strong>${safe(exercise.name)}</strong><small>${safe(exercise.equipment)} · ${safe(exercise.muscle)}</small></div>
+        <span class="train-preview-arrow" aria-hidden="true">→</span>
+      </article>
+    `).join('') : '<div class="train-preview-empty">Start blank, then add movements from the library.</div>';
+  }
+
   function render() {
     const card = document.getElementById(SELECTOR_ID);
     if (!card) return;
@@ -169,6 +205,7 @@
       if (note) note.textContent = `${selected.label} will load your saved routine.`;
       if (quickButton) quickButton.textContent = 'Start';
     }
+    renderTrainPreview({ session, plannedType });
   }
 
   function initialize() {
@@ -193,6 +230,11 @@
     });
     card?.querySelector('#quickStartSession')?.addEventListener('click', startSelected);
     card?.querySelector('#openSessionLibrary')?.addEventListener('click', openLibrary);
+    document.getElementById('trainPlanPicker')?.addEventListener('click', event => {
+      const button = event.target.closest('[data-train-plan]');
+      if (button) selectType(button.dataset.trainPlan);
+    });
+    document.getElementById('trainPreviewStart')?.addEventListener('click', startSelected);
 
     document.getElementById('dayTabs')?.addEventListener('click', event => {
       const normalized = normalizeType(event.target.closest('[data-day]')?.dataset.day);

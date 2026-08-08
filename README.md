@@ -31,6 +31,8 @@ Jorge and Alexa retain their original keys, switcher, presentation, migration ba
 
 Release `v51-szw-presentation-library` adds render-only `merlot` and `slate-dark` presentation tokens plus normalized exercise aliases. It expands the shared canonical library only for genuinely missing movements; existing exercise IDs, routines, schema-v5 records, and Jorge/Alexa presentation remain unchanged.
 
+Release `v52-jorge-train-ui-refresh` gives Jorge's Train preview and active workout a mobile-first performance hierarchy. The refresh is render-only, scoped to the existing `ember` + `performance-dark` presentation tokens, and leaves workout, timer, storage, schema-v5, ownership, and cloud behavior unchanged.
+
 ## Phase 4F: verified one-way cloud shadow
 
 Release `v49-phase4f-shadow-sync-readiness` reconstructs Jorge and Alexa from account-scoped Supabase rows, computes deterministic `big-gains.shadow.v1` checksums, adopts the completed Phase 4E migration without rewriting it, and quietly pushes later local source mutations through the durable queue. Every push verifies ownership, base revision, exact idempotency, and affected-row readback before ACK; a full comparison follows.

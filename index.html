@@ -102,9 +102,21 @@
 
       <section class="view" id="viewTrain">
         <div class="v2-page-head"><div><span class="label">Train</span><h2>The work.</h2><p>One movement open. One set in front of you.</p></div></div>
+        <section class="train-preview" id="trainPreview" aria-labelledby="trainPreviewTitle">
+          <div class="train-plan-picker" id="trainPlanPicker" role="group" aria-label="Choose workout"></div>
+          <header class="train-preview-header">
+            <div><span class="label" id="trainPreviewKicker">Selected workout</span><h2 id="trainPreviewTitle">Push</h2><p id="trainPreviewMeta">Saved routine</p></div>
+            <span class="train-preview-count" id="trainPreviewCount" aria-hidden="true">00</span>
+          </header>
+          <div class="train-preview-list" id="trainPreviewExercises" aria-label="Workout exercises"></div>
+          <div class="train-preview-action" id="trainPreviewAction">
+            <p>Starts from your saved lineup. Reorder or add movements inside the workout.</p>
+            <button id="trainPreviewStart" class="primary" type="button">Start Workout</button>
+          </div>
+        </section>
         <section class="panel active-panel hidden" id="activePanel">
           <div class="section-heading active-heading">
-            <div><span class="label">Active workout</span><h2 id="activeWorkoutTitle">Push</h2></div>
+            <div><span class="label">Active workout</span><h2 id="activeWorkoutTitle">Push</h2><p class="active-workout-meta" id="activeWorkoutMeta">Workout in progress</p></div>
             <div class="active-heading-actions"><div class="workout-clock" id="workoutClock">00:00</div><button id="cancelWorkout" class="ghost compact hidden" type="button">Cancel</button></div>
           </div>
           <div class="workout-mode-toolbar" id="workoutModeToolbar">
@@ -113,22 +125,22 @@
           </div>
           <div id="workoutPetSlot" class="workout-pet-slot" aria-label="Workout companion"></div>
           <div id="activeExercises" class="active-exercises"></div>
+          <section class="panel timer-card hidden" id="timerCard" aria-live="polite">
+            <div><span class="label">Rest timer</span><button id="timerAdjust" class="timer-duration" type="button" aria-expanded="false" aria-controls="timerPresets" aria-label="Adjust rest timer duration"><strong id="timerDisplay">2:30</strong><span>Adjust</span></button><p id="timerNext">Recover. Your next set is waiting.</p></div>
+            <div class="timer-control-stack">
+              <div class="timer-preferences" aria-label="Timer feedback">
+                <button id="timerSoundToggle" class="ghost compact" type="button" aria-label="Timer completion sound" aria-pressed="true">Sound on</button>
+                <button id="timerVibrationToggle" class="ghost compact" type="button" aria-label="Timer completion vibration" aria-pressed="true">Vibration on</button>
+                <audio id="timerCompletionAudio" src="assets/timer-ready.wav" preload="auto" aria-hidden="true" hidden></audio>
+              </div>
+              <div id="timerFeedbackStatus" class="timer-feedback-status" role="status" aria-live="polite"></div>
+              <div id="timerPresets" class="timer-presets hidden" aria-label="Rest timer presets"><button type="button" data-timer-preset="30">0:30</button><button type="button" data-timer-preset="60">1:00</button><button type="button" data-timer-preset="90">1:30</button><button type="button" data-timer-preset="120">2:00</button><button type="button" data-timer-preset="180">3:00</button></div>
+              <div class="timer-actions"><button id="timerSkip" class="secondary compact" type="button">Skip</button></div>
+            </div>
+          </section>
           <button id="finishWorkout" class="primary wide" type="button" disabled>Finish workout</button>
         </section>
         <div class="train-empty"><strong>No active workout.</strong><span>Start today's plan or build one from Library.</span></div>
-        <section class="panel timer-card hidden" id="timerCard" aria-live="polite">
-          <div><span class="label">Rest timer</span><button id="timerAdjust" class="timer-duration" type="button" aria-expanded="false" aria-controls="timerPresets" aria-label="Adjust rest timer duration"><strong id="timerDisplay">2:30</strong><span>Adjust</span></button><p id="timerNext">Recover. Your next set is waiting.</p></div>
-          <div class="timer-control-stack">
-            <div class="timer-preferences" aria-label="Timer feedback">
-              <button id="timerSoundToggle" class="ghost compact" type="button" aria-label="Timer completion sound" aria-pressed="true">Sound on</button>
-              <button id="timerVibrationToggle" class="ghost compact" type="button" aria-label="Timer completion vibration" aria-pressed="true">Vibration on</button>
-              <audio id="timerCompletionAudio" src="assets/timer-ready.wav" preload="auto" aria-hidden="true" hidden></audio>
-            </div>
-            <div id="timerFeedbackStatus" class="timer-feedback-status" role="status" aria-live="polite"></div>
-            <div id="timerPresets" class="timer-presets hidden" aria-label="Rest timer presets"><button type="button" data-timer-preset="30">0:30</button><button type="button" data-timer-preset="60">1:00</button><button type="button" data-timer-preset="90">1:30</button><button type="button" data-timer-preset="120">2:00</button><button type="button" data-timer-preset="180">3:00</button></div>
-            <div class="timer-actions"><button id="timerSkip" class="secondary compact" type="button">Skip</button></div>
-          </div>
-        </section>
       </section>
 
       <section class="view" id="viewProgress">

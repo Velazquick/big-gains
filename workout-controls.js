@@ -120,15 +120,17 @@
       const summary = summaryFor(exercise, estimate1RM);
       const collapsed = isCollapsed(exercise);
       const isActive = exerciseIndex === activeIndex;
+      const exerciseState = summary.complete ? 'completed' : isActive ? 'current' : 'upcoming';
       const firstIncomplete = exercise.sets.findIndex(set => !set.completed);
       const currentIndex = firstIncomplete >= 0 ? firstIncomplete : Math.max(0, exercise.sets.length - 1);
 
       const sets = exercise.sets.map((set, setIndex) => {
         const current = setIndex === currentIndex && !set.completed;
         const upcoming = !set.completed && setIndex > currentIndex;
+        const setState = set.completed ? 'completed' : current ? 'current' : 'upcoming';
         const label = setPosition(exercise, set);
         return `
-          <div class="set-line ${set.completed ? 'completed' : ''} ${current ? 'is-current' : ''} ${upcoming ? 'is-upcoming' : ''}">
+          <div class="set-line ${set.completed ? 'completed' : ''} ${current ? 'is-current' : ''} ${upcoming ? 'is-upcoming' : ''}" data-set-state="${setState}">
             <div class="set-row-meta">
               <span>${set.completed ? 'Logged' : current ? 'Current set' : 'Up next'}</span>
               <strong>${label}</strong>
@@ -145,10 +147,10 @@
       }).join('');
 
       return `
-        <article class="active-exercise ${collapsed ? 'is-collapsed' : ''} ${summary.complete ? 'is-complete' : ''} ${isActive ? 'is-active' : 'is-upcoming'}" aria-current="${isActive ? 'step' : 'false'}">
+        <article class="active-exercise ${collapsed ? 'is-collapsed' : ''} ${summary.complete ? 'is-complete' : ''} ${isActive ? 'is-active' : 'is-upcoming'}" data-exercise-state="${exerciseState}" aria-current="${isActive ? 'step' : 'false'}">
           <div class="exercise-head" data-exercise-head="${exerciseIndex}">
             <div>
-              <span class="exercise-muscle">${escapeHtml(exercise.muscle)}</span>
+              <div class="exercise-kickers"><span class="exercise-state-label">${exerciseState === 'current' ? 'Current' : exerciseState === 'completed' ? 'Completed' : 'Up next'}</span><span class="exercise-muscle">${escapeHtml(exercise.muscle)}</span></div>
               <h3>${escapeHtml(exercise.name)}</h3>
               <p>${escapeHtml(exercise.equipment)} · ${escapeHtml(summary.complete ? `${summary.completed} of ${summary.total} complete` : summary.progress)}</p>
             </div>

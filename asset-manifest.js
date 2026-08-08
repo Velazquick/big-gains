@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v51-szw-presentation-library';
+  const release = 'v52-jorge-train-ui-refresh';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];
@@ -21,7 +21,8 @@
     './retrospective-workout.css',
     './cloud-sync.css',
     './migration-preview.css',
-    './controlled-migration.css'
+    './controlled-migration.css',
+    './jorge-train-v52.css'
   ];
   const scripts = [
     './account-context.js',
