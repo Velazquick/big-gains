@@ -4,7 +4,7 @@ Phase 4H adds an explicit, administrative membership path from an authenticated 
 
 ## Database model
 
-`profile_memberships` stores `user_id`, `account_id`, `profile_id`, the fixed `managed-member` access kind, and timestamps. Its primary key is `(user_id, profile_id)`. The composite foreign key `(account_id, profile_id) -> profiles(account_id, id)` proves that a membership cannot name a profile from another account.
+`profile_memberships` stores `user_id`, `account_id`, `profile_id`, the fixed `managed-member` access kind, and timestamps. Its primary key is `(user_id, profile_id)`, and an additional unique constraint on `user_id` enforces exactly zero or one managed profile per Auth identity. The composite foreign key `(account_id, profile_id) -> profiles(account_id, id)` proves that a membership cannot name a profile from another account.
 
 Two transaction-advisory-lock triggers keep owners and members disjoint even under concurrent writes: an account owner cannot receive a membership and a member cannot become the owner of an account. Membership identity and the profile's `account_id`, `id`, and `client_id` are immutable. None of these rules changes `accounts.owner_user_id`.
 
@@ -34,7 +34,7 @@ Account resolution has four explicit outcomes:
 | `independent` | one independently owned profile | hidden | account UUID + profile UUID |
 | `guest` | none | hidden | neutral guest key |
 
-A managed-member resolution requires one membership, one matching account, one matching profile, a different account owner, the same Auth UUID throughout, and the expected managed presentation record. Both an owned account and a membership, multiple memberships, a mismatched account/profile pair, or an unexpected profile shape block before activation. A cached managed-member runtime cannot fall through to independent onboarding if its membership disappears.
+A managed-member resolution requires one membership, one matching account, one matching profile, a different account owner, the same Auth UUID throughout, and the expected managed presentation record. The database prevents a second membership for the same Auth identity; the browser still blocks an owned-account/member overlap, a mismatched account/profile pair, or any unexpected profile shape before activation. A cached managed-member runtime cannot fall through to independent onboarding if its membership disappears.
 
 ## One-time empty-device recovery
 

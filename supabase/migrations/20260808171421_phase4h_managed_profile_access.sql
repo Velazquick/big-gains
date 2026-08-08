@@ -12,6 +12,7 @@ create table public.profile_memberships (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint profile_memberships_pkey primary key (user_id, profile_id),
+  constraint profile_memberships_user_id_key unique (user_id),
   constraint profile_memberships_owned_profile_fk foreign key (account_id, profile_id)
     references public.profiles(account_id, id) on delete cascade
 );

@@ -34,8 +34,21 @@ values
   ('91b00000-0000-0000-0000-000000000002', '91a00000-0000-0000-0000-000000000001', 'alexa', 'Alexa', true, 'rose', 'wellness-light'),
   ('93b00000-0000-0000-0000-000000000003', '93a00000-0000-0000-0000-000000000003', 'independent-synthetic', 'Synthetic', false, 'cobalt', 'performance-dark');
 
-insert into public.profile_memberships (user_id, account_id, profile_id)
-values ('92000000-0000-0000-0000-000000000002', '91a00000-0000-0000-0000-000000000001', '91b00000-0000-0000-0000-000000000002');
+select lives_ok(
+  $$insert into public.profile_memberships (user_id, account_id, profile_id)
+    values ('92000000-0000-0000-0000-000000000002', '91a00000-0000-0000-0000-000000000001', '91b00000-0000-0000-0000-000000000002')$$,
+  'first managed membership succeeds'
+);
+select throws_ok(
+  $$insert into public.profile_memberships (user_id, account_id, profile_id)
+    values ('92000000-0000-0000-0000-000000000002', '91a00000-0000-0000-0000-000000000001', '91b00000-0000-0000-0000-000000000001')$$,
+  '23505', null, 'a second profile membership for the same Auth user is rejected'
+);
+select is(
+  (select profile_id from public.profile_memberships where user_id = '92000000-0000-0000-0000-000000000002'),
+  '91b00000-0000-0000-0000-000000000002'::uuid,
+  'the rejected second membership leaves the first membership unchanged'
+);
 
 insert into public.workouts (account_id, profile_id, client_id, idempotency_key, completed_at)
 values
