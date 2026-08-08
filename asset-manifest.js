@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v52-jorge-train-ui-refresh';
+  const release = 'v53-phase4h-managed-profile-access';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];
@@ -47,6 +47,7 @@
     './account-onboarding.js',
     './migration-preview.js',
     './cloud-shadow.js',
+    './managed-profile-recovery.js',
     './cloud-sync.js',
     './migration-engine.js',
     './controlled-migration.js',

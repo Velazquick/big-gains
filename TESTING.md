@@ -2,7 +2,7 @@
 
 The Playwright harness serves the static PWA from `index.html` without rewriting it, so production scripts execute in their declared order.
 
-The current baseline is 150 passing Chromium tests with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
+The current baseline is 176 passing Chromium tests with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
 
 ## Install
 
@@ -20,7 +20,7 @@ npm test
 npx playwright test --workers=1
 ```
 
-Both modes must pass all 150 tests with no expected failures. In command-limited environments, use the deterministic `--shard=1/2` and `--shard=2/2` split for both normal and `--workers=1` runs.
+Both modes must pass all 176 tests with no expected failures. In command-limited environments, use the deterministic `--shard=1/2` and `--shard=2/2` split for both normal and `--workers=1` runs.
 
 V49 coverage in `tests/cloud-shadow.spec.js` verifies migration-envelope adoption without rewrites, `big-gains.shadow.v1` checksums, derived-PR exclusion, no cloud-read profile writes, exact missing/extra/tampered/wrong-profile/stale/newer drift, tombstone tie and recreation rules, local-save-before-queue behavior, signed-out offline queue survival, wrong-account refusal, production lost-ACK recovery, migrated-row transition, and affected-row verification.
 
@@ -118,3 +118,9 @@ DO_NOT_TRACK=1 npx supabase test db --linked supabase/tests/database/phase4b_rls
 Do not pass a database password on the command line. Enter it only in the CLI's secure prompt or a short-lived environment controlled by the operator. Hosted tests must use only the checked-in synthetic UUIDs/emails and must finish with `rollback`.
 
 Phase 4C hosted verification passed all 18 pgTAP assertions. A separate publishable-key proof authenticated two ephemeral users, rejected cross-account reads and writes, recovered one completed workout after an idempotent retry, and then deleted both users. Follow-up verification found zero Auth users, zero application rows, eight forced-RLS tables, and 32 ownership policies.
+
+## Phase 4H managed-member coverage
+
+`tests/phase4h-managed-profile-access.spec.js` uses synthetic Auth/account/profile UUIDs and intercepted browser-safe Supabase requests. It proves exact membership resolution, single-profile rose/wellness presentation, no selector, full schema-v5 reconstruction, tombstone exclusion, zero-queue catalog adoption, offline reload, normal later outbound mutation, no overwrite of a non-empty namespace, malformed membership blocking, and unchanged Jorge managed-owner behavior. Existing Phase 4G tests retain the independent SZW-style isolation contract; the Phase 4F queue-reconciliation suite retains the v50.1 obsolete-operation regression.
+
+`supabase/tests/database/phase4h_managed_profile_access_rls.test.sql` is rollback-only. It creates synthetic owner, member, independent, and unassigned identities and checks exact-profile visibility and writes across every application table, owner/member disjointness, membership immutability, profile-creation denial, independent-bootstrap denial for members, cross-account isolation in both directions, and anonymous denial. Run it only after the Phase 4H migration exists in the target database.

@@ -5,6 +5,7 @@
   let initialized = false;
   let subscription = null;
   let busy = false;
+  let refreshInFlight = null;
 
   const escapeHtml = value => String(value).replace(/[&<>"']/g, character => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -55,6 +56,23 @@
       </form><small>This creates one account and one profile owned only by your signed-in Auth user.</small>`;
   }
 
+  function ownerFromState(accountState) {
+    return {
+      account: accountState.account,
+      profiles: accountState.profiles,
+      shape: accountState.shape,
+      accessKind: accountState.accessKind,
+      membership: accountState.membership || null,
+      authUserId: accountState.authUserId
+    };
+  }
+
+  function restoredMemberAvailableOffline(userId) {
+    return window.bigGainsAccounts.runtime.kind === 'managed-member'
+      && window.bigGainsAccounts.runtime.authUserId === userId
+      && window.BigGainsManagedProfileRecovery?.completedForCurrentRuntime();
+  }
+
   function currentRuntimeMatches(owner, userId) {
     const runtime = window.bigGainsAccounts.runtime;
     return runtime.authUserId === userId
@@ -63,7 +81,7 @@
       && window.bigGainsAccounts.matchesCloudPresentation(owner);
   }
 
-  async function refresh() {
+  async function performRefresh() {
     if (!boundary?.configured) {
       if (window.bigGainsAccounts.runtime.kind === 'guest') show(signInMarkup('Private cloud is not configured on this build.'), { blocking: false });
       return null;
@@ -80,10 +98,19 @@
     }
     let accountState;
     try { accountState = await boundary.readAccountState(); } catch (error) {
+      if (restoredMemberAvailableOffline(currentSession.user.id)) {
+        hide();
+        return Object.freeze({ status: 'offline-cached', reason: error?.message || 'Cloud unavailable.' });
+      }
       show(`<span class="label">Private cloud</span><h2>Account check stopped safely.</h2><p>${escapeHtml(error?.message || 'The account could not be verified.')}</p>`);
       return null;
     }
     if (accountState.status === 'needs-provisioning') {
+      if (window.bigGainsAccounts.runtime.kind === 'managed-member'
+        && window.bigGainsAccounts.runtime.authUserId === currentSession.user.id) {
+        show('<span class="label">Private cloud</span><h2>Managed access needs review.</h2><p>The previously verified profile membership is no longer available. Independent onboarding is disabled for this device identity.</p><small>No local or cloud training data was changed.</small>');
+        return accountState;
+      }
       show(provisionMarkup(currentSession.user.email));
       return accountState;
     }
@@ -91,14 +118,32 @@
       show(`<span class="label">Private cloud</span><h2>Account setup needs attention.</h2><p>${escapeHtml(accountState.reason || 'Unexpected account/profile state.')}</p><small>No local or cloud training data was changed.</small>`);
       return accountState;
     }
-    const owner = { account: accountState.account, profiles: accountState.profiles };
+    const owner = ownerFromState(accountState);
     if (!currentRuntimeMatches(owner, currentSession.user.id)) {
       window.bigGainsAccounts.activateCloudOwner(owner, currentSession.user.id);
       location.reload();
       return accountState;
     }
+    if (accountState.accessKind === 'managed-member') {
+      show('<span class="label">Private cloud</span><h2>Restoring your profile to this device.</h2><p>Your verified managed profile is being checked and reconstructed from its private cloud baseline.</p><small>Existing local training data is never overwritten.</small>');
+      const recovery = await window.BigGainsManagedProfileRecovery.restore({ owner, session: currentSession });
+      if (recovery.ok && recovery.status === 'restored') {
+        location.reload();
+        return accountState;
+      }
+      if (!recovery.ok) {
+        show(`<span class="label">Recovery stopped safely</span><h2>This profile was not restored.</h2><p>${escapeHtml(recovery.message)}</p><small>No existing local training data was overwritten or merged.</small>`);
+        return Object.freeze({ ...accountState, recovery });
+      }
+    }
     hide();
     return accountState;
+  }
+
+  function refresh() {
+    if (refreshInFlight) return refreshInFlight;
+    refreshInFlight = performRefresh().finally(() => { refreshInFlight = null; });
+    return refreshInFlight;
   }
 
   async function submitSignIn(form) {

@@ -9,6 +9,7 @@
     themes: Object.freeze(['performance-dark', 'wellness-light', 'slate-dark'])
   });
   const INDEPENDENT_PROFILE_PREFIX = 'independent-';
+  const MANAGED_PROFILE_IDS = Object.freeze(['jorge', 'alexa']);
   const managedDescriptors = Object.freeze([
     Object.freeze({
       accountId: 'local-jorge', profileId: 'jorge', displayName: 'Jorge', storageNamespace: 'jorge',
@@ -110,11 +111,11 @@
     });
   }
 
-  function managedRuntime(authUserId = null, cloudAccountId = null) {
+  function managedOwnerRuntime(authUserId = null, cloudAccountId = null) {
     return Object.freeze({
-      kind: 'managed', authUserId, cloudAccountId,
+      kind: 'managed-owner', authUserId, cloudAccountId, cloudShape: 'managed',
       descriptors: managedDescriptors,
-      expectedProfileIds: Object.freeze(['jorge', 'alexa']),
+      expectedProfileIds: MANAGED_PROFILE_IDS,
       switcherVisible: true,
       storageNamespace: 'managed-jorge-alexa',
       activeSelectionKey: ACTIVE_PROFILE_KEY,
@@ -122,6 +123,40 @@
         queue: 'big-gains-cloud-sync-queue-v1',
         catalog: 'big-gains-cloud-shadow-catalog-v1',
         comparison: 'big-gains-cloud-shadow-comparison-v1'
+      })
+    });
+  }
+
+  function managedMemberRuntime(record) {
+    const accountId = safeToken(record?.cloudAccountId);
+    const profileId = safeToken(record?.cloudProfileId);
+    const authUserId = safeToken(record?.authUserId);
+    const clientId = typeof record?.clientId === 'string' ? record.clientId : '';
+    if (!accountId || !profileId || !authUserId || !MANAGED_PROFILE_IDS.includes(clientId)
+      || !record?.displayName || record?.accessKind !== 'managed-member') return null;
+    const storageNamespace = `managed-member-${authUserId}-${accountId}-${profileId}`;
+    const descriptor = Object.freeze({
+      accountId: `member:${record.cloudAccountId}`,
+      profileId: clientId,
+      displayName: record.displayName,
+      storageNamespace,
+      storageKey: `big-gains-${storageNamespace}-v1`,
+      profileConfigRef: clientId,
+      cloudAccountId: record.cloudAccountId,
+      cloudProfileId: record.cloudProfileId,
+      presentation: presentationFor(record.presentation)
+    });
+    return Object.freeze({
+      kind: 'managed-member', accessKind: 'managed-member', authUserId: record.authUserId,
+      cloudAccountId: record.cloudAccountId, cloudShape: 'managed-member',
+      descriptors: Object.freeze([descriptor]), expectedProfileIds: Object.freeze([clientId]),
+      switcherVisible: false, storageNamespace,
+      activeSelectionKey: `big-gains-active-profile-${storageNamespace}`,
+      recoveryKey: `big-gains-managed-recovery-v1-${storageNamespace}`,
+      cloudKeys: Object.freeze({
+        queue: `big-gains-cloud-sync-queue-v1-${storageNamespace}`,
+        catalog: `big-gains-cloud-shadow-catalog-v1-${storageNamespace}`,
+        comparison: `big-gains-cloud-shadow-comparison-v1-${storageNamespace}`
       })
     });
   }
@@ -149,10 +184,13 @@
     const store = runtimeStore();
     const cached = store.activeAuthUserId ? store.accounts[store.activeAuthUserId] : null;
     if (cached?.kind === 'independent') return independentRuntime(cached) || guestRuntime();
-    if (cached?.kind === 'managed') return managedRuntime(cached.authUserId, cached.cloudAccountId);
+    if (cached?.kind === 'managed-member') return managedMemberRuntime(cached) || guestRuntime();
+    if (cached?.kind === 'managed-owner' || cached?.kind === 'managed') {
+      return managedOwnerRuntime(cached.authUserId, cached.cloudAccountId);
+    }
     const hasManagedLocalData = [ACTIVE_PROFILE_KEY, LEGACY_STATE_KEY, 'big-gains-v2', 'big-gains-alexa-v1']
       .some(key => localStorage.getItem(key) !== null);
-    return hasManagedLocalData ? managedRuntime() : guestRuntime();
+    return hasManagedLocalData ? managedOwnerRuntime() : guestRuntime();
   }
 
   let runtime = selectRuntime();
@@ -162,11 +200,39 @@
   });
 
   function cloudRuntimeRecord(owner, authUserId) {
+    if (owner?.accessKind === 'managed-member') {
+      const profiles = Object.values(owner?.profiles || {});
+      const membership = owner?.membership;
+      const profile = profiles[0];
+      if (!owner?.account?.id || owner.account.owner_user_id === authUserId
+        || owner?.authUserId !== authUserId || profiles.length !== 1
+        || !MANAGED_PROFILE_IDS.includes(profile?.client_id)
+        || membership?.user_id !== authUserId
+        || membership?.account_id !== owner.account.id
+        || membership?.profile_id !== profile?.id
+        || profile?.account_id !== owner.account.id
+        || membership?.access_kind !== 'managed-member') {
+        throw new Error('Managed profile membership could not be verified.');
+      }
+      return Object.freeze({
+        kind: 'managed-member', accessKind: 'managed-member', authUserId,
+        cloudAccountId: owner.account.id, cloudProfileId: profile.id,
+        clientId: profile.client_id, displayName: profile.display_name,
+        presentation: presentationFor({
+          petEnabled: profile.pet_enabled,
+          accent: profile.accent,
+          theme: profile.theme
+        })
+      });
+    }
+    if (!authUserId || owner?.account?.owner_user_id !== authUserId) {
+      throw new Error('Cloud ownership could not be verified.');
+    }
     const shape = cloudProfileShape(owner?.profiles);
     if (shape === 'managed') {
       return Object.freeze({
-        kind: 'managed', authUserId, cloudAccountId: owner.account.id,
-        expectedProfileIds: Object.freeze(['jorge', 'alexa'])
+        kind: 'managed-owner', authUserId, cloudAccountId: owner.account.id,
+        expectedProfileIds: MANAGED_PROFILE_IDS
       });
     }
     if (shape !== 'independent') throw new Error(unexpectedProfileShapeMessage(owner?.profiles));
@@ -183,7 +249,6 @@
   }
 
   function activateCloudOwner(owner, authUserId) {
-    if (!authUserId || owner?.account?.owner_user_id !== authUserId) throw new Error('Cloud ownership could not be verified.');
     const record = cloudRuntimeRecord(owner, authUserId);
     const store = runtimeStore();
     store.accounts[authUserId] = record;
@@ -193,20 +258,32 @@
   }
 
   function matchesCloudOwner(owner, authUserId) {
-    if (!owner?.account || owner.account.owner_user_id !== authUserId) return false;
-    const shape = cloudProfileShape(owner.profiles);
-    if (runtime.kind === 'managed') {
-      return shape === 'managed';
-    }
-    if (runtime.kind !== 'independent' || shape !== 'independent'
-      || runtime.authUserId !== authUserId || runtime.cloudAccountId !== owner.account.id) return false;
+    let record;
+    try { record = cloudRuntimeRecord(owner, authUserId); } catch { return false; }
+    if (runtime.kind !== record.kind || runtime.authUserId !== authUserId
+      || runtime.cloudAccountId !== record.cloudAccountId) return false;
+    if (record.kind === 'managed-owner') return cloudProfileShape(owner.profiles) === 'managed';
     const profile = Object.values(owner.profiles || {})[0];
     return profile?.id === runtime.descriptors[0].cloudProfileId
       && profile?.client_id === runtime.descriptors[0].profileId;
   }
 
   function matchesCloudPresentation(owner) {
-    if (runtime.kind !== 'independent') return true;
+    if (runtime.kind === 'managed-owner') return true;
+    if (runtime.kind === 'managed-member') {
+      const profile = Object.values(owner?.profiles || {})[0];
+      if (!profile || profile.id !== runtime.descriptors[0].cloudProfileId) return false;
+      const cloud = presentationFor({
+        petEnabled: profile.pet_enabled,
+        accent: profile.accent,
+        theme: profile.theme
+      });
+      const current = runtime.descriptors[0].presentation;
+      return cloud.petEnabled === current.petEnabled
+        && cloud.accent === current.accent
+        && cloud.theme === current.theme;
+    }
+    if (runtime.kind !== 'independent') return false;
     if (cloudProfileShape(owner?.profiles) !== 'independent') return false;
     const profile = Object.values(owner.profiles)[0];
     const cloud = presentationFor({
@@ -229,6 +306,9 @@
     registry,
     runtime,
     managedDescriptors,
+    managedProfileIds: MANAGED_PROFILE_IDS,
+    managedOwnerRuntime,
+    managedMemberRuntime,
     presentationFor,
     cloudProfileShape,
     unexpectedProfileShapeMessage,

@@ -45,10 +45,14 @@
   }
 
   function sameOwnerMapping(owner) {
+    const shapeMatches = accountRuntime.kind === 'managed-member'
+      ? owner?.accessKind === 'managed-member' && Object.keys(owner?.profiles || {}).length === 1
+      : window.bigGainsAccounts.cloudProfileShape(owner?.profiles) === accountRuntime.cloudShape
+        || window.bigGainsAccounts.cloudProfileShape(owner?.profiles) === accountRuntime.kind;
     return Boolean(catalog
-      && window.bigGainsAccounts.cloudProfileShape(owner?.profiles) === accountRuntime.kind
+      && shapeMatches
       && owner?.account?.id === catalog.accountId
-      && owner?.account?.owner_user_id === catalog.authUserId
+      && owner?.authUserId === catalog.authUserId
       && shadow.profileIds.every(profileClientId => owner?.profiles?.[profileClientId]?.id === catalog.profiles[profileClientId].profileId)
       && Object.keys(owner?.profiles || {}).length === shadow.profileIds.length);
   }
@@ -481,7 +485,7 @@
       const repository = shadow.createRepository({ client: supabaseBoundary.getClient(), accountId: cloudOwner.account.id });
       const remote = await repository.readAll();
       const journal = shadow.completedMigrationJournal(remote.journals, cloudOwner.account.id);
-      if (accountRuntime.kind === 'managed' && !journal) {
+      if (accountRuntime.kind === 'managed-owner' && !journal) {
         throw Object.assign(new Error('The completed Phase 4E baseline journal was not found.'), { code: 'baseline-missing' });
       }
       const cloudState = await shadow.reconstructCloud({ ...remote, profiles: cloudOwner.profiles, accountId: cloudOwner.account.id });
@@ -521,9 +525,8 @@
     const session = await supabaseBoundary.session();
     if (!session?.user?.id) return null;
     const owner = await supabaseBoundary.readCloudAccount();
-    if (owner.account.owner_user_id !== session.user.id) throw new Error('Signed-in account ownership could not be verified.');
     if (!window.bigGainsAccounts.matchesCloudOwner(owner, session.user.id)) {
-      throw new Error('Signed-in account does not match this device runtime. Reload after account verification.');
+      throw new Error('Signed-in account access does not match this device runtime. Reload after account verification.');
     }
     if (catalog && !sameOwnerMapping(owner)) throw new Error('Signed-in cloud account/profile mapping does not match this queue.');
     return owner;
@@ -657,6 +660,12 @@
   async function handleSignedIn() {
     try {
       cloudOwner = await verifiedOwnerForSession();
+      if (accountRuntime.kind === 'managed-member'
+        && !window.BigGainsManagedProfileRecovery?.completedForCurrentRuntime()) {
+        lastResult = { ok: false, blocked: true, reason: 'awaiting-fresh-device-recovery', pending: queue.pending().length };
+        render();
+        return;
+      }
       await compareShadow({ adopt: !catalog });
       if (catalog) await flush();
     } catch (error) {

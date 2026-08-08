@@ -173,3 +173,13 @@ For any production app-shell change:
 - Run the 43-assertion rollback-only hosted pgTAP suite, both advisors, and production count-only summaries before and after. Do not read Jorge/Alexa payloads.
 - Run complete normal and single-worker Playwright suites with no skips or expected failures.
 - Do not create the real friend Auth user until post-deploy manual onboarding. Do not open a PR, merge, or delete the feature branch as part of the implementation handoff.
+
+# v53 Phase 4H managed-profile access
+
+- Confirm the migration is reviewed but not applied as part of the implementation handoff; do not create Alexa's real Auth user or membership during development.
+- Verify account ownership remains Jorge, the membership composite foreign key cannot cross accounts, owner/member overlap is rejected, and browser roles cannot mutate memberships.
+- Run the rollback-only Phase 4H pgTAP proof and confirm owner/member/independent/anonymous behavior across all application tables plus managed-member bootstrap denial.
+- Confirm the four browser runtime kinds remain explicit; Alexa member has one existing profile, no selector, verified rose/wellness presentation, and a noncolliding Auth/account/profile namespace.
+- Exercise clean recovery, malformed ownership blocking, non-empty namespace blocking, exact schema-v5 parity, tombstones, zero pending adoption, a later outbound edit, offline reload, Jorge owner regression, SZW independent regression, and v50.1 queue reconciliation.
+- Run all 176 Playwright tests in normal and single-worker modes with no skips or expected failures.
+- After review and deployment, provision through Auth Dashboard plus exactly one trusted membership insert; verify count-only that no application rows changed before Alexa opens the existing-user magic link on her fresh phone.

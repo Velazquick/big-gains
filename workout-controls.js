@@ -59,6 +59,11 @@
     return index;
   }
 
+  function activeIndexForRender(activeWorkout) {
+    const preferred = activeWorkout.exercises.findIndex(exercise => exercise.id === activeWorkout.focusedExerciseId && incompleteWorking(exercise));
+    return preferred >= 0 ? preferred : activeWorkout.exercises.findIndex(incompleteWorking);
+  }
+
   function openOnly(activeWorkout, index) {
     if (!activeWorkout?.exercises?.[index]) return false;
     activeWorkout.exercises.forEach((exercise, exerciseIndex) => {
@@ -112,13 +117,14 @@
       return;
     }
 
-    const activeIndex = resolveActiveIndex(activeWorkout);
+    const activeIndex = activeIndexForRender(activeWorkout);
 
     box.innerHTML = activeWorkout.exercises.map((exercise, exerciseIndex) => {
       const last = lastPerformance(exercise.name);
       const previous = last ? last.sets.map(set => `${set.weight} × ${set.reps}`).join(' · ') : 'First time logged';
       const summary = summaryFor(exercise, estimate1RM);
-      const collapsed = isCollapsed(exercise);
+      const hasPersistedFocus = activeWorkout.focusedExerciseId === activeWorkout.exercises[activeIndex]?.id;
+      const collapsed = exerciseIndex === activeIndex && !hasPersistedFocus ? false : isCollapsed(exercise);
       const isActive = exerciseIndex === activeIndex;
       const exerciseState = summary.complete ? 'completed' : isActive ? 'current' : 'upcoming';
       const firstIncomplete = exercise.sets.findIndex(set => !set.completed);
