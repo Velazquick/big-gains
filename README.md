@@ -29,6 +29,8 @@ Release `v50-phase4g-independent-user` adds a neutral fresh-device shell, first-
 
 Jorge and Alexa retain their original keys, switcher, presentation, migration baseline, and two-profile parity requirement. An independent profile uses a stable namespace derived from its verified cloud account/profile UUIDs. The database—not client filtering—prevents either account from reading or mutating the other.
 
+Release `v51-szw-presentation-library` adds render-only `merlot` and `slate-dark` presentation tokens plus normalized exercise aliases. It expands the shared canonical library only for genuinely missing movements; existing exercise IDs, routines, schema-v5 records, and Jorge/Alexa presentation remain unchanged.
+
 ## Phase 4F: verified one-way cloud shadow
 
 Release `v49-phase4f-shadow-sync-readiness` reconstructs Jorge and Alexa from account-scoped Supabase rows, computes deterministic `big-gains.shadow.v1` checksums, adopts the completed Phase 4E migration without rewriting it, and quietly pushes later local source mutations through the durable queue. Every push verifies ownership, base revision, exact idempotency, and affected-row readback before ACK; a full comparison follows.

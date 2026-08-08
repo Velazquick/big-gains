@@ -44,10 +44,10 @@ Display names are trimmed, whitespace-normalized, limited to 1–60 characters, 
 `profiles` stores three explicit render-only columns:
 
 - `pet_enabled boolean`
-- `accent text` constrained to `ember`, `rose`, or `cobalt`
-- `theme text` constrained to `performance-dark` or `wellness-light`
+- `accent text` constrained to `ember`, `rose`, `cobalt`, or `merlot`
+- `theme text` constrained to `performance-dark`, `wellness-light`, or `slate-dark`
 
-Friend defaults are `false`, `cobalt`, and `performance-dark`. Jorge remains `true`/`ember`/`performance-dark`; Alexa remains `true`/`rose`/`wellness-light`. The client repeats the allowlist and falls back to friend-safe cobalt/performance values for unknown data. It applies tokens through `data-accent`, `data-theme`, and CSS variables. With pet disabled, the pet module registers no interaction listeners and all pet homes/slots remain hidden.
+Independent defaults remain `false`, `cobalt`, and `performance-dark`. The optional `merlot`/`slate-dark` pair adds a wine accent on cool charcoal surfaces without changing profile semantics. Jorge remains `true`/`ember`/`performance-dark`; Alexa remains `true`/`rose`/`wellness-light`. The client repeats the allowlist and falls back to friend-safe cobalt/performance values for unknown data. It applies tokens through `data-accent`, `data-theme`, and CSS variables. With pet disabled, the pet module registers no interaction listeners and all pet homes/slots remain hidden.
 
 No RLS policy, ownership trigger, foreign key, queue owner, or account resolver references presentation values.
 

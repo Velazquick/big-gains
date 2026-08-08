@@ -88,10 +88,20 @@ select throws_ok(
   '23514', null, 'unknown theme values are rejected by the database'
 );
 select lives_ok(
-  $$update public.profiles set pet_enabled = true, accent = 'ember', theme = 'wellness-light'$$,
+  $$update public.profiles set pet_enabled = false, accent = 'merlot', theme = 'slate-dark'$$,
   'friend may change allowlisted presentation values'
 );
+select is((select accent from public.profiles), 'merlot', 'merlot is an accepted render-only accent');
+select is((select theme from public.profiles), 'slate-dark', 'slate-dark is an accepted render-only theme');
+select is((select pet_enabled from public.profiles), false, 'presentation update keeps the friend pet disabled');
 select is((select count(*) from public.profiles), 1::bigint, 'presentation changes do not expand profile visibility');
+select is(
+  (select count(*) from pg_policies
+   where schemaname = 'public'
+     and concat_ws(' ', qual, with_check) ~* '(pet_enabled|accent|theme)'),
+  0::bigint,
+  'presentation columns are absent from every public RLS policy'
+);
 select throws_ok(
   $$update public.accounts set owner_user_id = '71000000-0000-0000-0000-000000000001'$$,
   '23514', 'account ownership is immutable', 'account ownership remains immutable'

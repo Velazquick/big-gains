@@ -59,7 +59,8 @@
     const runtime = window.bigGainsAccounts.runtime;
     return runtime.authUserId === userId
       && runtime.cloudAccountId === owner.account.id
-      && window.bigGainsAccounts.matchesCloudOwner(owner, userId);
+      && window.bigGainsAccounts.matchesCloudOwner(owner, userId)
+      && window.bigGainsAccounts.matchesCloudPresentation(owner);
   }
 
   async function refresh() {
