@@ -62,6 +62,97 @@
     } : null;
   }
 
+  function logicalOperationKey(operation) {
+    return [operation?.owner?.accountId, operation?.owner?.profileId, operation?.entityType, operation?.entityId]
+      .map(value => String(value || '')).join('\u0000');
+  }
+
+  function catalogRecordFromRemote(record) {
+    return record ? {
+      table: record.table,
+      entityType: record.entityType,
+      clientId: record.clientId,
+      version: record.version,
+      updatedAt: record.updatedAt,
+      fingerprint: record.fingerprint,
+      tombstone: record.tombstone === true,
+      data: clone(record.data)
+    } : null;
+  }
+
+  function buildObsoleteReconciliationPlan({ operations, localProfiles, cloudState, owner }) {
+    const grouped = new Map();
+    for (const operation of operations || []) {
+      if (operation?.synthetic || !shadow.tables.includes(operation?.entityType)) continue;
+      if (operation.owner?.accountId !== owner?.account?.id) continue;
+      const profileClientId = Object.keys(owner.profiles || {})
+        .find(id => owner.profiles[id].id === operation.owner.profileId);
+      if (!profileClientId || !localProfiles?.[profileClientId] || !cloudState?.profiles?.[profileClientId]) continue;
+      const logicalKey = logicalOperationKey(operation);
+      if (!grouped.has(logicalKey)) grouped.set(logicalKey, { profileClientId, operationKey: shadow.keyFor(operation.entityType, operation.entityId), operations: [] });
+      grouped.get(logicalKey).operations.push(operation);
+    }
+
+    const localByProfile = Object.fromEntries(shadow.profileIds.map(profileClientId => [
+      profileClientId,
+      new Map((localProfiles?.[profileClientId]?.records || []).map(record => [shadow.keyFor(record.table, record.clientId), record]))
+    ]));
+    const entities = [];
+    for (const group of grouped.values()) {
+      const localRecord = localByProfile[group.profileClientId].get(group.operationKey) || null;
+      const remoteRecord = cloudState.profiles[group.profileClientId].winners.get(group.operationKey) || null;
+      const semanticMatch = localRecord
+        ? Boolean(remoteRecord && !remoteRecord.tombstone && remoteRecord.fingerprint === localRecord.fingerprint)
+        : Boolean(!remoteRecord || remoteRecord.tombstone);
+      if (!semanticMatch) continue;
+      entities.push(Object.freeze({
+        profileClientId: group.profileClientId,
+        operationKey: group.operationKey,
+        remoteRecord,
+        operations: Object.freeze([...group.operations])
+      }));
+    }
+    return Object.freeze({
+      entities: Object.freeze(entities),
+      operationCount: entities.reduce((total, entity) => total + entity.operations.length, 0)
+    });
+  }
+
+  async function reconcileObsoleteOperations({ client, owner, operations }) {
+    if (!operations?.length) return Object.freeze({ ok: true, reconciled: 0, logicalEntities: 0 });
+    const repository = shadow.createRepository({ client, accountId: owner.account.id });
+    const remote = await repository.readAll();
+    const cloudState = await shadow.reconstructCloud({ ...remote, profiles: owner.profiles, accountId: owner.account.id });
+    if (cloudState.ownershipIssues.length) {
+      throw Object.assign(new Error('Fresh cloud readback contains unexpected account or profile ownership.'), {
+        code: 'queue-reconciliation-ownership-mismatch'
+      });
+    }
+    const localProfiles = await shadow.readLocalProfiles();
+    const plan = buildObsoleteReconciliationPlan({ operations, localProfiles, cloudState, owner });
+    if (!plan.operationCount) return Object.freeze({ ok: true, reconciled: 0, logicalEntities: 0 });
+
+    for (const entity of plan.entities) {
+      const records = catalog.profiles[entity.profileClientId].records;
+      const remoteCatalogRecord = catalogRecordFromRemote(entity.remoteRecord);
+      if (remoteCatalogRecord) records[entity.operationKey] = remoteCatalogRecord;
+      else delete records[entity.operationKey];
+    }
+    writeJson(CATALOG_KEY, catalog);
+
+    for (const entity of plan.entities) {
+      for (const operation of entity.operations) {
+        queue.acknowledge(operation.idempotencyKey, {
+          remoteId: entity.remoteRecord?.remoteId || null,
+          remoteVersion: entity.remoteRecord?.version ?? operation.version,
+          reason: 'semantic-state-already-current',
+          reconciled: true
+        });
+      }
+    }
+    return Object.freeze({ ok: true, reconciled: plan.operationCount, logicalEntities: plan.entities.length });
+  }
+
   async function captureLocalSnapshot(profileClientId) {
     captureChain = captureChain.then(async () => {
       if (!validCatalog(catalog) || !shadow.profileIds.includes(profileClientId)) return Object.freeze({ queued: 0, reason: 'baseline-not-adopted' });
@@ -321,7 +412,15 @@
         let sent = 0;
         let failed = 0;
         let blocked = false;
+        let deferred = 0;
+        const failedEntities = new Set();
+        const failures = [];
         for (const operation of operations()) {
+          const logicalKey = logicalOperationKey(operation);
+          if (failedEntities.has(logicalKey)) {
+            deferred += 1;
+            continue;
+          }
           let response;
           try { response = await transport.send(operation); } catch (error) {
             response = { ok: false, reason: 'transport-threw', error: error?.message || String(error) };
@@ -330,12 +429,32 @@
             durableQueue.markRetried(operation.idempotencyKey);
             failed += 1;
             blocked ||= response?.blocked === true;
+            failedEntities.add(logicalKey);
+            failures.push(Object.freeze({
+              idempotencyKey: operation.idempotencyKey,
+              entityType: operation.entityType,
+              entityId: operation.entityId,
+              mutation: operation.mutation,
+              version: operation.version,
+              reason: response?.reason || 'transport-failed',
+              error: response?.error || null,
+              blocked: response?.blocked === true
+            }));
             continue;
           }
           durableQueue.acknowledge(operation.idempotencyKey, response);
           sent += 1;
         }
-        return Object.freeze({ ok: failed === 0, sent, failed, blocked, pending: durableQueue.pending().length });
+        return Object.freeze({
+          ok: failed === 0,
+          sent,
+          failed,
+          blocked,
+          deferred,
+          reason: failures[0]?.reason || null,
+          failures: Object.freeze(failures),
+          pending: durableQueue.pending().length
+        });
       }
     });
   }
@@ -423,8 +542,27 @@
       const ownedOperations = () => queue.pending().filter(operation => operation.owner.accountId === catalog.accountId
         && Object.values(catalog.profiles).some(profile => profile.profileId === operation.owner.profileId));
       if (ownedOperations().length !== queue.pending().length) return (lastResult = Object.freeze({ ok: false, blocked: true, reason: 'queue-owner-mismatch', pending: queue.pending().length }));
-      const transport = createProductionTransport({ client: supabaseBoundary.getClient(), owner: cloudOwner });
-      lastResult = await createSyncRuntime({ durableQueue: queue, transport, operations: ownedOperations }).flush();
+      const client = supabaseBoundary.getClient();
+      let reconciliation = Object.freeze({ ok: true, reconciled: 0, logicalEntities: 0 });
+      try {
+        reconciliation = await reconcileObsoleteOperations({ client, owner: cloudOwner, operations: ownedOperations() });
+      } catch (error) {
+        reconciliation = Object.freeze({
+          ok: false,
+          reconciled: 0,
+          logicalEntities: 0,
+          reason: error?.code || 'queue-reconciliation-read-failed',
+          error: error?.message || String(error)
+        });
+      }
+      const transport = createProductionTransport({ client, owner: cloudOwner });
+      const syncResult = await createSyncRuntime({ durableQueue: queue, transport, operations: ownedOperations }).flush();
+      lastResult = Object.freeze({
+        ...syncResult,
+        reconciled: reconciliation.reconciled,
+        reconciledEntities: reconciliation.logicalEntities,
+        reconciliationFailure: reconciliation.ok ? null : Object.freeze({ reason: reconciliation.reason, error: reconciliation.error })
+      });
       await compareShadow();
       return lastResult;
     } catch (error) {
@@ -485,10 +623,11 @@
     else if (lastComparison?.parity === true) state = 'IN SYNC';
     heading.textContent = state === 'IN SYNC' ? 'In sync' : state;
     const profileNames = shadow.profileIds.map(id => window.bigGainsAccounts.registry.resolve(id)?.displayName || id);
+    const blockedReason = lastResult?.failures?.[0]?.reason || lastResult?.reason || null;
     detail.textContent = state === 'IN SYNC' ? `${profileNames.join(' and ')} ${profileNames.length === 1 ? 'matches' : 'match'} the private cloud shadow.`
       : state === 'LOCAL CHANGES PENDING' ? `${pending} change${pending === 1 ? '' : 's'} waiting for connection.`
         : state === 'CLOUD BEHIND / RETRYING' ? 'Cloud is catching up. Training stays local.'
-          : state === 'DRIFT DETECTED' ? 'Drift detected — local data is unchanged.'
+          : state === 'DRIFT DETECTED' ? `${blockedReason ? `Queue blocked: ${blockedReason}. ` : 'Drift detected — '}Local data is unchanged.`
             : state === 'OFFLINE' ? 'Offline. Training stays local.'
               : state === 'SIGNED OUT' ? 'Signed-out training stays local. Sign in to compare the cloud shadow.'
                 : 'Checking the private cloud copy.';
@@ -496,13 +635,23 @@
     syncButton.hidden = !session;
     syncButton.disabled = busy || comparing;
     signOutButton.hidden = !session;
-    queueStatus.textContent = `${pending} outbound change${pending === 1 ? '' : 's'} pending${lastComparison?.comparedAt ? ` · Last checked ${new Date(lastComparison.comparedAt).toLocaleString()}` : ''}.`;
+    queueStatus.textContent = `${pending} outbound change${pending === 1 ? '' : 's'} pending${lastResult?.reconciled ? ` · Reconciled ${lastResult.reconciled} obsolete queued change${lastResult.reconciled === 1 ? '' : 's'} after verified readback` : ''}${lastComparison?.comparedAt ? ` · Last checked ${new Date(lastComparison.comparedAt).toLocaleString()}` : ''}.`;
     const profileResults = lastComparison?.profiles;
     profileBox.hidden = !profileResults;
     if (profileResults) profileBox.innerHTML = shadow.profileIds.map(id => `<span><strong>${window.bigGainsAccounts.registry.resolve(id)?.displayName || id}</strong>${profileResults[id]?.parity ? 'In sync' : 'Needs attention'}</span>`).join('');
-    const reasons = lastComparison?.reasons || [];
-    drift.hidden = state !== 'DRIFT DETECTED' || reasons.length === 0;
-    driftList.innerHTML = reasons.map(reason => `<li>${String(reason).replace(/[&<>]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[character])}</li>`).join('');
+    const reasons = [...(lastComparison?.reasons || [])];
+    for (const failure of lastResult?.failures || []) {
+      reasons.push(`${failure.reason} — ${failure.entityType}/${failure.entityId} v${failure.version} ${failure.mutation}${failure.error ? ` (${failure.error})` : ''}`);
+    }
+    if (lastResult?.blocked && !lastResult?.failures?.length && lastResult.reason) {
+      reasons.push(`${lastResult.reason}${lastResult.error ? ` — ${lastResult.error}` : ''}`);
+    }
+    if (lastResult?.reconciliationFailure) {
+      reasons.push(`${lastResult.reconciliationFailure.reason}${lastResult.reconciliationFailure.error ? ` — ${lastResult.reconciliationFailure.error}` : ''}`);
+    }
+    const uniqueReasons = [...new Set(reasons)];
+    drift.hidden = state !== 'DRIFT DETECTED' || uniqueReasons.length === 0;
+    driftList.innerHTML = uniqueReasons.map(reason => `<li>${String(reason).replace(/[&<>]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[character])}</li>`).join('');
   }
 
   async function handleSignedIn() {
@@ -511,7 +660,7 @@
       await compareShadow({ adopt: !catalog });
       if (catalog) await flush();
     } catch (error) {
-      lastResult = { ok: false, blocked: true, error: error?.message || String(error), pending: queue.pending().length };
+      lastResult = { ok: false, blocked: true, reason: 'session-verification-failed', error: error?.message || String(error), pending: queue.pending().length };
     }
     render();
   }
@@ -555,6 +704,7 @@
     createCompletedWorkoutTransport,
     createProductionTransport,
     createSyncRuntime,
+    buildObsoleteReconciliationPlan,
     catalogKey: CATALOG_KEY,
     comparisonKey: COMPARISON_KEY,
     status: () => Object.freeze({

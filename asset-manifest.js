@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v50-phase4g-independent-user';
+  const release = 'v50.1-phase4fg-queue-reconciliation';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];

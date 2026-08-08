@@ -126,7 +126,9 @@
       idempotencyKey: operation.idempotencyKey,
       remoteId: acknowledgement?.remoteId || null,
       remoteVersion: acknowledgement?.remoteVersion ?? operation.version,
-      acknowledgedAt: acknowledgement?.acknowledgedAt || new Date().toISOString()
+      acknowledgedAt: acknowledgement?.acknowledgedAt || new Date().toISOString(),
+      reason: acknowledgement?.reason || null,
+      reconciled: acknowledgement?.reconciled === true
     });
   }
 
