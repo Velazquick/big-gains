@@ -10,6 +10,7 @@ const productionScriptOrder = [
   'cloud-storage.js',
   'state-persistence.js',
   'profiles.js',
+  'analytics.js',
   'workout-controls.js',
   'notes.js',
   'progress.js',
@@ -111,7 +112,7 @@ test('workout controls expose explicit hooks without replacing app globals', asy
 });
 
 test('shell modules initialize once without duplicate listeners or assets', async ({ page, request }) => {
-  await installLocalStorageFixture(page, 'blankJorge');
+  await installLocalStorageFixture(page, 'blankJorge', { now: '2026-08-05T12:00:00.000Z' });
   await openApp(page);
 
   const initialization = await page.evaluate(() => ({

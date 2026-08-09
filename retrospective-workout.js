@@ -29,7 +29,7 @@
     }
 
     function createExercise(definition) {
-      const prior = context.lastPerformance(definition.name)?.sets || [];
+      const prior = context.lastPerformance(definition.id)?.workingSets || [];
       const working = Number(prior[0]?.weight) || 0;
       return {
         id: context.createId(),

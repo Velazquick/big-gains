@@ -12,22 +12,13 @@ window.workoutProgress = (() => {
   const formatMonthDay = iso => new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(new Date(iso));
 
   function sessionHistoryFor(exerciseId) {
-    const sessions = [];
-    for (const workout of context.getState().workouts) {
-      const exercise = (workout.exercises || []).find(item => item.id === exerciseId || context.slug(item.name || '') === exerciseId);
-      if (!exercise) continue;
-      const sets = (exercise.sets || []).filter(set => !set.warmup && Number(set.weight) > 0 && Number(set.reps) > 0);
-      if (!sets.length) continue;
-      const best = sets.reduce((winner, set) => context.estimate1RM(Number(set.weight), Number(set.reps)) > context.estimate1RM(Number(winner?.weight || 0), Number(winner?.reps || 0)) ? set : winner, null);
-      sessions.push({
-        date: workout.completedAt,
-        sets,
-        best,
-        estimated1RM: context.estimate1RM(Number(best.weight), Number(best.reps)),
-        volume: sets.reduce((total, set) => total + Number(set.weight) * Number(set.reps), 0)
-      });
-    }
-    return sessions;
+    return context.analytics.exerciseHistory(context.getState().workouts, exerciseId).map(session => ({
+      date: session.date,
+      sets: session.workingSets,
+      best: session.bestWorkingSet,
+      estimated1RM: session.bestWorkingSet.estimated1RM,
+      volume: session.workingSetVolume
+    }));
   }
 
   function loggedExercises() {
@@ -35,7 +26,7 @@ window.workoutProgress = (() => {
   }
 
   function bestSetAcross(sessions) {
-    return sessions.flatMap(session => session.sets).reduce((winner, set) => context.estimate1RM(Number(set.weight), Number(set.reps)) > context.estimate1RM(Number(winner?.weight || 0), Number(winner?.reps || 0)) ? set : winner, null);
+    return context.analytics.bestWorkingSet(sessions.flatMap(session => session.sets));
   }
 
   function trendText(sessions) {
@@ -84,7 +75,7 @@ window.workoutProgress = (() => {
     const best = bestSetAcross(sessions);
     const latest = sessions[0];
     preview.className = 'progress-preview';
-    preview.innerHTML = `<div class="progress-preview-copy"><span class="exercise-muscle">${context.escapeHtml(exercise.muscle)}</span><h3>${context.escapeHtml(exercise.name)}</h3><p>${trendText(sessions)}</p></div><div class="progress-preview-stats"><div><span>Best set</span><strong>${Number(best.weight)} × ${Number(best.reps)}</strong></div><div><span>Best e1RM</span><strong>${context.estimate1RM(Number(best.weight), Number(best.reps))} lb</strong></div><div><span>Latest</span><strong>${latest.estimated1RM} lb</strong></div></div><button type="button" class="ghost compact" data-progress-exercise="${exerciseId}">Open full progress</button>`;
+    preview.innerHTML = `<div class="progress-preview-copy"><span class="exercise-muscle">${context.escapeHtml(exercise.muscle)}</span><h3>${context.escapeHtml(exercise.name)}</h3><p>${trendText(sessions)}</p></div><div class="progress-preview-stats"><div><span>Best set</span><strong>${Number(best.weight)} × ${Number(best.reps)}</strong></div><div><span>Best e1RM</span><strong>${best.estimated1RM} lb</strong></div><div><span>Latest</span><strong>${latest.estimated1RM} lb</strong></div></div><button type="button" class="ghost compact" data-progress-exercise="${exerciseId}">Open full progress</button>`;
   }
 
   function renderProgressPanel() {
@@ -130,7 +121,7 @@ window.workoutProgress = (() => {
       const latest = sessions[0];
       const totalVolume = sessions.reduce((total, session) => total + session.volume, 0);
       const recent = sessions.slice(0, 8).map(session => `<article class="progress-session"><div><strong>${context.fmtDate(session.date)}</strong><small>${session.sets.length} working set${session.sets.length === 1 ? '' : 's'} · ${Math.round(session.volume).toLocaleString('en-US')} lb volume</small></div><div class="progress-session-meta"><strong>${session.best.weight} × ${session.best.reps}</strong><small>${session.estimated1RM} lb e1RM</small></div><div class="progress-session-sets">${session.sets.map(set => `<span>${Number(set.weight)} × ${Number(set.reps)}</span>`).join('')}</div></article>`).join('');
-      content.innerHTML = `<div class="history-summary-grid progress-summary-grid"><div><span>Best set</span><strong>${Number(best.weight)} lb × ${Number(best.reps)}</strong></div><div><span>Best estimated 1RM</span><strong>${context.estimate1RM(Number(best.weight), Number(best.reps))} lb</strong></div><div><span>Training history</span><strong>${sessions.length} sessions · ${Math.round(totalVolume).toLocaleString('en-US')} lb</strong></div></div><div class="progress-trend-note"><strong>${latest.estimated1RM} lb latest e1RM</strong><span>${trendText(sessions)}</span></div>${progressChart(sessions)}<div class="progress-recent-head"><span class="label">Recent work</span><h3>Session-by-session</h3></div><div class="progress-session-list">${recent}</div>`;
+      content.innerHTML = `<div class="history-summary-grid progress-summary-grid"><div><span>Best set</span><strong>${Number(best.weight)} lb × ${Number(best.reps)}</strong></div><div><span>Best estimated 1RM</span><strong>${best.estimated1RM} lb</strong></div><div><span>Training history</span><strong>${sessions.length} sessions · ${Math.round(totalVolume).toLocaleString('en-US')} lb</strong></div></div><div class="progress-trend-note"><strong>${latest.estimated1RM} lb latest e1RM</strong><span>${trendText(sessions)}</span></div>${progressChart(sessions)}<div class="progress-recent-head"><span class="label">Recent work</span><h3>Session-by-session</h3></div><div class="progress-session-list">${recent}</div>`;
     }
 
     const { dialog } = elements();
@@ -186,12 +177,12 @@ window.workoutProgress = (() => {
     document.querySelectorAll('#historyDialog .history-exercise').forEach(card => {
       if (card.querySelector('[data-progress-exercise]')) return;
       const head = card.querySelector('.history-exercise-head');
-      const name = card.querySelector('h3')?.textContent?.trim();
-      if (!head || !name) return;
+      const exerciseId = card.dataset.exerciseId;
+      if (!head || !exerciseId) return;
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'ghost compact';
-      button.dataset.progressExercise = context.slug(name);
+      button.dataset.progressExercise = exerciseId;
       button.textContent = 'Progress';
       head.appendChild(button);
     });
