@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v56-phase4j-progress-dashboard';
+  const release = 'v57-szw-six-day-routines';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];

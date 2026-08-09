@@ -20,6 +20,7 @@
 
     function availableTypes() {
       const planned = Object.values(context.profile.weekPlan || {}).filter(type => type !== 'Rest' && context.defaultRoutines[type]);
+      if (context.profile.libraryRoutineTypes) return context.profile.libraryRoutineTypes.filter(type => context.defaultRoutines[type]);
       const standard = ['Push', 'Pull', 'Legs', 'Core', 'FullBody', 'Cardio', 'Other'].filter(type => context.defaultRoutines[type]);
       return [...new Set([...planned, ...standard])];
     }
@@ -28,9 +29,12 @@
       return context.exercises.find(item => item.id === exercise.definitionId || item.name === exercise.name);
     }
 
-    function createExercise(definition) {
+    function createExercise(definition, workoutType = draft?.type) {
       const prior = context.lastPerformance(definition.id)?.workingSets || [];
       const working = Number(prior[0]?.weight) || 0;
+      const prescription = context.routinePrescription(workoutType, definition.id);
+      const workingSets = Number(prescription?.workingSets) || 3;
+      const targetReps = typeof prescription?.targetReps === 'string' ? prescription.targetReps : '';
       return {
         id: context.createId(),
         definitionId: definition.id,
@@ -38,9 +42,10 @@
         muscle: definition.muscle,
         equipment: definition.equipment,
         note: '',
+        ...(targetReps ? { targetReps, targetWorkingSets: workingSets } : {}),
         sets: [
           { id: context.createId(), weight: working ? Math.round(working * .6 / 5) * 5 : 0, reps: 10, warmup: true, completed: false },
-          ...Array.from({ length: 3 }, (_, index) => ({
+          ...Array.from({ length: workingSets }, (_, index) => ({
             id: context.createId(),
             weight: Number(prior[index]?.weight) || working || 0,
             reps: Number(prior[index]?.reps) || 0,
@@ -56,7 +61,7 @@
       draft.exercises = context.routineFor(type)
         .map(id => context.exercises.find(exercise => exercise.id === id))
         .filter(Boolean)
-        .map(createExercise);
+        .map(definition => createExercise(definition, type));
       render();
     }
 
@@ -88,7 +93,7 @@
         <button type="button" class="ghost compact" data-retro-remove-set="${setIndex}" data-ei="${exerciseIndex}" aria-label="Remove ${context.escapeHtml(setLabel(exercise, set))}">Remove</button>
       </div>`).join('');
       return `<article class="active-exercise retrospective-exercise" data-retro-exercise="${exerciseIndex}">
-        <div class="exercise-head"><div><span class="exercise-muscle">${context.escapeHtml(exercise.muscle)}</span><h3>${context.escapeHtml(exercise.name)}</h3><p>${context.escapeHtml(exercise.equipment)}</p></div>
+        <div class="exercise-head"><div><span class="exercise-muscle">${context.escapeHtml(exercise.muscle)}</span><h3>${context.escapeHtml(exercise.name)}</h3><p>${context.escapeHtml(exercise.equipment)}${exercise.targetReps ? ` · Target ${context.escapeHtml(exercise.targetReps)}` : ''}</p></div>
         <div class="exercise-head-actions"><div class="exercise-order"><button type="button" data-retro-move="up" data-ei="${exerciseIndex}" ${exerciseIndex === 0 ? 'disabled' : ''} aria-label="Move ${context.escapeHtml(exercise.name)} up">↑</button><button type="button" data-retro-move="down" data-ei="${exerciseIndex}" ${exerciseIndex === draft.exercises.length - 1 ? 'disabled' : ''} aria-label="Move ${context.escapeHtml(exercise.name)} down">↓</button></div><button type="button" class="remove-exercise" data-retro-remove-exercise="${exerciseIndex}" aria-label="Remove ${context.escapeHtml(exercise.name)}">✕</button></div></div>
         <div class="retrospective-set-list">${sets}</div>
         <label class="retrospective-note"><span>Exercise note</span><textarea rows="2" data-retro-exercise-note="${exerciseIndex}" placeholder="Form, setup, or context">${context.escapeHtml(exercise.note || '')}</textarea></label>
@@ -120,7 +125,7 @@
         evaluatePrs: true
       };
       if (type !== 'Other') {
-        draft.exercises = context.routineFor(type).map(id => context.exercises.find(exercise => exercise.id === id)).filter(Boolean).map(createExercise);
+        draft.exercises = context.routineFor(type).map(id => context.exercises.find(exercise => exercise.id === id)).filter(Boolean).map(definition => createExercise(definition, type));
       }
       saving = false;
       $('saveRetrospectiveWorkout').disabled = false;
@@ -160,7 +165,7 @@
         ...exercise,
         sets: exercise.sets.filter(set => set.completed).map(set => ({ ...set, completed: true }))
       })).filter(exercise => exercise.sets.length);
-      const working = completedExercises.flatMap(exercise => exercise.sets).filter(set => !set.warmup && Number(set.weight) > 0 && Number(set.reps) > 0);
+      const working = completedExercises.flatMap(exercise => exercise.sets.filter(set => !set.warmup && context.canCompleteSet(exercise, set)));
       if (!working.length) {
         $('retrospectiveError').textContent = 'Complete at least one working set with weight and reps.';
         return false;
@@ -227,7 +232,7 @@
       $('retrospectiveBlankWorkout').addEventListener('click', blankWorkout);
       $('retrospectiveAddExercise').addEventListener('click', () => {
         const definition = context.exercises.find(exercise => exercise.id === $('retrospectiveExerciseSelect').value);
-        if (definition) { draft.exercises.push(createExercise(definition)); render(); }
+        if (definition) { draft.exercises.push(createExercise(definition, draft.type)); render(); }
       });
       $('retrospectiveCompletionTime').addEventListener('input', event => { if (draft) draft.completionTime = event.target.value; });
       $('retrospectiveDuration').addEventListener('input', event => { if (draft) draft.durationMinutes = event.target.value; });
