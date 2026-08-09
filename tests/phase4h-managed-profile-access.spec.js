@@ -154,8 +154,17 @@ async function installSession(page, { runtime = false, localState = null } = {})
   }, { authUserId, accountId, alexaProfileId, now, runtime, localState, storageKey });
 }
 
-async function installCloudRoutes(page, { membershipRow = membership, slowRecovery = false } = {}) {
+async function installCloudRoutes(page, { membershipRow = membership, slowRecovery = false, activeSessionDeleted = false } = {}) {
   const fixture = cloudFixture();
+  if (activeSessionDeleted) {
+    fixture.records.active_sessions[0].version = 2;
+    fixture.records.active_sessions[0].updated_at = '2026-08-09T01:52:00.000Z';
+    fixture.tombstones.push({
+      id: 'remote-active-session-tombstone', account_id: accountId, profile_id: alexaProfileId,
+      entity_type: 'active_sessions', entity_id: fixture.activeWorkout.id, idempotency_key: 'active-delete-key',
+      version: 3, deleted_at: '2026-08-09T01:53:06.086Z', created_at: now, updated_at: '2026-08-09T01:53:06.086Z'
+    });
+  }
   const applicationWrites = [];
   let delayed = false;
   await page.route('https://synthetic-phase4h.supabase.co/**', async route => {
@@ -312,6 +321,78 @@ test('a non-empty managed-member namespace is never overwritten or merged', asyn
   expect(result.catalog).toBeNull();
   expect(result.marker).toBeNull();
   expect(result.pending).toBe(0);
+  expect(cloud.applicationWrites).toEqual([]);
+});
+
+test('managed-member active session upsert then delete adopts the higher tombstone winner and returns to in sync', async ({ page, context }) => {
+  await installSession(page);
+  const cloud = await installCloudRoutes(page);
+  await openApp(page);
+  await expect(page.locator('#independentAccountOnboarding')).toBeHidden();
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect.poll(() => page.evaluate(() => state.activeWorkout?.id || null)).toBe('alexa-active');
+
+  await context.setOffline(true);
+  await page.evaluate(() => {
+    state.activeWorkout.exercises[0].sets[0].weight = 95;
+    saveState();
+  });
+  await expect.poll(() => page.evaluate(() => BigGainsCloudSync.queue.pending().length)).toBe(1);
+  await page.evaluate(() => workoutSessionController.discard());
+  await expect.poll(() => page.evaluate(() => BigGainsCloudSync.queue.pending().length)).toBe(2);
+
+  const captured = await page.evaluate(({ catalogKey }) => {
+    const pending = BigGainsCloudSync.queue.pending();
+    const catalog = JSON.parse(localStorage.getItem(catalogKey));
+    return {
+      operations: pending.map(operation => ({ mutation: operation.mutation, version: operation.version, entityType: operation.entityType, entityId: operation.entityId })),
+      winner: catalog.profiles.alexa.records[`active_sessions\u0000alexa-active`],
+      bodyweightCount: Object.values(catalog.profiles.alexa.records).filter(record => record.table === 'bodyweight_entries' && !record.tombstone).length,
+      preferenceCount: Object.values(catalog.profiles.alexa.records).filter(record => record.table === 'preferences' && !record.tombstone).length
+    };
+  }, { catalogKey });
+  expect(captured.operations).toEqual([
+    { mutation: 'upsert', version: 2, entityType: 'active_sessions', entityId: 'alexa-active' },
+    { mutation: 'delete', version: 3, entityType: 'active_sessions', entityId: 'alexa-active' }
+  ]);
+  expect(captured.winner).toMatchObject({ version: 3, tombstone: true, data: null });
+  expect(captured.bodyweightCount).toBe(1);
+  expect(captured.preferenceCount).toBe(3);
+
+  const acknowledged = await page.evaluate(async () => BigGainsCloudSync.createSyncRuntime({
+    durableQueue: BigGainsCloudSync.queue,
+    transport: { enabled: true, async send(operation) { return { ok: true, remoteVersion: operation.version }; } },
+    isOnline: () => true
+  }).flush());
+  expect(acknowledged).toMatchObject({ ok: true, sent: 2, pending: 0 });
+  await page.evaluate(({ catalogKey }) => {
+    const catalog = JSON.parse(localStorage.getItem(catalogKey));
+    const key = `active_sessions\u0000alexa-active`;
+    catalog.profiles.alexa.records[key] = {
+      ...catalog.profiles.alexa.records[key], version: 2, updatedAt: '2026-08-09T01:52:00.000Z',
+      tombstone: false, data: { workout: { id: 'alexa-active' }, restTimerEndsAt: null }
+    };
+    localStorage.setItem(catalogKey, JSON.stringify(catalog));
+  }, { catalogKey });
+
+  await context.setOffline(false);
+  await page.unrouteAll({ behavior: 'wait' });
+  const deletedCloud = await installCloudRoutes(page, { activeSessionDeleted: true });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#cloudShadowHeading')).toHaveText('In sync');
+  await expect.poll(() => page.evaluate(() => BigGainsCloudSync.queue.pending().length)).toBe(0);
+
+  const healed = await page.evaluate(({ catalogKey }) => {
+    const catalog = JSON.parse(localStorage.getItem(catalogKey));
+    return {
+      winner: catalog.profiles.alexa.records[`active_sessions\u0000alexa-active`],
+      comparison: BigGainsCloudSync.status().lastComparison
+    };
+  }, { catalogKey });
+  expect(healed.winner).toMatchObject({ version: 3, tombstone: true, data: null });
+  expect(healed.comparison.parity).toBe(true);
+  expect(healed.comparison.profiles.alexa.entities.active_sessions).toMatchObject({ parity: true, localCount: 0, cloudCount: 0 });
+  expect(deletedCloud.applicationWrites).toEqual([]);
   expect(cloud.applicationWrites).toEqual([]);
 });
 
