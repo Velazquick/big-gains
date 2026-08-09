@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v57-szw-six-day-routines';
+  const release = 'v58-routine-prescription-editor';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];
@@ -23,7 +23,8 @@
     './migration-preview.css',
     './controlled-migration.css',
     './jorge-train-v52.css',
-    './progress-dashboard-v56.css'
+    './progress-dashboard-v56.css',
+    './routine-prescription-v58.css'
   ];
   const scripts = [
     './account-context.js',

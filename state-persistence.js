@@ -152,7 +152,23 @@
       if (!isRecord(value)) return {};
       return Object.fromEntries(Object.entries(value)
         .filter(([, routine]) => Array.isArray(routine))
-        .map(([day, routine]) => [day, [...new Set(routine.filter(id => typeof id === 'string' && id))]]));
+        .map(([day, routine]) => {
+          const seen = new Set();
+          const entries = routine.map(entry => {
+            if (typeof entry === 'string' && entry) return entry;
+            if (!isRecord(entry) || typeof entry.exerciseId !== 'string' || !entry.exerciseId) return null;
+            const workingSets = Math.min(12, Math.max(1, Math.round(safeNumber(entry.workingSets, 3))));
+            const targetReps = typeof entry.targetReps === 'string' ? entry.targetReps.trim().slice(0, 20) : '';
+            return { exerciseId: entry.exerciseId, workingSets, targetReps };
+          }).filter(entry => {
+            if (!entry) return false;
+            const exerciseId = typeof entry === 'string' ? entry : entry.exerciseId;
+            if (seen.has(exerciseId)) return false;
+            seen.add(exerciseId);
+            return true;
+          });
+          return [day, entries];
+        }));
     }
 
     function normalizeGoals(value) {

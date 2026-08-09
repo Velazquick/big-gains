@@ -116,6 +116,7 @@ const PRESENTATION = bigGainsAccounts.presentationFor(ACCOUNT.presentation || {
   theme: PROFILE.id === 'alexa' ? 'wellness-light' : 'performance-dark'
 });
 document.documentElement.dataset.profile = PROFILE.id;
+document.documentElement.dataset.profileConfig = ACCOUNT.profileConfigRef;
 document.documentElement.dataset.accountMode = bigGainsAccounts.runtime.kind;
 document.documentElement.dataset.accent = PRESENTATION.accent;
 document.documentElement.dataset.theme = PRESENTATION.theme;
