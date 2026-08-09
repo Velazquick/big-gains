@@ -196,9 +196,20 @@
     });
 
     if (!isRecord(value.customRoutines)) issue(issues, expectedProfileId, 'customRoutines', 'Custom routines must be an object.');
-    else Object.entries(value.customRoutines).forEach(([name, exerciseIds]) => {
-      if (!nonempty(name) || !Array.isArray(exerciseIds) || exerciseIds.some(id => !nonempty(id)) || new Set(exerciseIds).size !== exerciseIds.length) {
-        issue(issues, expectedProfileId, `customRoutines.${name}`, 'Routine must have a name and an ordered list of unique exercise ids.');
+    else Object.entries(value.customRoutines).forEach(([name, exercises]) => {
+      const ids = [];
+      const invalid = !nonempty(name) || !Array.isArray(exercises) || exercises.some(entry => {
+        if (nonempty(entry)) {
+          ids.push(entry);
+          return false;
+        }
+        if (!isRecord(entry) || !nonempty(entry.exerciseId)) return true;
+        ids.push(entry.exerciseId);
+        return !Number.isInteger(entry.workingSets) || entry.workingSets < 1 || entry.workingSets > 12
+          || typeof entry.targetReps !== 'string' || entry.targetReps.length > 20;
+      });
+      if (invalid || new Set(ids).size !== ids.length) {
+        issue(issues, expectedProfileId, `customRoutines.${name}`, 'Routine must have a name and an ordered list of unique exercise ids or prescriptions.');
       }
     });
 

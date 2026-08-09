@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
 
-const CURRENT_CACHE = 'big-gains-shell-v57-szw-six-day-routines';
+const CURRENT_CACHE = 'big-gains-shell-v58-routine-prescription-editor';
 const PREVIOUS_CACHE = 'big-gains-shell-v56-phase4j-progress-dashboard';
 
 async function waitForServiceWorker(page) {
@@ -32,7 +32,7 @@ test('first install precaches one complete, revision-consistent app shell', asyn
     };
   }, CURRENT_CACHE);
 
-  expect(state.release).toBe('v57-szw-six-day-routines');
+  expect(state.release).toBe('v58-routine-prescription-editor');
   expect(state.cacheNames).toContain(CURRENT_CACHE);
   expect(state.cachedUrls).toEqual(state.expectedUrls);
   expect(state.cachedUrls).toContain(new URL('/assets/timer-ready.wav', page.url()).href);

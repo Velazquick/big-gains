@@ -7,7 +7,7 @@
   function renderProfileShell() {
     const isAlexa = PROFILE.id === 'alexa';
     document.querySelector('.eyebrow').textContent = isAlexa ? 'BIG GAINS · WELLNESS' : 'BIG GAINS';
-    document.querySelector('[data-view="library"]').textContent = isAlexa ? 'Garden' : 'Library';
+    document.querySelector('.bottom-nav [data-view="library"]').textContent = isAlexa ? 'Garden' : 'Library';
     document.querySelector('#viewLibrary .v2-page-head .label').textContent = isAlexa ? 'Garden' : 'Library';
     document.querySelector('#viewLibrary .v2-page-head h2').textContent = isAlexa ? 'Your care, growing.' : 'Build the work.';
     document.querySelector('#viewLibrary .v2-page-head p').textContent = isAlexa ? 'Every completed session adds life. Rest never takes anything away.' : 'Choose routines, edit your lineup, or find a movement.';
