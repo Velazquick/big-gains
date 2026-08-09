@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v58-routine-prescription-editor';
+  const release = 'v59-timer-reliability-visibility';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];

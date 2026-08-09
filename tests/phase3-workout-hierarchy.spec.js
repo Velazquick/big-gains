@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { jorgeState, openApp } from './helpers/app.js';
 
-test('READY holds for three seconds, auto-dismisses, and keeps the pet ready', async ({ page }) => {
+test('READY holds for three seconds, returns to visible idle, and keeps the pet ready', async ({ page }) => {
   await installLocalStorageFixture(page, 'activeWorkoutWithExercises');
   await openApp(page);
   await page.evaluate(() => { state.restTimerEndsAt = Date.now(); runRestTimer(); });
@@ -11,7 +11,9 @@ test('READY holds for three seconds, auto-dismisses, and keeps the pet ready', a
   await expect(page.locator('#timerFeedbackStatus')).toHaveText('Rest complete. Ready for your next set.');
   await expect(page.locator('#trainingPet')).toHaveAttribute('data-state', 'ready');
   await page.waitForTimeout(3200);
-  await expect(page.locator('#timerCard')).toBeHidden();
+  await expect(page.locator('#timerCard')).toBeVisible();
+  await expect(page.locator('#timerCard')).toHaveAttribute('data-timer-state', 'idle');
+  await expect(page.locator('#timerFeedbackStatus')).toBeEmpty();
   await expect(page.locator('#trainingPet')).toHaveAttribute('data-state', 'ready');
 
   await page.locator('input[data-ei="0"][data-si="1"][data-field="reps"]').fill('9');

@@ -350,7 +350,6 @@ html[data-accent="ember"][data-theme="performance-dark"] #timerCard .timer-prefe
 html[data-accent="ember"][data-theme="performance-dark"] #timerCard .timer-actions button{min-height:40px;padding:7px 10px;border-radius:10px;font-size:.68rem}
 html[data-accent="ember"][data-theme="performance-dark"] #timerVibrationToggle{opacity:.58}
 html[data-accent="ember"][data-theme="performance-dark"] #timerCard.timer-feedback-ready{border-color:var(--accent);background:rgba(16,20,12,.97)}
-html[data-accent="ember"][data-theme="performance-dark"] body.workout-mode:has(.stepper input:focus) #timerCard{position:relative;bottom:auto}
 html[data-accent="ember"][data-theme="performance-dark"] #finishWorkout{
   min-height:56px;
   margin-top:12px;
