@@ -174,7 +174,7 @@
             </div>
           </div>
           <div class="active-exercise-body" id="exercise-body-${exerciseIndex}">
-            <div class="exercise-context"><span>Last</span><strong data-previous-performance="${escapeHtml(exercise.id)}">${escapeHtml(previous)}</strong>${improvement ? `<em class="exercise-delta" data-improvement-delta="${escapeHtml(improvement.kind)}">${escapeHtml(improvement.label)}</em>` : ''}${previousSets ? `<small>${escapeHtml(previousSets)}</small>` : ''}</div>
+            <div class="exercise-context"><span>Last</span><strong data-previous-performance="${escapeHtml(exercise.id)}">${escapeHtml(previous)}</strong>${exercise.targetReps ? `<em class="exercise-target" data-target-reps="${escapeHtml(exercise.targetReps)}">Target ${escapeHtml(exercise.targetReps)}</em>` : ''}${improvement ? `<em class="exercise-delta" data-improvement-delta="${escapeHtml(improvement.kind)}">${escapeHtml(improvement.label)}</em>` : ''}${previousSets ? `<small>${escapeHtml(previousSets)}</small>` : ''}</div>
             <div class="set-grid">${sets}</div>
             <button type="button" class="add-set" data-add-set="${exerciseIndex}">+ Add set</button>
           </div>

@@ -2,7 +2,7 @@
   'use strict';
 
   const SELECTOR_ID = 'sessionTypeSelector';
-  const SESSION_TYPES = [
+  const DEFAULT_SESSION_TYPES = [
     { key: 'Push', label: 'Push', detail: 'Chest, shoulders, triceps', index: '01' },
     { key: 'Pull', label: 'Pull', detail: 'Back, rear delts, biceps', index: '02' },
     { key: 'Legs', label: 'Legs', detail: 'Quads, glutes, hamstrings', index: '03' },
@@ -10,12 +10,14 @@
     { key: 'FullBody', label: 'Full Body', detail: 'Whole-body strength', index: '05' },
     { key: 'Cardio', label: 'Conditioning', detail: 'Intervals, classes, cardio', index: '06' }
   ];
+  const SESSION_TYPES = (PROFILE.sessionTypes || DEFAULT_SESSION_TYPES).map(type => ({ ...type }));
 
   let selectedType = 'Push';
   let expanded = false;
   let initialized = false;
 
   function normalizeType(value) {
+    if (SESSION_TYPES.some(item => item.key === value)) return value;
     const map = {
       Push: 'Push',
       Pull: 'Pull',
@@ -150,13 +152,18 @@
     if (kicker) kicker.textContent = plannedType === selectedType ? 'Today’s plan' : 'Selected workout';
     if (meta) meta.textContent = `${exercises.length} movement${exercises.length === 1 ? '' : 's'} · ${state.customRoutines?.[selectedType] ? 'Custom lineup' : 'Saved lineup'}`;
     if (count) count.textContent = String(exercises.length).padStart(2, '0');
-    if (list) list.innerHTML = exercises.length ? exercises.map((exercise, index) => `
+    if (list) list.innerHTML = exercises.length ? exercises.map((exercise, index) => {
+      const prescription = typeof routinePrescription === 'function' ? routinePrescription(selectedType, exercise.id) : null;
+      const support = prescription?.targetReps
+        ? `${prescription.workingSets} working sets · Target ${prescription.targetReps}`
+        : `${exercise.equipment} · ${exercise.muscle}`;
+      return `
       <article class="train-preview-row">
         <span class="train-preview-index">${String(index + 1).padStart(2, '0')}</span>
-        <div><strong>${safe(exercise.name)}</strong><small>${safe(exercise.equipment)} · ${safe(exercise.muscle)}</small></div>
+        <div><strong>${safe(exercise.name)}</strong><small>${safe(support)}</small></div>
         <span class="train-preview-arrow" aria-hidden="true">→</span>
       </article>
-    `).join('') : '<div class="train-preview-empty">Start blank, then add movements from the library.</div>';
+    `;}).join('') : '<div class="train-preview-empty">Start blank, then add movements from the library.</div>';
   }
 
   function render() {
