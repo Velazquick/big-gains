@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v53-phase4h-managed-profile-access';
+  const release = 'v54-managed-member-bootstrap-guard';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];

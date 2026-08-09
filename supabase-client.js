@@ -175,6 +175,17 @@
     const currentSession = await session();
     if (!current || !currentSession?.user?.id) throw new Error('Sign in before creating a private profile.');
     const normalized = validatedDisplayName(displayName);
+    const preflight = await readAccountState();
+    if (preflight.status !== 'needs-provisioning') {
+      const error = new Error(preflight.accessKind === 'managed-member'
+        ? 'Managed profile access is already active; independent onboarding is unavailable.'
+        : preflight.status === 'ready'
+          ? 'This user already has a private cloud account.'
+          : preflight.reason || 'Account setup must be reviewed before creating a private profile.');
+      error.code = preflight.accessKind === 'managed-member' ? 'managed-member' : preflight.status;
+      error.accountState = preflight;
+      throw error;
+    }
     const result = await current.rpc('bootstrap_independent_account', { requested_display_name: normalized });
     if (result.error) throw result.error;
     const state = await readAccountState();

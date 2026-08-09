@@ -502,8 +502,10 @@
         }])),
         reasons: comparison.reasons
       });
-      if (comparison.parity && (!catalog || adopt)) {
-        catalog = shadow.catalogFromCloud({ cloud: cloudState, owner: cloudOwner, journal });
+      if (comparison.parity) {
+        const verifiedCatalog = shadow.catalogFromCloud({ cloud: cloudState, owner: cloudOwner, journal });
+        if (catalog?.migrationId) verifiedCatalog.migrationId = catalog.migrationId;
+        catalog = verifiedCatalog;
         writeJson(CATALOG_KEY, catalog);
       } else if (accountRuntime.kind === 'independent' && !catalog
         && shadow.profileIds.every(profileClientId => cloudState.profiles[profileClientId].current.length === 0)) {
