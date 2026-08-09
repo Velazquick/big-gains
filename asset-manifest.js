@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v55-phase4i-analytics-library';
+  const release = 'v56-phase4j-progress-dashboard';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];
@@ -22,7 +22,8 @@
     './cloud-sync.css',
     './migration-preview.css',
     './controlled-migration.css',
-    './jorge-train-v52.css'
+    './jorge-train-v52.css',
+    './progress-dashboard-v56.css'
   ];
   const scripts = [
     './account-context.js',
