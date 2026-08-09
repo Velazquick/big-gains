@@ -361,13 +361,10 @@ test('managed-member active session upsert then delete adopts the higher tombsto
   await openApp(page);
   await expect(page.locator('#independentAccountOnboarding')).toBeHidden();
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await expect.poll(() => page.evaluate(() => state.activeWorkout?.id || null)).toBe('alexa-active');
+  await expect.poll(() => page.evaluate(storageKey => JSON.parse(localStorage.getItem(storageKey))?.activeWorkout?.id || null, storageKey)).toBe('alexa-active');
 
   await context.setOffline(true);
-  await page.evaluate(() => {
-    state.activeWorkout.exercises[0].sets[0].weight = 95;
-    saveState();
-  });
+  await page.locator('#activeExercises input[data-field="weight"]').first().fill('95');
   await expect.poll(() => page.evaluate(() => BigGainsCloudSync.queue.pending().length)).toBe(1);
   await page.evaluate(() => workoutSessionController.discard());
   await expect.poll(() => page.evaluate(() => BigGainsCloudSync.queue.pending().length)).toBe(2);

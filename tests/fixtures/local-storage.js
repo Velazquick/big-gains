@@ -159,6 +159,15 @@ export const localStorageFixtures = Object.freeze({
     activeProfile: 'jorge',
     values: { [STORAGE_KEYS.jorge]: completedJorge }
   },
+  completedAndActiveWorkouts: {
+    activeProfile: 'jorge',
+    values: {
+      [STORAGE_KEYS.jorge]: {
+        ...completedJorge,
+        activeWorkout: activeWithExercises
+      }
+    }
+  },
   malformedButParseableState: {
     activeProfile: 'jorge',
     values: {
@@ -226,6 +235,27 @@ export async function installLocalStorageFixture(page, names, options = {}) {
   const activeProfile = options.activeProfile
     || fixtures.at(-1)?.activeProfile
     || 'jorge';
+
+  if (options.now) {
+    await page.addInitScript(fixedNow => {
+      const NativeDate = Date;
+      const nativeStartedAt = NativeDate.now();
+      const fixedStartedAt = NativeDate.parse(fixedNow);
+      const currentTime = () => fixedStartedAt + (NativeDate.now() - nativeStartedAt);
+
+      class TestDate extends NativeDate {
+        constructor(...args) {
+          super(...(args.length ? args : [currentTime()]));
+        }
+
+        static now() {
+          return currentTime();
+        }
+      }
+
+      globalThis.Date = TestDate;
+    }, options.now);
+  }
 
   await page.addInitScript(({ activeProfileKey, activeProfileId, seedKey, serializedValues }) => {
     if (localStorage.getItem(seedKey)) return;

@@ -130,6 +130,8 @@ body{
 .exercise-context{display:grid;gap:4px;margin:14px 0 2px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.045)}
 .exercise-context span{color:var(--muted);font-size:.65rem;letter-spacing:.13em;text-transform:uppercase;font-weight:850}
 .exercise-context strong{font-size:.88rem;font-weight:760;color:#c7cdd5;line-height:1.45}
+.exercise-context small{grid-column:1/-1;color:var(--muted);font-size:.7rem;line-height:1.35}
+.exercise-context .exercise-delta{grid-column:1/-1;width:max-content;padding:3px 7px;border-radius:999px;background:color-mix(in srgb,var(--accent) 13%,transparent);color:var(--accent);font-size:.68rem;font-style:normal;font-weight:900}
 .collapsed-summary{display:none;padding:13px 18px 15px;border-top:1px solid rgba(255,255,255,.045);grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center}
 .active-exercise.is-collapsed .collapsed-summary{display:grid}
 .collapsed-summary strong{display:block;font-size:.88rem}

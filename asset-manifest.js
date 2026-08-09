@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v54-managed-member-bootstrap-guard';
+  const release = 'v55-phase4i-analytics-library';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];
@@ -32,6 +32,7 @@
     './cloud-storage.js',
     './state-persistence.js',
     './profiles.js',
+    './analytics.js',
     './workout-controls.js',
     './notes.js',
     './progress.js',

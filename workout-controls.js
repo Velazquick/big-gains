@@ -109,7 +109,7 @@
     return `Set ${position} of ${working.length}`;
   }
 
-  function renderActive({ activeWorkout, box, finishButton, lastPerformance, estimate1RM, escapeHtml, stepper }) {
+  function renderActive({ activeWorkout, box, finishButton, lastPerformance, performanceDelta, estimate1RM, escapeHtml, stepper }) {
     if (!activeWorkout) return;
     if (!activeWorkout.exercises.length) {
       box.innerHTML = '<div class="empty">Choose a routine or an exercise above.</div>';
@@ -120,8 +120,12 @@
     const activeIndex = activeIndexForRender(activeWorkout);
 
     box.innerHTML = activeWorkout.exercises.map((exercise, exerciseIndex) => {
-      const last = lastPerformance(exercise.name);
-      const previous = last ? last.sets.map(set => `${set.weight} × ${set.reps}`).join(' · ') : 'First time logged';
+      const last = lastPerformance(exercise.id);
+      const previous = last ? `${last.bestWorkingSet.weight} × ${last.bestWorkingSet.reps}` : 'First time logged';
+      const previousSets = last?.workingSets?.length > 1
+        ? last.workingSets.map(set => `${set.weight} × ${set.reps}`).join(' · ')
+        : '';
+      const improvement = performanceDelta(exercise, last)?.improvement || null;
       const summary = summaryFor(exercise, estimate1RM);
       const hasPersistedFocus = activeWorkout.focusedExerciseId === activeWorkout.exercises[activeIndex]?.id;
       const collapsed = exerciseIndex === activeIndex && !hasPersistedFocus ? false : isCollapsed(exercise);
@@ -170,7 +174,7 @@
             </div>
           </div>
           <div class="active-exercise-body" id="exercise-body-${exerciseIndex}">
-            <div class="exercise-context"><span>Last</span><strong>${escapeHtml(previous)}</strong></div>
+            <div class="exercise-context"><span>Last</span><strong data-previous-performance="${escapeHtml(exercise.id)}">${escapeHtml(previous)}</strong>${improvement ? `<em class="exercise-delta" data-improvement-delta="${escapeHtml(improvement.kind)}">${escapeHtml(improvement.label)}</em>` : ''}${previousSets ? `<small>${escapeHtml(previousSets)}</small>` : ''}</div>
             <div class="set-grid">${sets}</div>
             <button type="button" class="add-set" data-add-set="${exerciseIndex}">+ Add set</button>
           </div>
