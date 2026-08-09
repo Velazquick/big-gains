@@ -1,18 +1,75 @@
 window.workoutProgress = (() => {
   let context = null;
   let initialized = false;
+  let selectedWindowDays = 7;
+  let selectedMuscle = null;
+
+  const MUSCLE_GROUPS = Object.freeze([
+    { key: 'Chest', label: 'Chest', sources: ['Chest'] },
+    { key: 'Shoulders', label: 'Shoulders', sources: ['Shoulders', 'Rear Delts'] },
+    { key: 'Back', label: 'Back', sources: ['Back', 'Traps'] },
+    { key: 'Arms', label: 'Arms', sources: ['Biceps', 'Triceps'] },
+    { key: 'Core', label: 'Core', sources: ['Core'] },
+    { key: 'Glutes', label: 'Glutes', sources: ['Glutes'] },
+    { key: 'Quads', label: 'Quads', sources: ['Quads'] },
+    { key: 'Adductors', label: 'Adductors', sources: ['Adductors'] },
+    { key: 'Hamstrings', label: 'Hamstrings', sources: ['Hamstrings'] },
+    { key: 'Calves', label: 'Calves', sources: ['Calves'] }
+  ]);
 
   const elements = () => ({
+    panel: document.getElementById('progressPanel'),
     select: document.getElementById('progressExerciseSelect'),
     button: document.getElementById('openSelectedProgress'),
     preview: document.getElementById('progressPreview'),
+    history: document.getElementById('history'),
     dialog: document.getElementById('progressDialog')
   });
 
+  const list = value => Array.isArray(value) ? value : [];
   const formatMonthDay = iso => new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(new Date(iso));
+  const formatCompact = value => new Intl.NumberFormat('en-US', { notation: Number(value) >= 10000 ? 'compact' : 'standard', maximumFractionDigits: Number(value) >= 10000 ? 1 : 0 }).format(Math.round(Number(value) || 0));
+  const formatDuration = seconds => {
+    const total = Math.max(0, Math.round(Number(seconds) || 0));
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor(total % 3600 / 60);
+    return hours ? `${hours}h ${String(minutes).padStart(2, '0')}m` : `${minutes}m`;
+  };
+  const completedAt = workout => new Date(workout?.completedAt || 0).getTime();
+
+  function state() {
+    return context.getState();
+  }
+
+  function completedWorkouts() {
+    return list(state().workouts)
+      .filter(workout => Number.isFinite(completedAt(workout)) && completedAt(workout) > 0)
+      .slice()
+      .sort((left, right) => completedAt(right) - completedAt(left));
+  }
+
+  function workoutsInWindow(days = selectedWindowDays) {
+    const through = Date.now();
+    const since = through - days * 24 * 60 * 60 * 1000;
+    return completedWorkouts().filter(workout => {
+      const time = completedAt(workout);
+      return time > since && time <= through;
+    });
+  }
+
+  function dashboardSummary(workouts) {
+    return workouts.reduce((totals, workout) => {
+      const summary = context.analytics.workoutSummary(workout);
+      totals.sessions += 1;
+      totals.workingSets += summary.workingSetCount;
+      totals.volume += summary.workingSetVolume;
+      totals.prs += summary.prCount;
+      return totals;
+    }, { sessions: 0, workingSets: 0, volume: 0, prs: 0 });
+  }
 
   function sessionHistoryFor(exerciseId) {
-    return context.analytics.exerciseHistory(context.getState().workouts, exerciseId).map(session => ({
+    return context.analytics.exerciseHistory(state().workouts, exerciseId).map(session => ({
       date: session.date,
       sets: session.workingSets,
       best: session.bestWorkingSet,
@@ -63,8 +120,113 @@ window.workoutProgress = (() => {
     return `<div class="progress-chart"><div class="progress-chart-title"><strong>Estimated 1RM trend</strong><span>Last ${data.length} session${data.length === 1 ? '' : 's'}</span></div><svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Estimated one rep max trend">${grid}<polyline class="progress-line" points="${points}"></polyline>${dots}<text class="progress-date-label" x="${padX}" y="${height - 7}">${context.escapeHtml(formatMonthDay(data[0].date))}</text><text class="progress-date-label" text-anchor="end" x="${width - padX}" y="${height - 7}">${context.escapeHtml(formatMonthDay(data[data.length - 1].date))}</text></svg></div>`;
   }
 
+  function workloadGroups() {
+    const muscleTotals = context.analytics.recentMuscleWorkload(state().workouts, { days: selectedWindowDays }).muscles;
+    return MUSCLE_GROUPS.map(group => {
+      const totals = group.sources.reduce((sum, source) => {
+        const value = muscleTotals[source] || {};
+        sum.workingSets += Number(value.workingSets) || 0;
+        sum.workingSetVolume += Number(value.workingSetVolume) || 0;
+        sum.totalReps += Number(value.totalReps) || 0;
+        return sum;
+      }, { workingSets: 0, workingSetVolume: 0, totalReps: 0 });
+      return { ...group, ...totals };
+    });
+  }
+
+  function heatLevel(workingSets, maxSets) {
+    if (!workingSets || !maxSets) return 0;
+    return Math.max(1, Math.min(4, Math.ceil(workingSets / maxSets * 4)));
+  }
+
+  function muscleMapSvg(groups) {
+    const lookup = new Map(groups.map(group => [group.key, group]));
+    const maxSets = Math.max(0, ...groups.map(group => group.workingSets));
+    const zone = (key, shape) => {
+      const group = lookup.get(key) || { label: key, workingSets: 0 };
+      const level = heatLevel(group.workingSets, maxSets);
+      const selected = selectedMuscle === key;
+      return shape.replace('CLASS', `muscle-zone heat-${level}${selected ? ' is-selected' : ''}`).replace('ATTRS', `data-muscle-key="${key}" role="button" tabindex="0" aria-pressed="${selected}" aria-label="${group.label}: ${group.workingSets} working sets"`);
+    };
+
+    return `<div class="muscle-map-wrap" aria-label="Muscle workload heatmap">
+      <div class="muscle-map-figure"><span>Front</span><svg viewBox="0 0 180 360" aria-label="Front muscle map">
+        <circle class="body-outline" cx="90" cy="34" r="20"></circle>
+        <path class="body-outline" d="M70 57h40l18 39-12 91-10 145H74L64 187 52 96Z"></path>
+        ${zone('Shoulders', '<ellipse class="CLASS" cx="55" cy="84" rx="17" ry="14" ATTRS></ellipse>')}
+        ${zone('Shoulders', '<ellipse class="CLASS" cx="125" cy="84" rx="17" ry="14" ATTRS></ellipse>')}
+        ${zone('Chest', '<path class="CLASS" d="M67 83h22v41H63l-4-26Z" ATTRS></path>')}
+        ${zone('Chest', '<path class="CLASS" d="M91 83h22l8 15-4 26H91Z" ATTRS></path>')}
+        ${zone('Arms', '<path class="CLASS" d="M43 96h14l-6 80H37Z" ATTRS></path>')}
+        ${zone('Arms', '<path class="CLASS" d="M123 96h14l6 80h-14Z" ATTRS></path>')}
+        ${zone('Core', '<rect class="CLASS" x="70" y="126" width="40" height="64" rx="14" ATTRS></rect>')}
+        ${zone('Adductors', '<path class="CLASS" d="M81 198h10l-3 80H73Z" ATTRS></path>')}
+        ${zone('Adductors', '<path class="CLASS" d="M89 198h10l8 80H92Z" ATTRS></path>')}
+        ${zone('Quads', '<path class="CLASS" d="M68 194h17l-8 88H59Z" ATTRS></path>')}
+        ${zone('Quads', '<path class="CLASS" d="M95 194h17l9 88h-18Z" ATTRS></path>')}
+        ${zone('Calves', '<path class="CLASS" d="M62 286h16l-4 50H57Z" ATTRS></path>')}
+        ${zone('Calves', '<path class="CLASS" d="M102 286h16l5 50h-17Z" ATTRS></path>')}
+      </svg></div>
+      <div class="muscle-map-figure"><span>Back</span><svg viewBox="0 0 180 360" aria-label="Back muscle map">
+        <circle class="body-outline" cx="90" cy="34" r="20"></circle>
+        <path class="body-outline" d="M70 57h40l18 39-12 91-10 145H74L64 187 52 96Z"></path>
+        ${zone('Shoulders', '<ellipse class="CLASS" cx="55" cy="84" rx="17" ry="14" ATTRS></ellipse>')}
+        ${zone('Shoulders', '<ellipse class="CLASS" cx="125" cy="84" rx="17" ry="14" ATTRS></ellipse>')}
+        ${zone('Back', '<path class="CLASS" d="M68 78h44l9 22-12 60H71l-12-60Z" ATTRS></path>')}
+        ${zone('Arms', '<path class="CLASS" d="M43 96h14l-6 80H37Z" ATTRS></path>')}
+        ${zone('Arms', '<path class="CLASS" d="M123 96h14l6 80h-14Z" ATTRS></path>')}
+        ${zone('Glutes', '<path class="CLASS" d="M68 162h22v40H62Z" ATTRS></path>')}
+        ${zone('Glutes', '<path class="CLASS" d="M90 162h22l6 40H90Z" ATTRS></path>')}
+        ${zone('Hamstrings', '<path class="CLASS" d="M66 205h20l-7 77H59Z" ATTRS></path>')}
+        ${zone('Hamstrings', '<path class="CLASS" d="M94 205h20l7 77h-20Z" ATTRS></path>')}
+        ${zone('Calves', '<path class="CLASS" d="M62 286h16l-4 50H57Z" ATTRS></path>')}
+        ${zone('Calves', '<path class="CLASS" d="M102 286h16l5 50h-17Z" ATTRS></path>')}
+      </svg></div>
+    </div>`;
+  }
+
+  function muscleContributors(group) {
+    if (!group) return [];
+    const sourceSet = new Set(group.sources);
+    const contributors = new Map();
+    workoutsInWindow().forEach(workout => list(workout.exercises).forEach(exercise => {
+      const exerciseMuscles = new Set(context.analytics.muscleNames(exercise.muscle));
+      if (![...sourceSet].some(source => exerciseMuscles.has(source))) return;
+      const summary = context.analytics.setSummary(exercise);
+      if (!summary.workingSetCount) return;
+      const key = exercise.definitionId || exercise.id || exercise.name;
+      const current = contributors.get(key) || { name: exercise.name || key, workingSets: 0, workingSetVolume: 0 };
+      current.workingSets += summary.workingSetCount;
+      current.workingSetVolume += summary.workingSetVolume;
+      contributors.set(key, current);
+    }));
+    return [...contributors.values()].sort((left, right) => right.workingSets - left.workingSets || right.workingSetVolume - left.workingSetVolume).slice(0, 5);
+  }
+
+  function muscleDetailMarkup(groups) {
+    const requested = selectedMuscle ? groups.find(group => group.key === selectedMuscle) : null;
+    const active = requested
+      || groups.filter(group => group.workingSets > 0).sort((left, right) => right.workingSets - left.workingSets)[0]
+      || groups[0];
+    selectedMuscle = active?.key || null;
+    if (!active || !active.workingSets) {
+      return `<div class="muscle-detail is-zero" data-selected-muscle="${context.escapeHtml(active?.key || '')}">
+        <div class="muscle-detail-head"><div><span class="label">Selected muscle</span><h3>${context.escapeHtml(active?.label || 'No workload yet')}</h3></div><strong>0 sets</strong></div>
+        <div class="muscle-detail-metrics"><div><span>Volume</span><strong>0 lb</strong></div><div><span>Reps</span><strong>0</strong></div></div>
+        <p class="muscle-zero-state">No ${context.escapeHtml((active?.label || 'muscle').toLowerCase())} working sets in the last ${selectedWindowDays} days.</p>
+      </div>`;
+    }
+    const contributors = muscleContributors(active);
+    return `<div class="muscle-detail" data-selected-muscle="${context.escapeHtml(active.key)}">
+      <div class="muscle-detail-head"><div><span class="label">Selected muscle</span><h3>${context.escapeHtml(active.label)}</h3></div><strong>${active.workingSets} sets</strong></div>
+      <div class="muscle-detail-metrics"><div><span>Volume</span><strong>${formatCompact(active.workingSetVolume)} lb</strong></div><div><span>Reps</span><strong>${formatCompact(active.totalReps)}</strong></div></div>
+      <div class="muscle-contributors">${contributors.map(item => `<div><span>${context.escapeHtml(item.name)}</span><strong>${item.workingSets} set${item.workingSets === 1 ? '' : 's'}</strong></div>`).join('') || '<p>No contributing movements in this window.</p>'}</div>
+    </div>`;
+  }
+
   function renderProgressPreview(exerciseId) {
     const { preview } = elements();
+    if (!preview) return;
     const exercise = context.exercises.find(item => item.id === exerciseId);
     const sessions = sessionHistoryFor(exerciseId);
     if (!exercise || !sessions.length) {
@@ -75,32 +237,67 @@ window.workoutProgress = (() => {
     const best = bestSetAcross(sessions);
     const latest = sessions[0];
     preview.className = 'progress-preview';
-    preview.innerHTML = `<div class="progress-preview-copy"><span class="exercise-muscle">${context.escapeHtml(exercise.muscle)}</span><h3>${context.escapeHtml(exercise.name)}</h3><p>${trendText(sessions)}</p></div><div class="progress-preview-stats"><div><span>Best set</span><strong>${Number(best.weight)} × ${Number(best.reps)}</strong></div><div><span>Best e1RM</span><strong>${best.estimated1RM} lb</strong></div><div><span>Latest</span><strong>${latest.estimated1RM} lb</strong></div></div><button type="button" class="ghost compact" data-progress-exercise="${exerciseId}">Open full progress</button>`;
+    preview.innerHTML = `<div class="progress-preview-copy"><span class="exercise-muscle">${context.escapeHtml(exercise.muscle)}</span><h3>${context.escapeHtml(exercise.name)}</h3><p>${trendText(sessions)}</p></div><div class="progress-preview-stats"><div><span>Best set</span><strong>${Number(best.weight)} × ${Number(best.reps)}</strong></div><div><span>Best e1RM</span><strong>${best.estimated1RM} lb</strong></div><div><span>Latest</span><strong>${latest.estimated1RM} lb</strong></div></div>`;
   }
 
-  function renderProgressPanel() {
-    const { select, button, preview } = elements();
+  function renderProgressDashboard() {
+    const { panel } = elements();
+    if (!panel) return;
+    const workouts = workoutsInWindow();
+    const summary = dashboardSummary(workouts);
+    const groups = workloadGroups();
     const exercises = loggedExercises();
-    const previous = select.value;
-    if (!exercises.length) {
-      select.innerHTML = '<option>No logged exercises yet</option>';
-      select.disabled = true;
-      button.disabled = true;
-      preview.className = 'progress-preview empty';
-      preview.textContent = 'Finish a workout and your movement trends will begin here.';
+    const selectedExercise = exercises.some(exercise => exercise.id === panel.dataset.selectedExercise)
+      ? panel.dataset.selectedExercise
+      : exercises[0]?.id || '';
+    panel.dataset.selectedExercise = selectedExercise;
+
+    panel.className = 'progress-dashboard-panel';
+    panel.innerHTML = `<div class="progress-dashboard-head">
+      <div><span class="label">Training signal</span><h2>${selectedWindowDays}-day progress</h2><p>Derived from completed working sets. Warm-ups stay out of the math.</p></div>
+      <div class="progress-window-toggle" role="group" aria-label="Progress time window">
+        <button type="button" data-progress-window="7" class="${selectedWindowDays === 7 ? 'active' : ''}" aria-pressed="${selectedWindowDays === 7}">7D</button>
+        <button type="button" data-progress-window="30" class="${selectedWindowDays === 30 ? 'active' : ''}" aria-pressed="${selectedWindowDays === 30}">30D</button>
+      </div>
+    </div>
+    <div class="progress-overview-grid" aria-label="Progress overview">
+      <article><span>Sessions</span><strong>${summary.sessions}</strong><small>${selectedWindowDays} day window</small></article>
+      <article><span>Working sets</span><strong>${summary.workingSets}</strong><small>warm-ups excluded</small></article>
+      <article><span>Volume</span><strong>${formatCompact(summary.volume)}</strong><small>lb moved</small></article>
+      <article><span>PRs</span><strong>${summary.prs}</strong><small>strength markers</small></article>
+    </div>
+    <section class="progress-workload-card">
+      <div class="progress-section-head"><div><span class="label">Muscle workload</span><h3>Where the work went.</h3><p>Heat is driven by completed working-set exposure, normalized to this window.</p></div><span class="progress-window-caption">Last ${selectedWindowDays} days</span></div>
+      <div class="muscle-workload-layout">${muscleMapSvg(groups)}<div id="progressMuscleDetail">${muscleDetailMarkup(groups)}</div></div>
+    </section>
+    <section class="progress-strength-card">
+      <div class="progress-section-head"><div><span class="label">Strength record</span><h3>Movement progress.</h3><p>Keep the deep chart one tap away; keep the dashboard readable.</p></div></div>
+      ${exercises.length ? `<div class="progress-picker"><label class="search-box"><span>Logged movement</span><select id="progressExerciseSelect" aria-label="Choose exercise progress">${exercises.map(exercise => `<option value="${exercise.id}" ${exercise.id === selectedExercise ? 'selected' : ''}>${context.escapeHtml(exercise.name)}</option>`).join('')}</select></label><button id="openSelectedProgress" class="secondary" type="button">Open strength details</button></div><div id="progressPreview" class="progress-preview"></div>` : '<div id="progressPreview" class="progress-preview empty">Finish a workout and your movement trends will begin here.</div>'}
+    </section>`;
+
+    if (selectedExercise) renderProgressPreview(selectedExercise);
+  }
+
+  function renderCompactHistory() {
+    const { history } = elements();
+    if (!history) return;
+    const workouts = completedWorkouts().slice(0, 3);
+    if (!workouts.length) {
+      history.className = 'history-list empty';
+      history.textContent = 'Your completed workouts will appear here.';
       return;
     }
-    select.disabled = false;
-    button.disabled = false;
-    select.innerHTML = exercises.map(exercise => `<option value="${exercise.id}">${context.escapeHtml(exercise.name)}</option>`).join('');
-    if (exercises.some(exercise => exercise.id === previous)) select.value = previous;
-    renderProgressPreview(select.value);
+    history.className = 'history-list progress-recent-history';
+    history.innerHTML = `${workouts.map(workout => {
+      const summary = context.analytics.workoutSummary(workout);
+      return `<button type="button" class="history-item" data-history-id="${workout.id}"><div><strong>${context.escapeHtml(workout.type === 'Legs' ? 'Legs + Core' : workout.type)}</strong><small>${context.fmtDate(workout.completedAt)} · ${summary.workingSetCount} working sets · ${formatDuration(summary.durationSeconds)}</small>${workout.entryMethod === 'retrospective' ? '<span class="entered-later">Entered later</span>' : ''}<div class="history-open">View session →</div></div><div class="history-meta"><strong>${formatCompact(summary.workingSetVolume)} lb</strong><small>${summary.exerciseCount} exercises${summary.prCount ? ` · ${summary.prCount} PR${summary.prCount === 1 ? '' : 's'}` : ''}</small></div></button>`;
+    }).join('')}<div class="progress-history-footer"><div><strong>Full archive lives in Calendar.</strong><span>History timeline and filters arrive in 4J4.</span></div><button type="button" class="ghost compact" data-progress-open-calendar>Open Calendar</button></div>`;
   }
 
   function closeProgress() {
     const { dialog } = elements();
-    if (dialog.close && dialog.open) dialog.close();
-    else dialog.removeAttribute('open');
+    if (dialog?.close && dialog.open) dialog.close();
+    else dialog?.removeAttribute('open');
   }
 
   function openExerciseProgress(exerciseId) {
@@ -125,8 +322,8 @@ window.workoutProgress = (() => {
     }
 
     const { dialog } = elements();
-    if (dialog.showModal) dialog.showModal();
-    else dialog.setAttribute('open', '');
+    if (dialog?.showModal) dialog.showModal();
+    else dialog?.setAttribute('open', '');
   }
 
   function decorateLibrary() {
@@ -167,7 +364,7 @@ window.workoutProgress = (() => {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'ghost compact';
-      button.dataset.progressExercise = exercise.id;
+      button.dataset.progressExercise = exercise.definitionId || exercise.id;
       button.textContent = 'Progress';
       actions.prepend(button);
     });
@@ -188,23 +385,66 @@ window.workoutProgress = (() => {
     });
   }
 
+  function handleProgressClick(event) {
+    const windowButton = event.target.closest('[data-progress-window]');
+    if (windowButton) {
+      selectedWindowDays = Number(windowButton.dataset.progressWindow) === 30 ? 30 : 7;
+      selectedMuscle = null;
+      renderProgressDashboard();
+      return;
+    }
+
+    const muscle = event.target.closest('[data-muscle-key]');
+    if (muscle) {
+      selectedMuscle = muscle.dataset.muscleKey;
+      renderProgressDashboard();
+      return;
+    }
+
+    const openCalendar = event.target.closest('[data-progress-open-calendar]');
+    if (openCalendar) {
+      window.bigGainsViewShell?.showView('calendar', { workout: false });
+      return;
+    }
+
+    const progressButton = event.target.closest('[data-progress-exercise]');
+    if (progressButton) {
+      event.preventDefault();
+      openExerciseProgress(progressButton.dataset.progressExercise);
+      return;
+    }
+
+    if (event.target.closest('#openSelectedProgress')) {
+      const select = document.getElementById('progressExerciseSelect');
+      if (select?.value) openExerciseProgress(select.value);
+    }
+  }
+
+  function handleProgressKeydown(event) {
+    const muscle = event.target.closest?.('[data-muscle-key]');
+    if (!muscle || !['Enter', ' '].includes(event.key)) return;
+    event.preventDefault();
+    selectedMuscle = muscle.dataset.muscleKey;
+    renderProgressDashboard();
+  }
+
   function initialize(apiContext) {
     context = apiContext;
     if (initialized) return;
-    const { select, button, dialog } = elements();
-    if (!select || !button || !document.getElementById('progressPreview') || !dialog) return;
+    const { dialog } = elements();
+    if (!document.getElementById('progressPanel') || !dialog) return;
 
-    select.addEventListener('change', event => renderProgressPreview(event.target.value));
-    button.addEventListener('click', () => openExerciseProgress(select.value));
+    document.addEventListener('change', event => {
+      if (event.target.id !== 'progressExerciseSelect') return;
+      const panel = document.getElementById('progressPanel');
+      if (panel) panel.dataset.selectedExercise = event.target.value;
+      renderProgressPreview(event.target.value);
+    });
+    document.addEventListener('click', handleProgressClick);
+    document.addEventListener('keydown', handleProgressKeydown);
     document.getElementById('closeProgressDialog')?.addEventListener('click', closeProgress);
     dialog.addEventListener('click', event => { if (event.target === dialog) closeProgress(); });
     document.getElementById('cancelRoutineDialog')?.addEventListener('click', () => context.closeRoutineEditor());
-    document.addEventListener('click', event => {
-      const progressButton = event.target.closest('[data-progress-exercise]');
-      if (!progressButton) return;
-      event.preventDefault();
-      openExerciseProgress(progressButton.dataset.progressExercise);
-    });
     initialized = true;
   }
 
@@ -221,7 +461,8 @@ window.workoutProgress = (() => {
   }
 
   function afterFullRender({ activeWorkout }) {
-    renderProgressPanel();
+    renderProgressDashboard();
+    renderCompactHistory();
     decorateLibrary();
     decorateActive(activeWorkout);
   }
