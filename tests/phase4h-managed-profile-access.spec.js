@@ -204,6 +204,37 @@ async function installCloudRoutes(page, { membershipRow = membership, slowRecove
   return { fixture, applicationWrites };
 }
 
+test('stale independent onboarding cannot bootstrap after managed membership resolves', async ({ page }) => {
+  await installSession(page, { runtime: true });
+  await page.addInitScript(({ authUserId, accountId, alexaProfileId, storageKey, recoveryKey }) => {
+    localStorage.setItem(storageKey, JSON.stringify({ version: 5, profileId: 'alexa' }));
+    localStorage.setItem(recoveryKey, JSON.stringify({
+      format: 'big-gains.managed-profile-recovery.v1', version: 1,
+      authUserId, accountId, profileId: alexaProfileId,
+      profileClientId: 'alexa', storageKey
+    }));
+  }, { authUserId, accountId, alexaProfileId, storageKey, recoveryKey });
+  const cloud = await installCloudRoutes(page);
+  await openApp(page);
+
+  const result = await page.evaluate(async () => {
+    try {
+      await BigGainsSupabase.bootstrapIndependentAccount('Alexa');
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, code: error.code, message: error.message, accessKind: error.accountState?.accessKind };
+    }
+  });
+
+  expect(result).toMatchObject({
+    ok: false,
+    code: 'managed-member',
+    accessKind: 'managed-member'
+  });
+  expect(result.message).toContain('Managed profile access is already active');
+  expect(cloud.applicationWrites).toEqual([]);
+});
+
 test('fresh managed member restores exact Alexa schema v5, adopts a zero-queue baseline, and remains local-first offline', async ({ page, context }) => {
   await installSession(page);
   const cloud = await installCloudRoutes(page, { slowRecovery: true });
