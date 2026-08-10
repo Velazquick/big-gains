@@ -40,7 +40,7 @@ test('starts, resumes, and expires rest with the existing messages', async ({ pa
   await expect(page.locator('#timerCard')).not.toHaveClass(/hidden/);
   await expect(page.locator('#timerNext')).toHaveText('Recover. Your next set is waiting.');
 
-  await page.evaluate(() => { state.restTimerEndsAt = Date.now(); runRestTimer(); });
+  await page.evaluate(() => { state.restTimerEndsAt = Date.now(); workoutTimerController.reconcile(); });
   await expect(page.locator('#timerDisplay')).toHaveText('00:00');
   await expect(page.locator('#timerNext')).toHaveText("Rest complete. You're up.");
   expect((await jorgeState(page)).restTimerEndsAt).toBeNull();

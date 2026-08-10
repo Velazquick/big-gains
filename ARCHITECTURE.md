@@ -18,24 +18,28 @@ The production script order is:
 5. `cloud-storage.js`
 6. `state-persistence.js`
 7. `profiles.js`
-8. `workout-controls.js`
-9. `notes.js`
-10. `progress.js`
-11. `retrospective-workout.js`
-12. `app.js`
-13. `workout-mode.js`
-14. `v2-shell.js`
-15. `alexa-shell.js`
-16. `training-pet.js`
-17. `design-v21.js`
-18. `session-selector-v26.js`
-19. `sync-gateway.js`
-20. `migration-preview.js`
-21. `cloud-shadow.js`
-22. `cloud-sync.js`
-23. `migration-engine.js`
-24. `controlled-migration.js`
-25. `shell-init.js`
+8. `analytics.js`
+9. `workout-controls.js`
+10. `notes.js`
+11. `timer-controller.js`
+12. `progress.js`
+13. `retrospective-workout.js`
+14. `cloud-shadow.js`
+15. `managed-profile-recovery.js`
+16. `app.js`
+17. `workout-mode.js`
+18. `v2-shell.js`
+19. `alexa-shell.js`
+20. `training-pet.js`
+21. `design-v21.js`
+22. `session-selector-v26.js`
+23. `sync-gateway.js`
+24. `account-onboarding.js`
+25. `migration-preview.js`
+26. `cloud-sync.js`
+27. `migration-engine.js`
+28. `controlled-migration.js`
+29. `shell-init.js`
 
 This order is a runtime contract. Persistence and hook APIs exist before `app.js` consumes them. `app.js` loads and renders the current profile before the shell modules initialize. The final script, `shell-init.js`, initializes the shell modules exactly once in this order: Workout Mode, view shell, profile shell, training pet, direction/momentum, session selector, and sync.
 
@@ -56,27 +60,28 @@ This order is a runtime contract. Persistence and hook APIs exist before `app.js
 | `state-persistence.js` | `bigGainsStatePersistence` and the per-profile object returned by `create(...)` | Profile storage keys, load/normalize/save, legacy weight migration, backup serialization, and import validation. |
 | `profiles.js` | `PROFILE_CONFIG`, `PROFILE`, `switchProfile(...)` | Profile metadata, active-profile selection, theme marker, and reload-based profile switching. Profile-key reads and writes still go through the persistence API. |
 | `workout-controls.js` | `workoutControls` | Render-only active-workout controls plus exercise movement, collapse, and completion advancement. It does not persist state. |
-| `notes.js` | `workoutNotes` | Exercise cue preferences, per-session notes, rest preferences, note decoration, and rest-timer start hooks. |
+| `notes.js` | `workoutNotes` | Exercise cue preferences, per-session notes, rest preferences, note decoration, and pure rest-duration resolution. It does not mutate timer state or start timers. |
+| `timer-controller.js` | `BigGainsTimerController.create(...)` and the `workoutTimerController` instance | Rest-timer lifecycle, persisted-deadline reconciliation, stale-callback identity protection, timer DOM and controls, presets, sound/vibration, timer browser lifecycle listeners, and timer-related pet notifications. It reads replaceable state/session objects through live injected ports and persists only through the `app.js` gateway. |
 | `progress.js` | `workoutProgress` | Progress calculations, dialogs, and explicit post-render decoration hooks. It reads state through the context supplied by `app.js` and does not replace app render functions. |
-| `app.js` | `workoutSessionController` | Live `state` and `active` workout ownership, workout transitions, app rendering, event coordination, persistence calls, timers, PR calculation, backup UI, and service-worker registration. |
+| `app.js` | `workoutSessionController` | Live `state` and `active` workout ownership, workout transitions, app rendering, event coordination, the recovery-aware persistence gateway, completed-history/PR calculation, backup UI, and service-worker registration. It decides when set completion starts rest but delegates the timer mutation to `workoutTimerController`. |
 | `workout-mode.js` | `bigGainsWorkoutMode` | Focus-shell entry/exit, session-scoped explicit-exit memory, return-bar timing, Library departure/return, and moving the existing pet between Today and the active-workout header. It never mutates workout state. |
 | Shell modules | `bigGainsViewShell`, `bigGainsProfileShell`, `trainingPet`, `bigGainsDirection`, `sessionSelector`, `BigGainsSync` | Focused UI behavior. Every `initialize()` is guarded and returns `false` after the first call. |
 | `shell-init.js` | `BigGainsShell` | One deterministic initialization pass across all shell modules. |
 | `service-worker-core.js` | `BigGainsServiceWorkerCore` | Testable cache and fetch runtime used by `service-worker.js`. |
 
-The application uses classic scripts, so `app.js` helpers such as `state`, `active`, `todaysWorkout`, `routineFor`, `renderLibrary`, `startWorkout`, and `showActive` are shared globals consumed by the later shell scripts. They are an implemented coupling, not an additional persistence or data-ownership layer. New cross-module behavior should prefer the frozen APIs and explicit hooks above.
+The application uses classic scripts, so `app.js` helpers such as `state`, `active`, `todaysWorkout`, `routineFor`, `renderLibrary`, `startWorkout`, and `showActive` are shared globals consumed by the later shell scripts. They are an implemented coupling, not an additional persistence or data-ownership layer. `workoutTimerFeedback` remains a compatibility facade backed by `workoutTimerController.feedback`; new timer tests and callers use the frozen `workoutTimerController` API and its immutable `getStatus()` snapshot instead of implementation variables. New cross-module behavior should prefer the frozen APIs and explicit hooks above.
 
 ## Workout-session lifecycle
 
 1. At startup, the current profile state is loaded and `active` is set from `state.activeWorkout`.
 2. `workoutSessionController.start(...)` creates an active workout and optionally appends the selected routine. `resume(...)` re-renders an existing session. `replace(...)` clears the current runtime session before starting the selected routine. `loadRoutine(...)` appends missing routine exercises, and `repairEmpty(...)` repairs a valid active session whose exercise list is empty.
 3. `addExercise(...)` can create an empty session on demand, rejects unknown exercise IDs, and prevents duplicates. New exercises use the last completed performance to seed one warm-up and three working sets.
-4. Set edits, exercise order, collapse state, notes, cues, rest preferences, and timer changes update the live session and save through `app.js`. Rendering alone does not write storage.
+4. Set edits, exercise order, collapse state, notes, and rest preferences update the live session through `app.js`. Timer actions mutate the current state through live controller ports and call the same `app.js` persistence gateway. Rendering alone does not write storage.
 5. A set can be completed only when both weight and reps are non-zero. Completion starts the movement's rest timer. When all working sets for an exercise are complete, `workoutControls.advanceAfterCompletion(...)` collapses it and opens the next incomplete exercise.
 6. `complete()` keeps only exercises with completed sets, calculates duration and new estimated-one-rep-max records, prepends the completed workout, clears the active session and timer, and saves before rendering anything that claims completion. It then creates an in-memory receipt from that saved workout and shows the focused completion screen. Done discards only the receipt and returns to Today; Review workout calls the existing history detail. Reloading cannot reconstruct the receipt or repeat the save. A workout with no completed sets cannot finish.
 7. Cancel requires a second click within 2.5 seconds. `discard()` clears the active workout and rest timer without creating history.
 
-An active workout and its absolute `restTimerEndsAt` timestamp survive reloads. Live or background-return expiry clears the timestamp once, preserves the pet's ready state until the next meaningful set interaction, and shows the accessible READY stack for three seconds before the timer card collapses. A hidden-by-default preset tray replaces the visible duration steppers without changing per-exercise defaults or deadline persistence. Sound and vibration remain independent best-effort enhancements.
+An active workout and its absolute `restTimerEndsAt` timestamp survive reloads. `state.restTimerEndsAt` is the only persisted running-state source of truth; lifecycle, remaining seconds, callback generations, ticker handles, READY state, and feedback state exist only inside `workoutTimerController`. Timer identity is the active workout ID plus the exact deadline, so callbacks from a replaced workout or deadline cannot mutate the current timer. Visibility, pageshow, and focus all reconcile from the live state and active-workout ports. Live or background-return expiry clears the timestamp once, preserves the pet's ready state until the next meaningful set interaction, and shows the accessible READY stack for three seconds before returning to visible idle. A hidden-by-default preset tray changes the next or currently running duration without changing per-exercise defaults or deadline persistence. Sound and vibration remain independent best-effort enhancements.
 
 Timer audio uses one persistent `HTMLAudioElement` and the repository-owned `assets/timer-ready.wav` chime. There is no separate sound-test control. The first trusted start, resume, set-completion, or rest-preset interaction calls `audio.play()` synchronously inside that gesture, temporarily lowers the element to one-percent volume, and stops/resets it as soon as `playing` fires before restoring the prior volume. A rejected or non-starting automatic arm leaves the saved Sound preference intact, remains available for retry on a later trusted workout interaction, and never blocks timer or workout persistence. Turning Sound on still performs an audible direct-gesture verification and briefly confirms success; rejection or timeout from that explicit toggle can mark sound unavailable for only the browser session. Timer completion resets and requests exactly one playback on the same verified element, deduplicates repeated requests for the same rest deadline, and never blocks the visual cue. Unsupported devices hide the vibration control while preserving the saved preference for browsers that expose `navigator.vibrate`.
 
@@ -97,7 +102,7 @@ The current schema version is 5. A blank profile state contains:
 
 `notes.js` also initializes and owns the persisted `exercisePreferences` map. Normalization preserves supported extra state properties while validating workouts, active workouts, exercises, sets, weights, PRs, goals, routines, and timer values.
 
-All current-profile reads and writes are owned by `state-persistence.js`. `app.js` mutates the in-memory state, then calls the profile persistence object's `save(...)`. Pending changes are also saved on `pagehide` and when the document becomes hidden. Render functions and render hooks are storage-free. Separately, notes initialization ensures that `exercisePreferences` exists and performs one startup save.
+All current-profile reads and writes are owned by `state-persistence.js`. `app.js` owns the `saveState()` gateway: it synchronously saves the current state/session, then schedules cloud capture in a microtask. `workoutTimerController` receives that gateway as its `persist` port, so start, Skip, preset replacement, expiry, and preference changes retain the same local-first order. Pending changes are also saved on `pagehide` and when the document becomes hidden. Render functions and render hooks are storage-free. Separately, notes initialization ensures that `exercisePreferences` exists and performs one startup save.
 
 The storage keys are:
 
@@ -140,14 +145,14 @@ The notes and progress features attach through explicit app-owned hooks:
 
 - `workoutNotes.renderActiveNotes(...)` follows active-control rendering.
 - `workoutNotes.renderHistoryNotes(...)` follows history-dialog rendering.
-- Note input handlers call `saveCue(...)`, `saveSessionNote(...)`, and `saveRest(...)`; set completion calls `startRestTimer(...)`.
+- Note input handlers call `saveCue(...)`, `saveSessionNote(...)`, and `saveRest(...)`. `workoutNotes.resolveRestDuration(...)` answers duration precedence without mutation; set completion calls `workoutTimerController.start(...)` through the app-owned decision point.
 - `workoutProgress.afterLibraryRender(...)`, `afterActiveRender(...)`, `afterHistoryOpen(...)`, and `afterFullRender(...)` decorate only the views that `app.js` has just rendered.
 
-`workout-controls.js`, `notes.js`, and `progress.js` do not monkey-patch or replace app globals.
+`workout-controls.js`, `notes.js`, `timer-controller.js`, and `progress.js` do not monkey-patch or replace app globals.
 
 ## Asset and service-worker lifecycle
 
-`asset-manifest.js` is the single asset inventory. Release `v49-phase4f-shadow-sync-readiness` adds the read-only shadow adapter and production one-way local-first transport while retaining the Phase 4E migration/audit boundary and `assets/timer-ready.wav` in the deterministic precache. The manifest applies the release query parameter to every production CSS and application script, rejects duplicate core assets, and supplies the same immutable manifest to the page loader and service worker. `index.html`, the loader, manifest, service-worker core, web manifest, icon, local chime, and all revisioned CSS and scripts form the precached app shell.
+`asset-manifest.js` is the single asset inventory. Release `v64-timer-controller-extraction` adds `timer-controller.js` ahead of `app.js` while retaining `assets/timer-ready.wav` in the deterministic precache. The manifest applies the release query parameter to every production CSS and application script, rejects duplicate core assets, and supplies the same immutable manifest to the page loader and service worker. `index.html`, the loader, manifest, service-worker core, web manifest, icon, local chime, and all revisioned CSS and scripts form the precached app shell.
 
 Workout-card focus is live-session metadata, not schema migration. `focusedExerciseId` prefers the last interacted exercise while it has incomplete working sets, then falls back to the first incomplete exercise. A manual collapse is authoritative and does not clear focus or session data; automatic advancement opens the next incomplete exercise. Upcoming cards remain collapsed and subdued, while completed cards recede but can be expanded for review. Added sets are ordinary incomplete working sets with fresh IDs and values copied only from the latest valid working set.
 

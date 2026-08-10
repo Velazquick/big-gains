@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { installLocalStorageFixture } from './fixtures/local-storage.js';
+import { installLocalStorageFixture, readStoredJson, STORAGE_KEYS } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
 
 const productionScriptOrder = [
@@ -13,6 +13,7 @@ const productionScriptOrder = [
   'analytics.js',
   'workout-controls.js',
   'notes.js',
+  'timer-controller.js',
   'progress.js',
   'retrospective-workout.js',
   'cloud-shadow.js',
@@ -50,17 +51,104 @@ test('notes expose explicit hooks without replacing app globals', async ({ page,
 
   expect(await page.evaluate(() => Object.keys(window.workoutNotes))).toEqual([
     'initialize', 'renderActiveNotes', 'renderHistoryNotes', 'saveCue', 'saveRest',
-    'saveSessionNote', 'startRestTimer'
+    'saveSessionNote', 'resolveRestDuration'
   ]);
 
   const notesSource = await (await request.get('/notes.js')).text();
   expect(notesSource).not.toMatch(/\b(?:startRestTimer|openHistory)\s*=/);
+  expect(notesSource).not.toContain('restTimerEndsAt');
   expect(notesSource).not.toContain('originalStartRestTimer');
   expect(notesSource).not.toContain('originalOpenHistory');
 
   const appSource = await (await request.get('/app.js')).text();
-  expect(appSource).toContain('notesApi.startRestTimer');
+  expect(appSource).toContain('notesApi.resolveRestDuration');
   expect(appSource).toContain('notesApi.renderHistoryNotes');
+});
+
+test('TimerController owns the runtime behind an immutable API and read-only status snapshots', async ({ page, request }) => {
+  await installLocalStorageFixture(page, 'activeWorkoutWithExercises');
+  await openApp(page);
+
+  const api = await page.evaluate(() => {
+    const status = workoutTimerController.getStatus();
+    return {
+      factory: Object.keys(BigGainsTimerController),
+      instance: Object.keys(workoutTimerController),
+      feedback: Object.keys(workoutTimerFeedback),
+      frozenFactory: Object.isFrozen(BigGainsTimerController),
+      frozenInstance: Object.isFrozen(workoutTimerController),
+      frozenStatus: Object.isFrozen(status),
+      secondInitialization: workoutTimerController.initialize(),
+      statusKeys: Object.keys(status)
+    };
+  });
+
+  expect(api).toEqual({
+    factory: ['create'],
+    instance: ['acknowledgeReady', 'deactivate', 'feedback', 'getStatus', 'initialize', 'reconcile', 'renderPreferences', 'selectPreset', 'skip', 'start'],
+    feedback: ['armFromGesture', 'verifyFromGesture', 'complete', 'audioAvailable', 'vibrationAvailable', 'getSoundSessionState'],
+    frozenFactory: true,
+    frozenInstance: true,
+    frozenStatus: true,
+    secondInitialization: false,
+    statusKeys: ['activeWorkoutId', 'deadline', 'feedbackPending', 'identity', 'idleSeconds', 'initialized', 'lastAnnouncedCompletionKey', 'lifecycle', 'oneShotOverrideSeconds', 'remainingSeconds', 'soundSessionState', 'tickerActive']
+  });
+
+  const controllerSource = await (await request.get('/timer-controller.js')).text();
+  const appSource = await (await request.get('/app.js')).text();
+  expect(controllerSource).toContain("Object.defineProperty(scope, 'BigGainsTimerController'");
+  expect(controllerSource).toContain('currentState().restTimerEndsAt = null');
+  expect(appSource).not.toMatch(/\b(?:timerTicker|timerRemaining|runRestTimer|renderTimer|lastAnnouncedCompletionKey)\b/);
+
+  const livePorts = await page.evaluate(() => {
+    let clock = Date.now();
+    let liveState = { restTimerEndsAt: clock + 60_000, timerPreferences: { sound: true, vibration: true } };
+    let liveActive = { id: 'workout-a', exercises: [] };
+    const ticks = [];
+    const controller = BigGainsTimerController.create({
+      getState: () => liveState,
+      getActiveWorkout: () => liveActive,
+      persist: () => {},
+      resolveRestDuration: () => 150,
+      setPetState: () => {},
+      getElement: () => null,
+      formatTime: seconds => String(seconds),
+      now: () => clock,
+      scheduleInterval: callback => { ticks.push(callback); return ticks.length; },
+      cancelInterval: () => {},
+      scheduleTimeout: () => 1,
+      cancelTimeout: () => {}
+    });
+    controller.reconcile();
+    const timerATick = ticks[0];
+    const statusA = controller.getStatus();
+    liveState = { restTimerEndsAt: clock + 90_000, timerPreferences: { sound: true, vibration: true } };
+    liveActive = { id: 'workout-b', exercises: [] };
+    controller.reconcile();
+    const statusB = controller.getStatus();
+    return {
+      frozenIdentity: Object.isFrozen(statusB.identity),
+      staleResult: timerATick(),
+      statusA,
+      statusB,
+      tickCount: ticks.length
+    };
+  });
+
+  expect(livePorts.statusA.identity).toEqual({ activeWorkoutId: 'workout-a', exactDeadline: livePorts.statusA.deadline });
+  expect(livePorts.statusB.identity).toEqual({ activeWorkoutId: 'workout-b', exactDeadline: livePorts.statusB.deadline });
+  expect(livePorts.statusB.deadline).toBeGreaterThan(livePorts.statusA.deadline);
+  expect(livePorts).toMatchObject({ frozenIdentity: true, staleResult: false, tickCount: 2 });
+
+  await page.getByRole('button', { name: 'Complete Set 1 of 3' }).click();
+  const stored = await readStoredJson(page, STORAGE_KEYS.jorge);
+  const legacyV63Deadline = stored.activeWorkout && Number.isFinite(Number(stored.restTimerEndsAt)) && Number(stored.restTimerEndsAt) > 0
+    ? Number(stored.restTimerEndsAt)
+    : null;
+  expect(legacyV63Deadline).toBe(stored.restTimerEndsAt);
+  expect(stored).not.toHaveProperty('timerState');
+  expect(stored).not.toHaveProperty('timerRemaining');
+  expect(stored).not.toHaveProperty('timerGeneration');
 });
 
 test('progress exposes explicit hooks without replacing app globals', async ({ page, request }) => {

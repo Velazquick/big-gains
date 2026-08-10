@@ -5,7 +5,7 @@ import { jorgeState, openApp } from './helpers/app.js';
 test('READY holds for three seconds, returns to visible idle, and keeps the pet ready', async ({ page }) => {
   await installLocalStorageFixture(page, 'activeWorkoutWithExercises');
   await openApp(page);
-  await page.evaluate(() => { state.restTimerEndsAt = Date.now(); runRestTimer(); });
+  await page.evaluate(() => { state.restTimerEndsAt = Date.now(); workoutTimerController.reconcile(); });
 
   await expect(page.locator('#timerCard')).toHaveClass(/timer-feedback-ready/);
   await expect(page.locator('#timerFeedbackStatus')).toHaveText('Rest complete. Ready for your next set.');
@@ -30,16 +30,16 @@ test('background return announces an expired absolute deadline exactly once', as
     document.dispatchEvent(new Event('visibilitychange'));
   });
   await expect(page.locator('#timerFeedbackStatus')).toHaveText('Rest complete. Ready for your next set.');
-  const key = await page.evaluate(() => lastAnnouncedCompletionKey);
+  const key = await page.evaluate(() => workoutTimerController.getStatus().lastAnnouncedCompletionKey);
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
-  expect(await page.evaluate(() => lastAnnouncedCompletionKey)).toBe(key);
+  expect(await page.evaluate(() => workoutTimerController.getStatus().lastAnnouncedCompletionKey)).toBe(key);
   expect((await jorgeState(page)).restTimerEndsAt).toBeNull();
 });
 
 test('compact presets stay hidden, preserve the deadline until selection, and replace it absolutely', async ({ page }) => {
   await installLocalStorageFixture(page, 'activeWorkoutWithExercises');
   await openApp(page);
-  await page.evaluate(() => { state.restTimerEndsAt = Date.now() + 90_000; saveState(); runRestTimer(); });
+  await page.evaluate(() => { state.restTimerEndsAt = Date.now() + 90_000; saveState(); workoutTimerController.reconcile(); });
   const original = (await jorgeState(page)).restTimerEndsAt;
 
   await expect(page.locator('#timerPresets')).toBeHidden();
@@ -60,7 +60,7 @@ test('reduced motion removes timer and hierarchy animation', async ({ page }) =>
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await installLocalStorageFixture(page, 'activeWorkoutWithExercises');
   await openApp(page);
-  await page.evaluate(() => { state.restTimerEndsAt = Date.now(); runRestTimer(); });
+  await page.evaluate(() => { state.restTimerEndsAt = Date.now(); workoutTimerController.reconcile(); });
   expect(await page.locator('#timerCard').evaluate(element => getComputedStyle(element).animationName)).toBe('none');
   expect(await page.locator('.active-exercise').first().evaluate(element => getComputedStyle(element).transitionDuration)).toMatch(/^(0s|0\.01s)$/);
 });

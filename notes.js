@@ -74,15 +74,10 @@
     if (summary) summary.textContent = restLabel(seconds);
   }
 
-  function startRestTimer({ activeWorkout, state, exerciseIndex, defaultRest, overrideSeconds, saveState, runRestTimer, message }) {
+  function resolveRestDuration({ activeWorkout, state, exerciseIndex, defaultRest, overrideSeconds }) {
     const exercise = activeWorkout?.exercises?.[exerciseIndex];
     const pref = exercise ? preferenceFor(state, exercise.id, { create: false }) : {};
-    const seconds = Number(overrideSeconds || exercise?.restSeconds || pref.restSeconds || defaultRest);
-    state.restTimerEndsAt = Date.now() + seconds * 1000;
-    saveState();
-    runRestTimer();
-    if (message && exercise) message.textContent = `${exercise.name} · ${restLabel(seconds)} recovery.`;
-    return seconds;
+    return Number(overrideSeconds || exercise?.restSeconds || pref.restSeconds || defaultRest);
   }
 
   window.workoutNotes = Object.freeze({
@@ -92,6 +87,6 @@
     saveCue,
     saveRest,
     saveSessionNote,
-    startRestTimer
+    resolveRestDuration
   });
 })();

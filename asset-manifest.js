@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v63-seated-iso-lateral-bench-press';
+  const release = 'v64-timer-controller-extraction';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];
@@ -37,6 +37,7 @@
     './analytics.js',
     './workout-controls.js',
     './notes.js',
+    './timer-controller.js',
     './progress.js',
     './retrospective-workout.js',
     './cloud-shadow.js',

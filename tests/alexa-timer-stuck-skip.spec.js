@@ -54,14 +54,17 @@ async function installSzwActiveWorkout(page) {
 }
 
 async function timerSnapshot(page) {
-  return page.evaluate(() => ({
-    display: document.getElementById('timerDisplay').textContent,
-    remaining: timerRemaining,
-    tickerActive: timerTicker !== null,
-    deadline: state.restTimerEndsAt,
-    lifecycle: document.getElementById('timerCard').dataset.timerState,
-    skipDisabled: document.getElementById('timerSkip').disabled
-  }));
+  return page.evaluate(() => {
+    const status = workoutTimerController.getStatus();
+    return {
+      display: document.getElementById('timerDisplay').textContent,
+      remaining: status.remainingSeconds,
+      tickerActive: status.tickerActive,
+      deadline: status.deadline,
+      lifecycle: status.lifecycle,
+      skipDisabled: document.getElementById('timerSkip').disabled
+    };
+  });
 }
 
 async function setVisibility(page, visibilityState) {
@@ -92,15 +95,20 @@ test('Alexa running rest keeps Skip actionable and clears immediately', async ({
 test('Alexa live deadline reconciles after background and foreground', async ({ page }) => {
   await installAlexaActiveWorkout(page);
   await openApp(page);
+  await page.evaluate(() => {
+    window.__alexaNativeSetInterval = window.setInterval;
+    window.__alexaLostTimerTicks = [];
+    window.setInterval = callback => {
+      window.__alexaLostTimerTicks.push(callback);
+      return 9700 + window.__alexaLostTimerTicks.length;
+    };
+  });
   await page.getByRole('button', { name: 'Complete Set 1 of 3' }).click();
   const deadline = (await timerSnapshot(page)).deadline;
 
   await setVisibility(page, 'hidden');
   await page.evaluate(() => {
-    clearInterval(timerTicker);
-    timerTicker = null;
-    timerRemaining = 149;
-    renderTimer();
+    window.setInterval = window.__alexaNativeSetInterval;
   });
   await setVisibility(page, 'visible');
 
@@ -125,9 +133,9 @@ test('Alexa expired-in-background deadline completes once on foreground', async 
 
   const completed = await timerSnapshot(page);
   expect(completed).toMatchObject({ deadline: null, lifecycle: 'ready', tickerActive: false, skipDisabled: true, display: '00:00' });
-  const completionKey = await page.evaluate(() => lastAnnouncedCompletionKey);
+  const completionKey = await page.evaluate(() => workoutTimerController.getStatus().lastAnnouncedCompletionKey);
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-  expect(await page.evaluate(() => lastAnnouncedCompletionKey)).toBe(completionKey);
+  expect(await page.evaluate(() => workoutTimerController.getStatus().lastAnnouncedCompletionKey)).toBe(completionKey);
 });
 
 test('Alexa reload with a future deadline resumes from persisted absolute time', async ({ page }) => {
@@ -170,13 +178,13 @@ test('a stale ticker from timer A cannot clear a newer timer B deadline', async 
     };
 
     state.restTimerEndsAt = Date.now() + 5;
-    runRestTimer();
+    workoutTimerController.reconcile();
     const timerADeadline = state.restTimerEndsAt;
     const timerATick = capturedTicks[0];
     await new Promise(resolve => setTimeout(resolve, 15));
 
     state.restTimerEndsAt = Date.now() + 90_000;
-    runRestTimer();
+    workoutTimerController.reconcile();
     const timerBDeadline = state.restTimerEndsAt;
     window.setInterval = nativeSetInterval;
 
@@ -214,10 +222,10 @@ test('timer A completion-feedback reset cannot clobber timer B', async ({ page }
     };
 
     state.restTimerEndsAt = Date.now() - 1;
-    runRestTimer();
+    workoutTimerController.reconcile();
     const staleFeedbackReset = feedbackCallbacks[0];
     state.restTimerEndsAt = Date.now() + 90_000;
-    runRestTimer();
+    workoutTimerController.reconcile();
     const timerBDeadline = state.restTimerEndsAt;
     staleFeedbackReset();
     window.setTimeout = nativeSetTimeout;
@@ -241,7 +249,7 @@ test('consecutive Alexa rests remain independent across expiry feedback', async 
   const timerADeadline = (await timerSnapshot(page)).deadline;
   await page.evaluate(() => {
     state.restTimerEndsAt = Date.now() - 1;
-    runRestTimer();
+    workoutTimerController.reconcile();
   });
   await expect(page.locator('#timerCard')).toHaveAttribute('data-timer-state', 'ready');
 
