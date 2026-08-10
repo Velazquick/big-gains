@@ -223,7 +223,7 @@ test('failed automatic arming stays retryable and completion plays once after a 
   await page.getByRole('button', { name: 'Complete Set 2 of 3' }).click();
   await expect.poll(() => page.evaluate(() => workoutTimerFeedback.getSoundSessionState())).toBe('verified');
   await page.evaluate(() => { window.__feedbackAudio.playCalls = 0; window.__feedbackAudio.activations = []; });
-  await page.evaluate(() => { state.restTimerEndsAt = Date.now(); runRestTimer(); });
+  await page.evaluate(() => { state.restTimerEndsAt = Date.now(); workoutTimerController.reconcile(); });
 
   expect(await page.evaluate(() => window.__feedbackAudio.playCalls)).toBe(1);
   await expect.poll(() => page.evaluate(() => window.__feedbackAudio.activeListeners)).toBe(0);

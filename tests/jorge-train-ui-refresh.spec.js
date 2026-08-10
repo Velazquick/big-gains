@@ -156,7 +156,7 @@ test('set controls remain touch-sized, persist edits, and keep rest-timer semant
   await expect(page.locator('#timerNext')).toHaveText('Seated Machine Chest Press · 2:30 recovery.');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 
-  await page.evaluate(() => { state.restTimerEndsAt = Date.now(); runRestTimer(); });
+  await page.evaluate(() => { state.restTimerEndsAt = Date.now(); workoutTimerController.reconcile(); });
   await expect(page.locator('#timerCard')).toHaveClass(/timer-feedback-ready/);
   await expect(page.locator('#timerNext')).toHaveText("Rest complete. You're up.");
   expect((await jorgeState(page)).restTimerEndsAt).toBeNull();

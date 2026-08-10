@@ -5,7 +5,7 @@ import { chooseSession, jorgeState, openApp, startSelectedSession } from './help
 async function expireCurrentRest(page) {
   await page.evaluate(() => {
     state.restTimerEndsAt = Date.now();
-    runRestTimer();
+    workoutTimerController.reconcile();
   });
   await expect(page.locator('#timerCard')).toHaveAttribute('data-timer-state', 'ready');
 }
@@ -154,9 +154,9 @@ test('background visibility resolves an expired deadline once and keeps timer av
   await expect(page.locator('#timerCard')).toBeVisible();
   await expect(page.locator('#timerCard')).toHaveAttribute('data-timer-state', 'ready');
   await expect(page.locator('#timerFeedbackStatus')).toHaveText('Rest complete. Ready for your next set.');
-  const completionKey = await page.evaluate(() => lastAnnouncedCompletionKey);
+  const completionKey = await page.evaluate(() => workoutTimerController.getStatus().lastAnnouncedCompletionKey);
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
-  expect(await page.evaluate(() => lastAnnouncedCompletionKey)).toBe(completionKey);
+  expect(await page.evaluate(() => workoutTimerController.getStatus().lastAnnouncedCompletionKey)).toBe(completionKey);
   expect((await jorgeState(page)).restTimerEndsAt).toBeNull();
 });
 

@@ -2,7 +2,7 @@
 
 The Playwright harness serves the static PWA from `index.html` without rewriting it, so production scripts execute in their declared order.
 
-The current baseline is 176 passing Chromium tests with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
+The current baseline is 272 passing Chromium tests across 34 files with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
 
 ## Install
 
@@ -20,7 +20,9 @@ npm test
 npx playwright test --workers=1
 ```
 
-Both modes must pass all 176 tests with no expected failures. In command-limited environments, use the deterministic `--shard=1/2` and `--shard=2/2` split for both normal and `--workers=1` runs.
+Both modes must pass all 272 tests with no expected failures. In command-limited environments, use the deterministic `--shard=1/2` and `--shard=2/2` split for both normal and `--workers=1` runs.
+
+V64 coverage retains the 18 black-box tests in `tests/timer-controller-characterization.spec.js` for stale workout/deadline callbacks, double Skip, exact duration precedence, one-shot consumption, local-first cloud-failure behavior, profile isolation, lifecycle-event equivalence, READY teardown, and schema-v5/cloud-shadow shape. Harness coverage verifies the immutable `BigGainsTimerController.create(...)` and `workoutTimerController` APIs, live replaceable state/session ports, a frozen status snapshot without browser handles, idempotent initialization, v63 deadline rollback compatibility, and production load order. Existing timer tests use `reconcile()` and `getStatus()` rather than directly reading or mutating ticker, remaining-time, render, generation, or completion-key globals.
 
 V49 coverage in `tests/cloud-shadow.spec.js` verifies migration-envelope adoption without rewrites, `big-gains.shadow.v1` checksums, derived-PR exclusion, no cloud-read profile writes, exact missing/extra/tampered/wrong-profile/stale/newer drift, tombstone tie and recreation rules, local-save-before-queue behavior, signed-out offline queue survival, wrong-account refusal, production lost-ACK recovery, migrated-row transition, and affected-row verification.
 
@@ -51,7 +53,7 @@ V50 coverage in `tests/phase4g-independent-user.spec.js` verifies the independen
 
 V48 coverage in `tests/controlled-migration.spec.js` verifies strict metadata-only audit parsing, exact checksum and mapping gates, changed workout/bodyweight/preference blockers, empty-remote requirements, deterministic target payloads and collision-safe bodyweight IDs, exact planned writes, explicit confirmation, first-run verification, lost-response exact-once recovery, safe mid-run resume, conflict refusal, readback count/checksum failures, source-change failure, journal completion ordering, raw-free post-migration audits, and unchanged local storage/backups/snapshots/schema v5. `supabase/tests/database/phase4e_bodyweight_rls.test.sql` adds hosted adversarial ownership, anonymous denial, composite-FK, unit, and immutability coverage.
 
-Notes coverage verifies the explicit notes hook API, active-session notes rendering and persistence, rest-timer start/resume/expiry messaging, history opening, and saved session-note rendering.
+Notes coverage verifies the explicit notes hook API, active-session notes rendering and persistence, pure rest-duration resolution, timer start/resume/expiry messaging through TimerController, history opening, and saved session-note rendering.
 
 Progress coverage verifies the explicit progress hook API and production script order, library and active-session decoration, history decoration, full progress-panel refresh, removal of global render replacement, and render-only storage behavior.
 
@@ -65,7 +67,7 @@ Phase 3 Sprint 2 coverage in `tests/phase3-completion-experience.spec.js` verifi
 
 ## Cache and update coverage
 
-Offline coverage verifies a complete first install, deterministic manifest revisions, unique core assets, migration from the previous Big Gains cache, preservation of unrelated origin caches, awaited precache and runtime writes, visible cache-write failures, ordinary offline reload, active-session reload directly into Workout Mode, and offline loading of the repository-owned WAV chime.
+Offline coverage verifies a complete first install, deterministic manifest revisions, unique core assets, migration from the previous Big Gains cache, preservation of unrelated origin caches, awaited precache and runtime writes, visible cache-write failures, ordinary offline reload, active-session reload directly into Workout Mode, and offline loading of both `timer-controller.js` and the repository-owned WAV chime.
 
 ## Legacy migration policy
 

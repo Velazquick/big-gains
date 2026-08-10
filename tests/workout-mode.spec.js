@@ -50,7 +50,7 @@ async function installAudioMock(page, { outcome = 'success' } = {}) {
 async function showRestTimer(page) {
   await page.evaluate(() => {
     state.restTimerEndsAt = Date.now() + 60_000;
-    runRestTimer();
+    workoutTimerController.reconcile();
   });
   await expect(page.locator('#timerCard')).toBeVisible();
 }
@@ -137,7 +137,7 @@ test('the integrated pet stays restrained through calm, rest, rest-complete, and
   await expect(page.locator('#trainingPet')).toHaveAttribute('data-state', 'attentive');
   await expect(page.locator('#trainingPetMessage')).toHaveText('Breathe.');
 
-  await page.evaluate(() => { state.restTimerEndsAt = Date.now(); runRestTimer(); });
+  await page.evaluate(() => { state.restTimerEndsAt = Date.now(); workoutTimerController.reconcile(); });
   await expect(page.locator('#trainingPet')).toHaveAttribute('data-state', 'ready');
   await expect(page.locator('#trainingPetMessage')).toHaveText("You're up.");
 
@@ -185,11 +185,11 @@ test('supported vibration follows its independent per-profile preference', async
   await openApp(page);
   await showRestTimer(page);
 
-  await page.evaluate(() => { state.restTimerEndsAt = Date.now(); runRestTimer(); });
+  await page.evaluate(() => { state.restTimerEndsAt = Date.now(); workoutTimerController.reconcile(); });
   expect(await page.evaluate(() => window.__vibrationCalls)).toEqual([[150, 80, 150]]);
 
   await page.locator('#timerVibrationToggle').click();
-  await page.evaluate(() => { state.restTimerEndsAt = Date.now(); runRestTimer(); });
+  await page.evaluate(() => { state.restTimerEndsAt = Date.now(); workoutTimerController.reconcile(); });
   expect(await page.evaluate(() => window.__vibrationCalls)).toEqual([[150, 80, 150]]);
   expect((await jorgeState(page)).timerPreferences.vibration).toBe(false);
 });
@@ -221,7 +221,7 @@ test('a rejected Sound-toggle verification marks sound unavailable only for the 
   await expect(page.locator('#timerFeedbackStatus')).toHaveText('Sound unavailable this session: playback was rejected.');
   await expect(page.locator('#timerSoundToggle')).toBeDisabled();
   expect((await jorgeState(page)).timerPreferences.sound).toBe(true);
-  await page.evaluate(() => { state.restTimerEndsAt = Date.now(); runRestTimer(); });
+  await page.evaluate(() => { state.restTimerEndsAt = Date.now(); workoutTimerController.reconcile(); });
   expect(await page.evaluate(() => window.__feedbackAudio.playCalls)).toBe(1);
 });
 
@@ -248,7 +248,7 @@ test('rest completion requests exactly one verified audio playback and shows the
   await expect.poll(() => page.evaluate(() => workoutTimerFeedback.getSoundSessionState())).toBe('verified');
   await page.evaluate(() => { window.__feedbackAudio.playCalls = 0; window.__feedbackAudio.activations = []; window.__vibrationCalls = []; });
 
-  await page.evaluate(() => { state.restTimerEndsAt = Date.now(); runRestTimer(); });
+  await page.evaluate(() => { state.restTimerEndsAt = Date.now(); workoutTimerController.reconcile(); });
   await expect(page.locator('#timerFeedbackStatus')).toHaveText('Rest complete. Ready for your next set.');
   await expect(page.locator('#timerCard')).toHaveClass(/timer-feedback-ready/);
   await expect(page.locator('#trainingPet')).toHaveAttribute('data-state', 'ready');
@@ -266,7 +266,7 @@ test('failed automatic HTMLAudio arming never prevents safe visual timer complet
   await page.getByRole('button', { name: 'Complete Set 1 of 3' }).click();
   await expect(page.locator('#timerSoundToggle')).toBeEnabled();
   expect((await jorgeState(page)).timerPreferences.sound).toBe(true);
-  await page.evaluate(() => { state.restTimerEndsAt = Date.now(); runRestTimer(); });
+  await page.evaluate(() => { state.restTimerEndsAt = Date.now(); workoutTimerController.reconcile(); });
 
   await expect(page.locator('#timerNext')).toHaveText("Rest complete. You're up.");
   await expect(page.locator('#timerFeedbackStatus')).toHaveText('Rest complete. Ready for your next set.');

@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import {
   blankState,
   completedWorkout,
+  activeWorkout,
   installLocalStorageFixture,
   localStorageFixtures,
   readStoredJson,
@@ -150,6 +151,49 @@ test('exports the existing backup format and restores it without schema changes'
   await dialog.accept();
 
   expect(await readStoredJson(page, STORAGE_KEYS.jorge)).toEqual(exported);
+});
+
+test('same-profile imports replace live timer ports without retaining the prior state or session', async ({ page }) => {
+  await installLocalStorageFixture(page, 'activeWorkoutWithExercises');
+  await openApp(page);
+  await page.getByRole('button', { name: 'Complete Set 1 of 3' }).click();
+  const timerA = await page.evaluate(() => workoutTimerController.getStatus());
+
+  const importedDeadline = Date.now() + 120_000;
+  const imported = {
+    ...blankState('jorge'),
+    exercisePreferences: {},
+    activeWorkout: activeWorkout({ id: 'imported-active-workout' }),
+    restTimerEndsAt: importedDeadline
+  };
+  let dialogPromise = page.waitForEvent('dialog');
+  await page.locator('#importData').setInputFiles({
+    name: 'jorge-active-backup.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(imported))
+  });
+  let dialog = await dialogPromise;
+  expect(dialog.message()).toBe('Backup restored for Jorge.');
+  await dialog.accept();
+
+  const timerB = await page.evaluate(() => workoutTimerController.getStatus());
+  expect(timerB.identity).toEqual({ activeWorkoutId: 'imported-active-workout', exactDeadline: importedDeadline });
+  expect(timerB.identity).not.toEqual(timerA.identity);
+  expect(timerB.lifecycle).toBe('running');
+
+  dialogPromise = page.waitForEvent('dialog');
+  await page.locator('#importData').setInputFiles({
+    name: 'jorge-blank-backup.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(blankState('jorge')))
+  });
+  dialog = await dialogPromise;
+  expect(dialog.message()).toBe('Backup restored for Jorge.');
+  await dialog.accept();
+
+  const cleared = await page.evaluate(() => workoutTimerController.getStatus());
+  expect(cleared).toMatchObject({ activeWorkoutId: null, deadline: null, lifecycle: 'unavailable', tickerActive: false });
+  await expect(page.locator('#timerCard')).toBeHidden();
 });
 
 test('renders completed workout history from persisted state', async ({ page }) => {

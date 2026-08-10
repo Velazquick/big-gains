@@ -572,12 +572,14 @@ test('repeated exposed initialization does not duplicate timer lifecycle or pres
   await completeSet(page, 1);
 
   const initialization = await page.evaluate(() => [
+    workoutTimerController.initialize(),
+    workoutTimerController.initialize(),
     BigGainsShell.initialize(),
     BigGainsShell.initialize(),
     bigGainsWorkoutMode.initialize(),
     bigGainsWorkoutMode.initialize()
   ]);
-  expect(initialization).toEqual([false, false, false, false]);
+  expect(initialization).toEqual([false, false, false, false, false, false]);
 
   await installIntervalCapture(page);
   await dispatchLifecycle(page, 'focus');
