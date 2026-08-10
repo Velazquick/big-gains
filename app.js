@@ -73,7 +73,6 @@ function renderSelectors(){const tabs=$('dayTabs');tabs.innerHTML=LIBRARY_ROUTIN
 function renderEquipment(){if($('equipmentFilter').options.length>1)return;[...new Set(CATALOG_EXERCISES.map(e=>e.equipment))].sort().forEach(eq=>$('equipmentFilter').add(new Option(eq,eq)));}
 function renderLibrary(){renderSelectors();const q=$('exerciseSearch').value,eq=$('equipmentFilter').value,knownRoutine=new Set(routineFor(selectedDay));const list=CATALOG_EXERCISES.filter(e=>(PROFILE.capabilities.allExercises||e.day===selectedDay||selectedDay==='Other'||knownRoutine.has(e.id))&&exerciseCatalog.matchesSearch(e,q)&&(eq==='all'||e.equipment===eq));$('exerciseLibrary').innerHTML=list.length?list.map(e=>`<article class="exercise-card ${active&&active.exercises.some(x=>x.id===e.id)?'added':''}"><div><span class="exercise-muscle">${escapeHtml(e.muscle)}</span><h3>${escapeHtml(e.name)}</h3><p>${escapeHtml(e.equipment)}</p></div><button type="button" class="add-exercise primary compact" data-add="${e.id}">${active&&active.exercises.some(x=>x.id===e.id)?'Added':'Add'}</button></article>`).join(''):'<div class="no-results">No matching exercises.</div>';progressApi.afterLibraryRender();}
 function lastPerformance(exerciseId){return analyticsApi.previousPerformance(state.workouts,exerciseId);}
-function makeExercise(ex,prescription=null){const last=lastPerformance(ex.id),prior=last?last.workingSets:[],working=prior[0]?Number(prior[0].weight)||0:0,warm=working?Math.round(working*.6/5)*5:0,workingSets=Number(prescription?.workingSets)||3,targetReps=typeof prescription?.targetReps==='string'?prescription.targetReps:'';return {id:ex.id,name:ex.name,muscle:ex.muscle,equipment:ex.equipment,collapsed:true,...(prescription?{targetWorkingSets:workingSets,...(targetReps?{targetReps}:{})}:{}),sets:[{id:uid(),weight:warm,reps:10,warmup:true,completed:false},...Array.from({length:workingSets},(_,i)=>({id:uid(),weight:prior[i]?Number(prior[i].weight)||working:working,reps:prior[i]?Number(prior[i].reps)||'':'',warmup:false,completed:false}))]};}
 function renderActiveSession(scroll=true){if(!active)return;selectedDay=active.type;$('activePanel').classList.remove('hidden');$('cancelWorkout').classList.remove('hidden');$('cancelWorkout').textContent='Cancel';$('activeWorkoutTitle').textContent=displayWorkout(active.type);if($('activeWorkoutMeta'))$('activeWorkoutMeta').textContent=`${active.exercises.length} movement${active.exercises.length===1?'':'s'} · In progress`;clearInterval(workoutTicker);workoutTicker=setInterval(renderWorkoutClock,1000);renderWorkoutClock();renderActive();renderLibrary();timerController.renderPreferences();timerController.reconcile();if(scroll)$('activePanel').scrollIntoView({behavior:'smooth',block:'start'});}
 function renderCompletion(workout){
   if(!workout)return false;
@@ -111,21 +110,29 @@ function dismissCompletion(){
   return true;
 }
 function reviewCompletedWorkout(){if(!completionReceipt)return false;openHistory(completionReceipt.workoutId);return true;}
-const workoutSessionController=(()=>{
-  function begin(day){selectedDay=day;active={id:uid(),type:day,startedAt:new Date().toISOString(),exercises:[]};return active;}
-  function appendRoutine(day){const before=active.exercises.length;routineEngine.getRoutine(day).forEach(id=>{const ex=exerciseCatalog.getById(id);if(ex&&!active.exercises.some(item=>item.id===ex.id))active.exercises.push(makeExercise(ex,routineEngine.getPrescription(day,id)));});return active.exercises.length-before;}
-  function renderLoaded(scroll){renderActive();renderLibrary();if(scroll)$('activePanel').scrollIntoView({behavior:'smooth',block:'start'});}
-  function clearRuntime(hideActive=true){active=null;state.activeWorkout=null;state.restTimerEndsAt=null;clearInterval(workoutTicker);timerController.deactivate();setWorkoutPetState(null);if(hideActive)$('activePanel').classList.add('hidden');$('cancelWorkout').classList.add('hidden');$('cancelWorkout').textContent='Cancel';cancelArmedUntil=0;}
-  function start(day=selectedDay,{loadRoutine:shouldLoad=true,scroll=true}={}){if(active)return resume(scroll);begin(day);if(shouldLoad)appendRoutine(day);autosave();renderActiveSession(scroll);return active;}
-  function resume(scroll=true,{enterMode=true}={}){if(!active)return null;renderActiveSession(scroll);if(enterMode&&typeof window.bigGainsWorkoutMode?.enter==='function')window.bigGainsWorkoutMode.enter();return active;}
-  function replace(day=selectedDay,{loadRoutine:shouldLoad=true,scroll=true}={}){if(!active)return start(day,{loadRoutine:shouldLoad,scroll});clearRuntime(false);begin(day);if(shouldLoad)appendRoutine(day);autosave();renderActiveSession(scroll);return active;}
-  function loadRoutine(day=selectedDay,{scroll=true}={}){if(!active)return start(day,{loadRoutine:true,scroll});appendRoutine(day);autosave();renderLoaded(scroll);return active;}
-  function repairEmpty(session=active,{scroll=false}={}){if(session!==active||!session||!Array.isArray(session.exercises)||session.exercises.length||!routineEngine.hasRoutine(session.type))return false;const added=appendRoutine(session.type);if(!added)return false;autosave();renderLoaded(scroll);return true;}
-  function addExercise(id,{scroll=true}={}){const ex=exerciseCatalog.getById(id);if(!ex)return active;const created=!active;if(created)begin(selectedDay);if(active.exercises.some(exercise=>exercise.id===id))return active;active.exercises.push(makeExercise(ex));autosave();if(created)renderActiveSession(scroll);else renderLoaded(scroll);return active;}
-  function complete(){if(!active)return false;const completed=active.exercises.map(e=>({...e,sets:e.sets.filter(s=>s.completed)})).filter(e=>e.sets.length);if(!completed.length)return false;const completedAt=new Date().toISOString(),durationSeconds=Math.floor((Date.now()-new Date(active.startedAt))/1000),workout={...active,completedAt,durationSeconds,exercises:completed};let newPRs=0;completed.forEach(e=>e.sets.filter(s=>!s.warmup).forEach(s=>{const score=estimate1RM(Number(s.weight),Number(s.reps));if(score>((state.prs[e.id]&&state.prs[e.id].estimated1RM)||0)){state.prs[e.id]={exercise:e.name,estimated1RM:score,weight:Number(s.weight),reps:Number(s.reps),date:completedAt};newPRs++;}}));workout.prs=newPRs;state.workouts.unshift(workout);clearRuntime();saveState();$('heroNote').textContent=`Workout saved${newPRs?` · ${newPRs} new PR${newPRs===1?'':'s'}`:''}.`;renderAll();renderCompletion(workout);return true;}
-  function discard(){if(!active)return false;clearRuntime();saveState();renderHero();renderLibrary();$('workoutPanel').scrollIntoView({behavior:'smooth'});return true;}
-  return Object.freeze({start,resume,replace,loadRoutine,repairEmpty,addExercise,complete,discard});
-})();
+const workoutSessionController=BigGainsWorkoutSessionController.create({
+  getState:()=>state,
+  getActiveWorkout:()=>active,
+  setActiveWorkout:next=>{active=next;state.activeWorkout=next;},
+  getSelectedDay:()=>selectedDay,
+  setSelectedDay:next=>{selectedDay=next;},
+  routineEngine,
+  exerciseCatalog,
+  previousPerformance:lastPerformance,
+  estimate1RM,
+  createId:uid,
+  persist:saveState,
+  deactivateTimer:()=>timerController.deactivate(),
+  clearWorkoutTicker:()=>clearInterval(workoutTicker),
+  setPetState:setWorkoutPetState,
+  onRuntimeCleared:({hideActive})=>{if(hideActive)$('activePanel').classList.add('hidden');$('cancelWorkout').classList.add('hidden');$('cancelWorkout').textContent='Cancel';cancelArmedUntil=0;},
+  renderActiveSession,
+  renderLoadedSession:scroll=>{renderActive();renderLibrary();if(scroll)$('activePanel').scrollIntoView({behavior:'smooth',block:'start'});},
+  renderHero,
+  enterWorkoutMode:()=>window.bigGainsWorkoutMode?.enter(),
+  onCompleted:({workout,newPRs})=>{$('heroNote').textContent=`Workout saved${newPRs?` · ${newPRs} new PR${newPRs===1?'':'s'}`:''}.`;renderAll();renderCompletion(workout);},
+  onDiscarded:()=>{renderHero();renderLibrary();$('workoutPanel').scrollIntoView({behavior:'smooth'});}
+});
 window.workoutSessionController=workoutSessionController;
 function showActive(scroll=true){return workoutSessionController.resume(scroll,{enterMode:false});}
 function startWorkout(day=selectedDay,load=true){return workoutSessionController.start(day,{loadRoutine:load,scroll:true});}
