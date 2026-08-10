@@ -142,11 +142,14 @@ function storageFor(identity) {
 async function installIdentity(page, identity, {
   driftMetadata = false,
   localStates = {},
+  localStateRaw = {},
   queueDocument = null,
+  queueRaw = null,
+  legacyState = null,
   failPersistenceKey = null
 } = {}) {
   const storage = storageFor(identity);
-  await page.addInitScript(({ identity, storage, driftMetadata, localStates, queueDocument, failPersistenceKey, now }) => {
+  await page.addInitScript(({ identity, storage, driftMetadata, localStates, localStateRaw, queueDocument, queueRaw, legacyState, failPersistenceKey, now }) => {
     window.__BIG_GAINS_CLOUD_CONFIG__ = {
       supabaseUrl: 'https://synthetic-phase4k.supabase.co',
       supabasePublishableKey: 'sb_publishable_phase4k',
@@ -175,40 +178,49 @@ async function installIdentity(page, identity, {
       }
     }));
     if (identity.kind === 'managed-owner') localStorage.setItem('big-gains-active-profile', 'jorge');
-    for (const [profileId, value] of Object.entries(localStates)) localStorage.setItem(storage.states[profileId], JSON.stringify(value));
-    if (driftMetadata) {
-      localStorage.setItem(storage.comparison, JSON.stringify({
-        contract: 'big-gains.shadow.v1', parity: false, comparedAt: now,
-        profiles: {}, reasons: ['Fresh local profile was empty during the first comparison.']
-      }));
-      localStorage.setItem(storage.catalog, JSON.stringify({
-        format: 'big-gains.shadow-catalog.v1', version: 1, accountId: identity.account.id,
-        authUserId: identity.authUserId, migrationId: 'harmless-stale-metadata', profiles: {}
-      }));
+    if (sessionStorage.getItem('big-gains-test-recovery-fixture-seeded') !== 'true') {
+      for (const [profileId, value] of Object.entries(localStates)) localStorage.setItem(storage.states[profileId], JSON.stringify(value));
+      for (const [profileId, value] of Object.entries(localStateRaw)) localStorage.setItem(storage.states[profileId], value);
+      if (driftMetadata) {
+        localStorage.setItem(storage.comparison, JSON.stringify({
+          contract: 'big-gains.shadow.v1', parity: false, comparedAt: now,
+          profiles: {}, reasons: ['Fresh local profile was empty during the first comparison.']
+        }));
+        localStorage.setItem(storage.catalog, JSON.stringify({
+          format: 'big-gains.shadow-catalog.v1', version: 1, accountId: identity.account.id,
+          authUserId: identity.authUserId, migrationId: 'harmless-stale-metadata', profiles: {}
+        }));
+      }
+      if (queueDocument) localStorage.setItem(storage.queue, JSON.stringify(queueDocument));
+      if (queueRaw !== null) localStorage.setItem(storage.queue, queueRaw);
+      if (legacyState !== null) localStorage.setItem('big-gains-v1', JSON.stringify(legacyState));
+      sessionStorage.setItem('big-gains-test-recovery-fixture-seeded', 'true');
+      if (failPersistenceKey) {
+        const original = Storage.prototype.setItem;
+        let failed = false;
+        Storage.prototype.setItem = function(key, value) {
+          if (!failed && key === failPersistenceKey) { failed = true; throw new DOMException('Synthetic quota failure', 'QuotaExceededError'); }
+          return original.call(this, key, value);
+        };
+      }
     }
-    if (queueDocument) localStorage.setItem(storage.queue, JSON.stringify(queueDocument));
-    if (failPersistenceKey) {
-      const original = Storage.prototype.setItem;
-      let failed = false;
-      Storage.prototype.setItem = function(key, value) {
-        if (!failed && key === failPersistenceKey) { failed = true; throw new DOMException('Synthetic quota failure', 'QuotaExceededError'); }
-        return original.call(this, key, value);
-      };
-    }
-  }, { identity, storage, driftMetadata, localStates, queueDocument, failPersistenceKey, now: NOW });
+  }, { identity, storage, driftMetadata, localStates, localStateRaw, queueDocument, queueRaw, legacyState, failPersistenceKey, now: NOW });
   return storage;
 }
 
 async function installCloud(page, identity, { malformed = false, slow = false } = {}) {
   const fixture = cloudFixture(identity, { malformed });
   const writes = [];
+  const reads = [];
   let delayed = false;
+  let changedMapping = false;
   await page.route('https://synthetic-phase4k.supabase.co/**', async route => {
     const request = route.request();
     const url = new URL(request.url());
     const headers = { 'access-control-allow-origin': '*', 'content-type': 'application/json' };
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
     const table = url.pathname.split('/').pop();
+    reads.push(table);
     if (!['GET', 'HEAD'].includes(request.method())) {
       writes.push(`${request.method()} ${table}`);
       return route.fulfill({ status: 500, headers, body: JSON.stringify({ message: 'Recovery must remain read-only.' }) });
@@ -216,7 +228,9 @@ async function installCloud(page, identity, { malformed = false, slow = false } 
     let data = [];
     if (table === 'accounts') data = [identity.account];
     else if (table === 'profile_memberships') data = [];
-    else if (table === 'profiles') data = Object.values(identity.profiles);
+    else if (table === 'profiles') data = Object.values(identity.profiles).map(profile => changedMapping && profile.client_id === Object.keys(identity.profiles)[0]
+      ? { ...profile, id: '62000000-0000-0000-0000-000000000099' }
+      : profile);
     else if (table === 'tombstones') data = fixture.tombstones;
     else if (table === 'sync_metadata') data = identity.kind === 'managed-owner' ? [{
       id: 'managed-journal', account_id: identity.account.id, profile_id: null,
@@ -235,7 +249,7 @@ async function installCloud(page, identity, { malformed = false, slow = false } 
       body: request.method() === 'HEAD' ? '' : JSON.stringify(data)
     });
   });
-  return { fixture, writes };
+  return { fixture, writes, reads, changeMapping: () => { changedMapping = true; } };
 }
 
 function blankLocal(profileId, primary = 'Local sentinel') {
@@ -244,6 +258,309 @@ function blankLocal(profileId, primary = 'Local sentinel') {
     restTimerEndsAt: null, customRoutines: {}, timerPreferences: { sound: true, vibration: true }
   };
 }
+
+function defaultGoals(profileId) {
+  if (profileId === 'alexa') return {
+    primary: 'Weight loss', secondary: ['Glute and leg growth', 'Back growth'],
+    startingWeight: 225, targetDate: '2026-12-20'
+  };
+  if (profileId === SZW_CLIENT) return { primary: 'Strength and consistency' };
+  return { primary: 'Strength and performance' };
+}
+
+function blankArtifact(profileId, overrides = {}) {
+  return {
+    version: 5,
+    profileId,
+    goals: defaultGoals(profileId),
+    workouts: [],
+    weights: [],
+    prs: {},
+    activeWorkout: null,
+    restTimerEndsAt: null,
+    customRoutines: {},
+    timerPreferences: { sound: true, vibration: true },
+    exercisePreferences: {},
+    ...overrides
+  };
+}
+
+async function waitForManagedRestore(page, storage) {
+  let restored = null;
+  await expect.poll(async () => {
+    try {
+      restored = await page.evaluate(keys => ({
+        jorge: JSON.parse(localStorage.getItem(keys.states.jorge) || 'null'),
+        alexa: JSON.parse(localStorage.getItem(keys.states.alexa) || 'null'),
+        marker: JSON.parse(localStorage.getItem(keys.recovery) || 'null'),
+        comparison: JSON.parse(localStorage.getItem(keys.comparison) || 'null'),
+        recoveryUiSeen: sessionStorage.getItem('big-gains-test-partial-recovery-ui-seen'),
+        comparisonPreempted: sessionStorage.getItem('big-gains-test-recovery-preempted-comparison')
+      }), storage);
+      return [restored.jorge?.workouts?.[0]?.id || null, restored.alexa?.workouts?.[0]?.id || null];
+    } catch { return null; }
+  }).toEqual(['jorge-cloud-workout', 'alexa-cloud-workout']);
+  return restored;
+}
+
+async function directRecovery(page) {
+  return page.evaluate(async () => BigGainsManagedProfileRecovery.restore({
+    owner: await BigGainsSupabase.readCloudAccount(),
+    session: await BigGainsSupabase.session()
+  }));
+}
+
+test('managed owner restores persisted blank Jorge plus missing Alexa before normal shadow comparison', async ({ page }) => {
+  const storage = await installIdentity(page, managedIdentity, {
+    driftMetadata: true,
+    localStates: { jorge: blankArtifact('jorge') }
+  });
+  await page.addInitScript(() => {
+    const rememberRecoveryBoundary = () => {
+      const panelText = document.getElementById('independentAccountOnboarding')?.textContent || '';
+      if (panelText.includes('Restoring your training to this device')) {
+        sessionStorage.setItem('big-gains-test-partial-recovery-ui-seen', 'true');
+      }
+      const status = window.BigGainsCloudSync?.status?.();
+      if (status?.lastResult?.reason === 'awaiting-fresh-device-recovery'
+        && status.lastComparison?.comparedAt === '2026-08-09T12:00:00.000Z'
+        && status.lastComparison?.reasons?.includes('Fresh local profile was empty during the first comparison.')) {
+        sessionStorage.setItem('big-gains-test-recovery-preempted-comparison', 'true');
+      }
+    };
+    new MutationObserver(rememberRecoveryBoundary).observe(document, { childList: true, subtree: true, characterData: true });
+    const interval = window.setInterval(rememberRecoveryBoundary, 20);
+    window.addEventListener('pagehide', () => window.clearInterval(interval), { once: true });
+  });
+  const cloud = await installCloud(page, managedIdentity, { slow: true });
+  await openApp(page);
+
+  const restored = await waitForManagedRestore(page, storage);
+  expect(restored.recoveryUiSeen).toBe('true');
+  expect(restored.comparisonPreempted).toBe('true');
+
+  expect(restored.jorge).toMatchObject({
+    profileId: 'jorge', workouts: [{ id: 'jorge-cloud-workout' }], weights: [{ weight: 220.5 }],
+    activeWorkout: null, restTimerEndsAt: null
+  });
+  expect(restored.alexa).toMatchObject({ profileId: 'alexa', workouts: [{ id: 'alexa-cloud-workout' }] });
+  expect(restored.marker).toMatchObject({ format: 'big-gains.fresh-device-recovery.v1', kind: 'managed-owner' });
+  expect(restored.comparison.parity).toBe(true);
+  expect(cloud.writes).toEqual([]);
+});
+
+test('managed owner restores missing Jorge plus persisted blank Alexa', async ({ page }) => {
+  const storage = await installIdentity(page, managedIdentity, {
+    localStates: { alexa: blankArtifact('alexa') }
+  });
+  const cloud = await installCloud(page, managedIdentity);
+  await openApp(page);
+
+  const restored = await waitForManagedRestore(page, storage);
+  expect(restored.jorge.workouts[0].id).toBe('jorge-cloud-workout');
+  expect(restored.alexa.workouts[0].id).toBe('alexa-cloud-workout');
+  expect(restored.comparison.parity).toBe(true);
+  expect(cloud.writes).toEqual([]);
+});
+
+test('managed owner restores when both profile namespaces are exact blank startup artifacts', async ({ page }) => {
+  const storage = await installIdentity(page, managedIdentity, {
+    localStates: { jorge: blankArtifact('jorge'), alexa: blankArtifact('alexa') }
+  });
+  const cloud = await installCloud(page, managedIdentity);
+  await openApp(page);
+
+  const restored = await waitForManagedRestore(page, storage);
+  expect(restored.jorge.workouts[0].id).toBe('jorge-cloud-workout');
+  expect(restored.alexa.workouts[0].id).toBe('alexa-cloud-workout');
+  expect(restored.marker.profiles).toHaveLength(2);
+  expect(cloud.writes).toEqual([]);
+});
+
+const meaningfulBlankMutations = [
+  {
+    label: 'completed workout',
+    mutate: state => ({ ...state, workouts: [{
+      id: 'local-workout-sentinel', type: 'Push', startedAt: NOW, completedAt: NOW,
+      durationSeconds: 0, prs: 0, exercises: []
+    }] })
+  },
+  {
+    label: 'bodyweight',
+    mutate: state => ({ ...state, weights: [{ weight: 222, date: NOW }] })
+  },
+  {
+    label: 'custom routine',
+    mutate: state => ({ ...state, customRoutines: { Push: ['barbell-bench-press'] } })
+  },
+  {
+    label: 'exercise preference',
+    mutate: state => ({ ...state, exercisePreferences: { 'barbell-bench-press': { restSeconds: 90 } } })
+  },
+  {
+    label: 'changed timer preference',
+    mutate: state => ({ ...state, timerPreferences: { sound: false, vibration: true } })
+  },
+  {
+    label: 'active workout',
+    mutate: state => ({ ...state, activeWorkout: {
+      id: 'local-active-sentinel', type: 'Push', startedAt: NOW,
+      exercises: [{
+        id: 'local-exercise-sentinel', name: 'Local Exercise Sentinel', muscle: 'Chest', equipment: 'Barbell',
+        collapsed: true, sets: []
+      }]
+    } })
+  },
+  {
+    label: 'rest deadline',
+    mutate: state => ({ ...state, restTimerEndsAt: Date.parse('2036-08-09T12:02:00.000Z') })
+  },
+  {
+    label: 'non-default goals',
+    mutate: state => ({ ...state, goals: { primary: 'Local goal sentinel' } })
+  },
+  {
+    label: 'unknown user content',
+    mutate: state => ({ ...state, sessionNotes: ['Local note sentinel'] })
+  }
+];
+
+for (const scenario of meaningfulBlankMutations) {
+  test(`partial-blank recovery blocks ${scenario.label} without overwriting it`, async ({ page }) => {
+    const localState = scenario.mutate(blankArtifact('jorge'));
+    const storage = await installIdentity(page, managedIdentity, { localStates: { jorge: localState } });
+    const cloud = await installCloud(page, managedIdentity);
+    await openApp(page);
+
+    const result = await directRecovery(page);
+    expect(result).toMatchObject({ ok: false, blocked: true, reason: 'local-namespace-not-empty' });
+    expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key)), storage.states.jorge)).toEqual(localState);
+    expect(await page.evaluate(key => localStorage.getItem(key), storage.recovery)).toBeNull();
+    expect(cloud.writes).toEqual([]);
+  });
+}
+
+test('wrong profile ID cannot normalize into a disposable blank artifact', async ({ page }) => {
+  const mismatched = { ...blankArtifact('jorge'), profileId: 'alexa' };
+  const storage = await installIdentity(page, managedIdentity, { localStates: { jorge: mismatched } });
+  const cloud = await installCloud(page, managedIdentity);
+  await openApp(page);
+
+  expect(await page.evaluate(() => BigGainsManagedProfileRecovery.needsRecoveryForCurrentRuntime())).toBe(false);
+  const result = await directRecovery(page);
+  expect(result).toMatchObject({ ok: false, blocked: true, reason: 'local-namespace-not-empty' });
+  expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key)), storage.states.jorge)).toEqual(mismatched);
+  expect(await page.evaluate(key => localStorage.getItem(key), storage.recovery)).toBeNull();
+  expect(cloud.writes).toEqual([]);
+});
+
+test('invalid local profile JSON cannot normalize into a disposable blank artifact', async ({ page }) => {
+  const storage = await installIdentity(page, managedIdentity, { localStateRaw: { jorge: '{invalid-profile-json' } });
+  const cloud = await installCloud(page, managedIdentity);
+  await openApp(page);
+
+  expect(await page.evaluate(() => BigGainsManagedProfileRecovery.needsRecoveryForCurrentRuntime())).toBe(false);
+  const result = await directRecovery(page);
+  expect(result).toMatchObject({ ok: false, blocked: true, reason: 'local-namespace-not-empty' });
+  expect(await page.evaluate(key => localStorage.getItem(key), storage.states.jorge)).toBe('{invalid-profile-json');
+  expect(await page.evaluate(key => localStorage.getItem(key), storage.recovery)).toBeNull();
+  expect(cloud.writes).toEqual([]);
+});
+
+test('legacy Jorge state blocks replacement of a blank startup artifact', async ({ page }) => {
+  const artifact = blankArtifact('jorge');
+  const storage = await installIdentity(page, managedIdentity, {
+    localStates: { jorge: artifact },
+    legacyState: { weights: [{ weight: 199, date: NOW }] }
+  });
+  const cloud = await installCloud(page, managedIdentity);
+  await openApp(page);
+
+  expect(await page.evaluate(() => BigGainsManagedProfileRecovery.needsRecoveryForCurrentRuntime())).toBe(false);
+  const result = await directRecovery(page);
+  expect(result).toMatchObject({ ok: false, blocked: true, reason: 'local-namespace-not-empty' });
+  expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key)), storage.states.jorge)).toEqual(artifact);
+  expect(cloud.writes).toEqual([]);
+});
+
+test('invalid durable queue blocks partial-blank recovery', async ({ page }) => {
+  const artifact = blankArtifact('jorge');
+  const storage = await installIdentity(page, managedIdentity, {
+    localStates: { jorge: artifact },
+    queueRaw: '{invalid-queue-json'
+  });
+  const cloud = await installCloud(page, managedIdentity);
+  await openApp(page);
+
+  expect(await page.evaluate(() => BigGainsManagedProfileRecovery.needsRecoveryForCurrentRuntime())).toBe(false);
+  const result = await directRecovery(page);
+  expect(result).toMatchObject({ ok: false, blocked: true, reason: 'local-queue-not-empty' });
+  expect(await page.evaluate(key => localStorage.getItem(key), storage.queue)).toBe('{invalid-queue-json');
+  expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key)), storage.states.jorge)).toEqual(artifact);
+  expect(cloud.writes).toEqual([]);
+});
+
+test('incomplete recovery marker blocks replacement of blank artifacts', async ({ page }) => {
+  const artifact = blankArtifact('jorge');
+  const storage = await installIdentity(page, managedIdentity, { localStates: { jorge: artifact } });
+  await page.addInitScript(key => {
+    localStorage.setItem(key, JSON.stringify({ format: 'big-gains.fresh-device-recovery.v1', version: 1, incomplete: true }));
+  }, storage.recovery);
+  const cloud = await installCloud(page, managedIdentity);
+  await openApp(page);
+
+  expect(await page.evaluate(() => BigGainsManagedProfileRecovery.needsRecoveryForCurrentRuntime())).toBe(false);
+  const result = await directRecovery(page);
+  expect(result).toMatchObject({ ok: false, blocked: true, reason: 'recovery-marker-without-state' });
+  expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key)), storage.states.jorge)).toEqual(artifact);
+  expect(cloud.writes).toEqual([]);
+});
+
+test('changed owner profile mapping during the fresh read blocks partial-blank recovery', async ({ page }) => {
+  const sentinel = { ...blankArtifact('jorge'), goals: { primary: 'Hold automatic recovery' } };
+  const storage = await installIdentity(page, managedIdentity, { localStates: { jorge: sentinel } });
+  const cloud = await installCloud(page, managedIdentity);
+  await openApp(page);
+
+  const owner = await page.evaluate(() => BigGainsSupabase.readCloudAccount());
+  await page.evaluate(key => localStorage.removeItem(key), storage.states.jorge);
+  cloud.changeMapping();
+  const result = await page.evaluate(async initialOwner => BigGainsManagedProfileRecovery.restore({
+    owner: initialOwner,
+    session: await BigGainsSupabase.session()
+  }), owner);
+
+  expect(result).toMatchObject({ ok: false, blocked: true, reason: 'owner-verification-changed' });
+  expect(await page.evaluate(keys => Object.values(keys.states).map(key => localStorage.getItem(key)), storage)).toEqual([null, null]);
+  expect(await page.evaluate(key => localStorage.getItem(key), storage.recovery)).toBeNull();
+  expect(cloud.writes).toEqual([]);
+});
+
+test('existing independent user restores over an exact blank startup artifact', async ({ page }) => {
+  const storage = await installIdentity(page, independentIdentity, {
+    driftMetadata: true,
+    localStates: { [SZW_CLIENT]: blankArtifact(SZW_CLIENT) }
+  });
+  const cloud = await installCloud(page, independentIdentity, { slow: true });
+  await openApp(page);
+
+  await expect(page.locator('#independentAccountOnboarding')).toContainText('Restoring your training to this device');
+  await expect.poll(async () => {
+    try {
+      return await page.evaluate(key => JSON.parse(localStorage.getItem(key) || 'null')?.workouts?.[0]?.id || null,
+        storage.states[SZW_CLIENT]);
+    } catch { return null; }
+  }).toBe('szw-cloud-workout');
+  const restored = await page.evaluate(keys => ({
+    state: JSON.parse(localStorage.getItem(keys.states[Object.keys(keys.states)[0]])),
+    marker: JSON.parse(localStorage.getItem(keys.recovery)),
+    comparison: JSON.parse(localStorage.getItem(keys.comparison))
+  }), storage);
+  expect(restored.state).toMatchObject({ profileId: SZW_CLIENT, workouts: [{ id: 'szw-cloud-workout' }] });
+  expect(restored.marker).toMatchObject({ kind: 'independent' });
+  expect(restored.comparison.parity).toBe(true);
+  expect(cloud.writes).toEqual([]);
+});
 
 test('managed owner restores Jorge and Alexa from fresh cloud despite prior drift metadata', async ({ page, context }) => {
   const storage = await installIdentity(page, managedIdentity, { driftMetadata: true });
@@ -264,15 +581,21 @@ test('managed owner restores Jorge and Alexa from fresh cloud despite prior drif
     catch { return null; }
   }).toMatch(/Restoring your training to this device[\s\S]*verified private cloud copy/);
   await expect(page.locator('#independentAccountOnboarding')).toBeHidden();
-  const restored = await page.evaluate(storageKeys => ({
-    jorge: JSON.parse(localStorage.getItem(storageKeys.states.jorge)),
-    alexa: JSON.parse(localStorage.getItem(storageKeys.states.alexa)),
-    catalog: JSON.parse(localStorage.getItem(storageKeys.catalog)),
-    comparison: JSON.parse(localStorage.getItem(storageKeys.comparison)),
-    marker: JSON.parse(localStorage.getItem(storageKeys.recovery)),
-    queue: localStorage.getItem(storageKeys.queue),
-    pending: BigGainsCloudSync.queue.pending().length
-  }), storage);
+  let restored = null;
+  await expect.poll(async () => {
+    try {
+      restored = await page.evaluate(storageKeys => ({
+        jorge: JSON.parse(localStorage.getItem(storageKeys.states.jorge) || 'null'),
+        alexa: JSON.parse(localStorage.getItem(storageKeys.states.alexa) || 'null'),
+        catalog: JSON.parse(localStorage.getItem(storageKeys.catalog) || 'null'),
+        comparison: JSON.parse(localStorage.getItem(storageKeys.comparison) || 'null'),
+        marker: JSON.parse(localStorage.getItem(storageKeys.recovery) || 'null'),
+        queue: localStorage.getItem(storageKeys.queue),
+        pending: window.BigGainsCloudSync?.queue?.pending().length ?? null
+      }), storage);
+      return [restored.jorge?.workouts?.[0]?.id, restored.alexa?.workouts?.[0]?.id, restored.pending];
+    } catch { return null; }
+  }).toEqual(['jorge-cloud-workout', 'alexa-cloud-workout', 0]);
 
   expect(restored.jorge).toMatchObject({
     version: 5, profileId: 'jorge', workouts: [{ id: 'jorge-cloud-workout' }],
@@ -362,7 +685,7 @@ test('populated local owner profile blocks direct recovery without overwrite', a
   expect(cloud.writes).toEqual([]);
 });
 
-test('non-empty outbound queue blocks recovery before cloud training read or persistence', async ({ page }) => {
+test('non-empty outbound queue blocks partial-blank recovery before persistence', async ({ page }) => {
   const operation = {
     contract: 'big-gains.sync-op.v1', contractVersion: 1,
     owner: { accountId: MANAGED_ACCOUNT, profileId: JORGE_PROFILE },
@@ -372,13 +695,19 @@ test('non-empty outbound queue blocks recovery before cloud training read or per
     idempotencyKey: `bg-sync-v1:${[MANAGED_ACCOUNT, JORGE_PROFILE, 'workouts', 'local-pending', 'upsert', 1, NOW].map(value => encodeURIComponent(String(value))).join(':')}`,
     attempts: 0, queuedAt: NOW
   };
-  const storage = await installIdentity(page, managedIdentity, { queueDocument: { version: 1, pending: [operation], acknowledgements: [] } });
+  const artifact = blankArtifact('jorge');
+  const storage = await installIdentity(page, managedIdentity, {
+    localStates: { jorge: artifact },
+    queueDocument: { version: 1, pending: [operation], acknowledgements: [] }
+  });
   const cloud = await installCloud(page, managedIdentity);
   await openApp(page);
 
-  await expect(page.locator('#independentAccountOnboarding')).toContainText('Recovery stopped safely');
-  await expect(page.locator('#independentAccountOnboarding')).toContainText('outbound changes');
-  expect(await page.evaluate(keys => Object.values(keys.states).map(key => localStorage.getItem(key)), storage)).toEqual([null, null]);
+  expect(await page.evaluate(() => BigGainsManagedProfileRecovery.needsRecoveryForCurrentRuntime())).toBe(false);
+  const result = await directRecovery(page);
+  expect(result).toMatchObject({ ok: false, blocked: true, reason: 'local-queue-not-empty' });
+  expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key)), storage.states.jorge)).toEqual(artifact);
+  expect(await page.evaluate(key => localStorage.getItem(key), storage.states.alexa)).toBeNull();
   expect(await page.evaluate(() => BigGainsCloudSync.queue.pending().length)).toBe(1);
   expect(cloud.writes).toEqual([]);
 });
@@ -421,7 +750,12 @@ test('malformed cloud record stops safely and leaves both managed training names
 
 test('persistence failure rolls back reconstructed profiles and preserves prior comparison metadata', async ({ page }) => {
   const storage = storageFor(managedIdentity);
-  await installIdentity(page, managedIdentity, { driftMetadata: true, failPersistenceKey: storage.catalog });
+  const artifact = blankArtifact('jorge');
+  await installIdentity(page, managedIdentity, {
+    driftMetadata: true,
+    localStates: { jorge: artifact },
+    failPersistenceKey: storage.catalog
+  });
   const cloud = await installCloud(page, managedIdentity);
   await openApp(page);
 
@@ -432,7 +766,8 @@ test('persistence failure rolls back reconstructed profiles and preserves prior 
     marker: localStorage.getItem(keys.recovery),
     comparison: JSON.parse(localStorage.getItem(keys.comparison))
   }), storage);
-  expect(local.states).toEqual([null, null]);
+  expect(JSON.parse(local.states[0])).toEqual(artifact);
+  expect(local.states[1]).toBeNull();
   expect(local.marker).toBeNull();
   expect(local.comparison.parity).toBe(false);
   expect(cloud.writes).toEqual([]);

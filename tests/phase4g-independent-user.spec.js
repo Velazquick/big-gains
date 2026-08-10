@@ -78,6 +78,26 @@ async function installCloudIdentityShape(page, profileClientId) {
         pet_enabled: false, accent: 'cobalt', theme: 'performance-dark', created_at: now
       }]) });
     }
+    if (url.pathname.endsWith('/preferences') && profileClientId.startsWith('independent-')) {
+      const preference = (clientId, entityType, data) => ({
+        id: `shape-${clientId}`, account_id: cloudAccountId, profile_id: cloudProfileId,
+        client_id: clientId, idempotency_key: `shape-${clientId}-v1`, version: 1,
+        payload: {
+          contract: 'big-gains.shadow.v1', version: 1, profileClientId,
+          entityType, clientId, data
+        },
+        created_at: now, updated_at: now
+      });
+      const body = [
+        preference('goals', 'goals', { primary: 'Strength and consistency' }),
+        preference('timer', 'timerPreferences', { sound: true, vibration: true })
+      ];
+      return route.fulfill({
+        status: 200,
+        headers: { ...headers, 'content-range': `0-${body.length - 1}/${body.length}` },
+        body: JSON.stringify(body)
+      });
+    }
     return route.fulfill({ status: 200, headers: { ...headers, 'content-range': '*/0' }, body: '[]' });
   });
 }
@@ -101,22 +121,30 @@ for (const identityShape of [
       await expect(page.locator('#independentAccountOnboarding')).toBeHidden();
     }
 
-    const result = await page.evaluate(async () => {
-      const state = await BigGainsSupabase.readAccountState();
-      const owner = { account: state.account, profiles: state.profiles };
-      let runtimeRecord = null;
-      let runtimeError = null;
-      try { runtimeRecord = bigGainsAccounts.cloudRuntimeRecord(owner, state.authUserId); }
-      catch (error) { runtimeError = error.message; }
-      return {
-        status: state.status,
-        stateShape: state.shape || null,
-        classifiedShape: bigGainsAccounts.cloudProfileShape(state.profiles),
-        runtimeKind: runtimeRecord?.kind || null,
-        runtimeError,
-        ownerMatchesRuntime: bigGainsAccounts.matchesCloudOwner(owner, state.authUserId)
-      };
-    });
+    let result = null;
+    await expect.poll(async () => {
+      try {
+        result = await page.evaluate(async () => {
+          const state = await BigGainsSupabase.readAccountState();
+          const owner = { account: state.account, profiles: state.profiles };
+          let runtimeRecord = null;
+          let runtimeError = null;
+          try { runtimeRecord = bigGainsAccounts.cloudRuntimeRecord(owner, state.authUserId); }
+          catch (error) { runtimeError = error.message; }
+          return {
+            status: state.status,
+            stateShape: state.shape || null,
+            classifiedShape: bigGainsAccounts.cloudProfileShape(state.profiles),
+            runtimeKind: runtimeRecord?.kind || null,
+            runtimeError,
+            ownerMatchesRuntime: bigGainsAccounts.matchesCloudOwner(owner, state.authUserId)
+          };
+        });
+        return [result.status, result.runtimeKind, result.ownerMatchesRuntime];
+      } catch { return null; }
+    }).toEqual(identityShape.expectedStatus === 'ready'
+      ? ['ready', 'independent', true]
+      : ['unexpected', null, false]);
 
     expect(result.status).toBe(identityShape.expectedStatus);
     expect(result.stateShape).toBe(identityShape.expectedStatus === 'ready' ? identityShape.expectedShape : null);

@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v60-fresh-device-recovery';
+  const release = 'v61-partial-blank-fresh-recovery';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];

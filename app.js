@@ -203,7 +203,7 @@ const workoutTimerFeedback=(()=>{
   return Object.freeze({armFromGesture,verifyFromGesture,complete,audioAvailable,vibrationAvailable,getSoundSessionState:()=>soundSessionState});
 })();
 window.workoutTimerFeedback=workoutTimerFeedback;
-function saveState(){if(bigGainsAccounts.runtime.kind==='managed-member'&&!statePersistenceApi.hasStoredState())return;if(window.BigGainsManagedProfileRecovery?.suppressingLocalSave(state))return;statePersistenceApi.save(state,active);queueMicrotask(()=>window.BigGainsCloudSync?.captureLocalSnapshot(PROFILE.id));}
+function saveState(){if(bigGainsAccounts.runtime.kind==='managed-member'&&!statePersistenceApi.hasStoredState())return;if(window.BigGainsManagedProfileRecovery?.suppressingLocalSave(state,active))return;statePersistenceApi.save(state,active);queueMicrotask(()=>window.BigGainsCloudSync?.captureLocalSnapshot(PROFILE.id));}
 function autosave(){saveState();renderHero();}
 function todaysWorkout(){return WEEK_PLAN[new Date().getDay()];}
 function routineEntries(day,{allAlternatives=false}={}){const entries=DEFAULT_ROUTINES[day]?.exercises||[];return entries.flatMap(entry=>{if(typeof entry==='string')return [{name:entry}];if(!entry?.alternatives?.length)return [entry];if(allAlternatives)return entry.alternatives.map(name=>({...entry,name,alternatives:undefined}));const selected=routineVariantSelections[day],name=entry.alternatives.includes(selected)?selected:entry.name;return [{...entry,name,alternatives:undefined}];});}
