@@ -2,7 +2,7 @@
 
 The Playwright harness serves the static PWA from `index.html` without rewriting it, so production scripts execute in their declared order.
 
-The current baseline is 272 passing Chromium tests across 34 files with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
+The current baseline is 279 passing Chromium tests across 35 files with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
 
 ## Install
 
@@ -20,7 +20,9 @@ npm test
 npx playwright test --workers=1
 ```
 
-Both modes must pass all 272 tests with no expected failures. In command-limited environments, use the deterministic `--shard=1/2` and `--shard=2/2` split for both normal and `--workers=1` runs.
+Both modes must pass all 279 tests with no expected failures. In command-limited environments, use the deterministic `--shard=1/2` and `--shard=2/2` split for both normal and `--workers=1` runs.
+
+V65 coverage in `tests/exercise-catalog.spec.js` freezes all 119 ordered v64 canonical exercise IDs plus a full metadata fingerprint covering names, day/category, muscle, equipment, aliases, and family. It verifies every name and alias resolves and searches to its existing owner, exact shorthand/search result ordering, unchanged ID generation, Jorge day filtering, Alexa and SZW full-library visibility, all six SZW routine lookups, and retrospective `definitionId || id` identity without instance-ID normalization. Harness coverage verifies the frozen `BigGainsExerciseCatalog` API, the identical `bigGainsExerciseCatalog` compatibility alias, the absence of DOM/persistence/cloud access, and production load order. Existing Phase 4I analytics, routine/editor, retrospective, profile, and offline specs remain the integration contract.
 
 V64 coverage retains the 18 black-box tests in `tests/timer-controller-characterization.spec.js` for stale workout/deadline callbacks, double Skip, exact duration precedence, one-shot consumption, local-first cloud-failure behavior, profile isolation, lifecycle-event equivalence, READY teardown, and schema-v5/cloud-shadow shape. Harness coverage verifies the immutable `BigGainsTimerController.create(...)` and `workoutTimerController` APIs, live replaceable state/session ports, a frozen status snapshot without browser handles, idempotent initialization, v63 deadline rollback compatibility, and production load order. Existing timer tests use `reconcile()` and `getStatus()` rather than directly reading or mutating ticker, remaining-time, render, generation, or completion-key globals.
 
@@ -67,7 +69,7 @@ Phase 3 Sprint 2 coverage in `tests/phase3-completion-experience.spec.js` verifi
 
 ## Cache and update coverage
 
-Offline coverage verifies a complete first install, deterministic manifest revisions, unique core assets, migration from the previous Big Gains cache, preservation of unrelated origin caches, awaited precache and runtime writes, visible cache-write failures, ordinary offline reload, active-session reload directly into Workout Mode, and offline loading of both `timer-controller.js` and the repository-owned WAV chime.
+Offline coverage verifies a complete first install, deterministic manifest revisions, unique core assets, migration from the previous Big Gains cache, preservation of unrelated origin caches, awaited precache and runtime writes, visible cache-write failures, ordinary offline reload, active-session reload directly into Workout Mode, and offline loading of `exercise-catalog.js`, `timer-controller.js`, and the repository-owned WAV chime.
 
 ## Legacy migration policy
 

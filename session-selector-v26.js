@@ -133,9 +133,8 @@
 
     const selected = SESSION_TYPES.find(item => item.key === selectedType) || SESSION_TYPES[0];
     const routineIds = typeof routineFor === 'function' ? routineFor(selectedType) : [];
-    const exercises = routineIds.map(id => typeof EXERCISES !== 'undefined'
-      ? EXERCISES.find(exercise => exercise.id === id)
-      : null).filter(Boolean);
+    const catalog = window.BigGainsExerciseCatalog;
+    const exercises = routineIds.map(id => catalog?.getById(id)).filter(Boolean);
     const safe = typeof escapeHtml === 'function' ? escapeHtml : value => String(value);
     const picker = document.getElementById('trainPlanPicker');
     const title = document.getElementById('trainPreviewTitle');

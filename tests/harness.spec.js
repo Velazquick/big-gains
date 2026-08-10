@@ -10,6 +10,7 @@ const productionScriptOrder = [
   'cloud-storage.js',
   'state-persistence.js',
   'profiles.js',
+  'exercise-catalog.js',
   'analytics.js',
   'workout-controls.js',
   'notes.js',
@@ -43,6 +44,43 @@ test('serves the production document with explicit hook layers loaded before the
   );
 
   expect(loadedOrder).toEqual(productionScriptOrder);
+});
+
+test('ExerciseCatalog owns an immutable static API outside app.js', async ({ page, request }) => {
+  await installLocalStorageFixture(page, 'blankJorge');
+  await openApp(page);
+
+  const api = await page.evaluate(() => ({
+    keys: Object.keys(BigGainsExerciseCatalog),
+    frozen: Object.isFrozen(BigGainsExerciseCatalog),
+    compatibilitySame: BigGainsExerciseCatalog === window.bigGainsExerciseCatalog,
+    exactLookup: BigGainsExerciseCatalog.getById('seated-iso-lateral-bench-press')?.name,
+    aliasLookup: BigGainsExerciseCatalog.resolve('Iso-Lateral Chest Press')?.id,
+    generatedId: BigGainsExerciseCatalog.idForName('45-Degree Back Extension'),
+    missing: BigGainsExerciseCatalog.getById('retrospective-instance-id')
+  }));
+
+  expect(api).toEqual({
+    keys: ['exercises', 'getById', 'idForName', 'matchesSearch', 'normalizeTerm', 'resolve'],
+    frozen: true,
+    compatibilitySame: true,
+    exactLookup: 'Seated Iso-Lateral Bench Press',
+    aliasLookup: 'seated-iso-lateral-bench-press',
+    generatedId: '45-degree-back-extension',
+    missing: null
+  });
+
+  const catalogSource = await (await request.get('/exercise-catalog.js')).text();
+  const appSource = await (await request.get('/app.js')).text();
+  const selectorSource = await (await request.get('/session-selector-v26.js')).text();
+  expect(catalogSource).toContain("Object.defineProperty(scope, 'BigGainsExerciseCatalog'");
+  expect(catalogSource).not.toMatch(/\b(?:document|localStorage|sessionStorage|Supabase)\b/);
+  expect(appSource).not.toContain('const RAW=');
+  expect(appSource).not.toContain('const RAW =');
+  expect(appSource).not.toContain('normalizeExerciseTerm');
+  expect(appSource).not.toContain('exerciseMatchesSearch');
+  expect(selectorSource).toContain('window.BigGainsExerciseCatalog');
+  expect(selectorSource).not.toContain('typeof EXERCISES');
 });
 
 test('notes expose explicit hooks without replacing app globals', async ({ page, request }) => {
