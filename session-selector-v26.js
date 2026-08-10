@@ -132,7 +132,8 @@
     if (session) return;
 
     const selected = SESSION_TYPES.find(item => item.key === selectedType) || SESSION_TYPES[0];
-    const routineIds = typeof routineFor === 'function' ? routineFor(selectedType) : [];
+    const routineEngine = window.workoutRoutineEngine;
+    const routineIds = routineEngine?.getRoutine(selectedType) || [];
     const catalog = window.BigGainsExerciseCatalog;
     const exercises = routineIds.map(id => catalog?.getById(id)).filter(Boolean);
     const safe = typeof escapeHtml === 'function' ? escapeHtml : value => String(value);
@@ -152,7 +153,7 @@
     if (meta) meta.textContent = `${exercises.length} movement${exercises.length === 1 ? '' : 's'} · ${state.customRoutines?.[selectedType] ? 'Custom lineup' : 'Saved lineup'}`;
     if (count) count.textContent = String(exercises.length).padStart(2, '0');
     if (list) list.innerHTML = exercises.length ? exercises.map((exercise, index) => {
-      const prescription = typeof routinePrescription === 'function' ? routinePrescription(selectedType, exercise.id) : null;
+      const prescription = routineEngine?.getPrescription(selectedType, exercise.id) || null;
       const support = prescription?.targetReps
         ? `${prescription.workingSets} working sets · Target ${prescription.targetReps}`
         : `${exercise.equipment} · ${exercise.muscle}`;
