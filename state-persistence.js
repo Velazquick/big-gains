@@ -15,6 +15,17 @@
   };
   const read = key => localStorage.getItem(key);
   const write = (key, value) => localStorage.setItem(key, value);
+  const remove = key => localStorage.removeItem(key);
+  const ownedStorageKeys = new Set(Object.values(STORAGE_KEYS).filter(Boolean));
+
+  function requireOwnedStorageKey(key) {
+    if (!ownedStorageKeys.has(key)) throw new Error('Unknown Big Gains state storage key.');
+    return key;
+  }
+
+  const readRawOwnedState = key => read(requireOwnedStorageKey(key));
+  const writeRawOwnedState = (key, value) => write(requireOwnedStorageKey(key), value);
+  const removeRawOwnedState = key => remove(requireOwnedStorageKey(key));
 
   function storageKeyForProfile(profileId) {
     return accountRegistry.resolve(profileId)?.storageKey || null;
@@ -301,6 +312,9 @@
     storageKeys: STORAGE_KEYS,
     storageKeyForProfile,
     readProfileSnapshot,
+    readRawOwnedState,
+    writeRawOwnedState,
+    removeRawOwnedState,
     loadActiveProfileId,
     saveActiveProfileId,
     create

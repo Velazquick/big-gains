@@ -101,8 +101,9 @@
     return Object.freeze({
       kind: 'independent', authUserId: record.authUserId, cloudAccountId: record.cloudAccountId,
       descriptors: Object.freeze([descriptor]), expectedProfileIds: Object.freeze([clientId]),
-      switcherVisible: false, storageNamespace,
+      switcherVisible: false, storageNamespace, newlyProvisioned: record.newlyProvisioned === true,
       activeSelectionKey: `big-gains-active-profile-${storageNamespace}`,
+      recoveryKey: `big-gains-fresh-device-recovery-v1-${storageNamespace}`,
       cloudKeys: Object.freeze({
         queue: `big-gains-cloud-sync-queue-v1-${storageNamespace}`,
         catalog: `big-gains-cloud-shadow-catalog-v1-${storageNamespace}`,
@@ -119,6 +120,7 @@
       switcherVisible: true,
       storageNamespace: 'managed-jorge-alexa',
       activeSelectionKey: ACTIVE_PROFILE_KEY,
+      recoveryKey: 'big-gains-fresh-device-recovery-v1-managed-jorge-alexa',
       cloudKeys: Object.freeze({
         queue: 'big-gains-cloud-sync-queue-v1',
         catalog: 'big-gains-cloud-shadow-catalog-v1',
@@ -248,13 +250,22 @@
     });
   }
 
-  function activateCloudOwner(owner, authUserId) {
+  function activateCloudOwner(owner, authUserId, { newlyProvisioned = false } = {}) {
     const record = cloudRuntimeRecord(owner, authUserId);
     const store = runtimeStore();
-    store.accounts[authUserId] = record;
+    store.accounts[authUserId] = { ...record, newlyProvisioned: record.kind === 'independent' && newlyProvisioned === true };
     store.activeAuthUserId = authUserId;
     localStorage.setItem(RUNTIME_ACCOUNTS_KEY, JSON.stringify(store));
     return record;
+  }
+
+  function completeIndependentBootstrap(authUserId) {
+    const store = runtimeStore();
+    const record = store.accounts[authUserId];
+    if (record?.kind !== 'independent' || record.newlyProvisioned !== true) return false;
+    store.accounts[authUserId] = { ...record, newlyProvisioned: false };
+    localStorage.setItem(RUNTIME_ACCOUNTS_KEY, JSON.stringify(store));
+    return true;
   }
 
   function matchesCloudOwner(owner, authUserId) {
@@ -313,6 +324,7 @@
     cloudProfileShape,
     unexpectedProfileShapeMessage,
     activateCloudOwner,
+    completeIndependentBootstrap,
     matchesCloudOwner,
     matchesCloudPresentation,
     cloudRuntimeRecord

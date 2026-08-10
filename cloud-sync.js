@@ -662,8 +662,9 @@
   async function handleSignedIn() {
     try {
       cloudOwner = await verifiedOwnerForSession();
-      if (accountRuntime.kind === 'managed-member'
-        && !window.BigGainsManagedProfileRecovery?.completedForCurrentRuntime()) {
+      const recovery = window.BigGainsManagedProfileRecovery;
+      if (recovery?.needsRecoveryForCurrentRuntime()
+        || (accountRuntime.kind === 'managed-member' && !recovery?.completedForCurrentRuntime())) {
         lastResult = { ok: false, blocked: true, reason: 'awaiting-fresh-device-recovery', pending: queue.pending().length };
         render();
         return;
