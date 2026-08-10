@@ -33,6 +33,68 @@
     };
   }
 
+  function isCompletableSet(exercise, set) {
+    const reps = Number(set?.reps);
+    const weight = Number(set?.weight);
+    if (!Number.isFinite(reps) || reps <= 0 || !Number.isFinite(weight)) return false;
+    return exercise?.equipment === 'Bodyweight' ? weight >= 0 : weight > 0;
+  }
+
+  function incompleteWorking(exercise) {
+    return (exercise?.sets || []).filter(set => !set.warmup).some(set => !set.completed);
+  }
+
+  function resolveActiveIndex(activeWorkout) {
+    const preferred = activeWorkout.exercises.findIndex(exercise => exercise.id === activeWorkout.focusedExerciseId && incompleteWorking(exercise));
+    const index = preferred >= 0 ? preferred : activeWorkout.exercises.findIndex(incompleteWorking);
+    const focusChanged = index >= 0 && activeWorkout.focusedExerciseId !== activeWorkout.exercises[index].id;
+    activeWorkout.focusedExerciseId = index >= 0 ? activeWorkout.exercises[index].id : null;
+    if (focusChanged) activeWorkout.exercises[index].collapsed = false;
+    return index;
+  }
+
+  function isCollapsed(exercise) {
+    return exercise.collapsed !== false;
+  }
+
+  function openOnly(activeWorkout, index) {
+    if (!activeWorkout?.exercises?.[index]) return false;
+    activeWorkout.exercises.forEach((exercise, exerciseIndex) => {
+      exercise.collapsed = exerciseIndex !== index;
+    });
+    activeWorkout.focusedExerciseId = activeWorkout.exercises[index].id;
+    return true;
+  }
+
+  function toggleExerciseState(activeWorkout, index) {
+    const exercise = activeWorkout?.exercises?.[index];
+    if (!exercise) return false;
+    if (!incompleteWorking(exercise)) exercise.collapsed = !isCollapsed(exercise);
+    else if (isCollapsed(exercise)) openOnly(activeWorkout, index);
+    else exercise.collapsed = true;
+    return true;
+  }
+
+  function moveExerciseState(activeWorkout, from, direction) {
+    if (!activeWorkout?.exercises) return false;
+    const to = direction === 'up' ? from - 1 : from + 1;
+    if (from < 0 || from >= activeWorkout.exercises.length || to < 0 || to >= activeWorkout.exercises.length) return false;
+    const [exercise] = activeWorkout.exercises.splice(from, 1);
+    activeWorkout.exercises.splice(to, 0, exercise);
+    return true;
+  }
+
+  function advanceAfterCompletion(activeWorkout, exerciseIndex) {
+    const exercise = activeWorkout?.exercises?.[exerciseIndex];
+    if (!exercise) return { advanced: false, nextIndex: -1 };
+    const working = (exercise.sets || []).filter(set => !set.warmup);
+    if (!working.length || !working.every(set => set.completed)) return { advanced: false, nextIndex: -1 };
+    exercise.collapsed = true;
+    activeWorkout.focusedExerciseId = null;
+    const nextIndex = resolveActiveIndex(activeWorkout);
+    return { advanced: true, nextIndex };
+  }
+
   function create({
     getState,
     getActiveWorkout,
@@ -52,8 +114,14 @@
     onRuntimeCleared = () => {},
     renderActiveSession = () => {},
     renderLoadedSession = () => {},
+    renderActiveMutation = () => {},
+    renderLibraryMutation = () => {},
     renderHero = () => {},
     enterWorkoutMode = () => {},
+    acknowledgeTimerReady = () => {},
+    startRestTimer = () => {},
+    scheduleAfterCompletion = callback => callback(),
+    onCompletionAdvanced = () => {},
     onCompleted = () => {},
     onDiscarded = () => {}
   }) {
@@ -98,6 +166,15 @@
     function persistActiveMutation() {
       persist();
       renderHero();
+    }
+
+    function focusExercise(index) {
+      const current = getActiveWorkout();
+      const exercise = current?.exercises?.[index];
+      if (!exercise) return false;
+      current.focusedExerciseId = exercise.id;
+      exercise.collapsed = false;
+      return true;
     }
 
     function clearRuntime(hideActive = true) {
@@ -169,6 +246,97 @@
       return current;
     }
 
+    function moveExercise(from, direction) {
+      if (!moveExerciseState(getActiveWorkout(), from, direction)) return false;
+      persistActiveMutation();
+      renderActiveMutation();
+      return true;
+    }
+
+    function toggleExercise(index) {
+      if (!toggleExerciseState(getActiveWorkout(), index)) return false;
+      persistActiveMutation();
+      renderActiveMutation();
+      return true;
+    }
+
+    function removeExercise(index) {
+      const current = getActiveWorkout();
+      if (!current?.exercises?.[index]) return false;
+      current.exercises.splice(index, 1);
+      persistActiveMutation();
+      renderActiveMutation();
+      renderLibraryMutation();
+      return true;
+    }
+
+    function addSet(exerciseIndex) {
+      const exercise = getActiveWorkout()?.exercises?.[exerciseIndex];
+      if (!exercise) return null;
+      const working = exercise.sets.filter(set => !set.warmup);
+      const recent = working.at(-1);
+      const valid = value => value !== '' && Number.isFinite(Number(value)) && Number(value) >= 0;
+      focusExercise(exerciseIndex);
+      acknowledgeTimerReady();
+      const set = {
+        id: createId(),
+        weight: valid(recent?.weight) ? Number(recent.weight) : '',
+        reps: valid(recent?.reps) ? Number(recent.reps) : '',
+        warmup: false,
+        completed: false
+      };
+      exercise.sets.push(set);
+      persistActiveMutation();
+      renderActiveMutation();
+      return set;
+    }
+
+    function updateSet(exerciseIndex, setIndex, field, value) {
+      const set = getActiveWorkout()?.exercises?.[exerciseIndex]?.sets?.[setIndex];
+      if (!set) return false;
+      focusExercise(exerciseIndex);
+      acknowledgeTimerReady();
+      set[field] = value === '' ? '' : Number(value);
+      persistActiveMutation();
+      return true;
+    }
+
+    function adjustSet(exerciseIndex, setIndex, field, adjustment) {
+      const set = getActiveWorkout()?.exercises?.[exerciseIndex]?.sets?.[setIndex];
+      if (!set) return false;
+      focusExercise(exerciseIndex);
+      acknowledgeTimerReady();
+      set[field] = Math.max(0, (Number(set[field]) || 0) + Number(adjustment));
+      persistActiveMutation();
+      renderActiveMutation();
+      return true;
+    }
+
+    function toggleSetCompleted(exerciseIndex, setIndex) {
+      const current = getActiveWorkout();
+      const exercise = current?.exercises?.[exerciseIndex];
+      const set = exercise?.sets?.[setIndex];
+      if (!isCompletableSet(exercise, set)) return false;
+      focusExercise(exerciseIndex);
+      acknowledgeTimerReady();
+      set.completed = !set.completed;
+      persistActiveMutation();
+      renderActiveMutation();
+      if (set.completed) {
+        startRestTimer(exerciseIndex);
+        scheduleAfterCompletion(() => {
+          const live = getActiveWorkout();
+          if (!live) return;
+          const result = advanceAfterCompletion(live, exerciseIndex);
+          if (!result.advanced) return;
+          persistActiveMutation();
+          renderActiveMutation();
+          onCompletionAdvanced(result);
+        });
+      }
+      return true;
+    }
+
     function complete() {
       const current = getActiveWorkout();
       if (!current) return false;
@@ -210,10 +378,34 @@
       return true;
     }
 
-    return Object.freeze({ start, resume, replace, loadRoutine, repairEmpty, addExercise, complete, discard });
+    return Object.freeze({
+      start,
+      resume,
+      replace,
+      loadRoutine,
+      repairEmpty,
+      addExercise,
+      focusExercise,
+      moveExercise,
+      toggleExercise,
+      removeExercise,
+      addSet,
+      updateSet,
+      adjustSet,
+      toggleSetCompleted,
+      complete,
+      discard
+    });
   }
 
-  const api = Object.freeze({ buildExercise, create });
+  const api = Object.freeze({
+    buildExercise,
+    isCompletableSet,
+    moveExercise: moveExerciseState,
+    toggleExercise: toggleExerciseState,
+    advanceAfterCompletion,
+    create
+  });
   Object.defineProperty(scope, 'BigGainsWorkoutSessionController', { value: api, enumerable: true });
   Object.defineProperty(scope, 'bigGainsWorkoutSessionController', { value: api, enumerable: true });
 })(window);

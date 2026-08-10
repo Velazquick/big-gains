@@ -63,7 +63,7 @@ function startOfWeek(){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDat
 function volumeForWorkout(w){return analyticsApi.workoutSummary(w).workingSetVolume;}
 function volumeForExercise(e){return analyticsApi.setSummary(e).workingSetVolume;}
 function estimate1RM(w,r){return analyticsApi.estimate1RM(w,r);}
-function isCompletableSet(exercise,set){const reps=Number(set?.reps),weight=Number(set?.weight);if(!Number.isFinite(reps)||reps<=0||!Number.isFinite(weight))return false;return exercise?.equipment==='Bodyweight'?weight>=0:weight>0;}
+function isCompletableSet(exercise,set){return BigGainsWorkoutSessionController.isCompletableSet(exercise,set);}
 function displayWorkout(day){return day==='Legs'?'Legs + Core':(DEFAULT_ROUTINES[day]?.label||day);}
 function completionWorkoutLabel(day){return PROFILE.routines?.[day]?.label||({Legs:'Legs + Core',FullBody:'Full Body',Cardio:'Conditioning',PilatesPull:'Pilates + Pull',LegsLowImpact:'Legs + Low-Impact Class',PilatesCardioAccessory:'Pilates + Cardio + Accessories',Optional:'Optional Movement'})[day]||day;}
 function renderGreeting(){const h=new Date().getHours(),selector=$('profileSelect'),switcher=selector?.closest('.profile-switcher');$('greeting').textContent=bigGainsAccounts.runtime.kind==='guest'?'Welcome to Big Gains.':`Good ${h<12?'morning':h<18?'afternoon':'evening'}, ${ACCOUNT.displayName}.`;if(selector){selector.innerHTML=bigGainsAccounts.registry.accounts.map(account=>`<option value="${escapeHtml(account.profileId)}">${escapeHtml(account.displayName)}</option>`).join('');selector.value=PROFILE.id;}if(switcher)switcher.hidden=!bigGainsAccounts.runtime.switcherVisible;const today=todaysWorkout();$('nextWorkout').textContent=displayWorkout(today);document.body.classList.toggle('alexa-mode',PROFILE.capabilities.wellnessPresentation);document.querySelectorAll('[data-profile-only]').forEach(el=>el.hidden=el.dataset.profileOnly!==PROFILE.id);}
@@ -128,8 +128,14 @@ const workoutSessionController=BigGainsWorkoutSessionController.create({
   onRuntimeCleared:({hideActive})=>{if(hideActive)$('activePanel').classList.add('hidden');$('cancelWorkout').classList.add('hidden');$('cancelWorkout').textContent='Cancel';cancelArmedUntil=0;},
   renderActiveSession,
   renderLoadedSession:scroll=>{renderActive();renderLibrary();if(scroll)$('activePanel').scrollIntoView({behavior:'smooth',block:'start'});},
+  renderActiveMutation:renderActive,
+  renderLibraryMutation:renderLibrary,
   renderHero,
   enterWorkoutMode:()=>window.bigGainsWorkoutMode?.enter(),
+  acknowledgeTimerReady:()=>timerController.acknowledgeReady(),
+  startRestTimer:exerciseIndex=>timerController.start(exerciseIndex),
+  scheduleAfterCompletion:callback=>requestAnimationFrame(callback),
+  onCompletionAdvanced:({nextIndex})=>{if(nextIndex>=0&&!matchMedia('(prefers-reduced-motion: reduce)').matches)requestAnimationFrame(()=>document.querySelectorAll('#activeExercises .active-exercise')[nextIndex]?.scrollIntoView({behavior:'smooth',block:'nearest'}));},
   onCompleted:({workout,newPRs})=>{$('heroNote').textContent=`Workout saved${newPRs?` · ${newPRs} new PR${newPRs===1?'':'s'}`:''}.`;renderAll();renderCompletion(workout);},
   onDiscarded:()=>{renderHero();renderLibrary();$('workoutPanel').scrollIntoView({behavior:'smooth'});}
 });
@@ -169,24 +175,24 @@ bind('editRoutine','click',openRoutineEditor);
 bind('addSelectedExercise','click',()=>workoutSessionController.addExercise($('quickExerciseSelect').value,{scroll:true}));
 bind('exerciseSearch','input',renderLibrary);bind('equipmentFilter','change',renderLibrary);bind('exerciseLibrary','click',e=>{const b=e.target.closest('[data-add]');if(b)workoutSessionController.addExercise(b.dataset.add,{scroll:true});});
 bind('cancelWorkout','click',()=>{const now=Date.now();if(now<cancelArmedUntil){workoutSessionController.discard();return;}cancelArmedUntil=now+2500;$('cancelWorkout').textContent='Tap again to discard';setTimeout(()=>{if(active&&Date.now()>=cancelArmedUntil)$('cancelWorkout').textContent='Cancel';},2600);});
-function focusActiveExercise(index){const exercise=active?.exercises?.[index];if(!exercise)return false;active.focusedExerciseId=exercise.id;exercise.collapsed=false;return true;}
-function toggleRenderedExercise(index,target){const exercise=active?.exercises?.[index],card=target?.closest('.active-exercise');if(!exercise)return false;if(card&&!card.classList.contains('is-collapsed')&&exercise.collapsed!==false)focusActiveExercise(index);return workoutControlsApi.toggleExercise(active,index);}
-bind('activeExercises','input',e=>{const {ei,si,field}=e.target.dataset;if(field&&active&&e.target.tagName==='INPUT'){const exerciseIndex=Number(ei);focusActiveExercise(exerciseIndex);acknowledgeTimerReady();active.exercises[exerciseIndex].sets[Number(si)][field]=e.target.value===''?'':Number(e.target.value);autosave();}const cue=e.target.closest('[data-saved-cue]');if(cue)notesApi.saveCue({activeWorkout:active,state,index:Number(cue.dataset.savedCue),value:cue.value,saveState});const note=e.target.closest('[data-session-note]');if(note){focusActiveExercise(Number(note.dataset.sessionNote));notesApi.saveSessionNote({activeWorkout:active,index:Number(note.dataset.sessionNote),value:note.value,autosave});}});
-bind('activeExercises','change',e=>{const rest=e.target.closest('[data-rest-seconds]');if(rest){focusActiveExercise(Number(rest.dataset.restSeconds));notesApi.saveRest({activeWorkout:active,state,index:Number(rest.dataset.restSeconds),value:rest.value,defaultRest:DEFAULT_REST,saveState,summary:document.querySelector(`[data-note-block="${rest.dataset.restSeconds}"] summary span`)});}});
+function focusActiveExercise(index){return workoutSessionController.focusExercise(index);}
+function toggleRenderedExercise(index,target){const exercise=active?.exercises?.[index],card=target?.closest('.active-exercise');if(!exercise)return false;if(card&&!card.classList.contains('is-collapsed')&&exercise.collapsed!==false)workoutSessionController.focusExercise(index);return workoutSessionController.toggleExercise(index);}
+bind('activeExercises','input',e=>{const {ei,si,field}=e.target.dataset;if(field&&active&&e.target.tagName==='INPUT')workoutSessionController.updateSet(Number(ei),Number(si),field,e.target.value);const cue=e.target.closest('[data-saved-cue]');if(cue)notesApi.saveCue({activeWorkout:active,state,index:Number(cue.dataset.savedCue),value:cue.value,saveState});const note=e.target.closest('[data-session-note]');if(note){workoutSessionController.focusExercise(Number(note.dataset.sessionNote));notesApi.saveSessionNote({activeWorkout:active,index:Number(note.dataset.sessionNote),value:note.value,autosave});}});
+bind('activeExercises','change',e=>{const rest=e.target.closest('[data-rest-seconds]');if(rest){workoutSessionController.focusExercise(Number(rest.dataset.restSeconds));notesApi.saveRest({activeWorkout:active,state,index:Number(rest.dataset.restSeconds),value:rest.value,defaultRest:DEFAULT_REST,saveState,summary:document.querySelector(`[data-note-block="${rest.dataset.restSeconds}"] summary span`)});}});
 bind('activeExercises','click',e=>{
   if(!active)return;
   const move=e.target.closest('[data-move-exercise]');
-  if(move){e.preventDefault();if(workoutControlsApi.moveExercise(active,Number(move.dataset.index),move.dataset.moveExercise)){autosave();renderActive();}return;}
+  if(move){e.preventDefault();workoutSessionController.moveExercise(Number(move.dataset.index),move.dataset.moveExercise);return;}
   const toggle=e.target.closest('[data-toggle-exercise]');
-  if(toggle){e.preventDefault();if(toggleRenderedExercise(Number(toggle.dataset.toggleExercise),toggle)){autosave();renderActive();}return;}
+  if(toggle){e.preventDefault();toggleRenderedExercise(Number(toggle.dataset.toggleExercise),toggle);return;}
   const head=e.target.closest('[data-exercise-head]');
-  if(head&&!e.target.closest('button,input,select,textarea,a')){e.preventDefault();if(toggleRenderedExercise(Number(head.dataset.exerciseHead),head)){autosave();renderActive();}return;}
+  if(head&&!e.target.closest('button,input,select,textarea,a')){e.preventDefault();toggleRenderedExercise(Number(head.dataset.exerciseHead),head);return;}
   const t=e.target.closest('button');
   if(!t)return;
-  if(t.dataset.removeExercise!==undefined){active.exercises.splice(Number(t.dataset.removeExercise),1);autosave();renderActive();renderLibrary();return;}
-  if(t.dataset.addSet!==undefined){const exerciseIndex=Number(t.dataset.addSet),exercise=active.exercises[exerciseIndex],working=exercise.sets.filter(set=>!set.warmup),recent=working.at(-1),valid=value=>value!==''&&Number.isFinite(Number(value))&&Number(value)>=0;focusActiveExercise(exerciseIndex);acknowledgeTimerReady();exercise.sets.push({id:uid(),weight:valid(recent?.weight)?Number(recent.weight):'',reps:valid(recent?.reps)?Number(recent.reps):'',warmup:false,completed:false});autosave();renderActive();return;}
-  if(t.dataset.adjust!==undefined){const exerciseIndex=Number(t.dataset.ei),set=active.exercises[exerciseIndex].sets[Number(t.dataset.si)],field=t.dataset.field;focusActiveExercise(exerciseIndex);acknowledgeTimerReady();set[field]=Math.max(0,(Number(set[field])||0)+Number(t.dataset.adjust));autosave();renderActive();return;}
-  if(t.dataset.completeSet){const exerciseIndex=Number(t.dataset.ei),exercise=active.exercises[exerciseIndex],set=exercise.sets[Number(t.dataset.si)];if(!isCompletableSet(exercise,set))return;focusActiveExercise(exerciseIndex);acknowledgeTimerReady();set.completed=!set.completed;autosave();renderActive();if(set.completed){startRestTimer(exerciseIndex);requestAnimationFrame(()=>{if(!active)return;const result=workoutControlsApi.advanceAfterCompletion(active,exerciseIndex);if(!result.advanced)return;autosave();renderActive();if(result.nextIndex>=0&&!matchMedia('(prefers-reduced-motion: reduce)').matches)requestAnimationFrame(()=>document.querySelectorAll('#activeExercises .active-exercise')[result.nextIndex]?.scrollIntoView({behavior:'smooth',block:'nearest'}));});}}
+  if(t.dataset.removeExercise!==undefined){workoutSessionController.removeExercise(Number(t.dataset.removeExercise));return;}
+  if(t.dataset.addSet!==undefined){workoutSessionController.addSet(Number(t.dataset.addSet));return;}
+  if(t.dataset.adjust!==undefined){workoutSessionController.adjustSet(Number(t.dataset.ei),Number(t.dataset.si),t.dataset.field,t.dataset.adjust);return;}
+  if(t.dataset.completeSet)workoutSessionController.toggleSetCompleted(Number(t.dataset.ei),Number(t.dataset.si));
 });
 bind('finishWorkout','click',()=>workoutSessionController.complete());
 bind('history','click',e=>{const b=e.target.closest('[data-history-id]');if(b)openHistory(b.dataset.historyId);});

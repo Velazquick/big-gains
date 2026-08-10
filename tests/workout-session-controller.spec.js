@@ -49,8 +49,12 @@ test('WorkoutSessionController exposes a frozen domain API and an exact pure ses
   });
 
   expect(result).toMatchObject({
-    factoryKeys: ['buildExercise', 'create'],
-    instanceKeys: ['start', 'resume', 'replace', 'loadRoutine', 'repairEmpty', 'addExercise', 'complete', 'discard'],
+    factoryKeys: ['buildExercise', 'isCompletableSet', 'moveExercise', 'toggleExercise', 'advanceAfterCompletion', 'create'],
+    instanceKeys: [
+      'start', 'resume', 'replace', 'loadRoutine', 'repairEmpty', 'addExercise',
+      'focusExercise', 'moveExercise', 'toggleExercise', 'removeExercise', 'addSet',
+      'updateSet', 'adjustSet', 'toggleSetCompleted', 'complete', 'discard'
+    ],
     frozenFactory: true,
     frozenInstance: true,
     compatibilitySame: true,

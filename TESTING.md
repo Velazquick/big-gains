@@ -2,7 +2,7 @@
 
 The Playwright harness serves the static PWA from `index.html` without rewriting it, so production scripts execute in their declared order.
 
-The current baseline is 294 passing Chromium tests across 37 files with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
+The current baseline is 304 passing Chromium tests across 38 files with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
 
 ## Install
 
@@ -20,7 +20,9 @@ npm test
 npx playwright test --workers=1
 ```
 
-Both modes must pass all 294 tests with no expected failures. In command-limited environments, use deterministic shards that together cover the complete collection for both normal and `--workers=1` runs.
+Both modes must pass all 304 tests with no expected failures. In command-limited environments, use deterministic shards that together cover the complete collection for both normal and `--workers=1` runs.
+
+V68 coverage in `tests/thin-app-composition.spec.js` freezes the pre-extraction set-row behavior and final ownership boundary. Black-box cases cover working and warm-up weight/reps edits, exact numeric/blank normalization, working and warm-up completion, complete-to-incomplete toggles, one rest deadline per qualifying completion, no restart from ordinary edits or re-editing, local-save-before-rejected-cloud-capture ordering, notes/rest-preference isolation, previous-performance immutability, live imported state replacement, and Jorge/Alexa profile isolation. Source/API assertions verify that `WorkoutSessionController` owns set/session mutation without DOM/storage/cloud access, while `app.js` and `workoutControls` retain only DOM/rendering and compatibility adapters. Existing workout controls, session lifecycle, timer, notes, completion, routines, storage/import, cloud-shadow, recovery, profile, harness, and offline suites remain the behavioral contract.
 
 V67 coverage in `tests/workout-session-controller.spec.js` freezes the extracted immutable factory/instance API, exact seeded and unseeded active-exercise payloads, warm-up rounding, working-set count and positional previous-performance seeding, target-rep metadata, and history immutability. Integrated cases cover start/resume/replace, timer invalidation, partial routine loading and deduplication, narrow empty-session repair, add-without-session and duplicate blocking, live same-profile state replacement, zero-work completion refusal, completed-set filtering, duration and the existing sequential Epley PR semantics, exact cloud-shadow workout payloads, discard/timer teardown, local-save-before-rejected-cloud-capture ordering, and managed-profile isolation. Session, routine, timer, completion, storage/import, cloud-shadow, profile, harness, and offline suites remain the end-to-end compatibility contract.
 

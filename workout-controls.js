@@ -1,4 +1,6 @@
 (() => {
+  const sessionDomain = window.BigGainsWorkoutSessionController;
+
   function controlLabel(field) {
     return field === 'weight' ? 'Weight' : 'Reps';
   }
@@ -50,56 +52,9 @@
     return (exercise?.sets || []).filter(set => !set.warmup).some(set => !set.completed);
   }
 
-  function resolveActiveIndex(activeWorkout) {
-    const preferred = activeWorkout.exercises.findIndex(exercise => exercise.id === activeWorkout.focusedExerciseId && incompleteWorking(exercise));
-    const index = preferred >= 0 ? preferred : activeWorkout.exercises.findIndex(incompleteWorking);
-    const focusChanged = index >= 0 && activeWorkout.focusedExerciseId !== activeWorkout.exercises[index].id;
-    activeWorkout.focusedExerciseId = index >= 0 ? activeWorkout.exercises[index].id : null;
-    if (focusChanged) activeWorkout.exercises[index].collapsed = false;
-    return index;
-  }
-
   function activeIndexForRender(activeWorkout) {
     const preferred = activeWorkout.exercises.findIndex(exercise => exercise.id === activeWorkout.focusedExerciseId && incompleteWorking(exercise));
     return preferred >= 0 ? preferred : activeWorkout.exercises.findIndex(incompleteWorking);
-  }
-
-  function openOnly(activeWorkout, index) {
-    if (!activeWorkout?.exercises?.[index]) return false;
-    activeWorkout.exercises.forEach((exercise, exerciseIndex) => {
-      exercise.collapsed = exerciseIndex !== index;
-    });
-    activeWorkout.focusedExerciseId = activeWorkout.exercises[index].id;
-    return true;
-  }
-
-  function toggleExercise(activeWorkout, index) {
-    const exercise = activeWorkout?.exercises?.[index];
-    if (!exercise) return false;
-    if (!incompleteWorking(exercise)) exercise.collapsed = !isCollapsed(exercise);
-    else if (isCollapsed(exercise)) openOnly(activeWorkout, index);
-    else exercise.collapsed = true;
-    return true;
-  }
-
-  function moveExercise(activeWorkout, from, direction) {
-    if (!activeWorkout?.exercises) return false;
-    const to = direction === 'up' ? from - 1 : from + 1;
-    if (from < 0 || from >= activeWorkout.exercises.length || to < 0 || to >= activeWorkout.exercises.length) return false;
-    const [exercise] = activeWorkout.exercises.splice(from, 1);
-    activeWorkout.exercises.splice(to, 0, exercise);
-    return true;
-  }
-
-  function advanceAfterCompletion(activeWorkout, exerciseIndex) {
-    const exercise = activeWorkout?.exercises?.[exerciseIndex];
-    if (!exercise) return { advanced: false, nextIndex: -1 };
-    const working = (exercise.sets || []).filter(set => !set.warmup);
-    if (!working.length || !working.every(set => set.completed)) return { advanced: false, nextIndex: -1 };
-    exercise.collapsed = true;
-    activeWorkout.focusedExerciseId = null;
-    const nextIndex = resolveActiveIndex(activeWorkout);
-    return { advanced: true, nextIndex };
   }
 
   function setPosition(exercise, set) {
@@ -190,10 +145,10 @@
   }
 
   window.workoutControls = Object.freeze({
-    advanceAfterCompletion,
-    moveExercise,
+    advanceAfterCompletion: sessionDomain.advanceAfterCompletion,
+    moveExercise: sessionDomain.moveExercise,
     renderActive,
     renderStepper,
-    toggleExercise
+    toggleExercise: sessionDomain.toggleExercise
   });
 })();
