@@ -8,6 +8,7 @@
 .workout-pet-slot .training-pet[data-state="ready"] .pet-body{transform:translateY(-3px)}
 .timer-control-stack{display:grid;gap:10px;justify-items:end}
 .timer-preferences,.timer-actions{display:flex;gap:8px}
+.timer-actions button{min-height:44px;touch-action:manipulation}
 .timer-preferences button[aria-pressed="true"]{border-color:rgba(216,255,62,.55);color:var(--accent);background:rgba(216,255,62,.07)}
 .timer-preferences button:disabled{opacity:.72;color:var(--muted);border-style:dashed}
 .timer-feedback-status{min-height:1.1em;max-width:330px;color:var(--muted);font-size:.78rem;text-align:right}
