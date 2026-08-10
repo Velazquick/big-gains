@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v62-timer-resume-reliability';
+  const release = 'v63-seated-iso-lateral-bench-press';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];

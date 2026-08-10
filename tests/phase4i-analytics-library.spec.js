@@ -25,6 +25,7 @@ const baselineIds = [
 ];
 
 const additions = {
+  'Seated Iso-Lateral Bench Press': ['seated-iso-lateral-bench-press', 'Iso-Lateral Chest Press'],
   'Flat Smith Machine Bench Press': ['flat-smith-machine-bench-press', 'Smith Bench'],
   'Decline Barbell Bench Press': ['decline-barbell-bench-press', 'Decline Bench'],
   'Decline Dumbbell Press': ['decline-dumbbell-press', 'Decline DB Press'],
@@ -90,7 +91,7 @@ function analyticsWorkouts() {
   ];
 }
 
-test('catalog preserves every prior stable ID and adds 28 unique commercial-gym movements', async ({ page }) => {
+test('catalog preserves every prior stable ID and adds 29 unique commercial-gym movements', async ({ page }) => {
   await installLocalStorageFixture(page, 'blankJorge');
   await openApp(page);
 
@@ -102,6 +103,7 @@ test('catalog preserves every prior stable ID and adds 28 unique commercial-gym 
       if (!termOwners.has(normalized)) termOwners.set(normalized, new Set());
       termOwners.get(normalized).add(exercise.id);
     }));
+    const seatedIsoLateral = exercises.find(exercise => exercise.id === 'seated-iso-lateral-bench-press');
     return {
       count: exercises.length,
       missingBaseline: baselineIds.filter(id => !exercises.some(exercise => exercise.id === id)),
@@ -113,6 +115,13 @@ test('catalog preserves every prior stable ID and adds 28 unique commercial-gym 
       ids: exercises.map(exercise => exercise.id),
       names: exercises.map(exercise => exercise.name.toLowerCase()),
       collisions: [...termOwners.entries()].filter(([, owners]) => owners.size > 1),
+      seatedIsoLateral,
+      seatedAliases: Object.fromEntries(seatedIsoLateral.aliases.map(alias => [alias, {
+        resolved: bigGainsExerciseCatalog.resolve(alias)?.id,
+        searches: exercises.filter(exercise => bigGainsExerciseCatalog.matchesSearch(exercise, alias)).map(exercise => exercise.id)
+      }])),
+      seatedMachine: exercises.find(exercise => exercise.id === 'seated-machine-chest-press'),
+      jorgePush: DEFAULT_ROUTINES.Push.exercises,
       calves: ['standing-calf-raise', 'seated-calf-raise', 'calf-press-on-leg-press'].map(id => {
         const exercise = exercises.find(item => item.id === id);
         return { id: exercise.id, muscle: exercise.muscle, family: exercise.family };
@@ -120,7 +129,7 @@ test('catalog preserves every prior stable ID and adds 28 unique commercial-gym 
     };
   }, { baselineIds, additions });
 
-  expect(catalog.count).toBe(118);
+  expect(catalog.count).toBe(119);
   expect(catalog.missingBaseline).toEqual([]);
   expect(new Set(catalog.ids).size).toBe(catalog.ids.length);
   expect(new Set(catalog.names).size).toBe(catalog.names.length);
@@ -130,6 +139,25 @@ test('catalog preserves every prior stable ID and adds 28 unique commercial-gym 
     expect(catalog.added[name].aliasOwner).toBe(id);
     expect(catalog.added[name].searches).toContain(id);
   }
+  expect(catalog.seatedIsoLateral).toMatchObject({
+    id: 'seated-iso-lateral-bench-press',
+    name: 'Seated Iso-Lateral Bench Press',
+    day: 'Push',
+    muscle: 'Chest',
+    equipment: 'Machine',
+    aliases: [
+      'Iso-Lateral Bench Press',
+      'Seated Iso Lateral Bench Press',
+      'Iso-Lateral Chest Press',
+      'Seated Iso-Lateral Chest Press'
+    ]
+  });
+  expect(catalog.seatedIsoLateral.id).not.toBe(catalog.seatedMachine.id);
+  for (const result of Object.values(catalog.seatedAliases)) {
+    expect(result.resolved).toBe('seated-iso-lateral-bench-press');
+    expect(result.searches).toContain('seated-iso-lateral-bench-press');
+  }
+  expect(catalog.jorgePush).not.toContain('Seated Iso-Lateral Bench Press');
   expect(catalog.calves).toEqual([
     { id: 'standing-calf-raise', muscle: 'Calves', family: 'calf-raise' },
     { id: 'seated-calf-raise', muscle: 'Calves', family: 'calf-raise' },
