@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v68-thin-app-composition';
+  const release = 'v69-workout-shell-2a';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];

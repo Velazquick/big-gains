@@ -383,8 +383,8 @@ test('one-shot timer override wins once and is consumed before the following set
   });
   await openApp(page);
 
-  await page.locator('#timerAdjust').click();
-  await page.locator('[data-timer-preset="30"]').click();
+  await page.evaluate(() => workoutTimerController.selectPreset(30));
+  await expect(page.locator('#timerCard')).toBeHidden();
   await completeSet(page, 1);
   expectRestDuration(await timerSnapshot(page), 30);
 

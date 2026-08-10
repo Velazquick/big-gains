@@ -127,6 +127,47 @@ test('Library access adds through the session controller and returns without res
   await expect(page.locator('#activeExercises')).toContainText('Incline Iso Machine Press');
 });
 
+test('bottom Add Exercise action stays separate from the timer and meets the mobile touch target', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await installLocalStorageFixture(page, 'activeWorkoutWithExercises');
+  await openApp(page);
+
+  const action = page.getByRole('button', { name: 'Add Exercise', exact: true });
+  await expect(page.locator('#timerCard')).toBeHidden();
+  await expect(action).toBeVisible();
+  expect(await action.evaluate(button => button.closest('#timerCard') === null)).toBe(true);
+  const layout = await action.evaluate(button => {
+    const rect = button.getBoundingClientRect();
+    const exercises = document.getElementById('activeExercises').getBoundingClientRect();
+    return {
+      height: rect.height,
+      left: rect.left,
+      right: rect.right,
+      followsExercises: rect.top >= exercises.bottom,
+      viewportWidth: innerWidth
+    };
+  });
+  expect(layout.height).toBeGreaterThanOrEqual(44);
+  expect(layout.left).toBeGreaterThanOrEqual(0);
+  expect(layout.right).toBeLessThanOrEqual(layout.viewportWidth);
+  expect(layout.followsExercises).toBe(true);
+
+  await page.getByRole('button', { name: 'Complete Set 1 of 3' }).click();
+  await expect(page.locator('#timerCard')).toBeVisible();
+  await action.scrollIntoViewIfNeeded();
+  const runningLayout = await page.evaluate(() => {
+    const timer = document.getElementById('timerCard').getBoundingClientRect();
+    const action = document.getElementById('browseWorkoutLibrary').getBoundingClientRect();
+    return { actionTop: action.top, timerBottom: timer.bottom };
+  });
+  expect(runningLayout.timerBottom).toBeLessThanOrEqual(runningLayout.actionTop);
+
+  const workoutId = (await jorgeState(page)).activeWorkout.id;
+  await action.click();
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'library');
+  expect((await jorgeState(page)).activeWorkout.id).toBe(workoutId);
+});
+
 test('the integrated pet stays restrained through calm, rest, rest-complete, and PR states', async ({ page }) => {
   await installLocalStorageFixture(page, 'activeWorkoutWithExercises');
   await openApp(page);
@@ -208,6 +249,29 @@ test('turning Sound on directly tests the persistent HTMLAudio element', async (
     activations: window.__feedbackAudio.activations,
     playCalls: window.__feedbackAudio.playCalls
   }))).toEqual({ audioElements: 1, activations: [true], playCalls: 1 });
+});
+
+test('Sound toggle feedback remains accessible without adding a visible timer row', async ({ page }) => {
+  await installAudioMock(page);
+  await installLocalStorageFixture(page, 'activeWorkoutWithExercises');
+  await openApp(page);
+  await showRestTimer(page);
+
+  const card = page.locator('#timerCard');
+  const status = page.locator('#timerFeedbackStatus');
+  const beforeHeight = await card.evaluate(element => element.getBoundingClientRect().height);
+  await page.locator('#timerSoundToggle').click();
+  await expect(page.locator('#timerSoundToggle')).toHaveAttribute('aria-pressed', 'false');
+  await expect(status).toHaveText('Sound off. Visual feedback stays on.');
+  await expect(status).toHaveAttribute('role', 'status');
+  await expect(status).toHaveAttribute('aria-live', 'polite');
+  const hiddenLayout = await status.evaluate(element => {
+    const rect = element.getBoundingClientRect();
+    const style = getComputedStyle(element);
+    return { height: rect.height, overflow: style.overflow, position: style.position, width: rect.width };
+  });
+  expect(hiddenLayout).toEqual({ height: 1, overflow: 'hidden', position: 'absolute', width: 1 });
+  expect(await card.evaluate(element => element.getBoundingClientRect().height)).toBe(beforeHeight);
 });
 
 test('a rejected Sound-toggle verification marks sound unavailable only for the current session', async ({ page }) => {
