@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v59-timer-reliability-visibility';
+  const release = 'v60-fresh-device-recovery';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];
@@ -39,6 +39,8 @@
     './notes.js',
     './progress.js',
     './retrospective-workout.js',
+    './cloud-shadow.js',
+    './managed-profile-recovery.js',
     './app.js',
     './workout-mode.js',
     './v2-shell.js',
@@ -49,8 +51,6 @@
     './sync-gateway.js',
     './account-onboarding.js',
     './migration-preview.js',
-    './cloud-shadow.js',
-    './managed-profile-recovery.js',
     './cloud-sync.js',
     './migration-engine.js',
     './controlled-migration.js',

@@ -298,17 +298,25 @@
     const issues = preview().validateLocalState(state, profileClientId);
     if (issues.length) fail('fresh-recovery-invalid-schema-v5', 'Cloud rows do not reconstruct a valid schema-v5 profile.', { issues });
     const records = await localRecords(profileClientId, state);
-    const comparison = await compare({ localProfiles: { [profileClientId]: { stateVersion: 5, records } }, cloud });
+    const comparison = await compare({
+      localProfiles: { [profileClientId]: { stateVersion: 5, records } },
+      cloud,
+      profileIds: [profileClientId]
+    });
     if (!comparison.parity) {
       fail('fresh-recovery-semantic-mismatch', 'Reconstructed schema-v5 data does not exactly match the verified cloud state.', { reasons: comparison.reasons });
     }
     return Object.freeze({ state: Object.freeze(clone(state)), records: Object.freeze(records), comparison });
   }
 
-  async function compare({ localProfiles, cloud, expectedCatalog = null }) {
+  async function compare({ localProfiles, cloud, expectedCatalog = null, profileIds = PROFILE_IDS }) {
     const profiles = {};
     const allReasons = [...cloud.ownershipIssues];
-    for (const profileClientId of PROFILE_IDS) {
+    const selectedProfileIds = [...profileIds];
+    if (!selectedProfileIds.length || selectedProfileIds.some(id => !PROFILE_IDS.includes(id))) {
+      fail('invalid-comparison-profile', 'Cloud comparison requested an unexpected profile.');
+    }
+    for (const profileClientId of selectedProfileIds) {
       const localRecordsValue = localProfiles[profileClientId].records;
       const cloudRecordsValue = cloud.profiles[profileClientId].current;
       const localByKey = new Map(localRecordsValue.map(record => [keyFor(record.table, record.clientId), record]));

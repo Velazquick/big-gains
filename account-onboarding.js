@@ -67,9 +67,8 @@
     };
   }
 
-  function restoredMemberAvailableOffline(userId) {
-    return window.bigGainsAccounts.runtime.kind === 'managed-member'
-      && window.bigGainsAccounts.runtime.authUserId === userId
+  function restoredRuntimeAvailableOffline(userId) {
+    return window.bigGainsAccounts.runtime.authUserId === userId
       && window.BigGainsManagedProfileRecovery?.completedForCurrentRuntime();
   }
 
@@ -98,7 +97,7 @@
     }
     let accountState;
     try { accountState = await boundary.readAccountState(); } catch (error) {
-      if (restoredMemberAvailableOffline(currentSession.user.id)) {
+      if (restoredRuntimeAvailableOffline(currentSession.user.id)) {
         hide();
         return Object.freeze({ status: 'offline-cached', reason: error?.message || 'Cloud unavailable.' });
       }
@@ -124,8 +123,13 @@
       location.reload();
       return accountState;
     }
-    if (accountState.accessKind === 'managed-member') {
-      show('<span class="label">Private cloud</span><h2>Restoring your profile to this device.</h2><p>Your verified managed profile is being checked and reconstructed from its private cloud baseline.</p><small>Existing local training data is never overwritten.</small>');
+    const shouldRecover = accountState.accessKind === 'managed-member'
+      || window.BigGainsManagedProfileRecovery?.needsRecoveryForCurrentRuntime();
+    if (shouldRecover) {
+      const memberCopy = accountState.accessKind === 'managed-member';
+      show(memberCopy
+        ? '<span class="label">Private cloud</span><h2>Restoring your profile to this device.</h2><p>Your verified managed profile is being checked and reconstructed from its private cloud baseline.</p><small>Existing local training data is never overwritten.</small>'
+        : '<span class="label">Private cloud</span><h2>Restoring your training to this device.</h2><p>Your verified private cloud copy is being read fresh and reconstructed locally.</p><small>Existing local training data is never overwritten or merged.</small>');
       const recovery = await window.BigGainsManagedProfileRecovery.restore({ owner, session: currentSession });
       if (recovery.ok && recovery.status === 'restored') {
         location.reload();
@@ -164,7 +168,7 @@
     try {
       const owner = await boundary.bootstrapIndependentAccount(form.querySelector('#independentDisplayName').value);
       const currentSession = await boundary.session();
-      window.bigGainsAccounts.activateCloudOwner(owner, currentSession.user.id);
+      window.bigGainsAccounts.activateCloudOwner(owner, currentSession.user.id, { newlyProvisioned: true });
       location.reload();
     } catch (error) {
       show(`${provisionMarkup(form.querySelector('#independentDisplayName').value)}<p class="account-onboarding-error" role="alert">${escapeHtml(error?.message || 'The private profile could not be created.')}</p>`);
