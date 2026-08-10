@@ -360,8 +360,11 @@ test('managed-member active session upsert then delete adopts the higher tombsto
   const cloud = await installCloudRoutes(page);
   await openApp(page);
   await expect(page.locator('#independentAccountOnboarding')).toBeHidden();
+  await expect(page.locator('html')).toHaveAttribute('data-account-mode', 'managed-member');
+  await expect(page.locator('#activeExercises input[data-field="weight"]').first()).toBeVisible();
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await expect.poll(() => page.evaluate(storageKey => JSON.parse(localStorage.getItem(storageKey))?.activeWorkout?.id || null, storageKey)).toBe('alexa-active');
+  await expect(page.locator('#activeExercises input[data-field="weight"]').first()).toBeVisible();
+  expect(await page.evaluate(storageKey => JSON.parse(localStorage.getItem(storageKey))?.activeWorkout?.id || null, storageKey)).toBe('alexa-active');
 
   await context.setOffline(true);
   await page.locator('#activeExercises input[data-field="weight"]').first().fill('95');

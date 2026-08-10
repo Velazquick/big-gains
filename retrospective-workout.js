@@ -15,13 +15,13 @@
 
     function plannedType() {
       const planned = context.profile.weekPlan[selectedDate().getDay()];
-      return planned && planned !== 'Rest' && context.defaultRoutines[planned] ? planned : 'Other';
+      return planned && planned !== 'Rest' && context.routineEngine.hasRoutine(planned) ? planned : 'Other';
     }
 
     function availableTypes() {
-      const planned = Object.values(context.profile.weekPlan || {}).filter(type => type !== 'Rest' && context.defaultRoutines[type]);
-      if (context.profile.libraryRoutineTypes) return context.profile.libraryRoutineTypes.filter(type => context.defaultRoutines[type]);
-      const standard = ['Push', 'Pull', 'Legs', 'Core', 'FullBody', 'Cardio', 'Other'].filter(type => context.defaultRoutines[type]);
+      const planned = Object.values(context.profile.weekPlan || {}).filter(type => type !== 'Rest' && context.routineEngine.hasRoutine(type));
+      if (context.profile.libraryRoutineTypes) return context.profile.libraryRoutineTypes.filter(type => context.routineEngine.hasRoutine(type));
+      const standard = ['Push', 'Pull', 'Legs', 'Core', 'FullBody', 'Cardio', 'Other'].filter(type => context.routineEngine.hasRoutine(type));
       return [...new Set([...planned, ...standard])];
     }
 
@@ -32,7 +32,7 @@
     function createExercise(definition, workoutType = draft?.type) {
       const prior = context.lastPerformance(definition.id)?.workingSets || [];
       const working = Number(prior[0]?.weight) || 0;
-      const prescription = context.routinePrescription(workoutType, definition.id);
+      const prescription = context.routineEngine.getPrescription(workoutType, definition.id);
       const workingSets = Number(prescription?.workingSets) || 3;
       const targetReps = typeof prescription?.targetReps === 'string' ? prescription.targetReps : '';
       return {
@@ -58,7 +58,7 @@
 
     function loadRoutine(type = draft.type) {
       draft.type = type;
-      draft.exercises = context.routineFor(type)
+      draft.exercises = context.routineEngine.getRoutine(type)
         .map(id => context.exercises.find(exercise => exercise.id === id))
         .filter(Boolean)
         .map(definition => createExercise(definition, type));
@@ -71,7 +71,7 @@
     }
 
     function exerciseOptions() {
-      const routineIds = new Set(context.routineFor(draft.type));
+      const routineIds = new Set(context.routineEngine.getRoutine(draft.type));
       const used = new Set(draft.exercises.map(exercise => exercise.definitionId));
       return context.exercises
         .filter(exercise => !used.has(exercise.id))
@@ -125,7 +125,7 @@
         evaluatePrs: true
       };
       if (type !== 'Other') {
-        draft.exercises = context.routineFor(type).map(id => context.exercises.find(exercise => exercise.id === id)).filter(Boolean).map(definition => createExercise(definition, type));
+        draft.exercises = context.routineEngine.getRoutine(type).map(id => context.exercises.find(exercise => exercise.id === id)).filter(Boolean).map(definition => createExercise(definition, type));
       }
       saving = false;
       $('saveRetrospectiveWorkout').disabled = false;
