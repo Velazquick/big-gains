@@ -187,7 +187,7 @@ test('cancel and reload discard only the draft while an active workout and retur
   expect(stored.workouts).toHaveLength(0);
   expect(stored.restTimerEndsAt).toBeNull();
   expect(await page.locator('body').getAttribute('data-workout-pet-state')).toBe(petState);
-  await expect(page.locator('#timerCard')).not.toHaveClass(/hidden/);
+  await expect(page.locator('#timerCard')).toHaveClass(/hidden/);
   await expect(page.locator('#timerCard')).toHaveAttribute('data-timer-state', 'idle');
 
   await openEditor(page, '2026-08-03');

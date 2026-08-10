@@ -2,8 +2,8 @@ import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
 
-const CURRENT_CACHE = 'big-gains-shell-v68-thin-app-composition';
-const PREVIOUS_CACHE = 'big-gains-shell-v67-workout-session-controller-extraction';
+const CURRENT_CACHE = 'big-gains-shell-v69-workout-shell-2a';
+const PREVIOUS_CACHE = 'big-gains-shell-v68-thin-app-composition';
 
 async function waitForServiceWorker(page) {
   await page.evaluate(async () => {
@@ -32,13 +32,13 @@ test('first install precaches one complete, revision-consistent app shell', asyn
     };
   }, CURRENT_CACHE);
 
-  expect(state.release).toBe('v68-thin-app-composition');
+  expect(state.release).toBe('v69-workout-shell-2a');
   expect(state.cacheNames).toContain(CURRENT_CACHE);
   expect(state.cachedUrls).toEqual(state.expectedUrls);
-  expect(state.cachedUrls).toContain(new URL('/exercise-catalog.js?v=v68-thin-app-composition', page.url()).href);
-  expect(state.cachedUrls).toContain(new URL('/routine-engine.js?v=v68-thin-app-composition', page.url()).href);
-  expect(state.cachedUrls).toContain(new URL('/workout-session-controller.js?v=v68-thin-app-composition', page.url()).href);
-  expect(state.cachedUrls).toContain(new URL('/timer-controller.js?v=v68-thin-app-composition', page.url()).href);
+  expect(state.cachedUrls).toContain(new URL('/exercise-catalog.js?v=v69-workout-shell-2a', page.url()).href);
+  expect(state.cachedUrls).toContain(new URL('/routine-engine.js?v=v69-workout-shell-2a', page.url()).href);
+  expect(state.cachedUrls).toContain(new URL('/workout-session-controller.js?v=v69-workout-shell-2a', page.url()).href);
+  expect(state.cachedUrls).toContain(new URL('/timer-controller.js?v=v69-workout-shell-2a', page.url()).href);
   expect(state.cachedUrls).toContain(new URL('/assets/timer-ready.wav', page.url()).href);
 });
 

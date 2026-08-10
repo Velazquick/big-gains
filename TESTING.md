@@ -2,7 +2,7 @@
 
 The Playwright harness serves the static PWA from `index.html` without rewriting it, so production scripts execute in their declared order.
 
-The current baseline is 304 passing Chromium tests across 38 files with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
+The current baseline is 306 passing Chromium tests across 38 files with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
 
 ## Install
 
@@ -20,7 +20,9 @@ npm test
 npx playwright test --workers=1
 ```
 
-Both modes must pass all 304 tests with no expected failures. In command-limited environments, use deterministic shards that together cover the complete collection for both normal and `--workers=1` runs.
+Both modes must pass all 306 tests with no expected failures. In command-limited environments, use deterministic shards that together cover the complete collection for both normal and `--workers=1` runs.
+
+V69 coverage in `tests/timer-reliability-visibility.spec.js` and `tests/workout-mode.spec.js` verifies that an inactive rest has no visible timer, Skip hides immediately, READY hides after its existing three-second feedback window, and the next qualifying set starts a fresh visible countdown. It also freezes the visually hidden but accessible sound-toggle status, the bottom Add Exercise action's existing Library/session-controller flow, and its separate 44px-or-larger mobile touch target. Existing timer characterization, workout/session ownership, mobile presentation, retrospective, profile isolation, local-first cloud failure, and offline suites remain the compatibility contract.
 
 V68 coverage in `tests/thin-app-composition.spec.js` freezes the pre-extraction set-row behavior and final ownership boundary. Black-box cases cover working and warm-up weight/reps edits, exact numeric/blank normalization, working and warm-up completion, complete-to-incomplete toggles, one rest deadline per qualifying completion, no restart from ordinary edits or re-editing, local-save-before-rejected-cloud-capture ordering, notes/rest-preference isolation, previous-performance immutability, live imported state replacement, and Jorge/Alexa profile isolation. Source/API assertions verify that `WorkoutSessionController` owns set/session mutation without DOM/storage/cloud access, while `app.js` and `workoutControls` retain only DOM/rendering and compatibility adapters. Existing workout controls, session lifecycle, timer, notes, completion, routines, storage/import, cloud-shadow, recovery, profile, harness, and offline suites remain the behavioral contract.
 

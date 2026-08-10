@@ -91,6 +91,7 @@
       card.classList.remove('hidden', 'timer-feedback-ready', 'timer-completing', 'timer-dismissing');
       card.dataset.timerState = next;
       if (next === 'ready') card.classList.add('timer-feedback-ready', 'timer-completing');
+      if (next === 'idle') card.classList.add('hidden');
       remainingSeconds = Math.max(0, Number(remaining) || 0);
       renderTimer();
       const nextMessage = element('timerNext');
