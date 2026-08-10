@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v69-workout-shell-2a';
+  const release = 'v70-ios-home-screen-auth-persistence';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];
@@ -63,13 +63,19 @@
   const revision = path => `${path}?v=${encodeURIComponent(release)}`;
   const revisionedStyles = styles.map(revision);
   const revisionedScripts = scripts.map(revision);
+  const authSetupStyles = ['./auth-setup.css'].map(revision);
+  const authSetupScripts = ['./cloud-config.js', './vendor/supabase.js', './auth-setup.js'].map(revision);
   const coreAssets = [
     './index.html',
+    './auth-setup.html',
     './asset-manifest.js',
     './asset-loader.js',
+    './auth-setup-loader.js',
     './service-worker-core.js',
     ...revisionedStyles,
     ...revisionedScripts,
+    ...authSetupStyles,
+    ...authSetupScripts.filter(path => !revisionedScripts.includes(path)),
     './manifest.webmanifest',
     './icon.svg',
     './assets/timer-ready.wav'
@@ -88,6 +94,8 @@
     legacyCacheNames: Object.freeze([...legacyCacheNames]),
     styles: Object.freeze(revisionedStyles),
     scripts: Object.freeze(revisionedScripts),
+    authSetupStyles: Object.freeze(authSetupStyles),
+    authSetupScripts: Object.freeze(authSetupScripts),
     coreAssets: Object.freeze(coreAssets)
   });
 

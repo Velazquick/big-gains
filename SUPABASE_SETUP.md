@@ -19,15 +19,18 @@ The browser must never receive a secret key, legacy service-role key, JWT signin
 
 For deployment, add `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` as GitHub Actions repository variables. The Pages workflow generates `cloud-config.js` only in the deployment artifact. If either variable is absent, the checked-in empty config is deployed and the app remains local-only.
 
-## 2. Jorge-only Auth
+## 2. Auth and iOS Home Screen setup
 
 In Supabase Dashboard → Authentication:
 
-1. Create one Auth user for Jorge. Do not create an Alexa user.
-2. Disable new-user signup. The client also sends `shouldCreateUser: false`, so an unknown email cannot self-register.
+1. Create or invite only the intended Auth user. Do not create application account/profile/membership rows as part of Auth setup.
+2. Disable new-user signup and keep anonymous sign-in disabled. Browser Magic Link compatibility also sends `shouldCreateUser: false`.
 3. Set Site URL to exactly `https://velazquick.github.io/big-gains/`.
-4. Add `https://velazquick.github.io/big-gains/` to Redirect URLs. Keep `http://127.0.0.1:4173/` only when local Auth testing is needed.
-5. Keep anonymous sign-in disabled. Do not enable friend signup.
+4. Add both `https://velazquick.github.io/big-gains/` and `https://velazquick.github.io/big-gains/auth-setup.html` to Redirect URLs. Keep `http://127.0.0.1:4173/` only for local Auth testing.
+5. For every future trusted invitation call, set `redirectTo` to exactly `https://velazquick.github.io/big-gains/auth-setup.html`. This option belongs only in trusted operator/server tooling; never put an Admin or service-role key in Big Gains. A Dashboard invitation that lands on the configured root is compatibility-routed to the isolated setup page before the app starts.
+6. The user opens the one-time invitation in Safari, sets a password on `auth-setup.html`, closes that page, then signs in once inside the Home Screen app. A generic **Set or reset password** request uses the same page and a resend cooldown.
+
+This flow uses Supabase's supported invitation/recovery links and default hosted email. It does not require editing `{{ .Token }}`, customizing a hosted template, configuring custom SMTP, or upgrading the project. Magic Link is retained only for Safari/browser compatibility because Safari and an installed iOS Home Screen app do not share the same Auth storage.
 
 After Jorge signs in, the browser idempotently creates or reuses one empty account plus two empty profile rows (`jorge` and `alexa`). That metadata contains no local workout, routine, preference, note, PR, timer, active-session, backup, or snapshot data.
 
@@ -93,7 +96,7 @@ Normal workout completion has no call to this API. Do not import a backup or sel
 2. In Authentication settings, disable public email signup and anonymous sign-in.
 3. Create exactly one Auth user for Jorge. Do not create Alexa or friend users.
 4. Add `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` as GitHub Actions repository variables, not values embedded in source files.
-5. After this branch is separately reviewed and deployed, verify signed-out local/offline logging first, then request Jorge's magic link and confirm that only the empty account plus Jorge/Alexa profile metadata is created.
+5. After this branch is separately reviewed and deployed, verify signed-out local/offline logging first, then complete the invitation/password setup and sign in once from the Home Screen app. Confirm that only the intended existing account/profile metadata is resolved.
 
 Do not connect ordinary workout completion or upload a backup during these checks.
 
@@ -125,6 +128,6 @@ After review, merge, v50 deployment, and a final managed two-profile **In sync**
 1. Obtain the friend's exact email from Jorge at that time.
 2. Reconfirm public email signup and anonymous sign-in are disabled.
 3. Explicitly create or invite that one Auth user in Supabase Authentication. Do not create application rows manually.
-4. The friend requests an existing-user magic link on a fresh device, enters a display name, and selects **Create private profile**.
+4. Send the invitation with `redirectTo` set to the deployed `auth-setup.html`. The friend sets a password in Safari, then signs into the fresh Home Screen app and selects **Create private profile**.
 5. Verify exactly one new account and one `independent-*` profile exist, with `pet_enabled=false`, `accent='cobalt'`, and `theme='performance-dark'`.
 6. Run the offline/reconnect/in-sync smoke proof in `PHASE4G_INDEPENDENT_USER_CONTRACT.md`, then begin the sustained proof. Do not add the friend to Jorge's account and do not enable cloud pull.

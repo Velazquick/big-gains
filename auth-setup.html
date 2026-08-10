@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#080a0d" />
+  <meta name="robots" content="noindex" />
+  <title>Set up Big Gains sign-in</title>
+</head>
+<body>
+  <main class="auth-setup-shell">
+    <section class="auth-setup-card" aria-labelledby="authSetupTitle">
+      <span class="auth-setup-label">BIG GAINS · PRIVATE ACCESS</span>
+      <h1 id="authSetupTitle">Set your app password.</h1>
+      <p id="authSetupDetail" role="status" aria-live="polite">Verifying this one-time setup link…</p>
+
+      <form id="authSetupForm" hidden>
+        <label><span>New password</span><input id="authSetupPassword" type="password" autocomplete="new-password" minlength="8" required></label>
+        <label><span>Confirm password</span><input id="authSetupConfirm" type="password" autocomplete="new-password" minlength="8" required></label>
+        <button type="submit">Save password</button>
+      </form>
+
+      <div id="authSetupComplete" hidden>
+        <strong>Password ready.</strong>
+        <p>Close this browser page. Open Big Gains from your Home Screen and sign in once with your email and new password.</p>
+      </div>
+
+      <small>This page never reads or changes workout data. Account and profile access are verified again inside Big Gains.</small>
+    </section>
+  </main>
+  <script src="asset-manifest.js"></script>
+  <script src="auth-setup-loader.js"></script>
+</body>
+</html>

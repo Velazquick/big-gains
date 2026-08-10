@@ -104,6 +104,12 @@ test('profile parity true safely reconciles stale superseded pending operations 
     const url = new URL(request.url());
     const headers = { 'access-control-allow-origin': '*', 'content-type': 'application/json' };
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+    if (url.pathname.endsWith('/auth/v1/user')) {
+      return route.fulfill({ status: 200, headers, body: JSON.stringify({
+        id: authUserId, aud: 'authenticated', role: 'authenticated', email: 'queue@example.test',
+        email_confirmed_at: '2026-08-08T01:00:00.000Z', app_metadata: { provider: 'email', providers: ['email'] }, user_metadata: {}, identities: [], created_at: '2026-08-08T01:00:00.000Z'
+      }) });
+    }
     if (!['GET', 'HEAD'].includes(request.method())) {
       applicationWrites.push(`${request.method()} ${url.pathname}`);
       return route.fulfill({ status: 500, headers, body: JSON.stringify({ message: 'reconciliation must not write' }) });

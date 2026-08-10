@@ -2,8 +2,8 @@ import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
 
-const CURRENT_CACHE = 'big-gains-shell-v69-workout-shell-2a';
-const PREVIOUS_CACHE = 'big-gains-shell-v68-thin-app-composition';
+const CURRENT_CACHE = 'big-gains-shell-v70-ios-home-screen-auth-persistence';
+const PREVIOUS_CACHE = 'big-gains-shell-v69-workout-shell-2a';
 
 async function waitForServiceWorker(page) {
   await page.evaluate(async () => {
@@ -32,13 +32,15 @@ test('first install precaches one complete, revision-consistent app shell', asyn
     };
   }, CURRENT_CACHE);
 
-  expect(state.release).toBe('v69-workout-shell-2a');
+  expect(state.release).toBe('v70-ios-home-screen-auth-persistence');
   expect(state.cacheNames).toContain(CURRENT_CACHE);
   expect(state.cachedUrls).toEqual(state.expectedUrls);
-  expect(state.cachedUrls).toContain(new URL('/exercise-catalog.js?v=v69-workout-shell-2a', page.url()).href);
-  expect(state.cachedUrls).toContain(new URL('/routine-engine.js?v=v69-workout-shell-2a', page.url()).href);
-  expect(state.cachedUrls).toContain(new URL('/workout-session-controller.js?v=v69-workout-shell-2a', page.url()).href);
-  expect(state.cachedUrls).toContain(new URL('/timer-controller.js?v=v69-workout-shell-2a', page.url()).href);
+  expect(state.cachedUrls).toContain(new URL('/exercise-catalog.js?v=v70-ios-home-screen-auth-persistence', page.url()).href);
+  expect(state.cachedUrls).toContain(new URL('/routine-engine.js?v=v70-ios-home-screen-auth-persistence', page.url()).href);
+  expect(state.cachedUrls).toContain(new URL('/workout-session-controller.js?v=v70-ios-home-screen-auth-persistence', page.url()).href);
+  expect(state.cachedUrls).toContain(new URL('/timer-controller.js?v=v70-ios-home-screen-auth-persistence', page.url()).href);
+  expect(state.cachedUrls).toContain(new URL('/auth-setup.html', page.url()).href);
+  expect(state.cachedUrls).toContain(new URL('/auth-setup.js?v=v70-ios-home-screen-auth-persistence', page.url()).href);
   expect(state.cachedUrls).toContain(new URL('/assets/timer-ready.wav', page.url()).href);
 });
 
@@ -72,6 +74,8 @@ test('production assets use the manifest release once and contain no duplicate c
       .map(script => script.getAttribute('src'));
     return {
       coreAssets: manifest.coreAssets,
+      authSetupScripts: manifest.authSetupScripts,
+      authSetupStyles: manifest.authSetupStyles,
       loadedScripts,
       loadedStyles,
       scripts: manifest.scripts,
@@ -86,6 +90,12 @@ test('production assets use the manifest release once and contain no duplicate c
   expect(new Set(consistency.coreAssets).size).toBe(consistency.coreAssets.length);
   expect(consistency.coreAssets.filter(path => path === './index.html')).toHaveLength(1);
   expect(consistency.coreAssets).not.toContain('./');
+  expect(consistency.authSetupScripts).toEqual([
+    './cloud-config.js?v=v70-ios-home-screen-auth-persistence',
+    './vendor/supabase.js?v=v70-ios-home-screen-auth-persistence',
+    './auth-setup.js?v=v70-ios-home-screen-auth-persistence'
+  ]);
+  expect(consistency.authSetupStyles).toEqual(['./auth-setup.css?v=v70-ios-home-screen-auth-persistence']);
   expect(indexSource).not.toMatch(/\.(?:css|js)\?v=/);
   expect(workerSource).not.toContain('?v=');
   expect(workerSource).toContain("importScripts('./asset-manifest.js', './service-worker-core.js')");
@@ -185,6 +195,24 @@ test('reloads offline after the service worker is installed', async ({ context, 
     await expect(page.locator('#greeting')).toContainText('Jorge');
     await expect(page.locator('#sessionTypeSelector')).toBeAttached();
     await expect(page.locator('#quickStartSession')).toBeVisible();
+  } finally {
+    await context.setOffline(false);
+  }
+});
+
+test('serves the isolated password-setup document from the app shell while offline', async ({ context, page }) => {
+  await installLocalStorageFixture(page, 'blankJorge');
+  await openApp(page);
+  await waitForServiceWorker(page);
+  await expect.poll(() => page.evaluate(() => caches.keys())).toContain(CURRENT_CACHE);
+
+  await context.setOffline(true);
+  try {
+    await page.goto('/auth-setup.html', { waitUntil: 'domcontentloaded' });
+    await expect(page).toHaveTitle('Set up Big Gains sign-in');
+    await expect(page.locator('#authSetupTitle')).toHaveText('Set your app password.');
+    await expect(page.locator('#authSetupDetail')).toContainText('unavailable on this build');
+    await expect(page.locator('#sessionTypeSelector')).toHaveCount(0);
   } finally {
     await context.setOffline(false);
   }

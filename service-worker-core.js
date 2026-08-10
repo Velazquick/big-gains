@@ -6,8 +6,14 @@
 
     const absoluteUrl = path => new URL(path, baseUrl).href;
     const coreUrls = new Set(manifest.coreAssets.map(absoluteUrl));
-    const revisionedUrls = new Set([...manifest.styles, ...manifest.scripts].map(absoluteUrl));
+    const revisionedUrls = new Set([
+      ...manifest.styles,
+      ...manifest.scripts,
+      ...(manifest.authSetupStyles || []),
+      ...(manifest.authSetupScripts || [])
+    ].map(absoluteUrl));
     const documentUrl = absoluteUrl('./index.html');
+    const authSetupDocumentUrl = absoluteUrl('./auth-setup.html');
     const ownsCache = name => (
       name.startsWith(manifest.cachePrefix)
       || name.startsWith(manifest.runtimeCachePrefix)
@@ -51,7 +57,9 @@
       try {
         return await fetchRequired(new Request(request, { cache: 'no-store' }));
       } catch (error) {
-        const cached = await findCurrent(documentUrl);
+        const requested = new URL(request.url);
+        const fallbackUrl = requested.pathname.endsWith('/auth-setup.html') ? authSetupDocumentUrl : documentUrl;
+        const cached = await findCurrent(fallbackUrl);
         if (cached) return cached;
         throw error;
       }

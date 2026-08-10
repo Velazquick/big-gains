@@ -6,6 +6,8 @@
   let subscription = null;
   let busy = false;
   let refreshInFlight = null;
+  let rejectionMessage = '';
+  let cooldownTimer = null;
 
   const escapeHtml = value => String(value).replace(/[&<>"']/g, character => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -42,8 +44,17 @@
     return `<span class="label">Private cloud</span><h2>This device is ready for you.</h2><p id="accountOnboardingDetail">${escapeHtml(message)}</p>
       <form id="accountOnboardingSignIn" class="cloud-auth-form">
         <label><span>Email</span><input id="accountOnboardingEmail" type="email" autocomplete="email" required></label>
-        <button class="primary" type="submit">Email sign-in link</button>
-      </form><small>Your training stays local first and remains available offline after setup.</small>`;
+        <label><span>Password</span><input id="accountOnboardingPassword" type="password" autocomplete="current-password" required></label>
+        <button class="primary" type="submit">Sign in</button>
+        <button id="accountOnboardingReset" class="ghost" type="button">Set or reset password</button>
+        ${boundary?.isStandalone() ? '' : '<button id="accountOnboardingMagicLink" class="ghost" type="button">Use Magic Link in this browser</button>'}
+      </form><small>Password sign-in keeps this Home Screen app independent from Safari storage. Training stays local first and remains available offline after setup.</small>`;
+  }
+
+  function rejectionMarkup(message) {
+    return `<span class="label">Private cloud</span><h2>Account setup needs attention.</h2><p id="accountOnboardingDetail">${escapeHtml(message)}</p>
+      <button id="accountOnboardingTryAgain" class="primary" type="button">Return to sign in</button>
+      <small>The rejected session was removed only from this browser or Home Screen app. No local or cloud training data was changed.</small>`;
   }
 
   function provisionMarkup(email) {
@@ -91,13 +102,28 @@
       return null;
     }
     if (!currentSession?.user?.id) {
-      if (window.bigGainsAccounts.runtime.kind === 'guest') show(signInMarkup());
+      if (rejectionMessage) show(rejectionMarkup(rejectionMessage));
+      else if (window.bigGainsAccounts.runtime.kind === 'guest') show(signInMarkup());
       else hide();
       return null;
     }
+    let verifiedUser;
+    try {
+      verifiedUser = await boundary.verifiedUser(currentSession.user.id);
+    } catch (error) {
+      if (error?.code === 'identity-verification-unavailable'
+        && restoredRuntimeAvailableOffline(currentSession.user.id)) {
+        hide();
+        return Object.freeze({ status: 'offline-cached', reason: error?.message || 'Cloud unavailable.' });
+      }
+      await boundary.signOut({ scope: 'local' }).catch(() => {});
+      rejectionMessage = error?.message || 'The signed-in identity could not be verified.';
+      show(rejectionMarkup(rejectionMessage));
+      return null;
+    }
     let accountState;
-    try { accountState = await boundary.readAccountState(); } catch (error) {
-      if (restoredRuntimeAvailableOffline(currentSession.user.id)) {
+    try { accountState = await boundary.readAccountState(verifiedUser.id); } catch (error) {
+      if (restoredRuntimeAvailableOffline(verifiedUser.id)) {
         hide();
         return Object.freeze({ status: 'offline-cached', reason: error?.message || 'Cloud unavailable.' });
       }
@@ -106,20 +132,23 @@
     }
     if (accountState.status === 'needs-provisioning') {
       if (window.bigGainsAccounts.runtime.kind === 'managed-member'
-        && window.bigGainsAccounts.runtime.authUserId === currentSession.user.id) {
+        && window.bigGainsAccounts.runtime.authUserId === verifiedUser.id) {
         show('<span class="label">Private cloud</span><h2>Managed access needs review.</h2><p>The previously verified profile membership is no longer available. Independent onboarding is disabled for this device identity.</p><small>No local or cloud training data was changed.</small>');
         return accountState;
       }
-      show(provisionMarkup(currentSession.user.email));
+      show(provisionMarkup(verifiedUser.email));
       return accountState;
     }
     if (accountState.status !== 'ready') {
-      show(`<span class="label">Private cloud</span><h2>Account setup needs attention.</h2><p>${escapeHtml(accountState.reason || 'Unexpected account/profile state.')}</p><small>No local or cloud training data was changed.</small>`);
+      rejectionMessage = accountState.reason || 'Unexpected account/profile state.';
+      await boundary.signOut({ scope: 'local' }).catch(() => {});
+      show(rejectionMarkup(rejectionMessage));
       return accountState;
     }
+    rejectionMessage = '';
     const owner = ownerFromState(accountState);
-    if (!currentRuntimeMatches(owner, currentSession.user.id)) {
-      window.bigGainsAccounts.activateCloudOwner(owner, currentSession.user.id);
+    if (!currentRuntimeMatches(owner, verifiedUser.id)) {
+      window.bigGainsAccounts.activateCloudOwner(owner, verifiedUser.id);
       location.reload();
       return accountState;
     }
@@ -151,12 +180,64 @@
   }
 
   async function submitSignIn(form) {
+    if (busy) return;
+    busy = true;
     const detail = document.getElementById('accountOnboardingDetail');
+    const button = form.querySelector('button[type="submit"]');
+    if (button) { button.disabled = true; button.textContent = 'Verifying…'; }
     try {
-      await boundary.requestMagicLink(form.querySelector('#accountOnboardingEmail').value);
-      if (detail) detail.textContent = 'Check your email for the private sign-in link.';
+      await boundary.signInWithPassword(
+        form.querySelector('#accountOnboardingEmail').value,
+        form.querySelector('#accountOnboardingPassword').value
+      );
+      rejectionMessage = '';
+      await refresh();
     } catch (error) {
-      if (detail) detail.textContent = error?.message || 'The sign-in link could not be sent.';
+      if (detail) detail.textContent = error?.message || 'Email or password could not be verified.';
+    } finally {
+      busy = false;
+      if (button?.isConnected) { button.disabled = false; button.textContent = 'Sign in'; }
+    }
+  }
+
+  function renderCooldown(button, seconds, idleLabel) {
+    if (!button) return;
+    window.clearInterval(cooldownTimer);
+    let remaining = Math.max(1, Number(seconds) || 60);
+    button.disabled = true;
+    button.textContent = `${idleLabel} (${remaining}s)`;
+    cooldownTimer = window.setInterval(() => {
+      remaining -= 1;
+      if (remaining > 0 && button.isConnected) button.textContent = `${idleLabel} (${remaining}s)`;
+      else {
+        window.clearInterval(cooldownTimer);
+        if (button.isConnected) { button.disabled = false; button.textContent = idleLabel; }
+      }
+    }, 1000);
+  }
+
+  async function requestPasswordReset() {
+    const email = document.getElementById('accountOnboardingEmail');
+    const detail = document.getElementById('accountOnboardingDetail');
+    const button = document.getElementById('accountOnboardingReset');
+    try {
+      const result = await boundary.requestPasswordReset(email?.value);
+      if (detail) detail.textContent = 'If this invited account exists, password setup instructions are on the way. Open them in Safari, then return here to sign in.';
+      renderCooldown(button, result.cooldownSeconds, 'Set or reset password');
+    } catch (error) {
+      if (detail) detail.textContent = error?.message || 'Enter the invited email address and try again.';
+    }
+  }
+
+  async function requestBrowserMagicLink() {
+    const detail = document.getElementById('accountOnboardingDetail');
+    const button = document.getElementById('accountOnboardingMagicLink');
+    try {
+      const result = await boundary.requestMagicLink(document.getElementById('accountOnboardingEmail')?.value);
+      if (detail) detail.textContent = 'Check your email for the browser sign-in link. Magic Link does not sign in the separate Home Screen app.';
+      renderCooldown(button, result.cooldownSeconds, 'Use Magic Link in this browser');
+    } catch (error) {
+      if (detail) detail.textContent = error?.message || 'The browser sign-in link could not be sent.';
     }
   }
 
@@ -168,7 +249,8 @@
     try {
       const owner = await boundary.bootstrapIndependentAccount(form.querySelector('#independentDisplayName').value);
       const currentSession = await boundary.session();
-      window.bigGainsAccounts.activateCloudOwner(owner, currentSession.user.id, { newlyProvisioned: true });
+      const verifiedUser = await boundary.verifiedUser(currentSession?.user?.id, { rejectOnFailure: true });
+      window.bigGainsAccounts.activateCloudOwner(owner, verifiedUser.id, { newlyProvisioned: true });
       location.reload();
     } catch (error) {
       show(`${provisionMarkup(form.querySelector('#independentDisplayName').value)}<p class="account-onboarding-error" role="alert">${escapeHtml(error?.message || 'The private profile could not be created.')}</p>`);
@@ -184,6 +266,14 @@
     document.addEventListener('submit', event => {
       if (event.target.id === 'accountOnboardingSignIn') { event.preventDefault(); submitSignIn(event.target); }
       if (event.target.id === 'independentProfileForm') { event.preventDefault(); submitProvision(event.target); }
+    });
+    document.addEventListener('click', event => {
+      if (event.target.closest('#accountOnboardingReset')) requestPasswordReset();
+      if (event.target.closest('#accountOnboardingMagicLink')) requestBrowserMagicLink();
+      if (event.target.closest('#accountOnboardingTryAgain')) {
+        rejectionMessage = '';
+        show(signInMarkup());
+      }
     });
     subscription = boundary?.onAuthStateChange(() => window.setTimeout(refresh, 0));
     refresh();

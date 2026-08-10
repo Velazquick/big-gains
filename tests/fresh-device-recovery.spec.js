@@ -219,6 +219,12 @@ async function installCloud(page, identity, { malformed = false, slow = false } 
     const url = new URL(request.url());
     const headers = { 'access-control-allow-origin': '*', 'content-type': 'application/json' };
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+    if (url.pathname.endsWith('/auth/v1/user')) {
+      return route.fulfill({ status: 200, headers, body: JSON.stringify({
+        id: identity.authUserId, aud: 'authenticated', role: 'authenticated', email: `${identity.kind}@example.test`,
+        email_confirmed_at: NOW, app_metadata: { provider: 'email', providers: ['email'] }, user_metadata: {}, identities: [], created_at: NOW
+      }) });
+    }
     const table = url.pathname.split('/').pop();
     reads.push(table);
     if (!['GET', 'HEAD'].includes(request.method())) {
