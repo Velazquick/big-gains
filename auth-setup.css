@@ -1,0 +1,23 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  background: #080a0d;
+  color: #f7f8fa;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100dvh; background: radial-gradient(circle at top, #222832 0, #0d1015 38%, #080a0d 72%); }
+.auth-setup-shell { min-height: 100dvh; display: grid; place-items: center; padding: max(24px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom)); }
+.auth-setup-card { width: min(100%, 480px); padding: 28px; border: 1px solid #343a45; border-radius: 22px; background: rgba(18, 21, 27, .96); box-shadow: 0 24px 70px rgba(0, 0, 0, .45); }
+.auth-setup-label { color: #ff754d; font-size: .75rem; font-weight: 800; letter-spacing: .14em; }
+h1 { margin: 9px 0 12px; font-size: clamp(1.8rem, 8vw, 2.7rem); line-height: 1.02; }
+p, small { color: #aeb5c1; line-height: 1.55; }
+form { display: grid; gap: 14px; margin: 22px 0; }
+label { display: grid; gap: 7px; font-weight: 700; }
+input { width: 100%; min-height: 48px; padding: 11px 13px; border: 1px solid #454c58; border-radius: 12px; background: #090b0f; color: #fff; font: inherit; }
+input:focus { outline: 2px solid #ff754d; outline-offset: 2px; }
+button { min-height: 50px; border: 0; border-radius: 13px; background: #e64b26; color: #fff; font: inherit; font-weight: 850; cursor: pointer; }
+button:disabled { cursor: wait; opacity: .65; }
+#authSetupComplete { margin: 22px 0; padding: 16px; border: 1px solid #3b664c; border-radius: 14px; background: #12251a; }
+#authSetupComplete strong { color: #c7f5d4; }
+small { display: block; margin-top: 18px; font-size: .8rem; }

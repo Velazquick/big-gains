@@ -2,7 +2,7 @@
 
 The Playwright harness serves the static PWA from `index.html` without rewriting it, so production scripts execute in their declared order.
 
-The current baseline is 306 passing Chromium tests across 38 files with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
+The current baseline is 315 passing Chromium tests across 39 files with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
 
 ## Install
 
@@ -59,6 +59,8 @@ V45 coverage in `tests/cloud-foundation.spec.js` verifies the disabled-by-defaul
 
 V46 coverage in `tests/cloud-sync.spec.js` verifies queue survival across reload, queue exclusion from schema-version-5 backup data, local-persist-before-enqueue ordering, harmless remote failure, stable keys across retries, offline/reconnect recovery, lost-acknowledgement idempotency with exactly one synthetic remote row, durable acknowledgements, the hard non-synthetic transport rejection, and existing-user magic-link options with signup disabled and the exact GitHub Pages redirect.
 
+V70 coverage in `tests/ios-home-screen-auth.spec.js` verifies password-first standalone sign-in, persisted container-local sessions, a fresh matching `getUser()` identity gate, local-scope rejection before account reads, unchanged profile-shape blocking, generic password reset with cooldown under provider failure, browser-only existing-user Magic Link compatibility, the isolated invitation/recovery password-setup page, legacy root callback routing, and explicit Safari/Home Screen storage isolation. Existing Phase 4G/4H and v60/v61 recovery fixtures now answer the same verified-user gate before exercising their unchanged account/member/profile contracts.
+
 V50 coverage in `tests/phase4g-independent-user.spec.js` verifies the independent one-profile shell, no managed selector/identifier leakage, pet-off initialization, cobalt/performance tokens, generic routines, cloud-UUID local/queue/catalog namespaces, local-first offline workout capture, reload persistence, one-profile shadow parity, a fresh invited-session onboarding flow, one RPC call, and isolated empty schema-v5 initialization. `supabase/tests/database/phase4g_independent_account_rls.test.sql` adds 43 rollback-only hosted assertions for bootstrap-only creation, retry reuse, presentation constraints, bidirectional account isolation, immutable ownership, known-UUID forgery denial, and anonymous denial.
 
 V48 coverage in `tests/controlled-migration.spec.js` verifies strict metadata-only audit parsing, exact checksum and mapping gates, changed workout/bodyweight/preference blockers, empty-remote requirements, deterministic target payloads and collision-safe bodyweight IDs, exact planned writes, explicit confirmation, first-run verification, lost-response exact-once recovery, safe mid-run resume, conflict refusal, readback count/checksum failures, source-change failure, journal completion ordering, raw-free post-migration audits, and unchanged local storage/backups/snapshots/schema v5. `supabase/tests/database/phase4e_bodyweight_rls.test.sql` adds hosted adversarial ownership, anonymous denial, composite-FK, unit, and immutability coverage.
@@ -77,7 +79,7 @@ Phase 3 Sprint 2 coverage in `tests/phase3-completion-experience.spec.js` verifi
 
 ## Cache and update coverage
 
-Offline coverage verifies a complete first install, deterministic manifest revisions, unique core assets, migration from the previous Big Gains cache, preservation of unrelated origin caches, awaited precache and runtime writes, visible cache-write failures, ordinary offline reload, active-session reload directly into Workout Mode, and offline loading of `exercise-catalog.js`, `routine-engine.js`, `workout-session-controller.js`, `timer-controller.js`, and the repository-owned WAV chime.
+Offline coverage verifies a complete first install, deterministic manifest revisions, unique core assets, migration from the previous Big Gains cache, preservation of unrelated origin caches, awaited precache and runtime writes, visible cache-write failures, ordinary offline reload, active-session reload directly into Workout Mode, isolated `auth-setup.html` fallback, and offline loading of `exercise-catalog.js`, `routine-engine.js`, `workout-session-controller.js`, `timer-controller.js`, and the repository-owned WAV chime.
 
 ## Legacy migration policy
 

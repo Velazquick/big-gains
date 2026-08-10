@@ -37,7 +37,7 @@ Full local multi-account switching is intentionally out of scope. The identity-s
 
 Direct browser inserts into `accounts` and `profiles` fail RLS because their insert policies require that guard. The account's existing unique `owner_user_id` constraint serializes concurrent/retried calls. A retry returns the existing independent account/profile. Existing zero-profile, managed two-profile, multi-account, or other unexpected shapes block for manual review; the function never silently creates another account or attaches a profile to Jorge.
 
-Display names are trimmed, whitespace-normalized, limited to 1–60 characters, and reject control characters. The server issues a stable `independent-*` client ID. Public signup and anonymous Auth remain disabled; the magic-link request always uses `shouldCreateUser: false`.
+Display names are trimmed, whitespace-normalized, limited to 1–60 characters, and reject control characters. The server issues a stable `independent-*` client ID. Public signup and anonymous Auth remain disabled. Password sign-in is primary; browser-only Magic Link compatibility always uses `shouldCreateUser: false`.
 
 ## Presentation schema
 
@@ -64,8 +64,8 @@ Do these steps only after branch review, merge, v50 deployment, and a final Jorg
 1. Jorge provides the friend's exact email address to the operator; do not add it to source, SQL, or browser storage.
 2. In Supabase Authentication, confirm public email signup and anonymous sign-in are still disabled.
 3. Explicitly create or invite one Auth user for that email. Do not create an account/profile row manually and do not add the user to Jorge's account.
-4. On the friend's fresh device/browser, open the deployed PWA and request a magic link for that already-created email.
-5. After sign-in, enter the display name and choose **Create private profile** once. The RPC creates one owned account and one profile with cobalt/performance-dark and the companion off.
+4. Send the trusted invitation with `redirectTo: https://velazquick.github.io/big-gains/auth-setup.html`. The friend opens it in Safari and sets a password; no template customization or custom SMTP is required.
+5. Open the installed PWA, sign in once with that email/password, enter the display name, and choose **Create private profile** once. The RPC creates one owned account and one profile with cobalt/performance-dark and the companion off.
 6. Verify the shell shows only that display name, no Jorge/Alexa selector, an empty schema-v5 history, and a private-cloud card for one profile.
 7. Turn the device offline, log and complete a small real workout, reload offline, and confirm it remains present.
 8. Reconnect and wait for zero pending plus **In sync**. Confirm only the friend's account gained rows and Jorge/Alexa counts did not change.

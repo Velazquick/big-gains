@@ -67,6 +67,12 @@ async function installCloudIdentityShape(page, profileClientId) {
     const url = new URL(request.url());
     const headers = { 'access-control-allow-origin': '*', 'content-type': 'application/json' };
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+    if (url.pathname.endsWith('/auth/v1/user')) {
+      return route.fulfill({ status: 200, headers, body: JSON.stringify({
+        id: authUserId, aud: 'authenticated', role: 'authenticated', email: 'shape@example.test',
+        email_confirmed_at: now, app_metadata: { provider: 'email', providers: ['email'] }, user_metadata: {}, identities: [], created_at: now
+      }) });
+    }
     if (url.pathname.endsWith('/accounts')) {
       return route.fulfill({ status: 200, headers: { ...headers, 'content-range': '0-0/1' }, body: JSON.stringify([{
         id: cloudAccountId, owner_user_id: authUserId, display_name: 'Shape fixture', created_at: now
@@ -116,6 +122,13 @@ for (const identityShape of [
       await expect(page.locator('#independentAccountOnboarding')).toBeVisible();
       await expect(page.locator('#independentAccountOnboarding')).toHaveClass(/is-blocking/);
       await expect(page.locator('#independentAccountOnboarding')).toContainText('Account setup needs attention');
+      await expect(page.locator('#independentAccountOnboarding')).toContainText('one independent-* profile');
+      expect(await page.evaluate(() => localStorage.getItem('big-gains-supabase-auth-v1'))).toBeNull();
+      expect(await page.evaluate(profileClientId => ({
+        shape: bigGainsAccounts.cloudProfileShape([{ client_id: profileClientId }]),
+        runtimeKind: bigGainsAccounts.runtime.kind
+      }), identityShape.profileClientId)).toEqual({ shape: 'unexpected', runtimeKind: 'guest' });
+      return;
     } else {
       await expect(page.locator('html')).toHaveAttribute('data-account-mode', 'independent');
       await expect(page.locator('#independentAccountOnboarding')).toBeHidden();
@@ -142,20 +155,12 @@ for (const identityShape of [
         });
         return [result.status, result.runtimeKind, result.ownerMatchesRuntime];
       } catch { return null; }
-    }).toEqual(identityShape.expectedStatus === 'ready'
-      ? ['ready', 'independent', true]
-      : ['unexpected', null, false]);
+    }).toEqual(['ready', 'independent', true]);
 
     expect(result.status).toBe(identityShape.expectedStatus);
     expect(result.stateShape).toBe(identityShape.expectedStatus === 'ready' ? identityShape.expectedShape : null);
     expect(result.classifiedShape).toBe(identityShape.expectedShape);
-    if (identityShape.expectedStatus === 'ready') {
-      expect(result).toMatchObject({ runtimeKind: 'independent', runtimeError: null, ownerMatchesRuntime: true });
-    } else {
-      expect(result.runtimeKind).toBeNull();
-      expect(result.runtimeError).toContain('one independent-* profile');
-      expect(result.ownerMatchesRuntime).toBe(false);
-    }
+    expect(result).toMatchObject({ runtimeKind: 'independent', runtimeError: null, ownerMatchesRuntime: true });
   });
 }
 
@@ -293,6 +298,12 @@ test('fresh invited Auth user sees onboarding, provisions once through RPC, and 
     const url = new URL(request.url());
     const headers = { 'access-control-allow-origin': '*', 'content-type': 'application/json' };
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+    if (url.pathname.endsWith('/auth/v1/user')) {
+      return route.fulfill({ status: 200, headers, body: JSON.stringify({
+        id: authUserId, aud: 'authenticated', role: 'authenticated', email: 'riley.invited@example.com',
+        email_confirmed_at: '2026-08-07T20:00:00.000Z', app_metadata: { provider: 'email', providers: ['email'] }, user_metadata: {}, identities: [], created_at: '2026-08-07T20:00:00.000Z'
+      }) });
+    }
     if (url.pathname.includes('/rpc/bootstrap_independent_account')) {
       rpcCalls += 1;
       provisioned = true;

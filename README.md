@@ -59,7 +59,7 @@ The release does not execute a migration automatically. Local schema version 5, 
 
 ## Phase 4C: Jorge auth and synthetic completed-workout sync
 
-Big Gains now ships a browser-safe Supabase client, Jorge-only magic-link sign-in, a durable outbound queue, and a completed-workout transport. The transport has a hard synthetic-only gate: normal Jorge and Alexa workout completion still uses only the existing local schema-version-5 path and cannot enter the cloud queue in this release.
+Big Gains ships a browser-safe Supabase client with password sign-in for both Safari and the storage-isolated iOS Home Screen app. One-time invitation/recovery links open an isolated password-setup page; Magic Link remains existing-user-only browser compatibility. Every accepted session is verified with `getUser()` before the unchanged owner/member/profile-shape gates run. Cloud or Auth failure never blocks the local schema-version-5 workout path.
 
 The future cloud model gives Jorge one authenticated account containing separate Jorge and Alexa profiles. A future friend receives a different account containing only the friend's profile. Every profile-scoped cloud row carries both `account_id` and `profile_id`; knowing or guessing a profile ID cannot grant access.
 

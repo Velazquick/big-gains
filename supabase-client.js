@@ -3,7 +3,14 @@
 
   const config = window.__BIG_GAINS_CLOUD_CONFIG__ || {};
   const configured = Boolean(config.supabaseUrl && config.supabasePublishableKey);
+  const AUTH_STORAGE_KEY = 'big-gains-supabase-auth-v1';
+  const RESET_COOLDOWN_KEY = 'big-gains-password-reset-cooldown-v1';
+  const MAGIC_LINK_COOLDOWN_KEY = 'big-gains-magic-link-cooldown-v1';
+  const REQUEST_COOLDOWN_MS = 60_000;
   let client = null;
+  let passwordSignInBusy = false;
+  let passwordResetBusy = false;
+  let magicLinkBusy = false;
 
   function getClient() {
     if (!configured) return null;
@@ -14,7 +21,7 @@
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
-        storageKey: 'big-gains-supabase-auth-v1'
+        storageKey: AUTH_STORAGE_KEY
       }
     });
     return client;
@@ -28,34 +35,152 @@
     return data.session || null;
   }
 
+  function standalone() {
+    return navigator.standalone === true || window.matchMedia?.('(display-mode: standalone)').matches === true;
+  }
+
+  function normalizedEmail(email) {
+    const value = String(email || '').trim().toLowerCase();
+    if (!value) throw new Error('Enter your email address.');
+    return value;
+  }
+
+  function cooldownRemaining(key) {
+    try {
+      return Math.max(0, Number(localStorage.getItem(key) || 0) - Date.now());
+    } catch {
+      return 0;
+    }
+  }
+
+  function beginCooldown(key) {
+    const until = Date.now() + REQUEST_COOLDOWN_MS;
+    try { localStorage.setItem(key, String(until)); } catch {}
+    return until;
+  }
+
+  async function rejectSession() {
+    const current = getClient();
+    if (!current) return false;
+    try { await current.auth.signOut({ scope: 'local' }); } catch {}
+    return true;
+  }
+
+  async function verifiedUser(expectedUserId = null, { rejectOnFailure = false } = {}) {
+    const current = getClient();
+    if (!current) throw new Error('Private cloud is not configured.');
+    let result;
+    try {
+      result = await current.auth.getUser();
+    } catch (cause) {
+      const error = new Error('The signed-in identity could not be verified.');
+      error.code = 'identity-verification-unavailable';
+      error.cause = cause;
+      if (rejectOnFailure) await rejectSession();
+      throw error;
+    }
+    if (result.error) {
+      const error = new Error('The signed-in identity could not be verified.');
+      error.code = 'identity-verification-unavailable';
+      error.cause = result.error;
+      if (rejectOnFailure) await rejectSession();
+      throw error;
+    }
+    const user = result.data?.user || null;
+    if (!user?.id || (expectedUserId && user.id !== expectedUserId)) {
+      await rejectSession();
+      const error = new Error('The signed-in identity could not be verified.');
+      error.code = 'identity-mismatch';
+      throw error;
+    }
+    return Object.freeze({ ...user });
+  }
+
+  async function signInWithPassword(email, password) {
+    const current = getClient();
+    if (!current) throw new Error('Private cloud is not configured.');
+    const normalized = normalizedEmail(email);
+    const secret = String(password || '');
+    if (!secret) throw new Error('Enter your password.');
+    if (passwordSignInBusy) throw new Error('Sign-in is already being checked.');
+    passwordSignInBusy = true;
+    try {
+      const { data, error } = await current.auth.signInWithPassword({ email: normalized, password: secret });
+      if (error || !data?.session?.user?.id) {
+        await rejectSession();
+        const rejected = new Error('Email or password is incorrect, or this invited account is not ready.');
+        rejected.code = 'password-sign-in-rejected';
+        rejected.cause = error || null;
+        throw rejected;
+      }
+      const user = await verifiedUser(data.session.user.id, { rejectOnFailure: true });
+      return Object.freeze({ session: data.session, user });
+    } finally {
+      passwordSignInBusy = false;
+    }
+  }
+
+  async function requestPasswordReset(email) {
+    const current = getClient();
+    if (!current) throw new Error('Private cloud is not configured.');
+    const normalized = normalizedEmail(email);
+    const remaining = cooldownRemaining(RESET_COOLDOWN_KEY);
+    if (remaining || passwordResetBusy) {
+      return Object.freeze({ accepted: true, cooldownSeconds: Math.max(1, Math.ceil(remaining / 1000)) });
+    }
+    passwordResetBusy = true;
+    beginCooldown(RESET_COOLDOWN_KEY);
+    try {
+      await current.auth.resetPasswordForEmail(normalized, {
+        redirectTo: config.authSetupRedirectUrl || 'https://velazquick.github.io/big-gains/auth-setup.html'
+      });
+    } catch {}
+    finally { passwordResetBusy = false; }
+    return Object.freeze({ accepted: true, cooldownSeconds: Math.ceil(REQUEST_COOLDOWN_MS / 1000) });
+  }
+
   async function requestMagicLink(email) {
     const current = getClient();
     if (!current) throw new Error('Private cloud is not configured.');
-    const normalized = String(email || '').trim();
-    if (!normalized) throw new Error('Enter your email address.');
-    const { error } = await current.auth.signInWithOtp({
-      email: normalized,
-      options: {
-        shouldCreateUser: false,
-        emailRedirectTo: config.authRedirectUrl || 'https://velazquick.github.io/big-gains/'
-      }
-    });
-    if (error) throw error;
-    return true;
+    if (standalone()) throw new Error('Magic Link is available only in a browser. Use password sign-in in the Home Screen app.');
+    const normalized = normalizedEmail(email);
+    const remaining = cooldownRemaining(MAGIC_LINK_COOLDOWN_KEY);
+    if (remaining || magicLinkBusy) return Object.freeze({ accepted: true, cooldownSeconds: Math.max(1, Math.ceil(remaining / 1000)) });
+    magicLinkBusy = true;
+    beginCooldown(MAGIC_LINK_COOLDOWN_KEY);
+    try {
+      const { error } = await current.auth.signInWithOtp({
+        email: normalized,
+        options: {
+          shouldCreateUser: false,
+          emailRedirectTo: config.authRedirectUrl || 'https://velazquick.github.io/big-gains/'
+        }
+      });
+      if (error) throw error;
+      return Object.freeze({ accepted: true, cooldownSeconds: Math.ceil(REQUEST_COOLDOWN_MS / 1000) });
+    } finally {
+      magicLinkBusy = false;
+    }
   }
 
-  async function signOut() {
+  async function signOut({ scope = 'global' } = {}) {
     const current = getClient();
     if (!current) return false;
-    const { error } = await current.auth.signOut();
+    const { error } = await current.auth.signOut({ scope });
     if (error) throw error;
     return true;
   }
 
-  async function readAccountState() {
+  async function readAccountState(expectedAuthUserId = null) {
     const current = getClient();
     const currentSession = await session();
     if (!current || !currentSession?.user?.id) return Object.freeze({ status: 'signed-out', account: null, profiles: Object.freeze({}) });
+    if (expectedAuthUserId && currentSession.user.id !== expectedAuthUserId) {
+      return Object.freeze({
+        status: 'unexpected', reason: 'Verified Auth identity does not match the persisted session.',
+        account: null, profiles: Object.freeze({}), authUserId: currentSession.user.id
+      });
+    }
     const [accounts, memberships] = await Promise.all([
       current.from('accounts')
         .select('id,owner_user_id,display_name,created_at')
@@ -142,8 +267,13 @@
     });
   }
 
-  async function readCloudAccount() {
-    const state = await readAccountState();
+  async function readCloudAccount(expectedAuthUserId = null) {
+    let verifiedAuthUserId = expectedAuthUserId;
+    if (!verifiedAuthUserId) {
+      const currentSession = await session();
+      if (currentSession?.user?.id) verifiedAuthUserId = (await verifiedUser(currentSession.user.id)).id;
+    }
+    const state = await readAccountState(verifiedAuthUserId);
     if (state.status !== 'ready') {
       const error = new Error(state.reason || (state.status === 'needs-provisioning'
         ? 'Create your private profile to continue.'
@@ -175,7 +305,8 @@
     const currentSession = await session();
     if (!current || !currentSession?.user?.id) throw new Error('Sign in before creating a private profile.');
     const normalized = validatedDisplayName(displayName);
-    const preflight = await readAccountState();
+    const verified = await verifiedUser(currentSession.user.id, { rejectOnFailure: true });
+    const preflight = await readAccountState(verified.id);
     if (preflight.status !== 'needs-provisioning') {
       const error = new Error(preflight.accessKind === 'managed-member'
         ? 'Managed profile access is already active; independent onboarding is unavailable.'
@@ -188,7 +319,7 @@
     }
     const result = await current.rpc('bootstrap_independent_account', { requested_display_name: normalized });
     if (result.error) throw result.error;
-    const state = await readAccountState();
+    const state = await readAccountState(verified.id);
     if (state.status !== 'ready' || state.shape !== 'independent') {
       throw new Error(state.reason || 'The private profile could not be verified.');
     }
@@ -207,6 +338,9 @@
     status: () => Object.freeze({ configured, signedIn: false }),
     getClient,
     session,
+    verifiedUser,
+    signInWithPassword,
+    requestPasswordReset,
     requestMagicLink,
     requestJorgeMagicLink: requestMagicLink,
     signOut,
@@ -215,6 +349,11 @@
     readJorgeCloudProfiles: readCloudAccount,
     bootstrapIndependentAccount,
     validatedDisplayName,
-    onAuthStateChange
+    onAuthStateChange,
+    isStandalone: standalone,
+    cooldowns: () => Object.freeze({
+      passwordResetMs: cooldownRemaining(RESET_COOLDOWN_KEY),
+      magicLinkMs: cooldownRemaining(MAGIC_LINK_COOLDOWN_KEY)
+    })
   });
 })();

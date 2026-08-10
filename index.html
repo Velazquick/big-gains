@@ -9,6 +9,14 @@
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icon.svg" />
   <title>Big Gains</title>
+  <script>
+    (() => {
+      const parameters = new URLSearchParams(location.hash.slice(1));
+      if (parameters.get('type') === 'invite' || parameters.get('type') === 'recovery') {
+        location.replace(`./auth-setup.html${location.search}${location.hash}`);
+      }
+    })();
+  </script>
 </head>
 <body class="session-selector-ready">
   <div class="app-shell">

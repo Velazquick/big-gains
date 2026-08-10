@@ -4,7 +4,7 @@ Big Gains is a static, local-first progressive web app. `index.html`, CSS, and c
 
 ## Production startup and script order
 
-`index.html` contains the application markup and directly loads only two scripts:
+`index.html` contains the application markup and directly loads only two production asset scripts. A small pre-boot callback router sends only `invite` and `recovery` Auth fragments to `auth-setup.html` before application state loads:
 
 1. `asset-manifest.js` defines the immutable `BIG_GAINS_ASSET_MANIFEST`.
 2. `asset-loader.js` writes the manifest's revisioned styles and scripts into the document in declared order.
@@ -53,7 +53,8 @@ This order is a runtime contract. Persistence and hook APIs exist before `app.js
 | `asset-manifest.js` | `BIG_GAINS_ASSET_MANIFEST` | Release identifier, cache names, ordered CSS and script URLs, and the complete offline core-asset list. |
 | `account-context.js` | `bigGainsAccounts` | Existing on-device descriptor registry, selected profile, storage namespaces, and session-key ownership. |
 | `cloud-config.js` | `__BIG_GAINS_CLOUD_CONFIG__` | Empty checked-in browser configuration. The Pages workflow may replace it in the deployment artifact using only repository variables for the project URL and publishable key. |
-| `supabase-client.js` | `BigGainsSupabase` | Lazily creates the vendored browser client, owns persisted Auth sessions, requests an existing-user-only Jorge magic link, signs out, and reads the already-provisioned Jorge account/profile metadata. Phase 4D removed browser-side account/profile provisioning. |
+| `supabase-client.js` | `BigGainsSupabase` | Lazily creates the vendored browser client, owns container-local persisted Auth sessions, password sign-in, generic password-reset requests, browser-only existing-user Magic Link compatibility, `getUser()` identity verification, local rejection sign-out, and the existing exact account/member/profile-shape reads. |
+| `auth-setup.html` / `auth-setup.js` | isolated page (no application global) | Consumes a one-time invite/recovery session, verifies it with `getUser()`, sets a password, then signs out only that browser session. It loads no workout, persistence, sync, recovery, or account modules and never reads training data. |
 | `cloud-storage.js` | `BigGainsCloud` | Explicit account/profile sync operations, memory and durable queue contracts, deterministic idempotency keys, local-first coordinator, acknowledgements, and conflict resolution. It contains no network transport. |
 | `cloud-shadow.js` | `BigGainsCloudShadow` | Read-only local/cloud semantic reconstruction, migrated/production envelope parsing, tombstone winner selection, SHA-256 shadow checksums, and exact parity/drift reporting. |
 | `cloud-sync.js` | `BigGainsCloudSync` | Phase 4F metadata catalog, asynchronous local capture, owned production transport, conditional revisions, durable retry/ACK, post-ACK comparison, and quiet Auth/shadow controls. |
@@ -174,7 +175,7 @@ The notes and progress features attach through explicit app-owned hooks:
 
 ## Asset and service-worker lifecycle
 
-`asset-manifest.js` is the single asset inventory. Release `v69-workout-shell-2a` loads `workout-session-controller.js` after `analytics.js` and before `app.js`, while retaining `exercise-catalog.js`, `routine-engine.js`, `timer-controller.js`, and `assets/timer-ready.wav` in the deterministic precache. The manifest applies the release query parameter to every production CSS and application script, rejects duplicate core assets, and supplies the same immutable manifest to the page loader and service worker. `index.html`, the loader, manifest, service-worker core, web manifest, icon, local chime, and all revisioned CSS and scripts form the precached app shell.
+`asset-manifest.js` is the single asset inventory. Release `v70-ios-home-screen-auth-persistence` retains the v69 application order and adds isolated `authSetupStyles` / `authSetupScripts` lists. The manifest applies the release query parameter to every production asset, rejects duplicate core assets, and supplies the same immutable manifest to both page loaders and the service worker. `index.html`, `auth-setup.html`, both loaders, the manifest, service-worker core, web manifest, icon, local chime, and all revisioned CSS and scripts form the precached app shell.
 
 Workout-card focus is live-session metadata, not schema migration. `focusedExerciseId` prefers the last interacted exercise while it has incomplete working sets, then falls back to the first incomplete exercise. A manual collapse is authoritative and does not clear focus or session data; automatic advancement opens the next incomplete exercise. Upcoming cards remain collapsed and subdued, while completed cards recede but can be expanded for review. Added sets are ordinary incomplete working sets with fresh IDs and values copied only from the latest valid working set.
 
@@ -188,7 +189,7 @@ Retrospective exercise and set records receive fresh IDs; `definitionId` retains
 
 - Install opens the release-specific shell cache and waits for every required asset fetch and cache write. A missing asset or failed write fails installation.
 - Activate deletes caches owned by the Big Gains shell/runtime prefixes, plus named legacy caches, except for the current shell and runtime cache. Unrelated origin caches are preserved. The worker then claims clients.
-- Navigations are network-first with cached `index.html` fallback.
+- Navigations are network-first. The isolated setup path falls back to cached `auth-setup.html`; other navigations fall back to cached `index.html`.
 - Same-origin GET assets are network-first. Revisioned scripts and styles refresh the shell cache; non-core runtime requests refresh the release-specific runtime cache. On network failure, the current shell and then runtime cache are checked.
 - Cross-origin and non-GET requests are not intercepted.
 
@@ -239,7 +240,9 @@ GitHub is source control and an optional snapshot-backup destination. It is not 
 
 ## Phase 4C cloud boundary
 
-With empty checked-in configuration, no Supabase client is created and no cloud request occurs. With deployment configuration, signed-out local use remains available. Magic links are existing-user-only (`shouldCreateUser:false`), so the app never opens public registration.
+With empty checked-in configuration, no Supabase client is created and no cloud request occurs. With deployment configuration, signed-out local use remains available. Password sign-in is primary in Safari and the installed Home Screen app. A session is not accepted as identity proof until a fresh `getUser()` response matches its user ID; account ownership, managed membership, and exact profile shape are then checked unchanged. A rejected identity or shape is signed out with local scope, so a separate Safari/Home Screen storage container is not affected. Magic Link remains an existing-user-only (`shouldCreateUser:false`) Safari/browser compatibility action and is not offered in standalone mode.
+
+Supabase Auth persistence is intentionally per browser storage container. Safari cannot transfer its local session into an iOS Home Screen web app. `auth-setup.html` therefore turns the one-time invited/recovery browser session into a password and clears that setup session locally. The user then signs into the Home Screen app once; Supabase refresh-token persistence keeps that container signed in. Generic password-reset requests target the same setup page, are cooldown-protected, and do not disclose whether an email exists. No customized hosted email template or custom SMTP server is required.
 
 The future ownership model is intentionally different from the compatibility-only local descriptors:
 

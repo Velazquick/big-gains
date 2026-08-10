@@ -526,8 +526,16 @@
   async function verifiedOwnerForSession() {
     const session = await supabaseBoundary.session();
     if (!session?.user?.id) return null;
-    const owner = await supabaseBoundary.readCloudAccount();
-    if (!window.bigGainsAccounts.matchesCloudOwner(owner, session.user.id)) {
+    const verifiedUser = await supabaseBoundary.verifiedUser(session.user.id);
+    let owner;
+    try {
+      owner = await supabaseBoundary.readCloudAccount(verifiedUser.id);
+    } catch (error) {
+      if (error?.code === 'unexpected') await supabaseBoundary.signOut({ scope: 'local' }).catch(() => {});
+      throw error;
+    }
+    if (!window.bigGainsAccounts.matchesCloudOwner(owner, verifiedUser.id)) {
+      await supabaseBoundary.signOut({ scope: 'local' }).catch(() => {});
       throw new Error('Signed-in account access does not match this device runtime. Reload after account verification.');
     }
     if (catalog && !sameOwnerMapping(owner)) throw new Error('Signed-in cloud account/profile mapping does not match this queue.');
@@ -589,7 +597,10 @@
       <details id="cloudShadowDrift" class="cloud-shadow-drift" hidden><summary>What needs attention</summary><ul id="cloudShadowDriftList"></ul></details>
       <form id="cloudAuthForm" class="cloud-auth-form" hidden>
         <label><span>Email</span><input id="cloudAuthEmail" type="email" autocomplete="email" required></label>
-        <button class="secondary" type="submit">Email sign-in link</button>
+        <label><span>Password</span><input id="cloudAuthPassword" type="password" autocomplete="current-password" required></label>
+        <button class="secondary" type="submit">Sign in</button>
+        <button id="cloudPasswordReset" class="ghost" type="button">Set or reset password</button>
+        ${supabaseBoundary.isStandalone() ? '' : '<button id="cloudMagicLink" class="ghost" type="button">Use Magic Link in this browser</button>'}
       </form>
       <div class="data-actions"><button id="cloudSyncNow" class="secondary" type="button" hidden>Check now</button><button id="cloudSignOut" class="ghost" type="button" hidden>Sign out</button></div>
       <small id="cloudQueueStatus"></small>`;
@@ -685,10 +696,36 @@
     document.getElementById('cloudAuthForm')?.addEventListener('submit', async event => {
       event.preventDefault();
       try {
-        await supabaseBoundary.requestMagicLink(document.getElementById('cloudAuthEmail').value);
-        document.getElementById('cloudAuthDetail').textContent = 'Check your email for the private sign-in link.';
+        await supabaseBoundary.signInWithPassword(
+          document.getElementById('cloudAuthEmail').value,
+          document.getElementById('cloudAuthPassword').value
+        );
+        document.getElementById('cloudAuthDetail').textContent = 'Signed in. Verifying private account access…';
+        await handleSignedIn();
       } catch (error) {
-        document.getElementById('cloudAuthDetail').textContent = error?.message || 'Sign-in link could not be sent.';
+        document.getElementById('cloudAuthDetail').textContent = error?.message || 'Email or password could not be verified.';
+      }
+    });
+    document.getElementById('cloudPasswordReset')?.addEventListener('click', async event => {
+      const button = event.currentTarget;
+      try {
+        const result = await supabaseBoundary.requestPasswordReset(document.getElementById('cloudAuthEmail').value);
+        document.getElementById('cloudAuthDetail').textContent = 'If this invited account exists, password setup instructions are on the way.';
+        button.disabled = true;
+        window.setTimeout(() => { if (button?.isConnected) button.disabled = false; }, result.cooldownSeconds * 1000);
+      } catch (error) {
+        document.getElementById('cloudAuthDetail').textContent = error?.message || 'Enter the invited email address and try again.';
+      }
+    });
+    document.getElementById('cloudMagicLink')?.addEventListener('click', async event => {
+      const button = event.currentTarget;
+      try {
+        const result = await supabaseBoundary.requestMagicLink(document.getElementById('cloudAuthEmail').value);
+        document.getElementById('cloudAuthDetail').textContent = 'Check your email for the browser sign-in link.';
+        button.disabled = true;
+        window.setTimeout(() => { if (button?.isConnected) button.disabled = false; }, result.cooldownSeconds * 1000);
+      } catch (error) {
+        document.getElementById('cloudAuthDetail').textContent = error?.message || 'Browser sign-in link could not be sent.';
       }
     });
     document.getElementById('cloudSyncNow')?.addEventListener('click', flush);

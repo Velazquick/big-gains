@@ -172,6 +172,13 @@ async function installCloudRoutes(page, { membershipRow = membership, slowRecove
     const url = new URL(request.url());
     const headers = { 'access-control-allow-origin': '*', 'content-type': 'application/json' };
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+    if (url.pathname.endsWith('/auth/v1/logout')) return route.fulfill({ status: 204, headers, body: '' });
+    if (url.pathname.endsWith('/auth/v1/user')) {
+      return route.fulfill({ status: 200, headers, body: JSON.stringify({
+        id: authUserId, aud: 'authenticated', role: 'authenticated', email: 'alexa-phase4h@example.test',
+        email_confirmed_at: now, app_metadata: { provider: 'email', providers: ['email'] }, user_metadata: {}, identities: [], created_at: now
+      }) });
+    }
     const table = url.pathname.split('/').pop();
     if (!['GET', 'HEAD'].includes(request.method())) {
       applicationWrites.push(`${request.method()} ${table}`);
