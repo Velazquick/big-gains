@@ -9,6 +9,11 @@
   const statePersistence = window.bigGainsStatePersistence;
   let recoveryInFlight = null;
   let commitProtection = false;
+  let protectUnsafeBlankSave = true;
+  const RECOVERABLE_BLANK_KEYS = new Set([
+    'version', 'profileId', 'goals', 'workouts', 'weights', 'prs', 'activeWorkout',
+    'restTimerEndsAt', 'customRoutines', 'timerPreferences', 'exercisePreferences'
+  ]);
 
   const trainingKeys = new Set([
     ...runtime.descriptors.map(descriptor => descriptor.storageKey),
@@ -22,9 +27,24 @@
   };
   const blocked = (reason, message, details = {}) => Object.freeze({ ok: false, blocked: true, reason, message, ...details });
   const profileRows = owner => Object.values(owner?.profiles || {});
+  const isRecord = value => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+
+  function valuesMatch(left, right) {
+    if (left === right) return true;
+    if (Array.isArray(left) || Array.isArray(right)) {
+      return Array.isArray(left) && Array.isArray(right) && left.length === right.length
+        && left.every((value, index) => valuesMatch(value, right[index]));
+    }
+    if (!isRecord(left) || !isRecord(right)) return false;
+    const leftKeys = Object.keys(left).sort();
+    const rightKeys = Object.keys(right).sort();
+    return leftKeys.length === rightKeys.length
+      && leftKeys.every((key, index) => key === rightKeys[index] && valuesMatch(left[key], right[key]));
+  }
 
   function supportedRuntime() {
-    return SUPPORTED_KINDS.has(runtime.kind) && Boolean(runtime.recoveryKey);
+    return SUPPORTED_KINDS.has(runtime.kind)
+      && Boolean(runtime.recoveryKey && runtime.authUserId && runtime.cloudAccountId);
   }
 
   function localTrainingKeys() {
@@ -34,6 +54,73 @@
   function pristineTrainingNamespace() {
     if (!supportedRuntime() || runtime.newlyProvisioned === true) return false;
     try { return localTrainingKeys().every(key => readStorage(key) === null); } catch { return false; }
+  }
+
+  function localTargets() {
+    return runtime.descriptors.map(descriptor => Object.freeze({
+      descriptor,
+      profileClientId: descriptor.profileId
+    }));
+  }
+
+  function defaultGoalsFor(target) {
+    const config = typeof PROFILE_CONFIG === 'object' && PROFILE_CONFIG
+      ? PROFILE_CONFIG[target.descriptor.profileConfigRef]
+      : null;
+    return isRecord(config?.goals) ? config.goals : null;
+  }
+
+  function recoverableBlankArtifact(value, target) {
+    if (!isRecord(value) || value.version !== 5 || value.profileId !== target.profileClientId
+      || Object.keys(value).some(key => !RECOVERABLE_BLANK_KEYS.has(key))
+      || !Array.isArray(value.workouts) || value.workouts.length !== 0
+      || !Array.isArray(value.weights) || value.weights.length !== 0
+      || !isRecord(value.prs) || Object.keys(value.prs).length !== 0
+      || !isRecord(value.customRoutines) || Object.keys(value.customRoutines).length !== 0
+      || (value.activeWorkout !== null && value.activeWorkout !== undefined)
+      || (value.restTimerEndsAt !== null && value.restTimerEndsAt !== undefined)
+      || ('exercisePreferences' in value
+        && (!isRecord(value.exercisePreferences) || Object.keys(value.exercisePreferences).length !== 0))
+      || !isRecord(value.timerPreferences)
+      || Object.keys(value.timerPreferences).sort().join(',') !== 'sound,vibration'
+      || value.timerPreferences.sound !== true || value.timerPreferences.vibration !== true) return false;
+    if (!('goals' in value)) return true;
+    const defaults = defaultGoalsFor(target);
+    return defaults !== null && valuesMatch(value.goals, defaults);
+  }
+
+  function inspectRecoverableNamespace(targets) {
+    if (!supportedRuntime() || runtime.newlyProvisioned === true || !targets.length) {
+      return Object.freeze({ recoverable: false, profiles: Object.freeze([]) });
+    }
+    const profiles = targets.map(target => {
+      let raw;
+      try { raw = readStorage(target.descriptor.storageKey); } catch {
+        return Object.freeze({ profileClientId: target.profileClientId, status: 'storage-unavailable' });
+      }
+      if (raw === null) return Object.freeze({ profileClientId: target.profileClientId, status: 'missing' });
+      let value;
+      try { value = JSON.parse(raw); } catch {
+        return Object.freeze({ profileClientId: target.profileClientId, status: 'invalid-json' });
+      }
+      return Object.freeze({
+        profileClientId: target.profileClientId,
+        status: recoverableBlankArtifact(value, target) ? 'blank-artifact' : 'meaningful'
+      });
+    });
+    return Object.freeze({
+      recoverable: profiles.every(profile => profile.status === 'missing' || profile.status === 'blank-artifact'),
+      profiles: Object.freeze(profiles)
+    });
+  }
+
+  function legacyStateAbsent() {
+    if (!window.bigGainsAccounts.legacyStateKey) return true;
+    try { return readStorage(window.bigGainsAccounts.legacyStateKey) === null; } catch { return false; }
+  }
+
+  function recoveryMarkerAbsent() {
+    try { return readStorage(runtime.recoveryKey) === null; } catch { return false; }
   }
 
   function targetsFor(owner) {
@@ -115,19 +202,16 @@
   }
 
   function needsRecoveryForCurrentRuntime() {
-    return pristineTrainingNamespace();
+    if (runtime.kind === 'managed-member') return pristineTrainingNamespace();
+    return inspectRecoverableNamespace(localTargets()).recoverable
+      && legacyStateAbsent()
+      && recoveryMarkerAbsent()
+      && verifiablyEmptyQueue();
   }
 
   function inMemoryStateIsBlank(state) {
-    return state?.version === 5
-      && Array.isArray(state.workouts) && state.workouts.length === 0
-      && Array.isArray(state.weights) && state.weights.length === 0
-      && !state.activeWorkout && !state.restTimerEndsAt
-      && Object.keys(state.prs || {}).length === 0
-      && Object.keys(state.customRoutines || {}).length === 0
-      && Object.keys(state.exercisePreferences || {}).length === 0
-      && state.timerPreferences?.sound === true
-      && state.timerPreferences?.vibration === true;
+    const target = localTargets().find(candidate => candidate.profileClientId === state?.profileId);
+    return Boolean(target && recoverableBlankArtifact(state, target));
   }
 
   function verifiablyEmptyQueue() {
@@ -139,6 +223,29 @@
       const parsed = JSON.parse(raw);
       return parsed?.version === 1 && Array.isArray(parsed.pending) && parsed.pending.length === 0;
     } catch { return false; }
+  }
+
+  function recoveryCheckpoint(targets) {
+    if (runtime.kind === 'managed-member') return pristineTrainingNamespace() && verifiablyEmptyQueue();
+    return inspectRecoverableNamespace(targets).recoverable
+      && legacyStateAbsent()
+      && recoveryMarkerAbsent()
+      && verifiablyEmptyQueue();
+  }
+
+  function suppressingLocalSave(state, activeWorkout = state?.activeWorkout) {
+    if (commitProtection) return true;
+    if (!supportedRuntime()) return false;
+    const candidate = activeWorkout === state?.activeWorkout ? state : { ...state, activeWorkout };
+    if (!inMemoryStateIsBlank(candidate)) {
+      protectUnsafeBlankSave = false;
+      return false;
+    }
+    if (needsRecoveryForCurrentRuntime()) return true;
+    if (!protectUnsafeBlankSave) return false;
+    const profile = inspectRecoverableNamespace(localTargets()).profiles
+      .find(entry => entry.profileClientId === state.profileId);
+    return Boolean(profile && profile.status !== 'missing' && profile.status !== 'blank-artifact');
   }
 
   function comparisonDocument(comparison) {
@@ -218,25 +325,38 @@
     try { targets = targetsFor(owner); } catch (error) {
       return blocked(error.code || 'fresh-recovery-profile-mismatch', error.message || 'The cloud profile mapping did not match this runtime. No local data was changed.');
     }
-    const existingMarker = readJson(runtime.recoveryKey);
-    const existingStates = targets.filter(target => readStorage(target.descriptor.storageKey) !== null);
-    if (existingStates.length) {
-      if (existingStates.length === targets.length && completedForCurrentRuntime(owner)) {
-        return Object.freeze({ ok: true, status: 'already-restored', profileClientIds: targets.map(target => target.profileClientId) });
-      }
-      return blocked('local-namespace-not-empty', 'This device already contains local training data for this account. Big Gains will not overwrite or merge it.');
+    let existingMarkerRaw;
+    try { existingMarkerRaw = readStorage(runtime.recoveryKey); } catch {
+      return blocked('recovery-storage-unavailable', 'This device storage could not be verified, so recovery stopped without changing local data.');
     }
-    if (runtime.kind === 'managed-owner' && window.bigGainsAccounts.legacyStateKey
-      && readStorage(window.bigGainsAccounts.legacyStateKey) !== null) {
-      return blocked('local-namespace-not-empty', 'This device contains legacy Jorge training data. Big Gains will not overwrite or merge it.');
+    let existingStates;
+    try { existingStates = targets.filter(target => readStorage(target.descriptor.storageKey) !== null); } catch {
+      return blocked('recovery-storage-unavailable', 'This device storage could not be verified, so recovery stopped without changing local data.');
+    }
+    if (existingStates.length === targets.length && completedForCurrentRuntime(owner)) {
+      return Object.freeze({ ok: true, status: 'already-restored', profileClientIds: targets.map(target => target.profileClientId) });
     }
     if (runtime.kind === 'managed-member') {
+      if (existingStates.length) {
+        return blocked('local-namespace-not-empty', 'This device already contains local training data for this account. Big Gains will not overwrite or merge it.');
+      }
       const namespaceKeys = [runtime.cloudKeys.queue, runtime.cloudKeys.catalog, runtime.cloudKeys.comparison, runtime.recoveryKey];
       if (namespaceKeys.some(key => localStorage.getItem(key) !== null)) {
         return blocked('local-namespace-not-pristine', 'This managed-profile namespace was already initialized. Recovery stopped without overwriting local data; review the saved recovery details before continuing.');
       }
-    } else if (existingMarker !== null) {
-      return blocked('recovery-marker-without-state', 'This device has an incomplete recovery marker without its local training profiles. Recovery stopped for review.');
+    } else {
+      const namespace = inspectRecoverableNamespace(targets);
+      if (!namespace.recoverable) {
+        return blocked('local-namespace-not-empty', 'This device contains meaningful or invalid local profile data. Big Gains will not overwrite or merge it.', {
+          profiles: namespace.profiles
+        });
+      }
+      if (!legacyStateAbsent()) {
+        return blocked('local-namespace-not-empty', 'This device contains legacy Jorge training data. Big Gains will not overwrite or merge it.');
+      }
+      if (existingMarkerRaw !== null) {
+        return blocked('recovery-marker-without-state', 'This device has an incomplete recovery marker without its finalized local training profiles. Recovery stopped for review.');
+      }
     }
     if (!verifiablyEmptyQueue()) {
       return blocked('local-queue-not-empty', 'Local outbound changes already exist or the queue cannot be proven empty, so cloud recovery stopped without changing local data.');
@@ -249,12 +369,15 @@
     let restoredProfiles;
     let comparison;
     try {
+      if (!recoveryCheckpoint(targets)) {
+        return blocked('local-state-changed-during-recovery', 'Local training state, recovery marker, legacy state, or outbound queue changed before the fresh cloud read. Nothing was overwritten.');
+      }
       freshOwner = await window.BigGainsSupabase.readCloudAccount();
       if (!verifiedOwner(freshOwner, session) || !sameVerifiedMapping(owner, freshOwner)) {
         return blocked('owner-verification-changed', 'The verified account/profile mapping changed during recovery. No local data was changed.');
       }
       targets = targetsFor(freshOwner);
-      if (!verifiablyEmptyQueue() || !pristineTrainingNamespace()) {
+      if (!recoveryCheckpoint(targets)) {
         return blocked('local-state-changed-during-recovery', 'Local training state or the outbound queue changed while recovery was reading cloud data. Nothing was overwritten.');
       }
       const repository = shadow.createRepository({
@@ -262,6 +385,9 @@
         accountId: freshOwner.account.id
       });
       remote = await repository.readAll();
+      if (!recoveryCheckpoint(targets)) {
+        return blocked('local-state-changed-during-recovery', 'Local training state, recovery marker, legacy state, or outbound queue changed during the authoritative cloud read. Nothing was overwritten.');
+      }
       cloud = await shadow.reconstructCloud({ ...remote, profiles: freshOwner.profiles, accountId: freshOwner.account.id });
       if (cloud.ownershipIssues.length) {
         return blocked('cloud-ownership-mismatch', 'Cloud recovery returned rows outside the verified account/profile mapping. No local data was changed.');
@@ -289,7 +415,7 @@
       );
     }
 
-    if (!verifiablyEmptyQueue() || !pristineTrainingNamespace()) {
+    if (!recoveryCheckpoint(targets)) {
       return blocked('local-state-changed-during-recovery', 'Local training state or the outbound queue changed before recovery could be finalized. Nothing was overwritten.');
     }
     const journal = shadow.completedMigrationJournal(remote.journals, freshOwner.account.id);
@@ -337,6 +463,6 @@
     restore,
     completedForCurrentRuntime,
     needsRecoveryForCurrentRuntime,
-    suppressingLocalSave: state => commitProtection || (pristineTrainingNamespace() && inMemoryStateIsBlank(state))
+    suppressingLocalSave
   });
 })();
