@@ -148,6 +148,8 @@ test('custom loading generates warm-up plus exact working sets and keeps previou
   }, { activeKey: STORAGE_KEYS.activeProfile, storageKey: STORAGE_KEYS.jorge, customized });
   await openApp(page);
   await page.locator('.bottom-nav [data-view="library"]').click();
+  await page.locator('#dayTabs [data-day="Push"]').click();
+  await expect(page.locator('#dayTabs [data-day="Push"]')).toHaveClass(/active/);
   await page.locator('#loadRoutine').click();
 
   const exercise = (await readStoredJson(page, STORAGE_KEYS.jorge)).activeWorkout.exercises[0];
