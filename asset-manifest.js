@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v67-workout-session-controller-extraction';
+  const release = 'v68-thin-app-composition';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];
