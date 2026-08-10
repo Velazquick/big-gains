@@ -18,28 +18,29 @@ The production script order is:
 5. `cloud-storage.js`
 6. `state-persistence.js`
 7. `profiles.js`
-8. `analytics.js`
-9. `workout-controls.js`
-10. `notes.js`
-11. `timer-controller.js`
-12. `progress.js`
-13. `retrospective-workout.js`
-14. `cloud-shadow.js`
-15. `managed-profile-recovery.js`
-16. `app.js`
-17. `workout-mode.js`
-18. `v2-shell.js`
-19. `alexa-shell.js`
-20. `training-pet.js`
-21. `design-v21.js`
-22. `session-selector-v26.js`
-23. `sync-gateway.js`
-24. `account-onboarding.js`
-25. `migration-preview.js`
-26. `cloud-sync.js`
-27. `migration-engine.js`
-28. `controlled-migration.js`
-29. `shell-init.js`
+8. `exercise-catalog.js`
+9. `analytics.js`
+10. `workout-controls.js`
+11. `notes.js`
+12. `timer-controller.js`
+13. `progress.js`
+14. `retrospective-workout.js`
+15. `cloud-shadow.js`
+16. `managed-profile-recovery.js`
+17. `app.js`
+18. `workout-mode.js`
+19. `v2-shell.js`
+20. `alexa-shell.js`
+21. `training-pet.js`
+22. `design-v21.js`
+23. `session-selector-v26.js`
+24. `sync-gateway.js`
+25. `account-onboarding.js`
+26. `migration-preview.js`
+27. `cloud-sync.js`
+28. `migration-engine.js`
+29. `controlled-migration.js`
+30. `shell-init.js`
 
 This order is a runtime contract. Persistence and hook APIs exist before `app.js` consumes them. `app.js` loads and renders the current profile before the shell modules initialize. The final script, `shell-init.js`, initializes the shell modules exactly once in this order: Workout Mode, view shell, profile shell, training pet, direction/momentum, session selector, and sync.
 
@@ -59,17 +60,20 @@ This order is a runtime contract. Persistence and hook APIs exist before `app.js
 | `controlled-migration.js` | `BigGainsControlledMigration` | Authenticated file-selection gate, exact write plan, two-step confirmation, explicit first-run/resume actions, progress, and completion/audit UI. |
 | `state-persistence.js` | `bigGainsStatePersistence` and the per-profile object returned by `create(...)` | Profile storage keys, load/normalize/save, legacy weight migration, backup serialization, and import validation. |
 | `profiles.js` | `PROFILE_CONFIG`, `PROFILE`, `switchProfile(...)` | Profile metadata, active-profile selection, theme marker, and reload-based profile switching. Profile-key reads and writes still go through the persistence API. |
+| `exercise-catalog.js` | `BigGainsExerciseCatalog` and the `bigGainsExerciseCatalog` compatibility alias | Immutable canonical exercise definitions and IDs, aliases, day/muscle/equipment/family metadata, exact ID generation, term normalization, exact lookup/resolve, and search matching. It is static and has no DOM, state, persistence, profile, or cloud access. |
 | `workout-controls.js` | `workoutControls` | Render-only active-workout controls plus exercise movement, collapse, and completion advancement. It does not persist state. |
 | `notes.js` | `workoutNotes` | Exercise cue preferences, per-session notes, rest preferences, note decoration, and pure rest-duration resolution. It does not mutate timer state or start timers. |
 | `timer-controller.js` | `BigGainsTimerController.create(...)` and the `workoutTimerController` instance | Rest-timer lifecycle, persisted-deadline reconciliation, stale-callback identity protection, timer DOM and controls, presets, sound/vibration, timer browser lifecycle listeners, and timer-related pet notifications. It reads replaceable state/session objects through live injected ports and persists only through the `app.js` gateway. |
 | `progress.js` | `workoutProgress` | Progress calculations, dialogs, and explicit post-render decoration hooks. It reads state through the context supplied by `app.js` and does not replace app render functions. |
-| `app.js` | `workoutSessionController` | Live `state` and `active` workout ownership, workout transitions, app rendering, event coordination, the recovery-aware persistence gateway, completed-history/PR calculation, backup UI, and service-worker registration. It decides when set completion starts rest but delegates the timer mutation to `workoutTimerController`. |
+| `app.js` | `workoutSessionController` | Live `state` and `active` workout ownership, workout transitions, app rendering, event coordination, the recovery-aware persistence gateway, completed-history/PR calculation, backup UI, and service-worker registration. It consumes `BigGainsExerciseCatalog`, decides when set completion starts rest, and delegates timer mutation to `workoutTimerController`. |
 | `workout-mode.js` | `bigGainsWorkoutMode` | Focus-shell entry/exit, session-scoped explicit-exit memory, return-bar timing, Library departure/return, and moving the existing pet between Today and the active-workout header. It never mutates workout state. |
 | Shell modules | `bigGainsViewShell`, `bigGainsProfileShell`, `trainingPet`, `bigGainsDirection`, `sessionSelector`, `BigGainsSync` | Focused UI behavior. Every `initialize()` is guarded and returns `false` after the first call. |
 | `shell-init.js` | `BigGainsShell` | One deterministic initialization pass across all shell modules. |
 | `service-worker-core.js` | `BigGainsServiceWorkerCore` | Testable cache and fetch runtime used by `service-worker.js`. |
 
-The application uses classic scripts, so `app.js` helpers such as `state`, `active`, `todaysWorkout`, `routineFor`, `renderLibrary`, `startWorkout`, and `showActive` are shared globals consumed by the later shell scripts. They are an implemented coupling, not an additional persistence or data-ownership layer. `workoutTimerFeedback` remains a compatibility facade backed by `workoutTimerController.feedback`; new timer tests and callers use the frozen `workoutTimerController` API and its immutable `getStatus()` snapshot instead of implementation variables. New cross-module behavior should prefer the frozen APIs and explicit hooks above.
+The application uses classic scripts, so `app.js` helpers such as `state`, `active`, `todaysWorkout`, `routineFor`, `renderLibrary`, `startWorkout`, and `showActive` are shared globals consumed by the later shell scripts. They are an implemented coupling, not an additional persistence or data-ownership layer. `workoutTimerFeedback` remains a compatibility facade backed by `workoutTimerController.feedback`; new timer tests and callers use the frozen `workoutTimerController` API and its immutable `getStatus()` snapshot instead of implementation variables. `bigGainsExerciseCatalog` remains a compatibility alias for the same frozen object as `BigGainsExerciseCatalog`; later scripts use the explicit catalog API rather than an `EXERCISES` lexical global. New cross-module behavior should prefer the frozen APIs and explicit hooks above.
+
+Catalog identity is data compatibility, not display normalization. Normal active-workout exercises normally store the canonical catalog ID in `exercise.id`. Retrospective exercise rows retain their fresh instance ID in `exercise.id` and store canonical identity separately in `definitionId`; analytics and history continue to resolve those records through `definitionId || id`. Catalog lookup never rewrites an instance ID, completed workout, PR key, exercise preference, or custom-routine entry.
 
 ## Workout-session lifecycle
 
@@ -148,11 +152,11 @@ The notes and progress features attach through explicit app-owned hooks:
 - Note input handlers call `saveCue(...)`, `saveSessionNote(...)`, and `saveRest(...)`. `workoutNotes.resolveRestDuration(...)` answers duration precedence without mutation; set completion calls `workoutTimerController.start(...)` through the app-owned decision point.
 - `workoutProgress.afterLibraryRender(...)`, `afterActiveRender(...)`, `afterHistoryOpen(...)`, and `afterFullRender(...)` decorate only the views that `app.js` has just rendered.
 
-`workout-controls.js`, `notes.js`, `timer-controller.js`, and `progress.js` do not monkey-patch or replace app globals.
+`exercise-catalog.js`, `workout-controls.js`, `notes.js`, `timer-controller.js`, and `progress.js` do not monkey-patch or replace app globals.
 
 ## Asset and service-worker lifecycle
 
-`asset-manifest.js` is the single asset inventory. Release `v64-timer-controller-extraction` adds `timer-controller.js` ahead of `app.js` while retaining `assets/timer-ready.wav` in the deterministic precache. The manifest applies the release query parameter to every production CSS and application script, rejects duplicate core assets, and supplies the same immutable manifest to the page loader and service worker. `index.html`, the loader, manifest, service-worker core, web manifest, icon, local chime, and all revisioned CSS and scripts form the precached app shell.
+`asset-manifest.js` is the single asset inventory. Release `v65-exercise-catalog-extraction` adds `exercise-catalog.js` ahead of `app.js`, retains `timer-controller.js` and `assets/timer-ready.wav`, and includes all three in the deterministic precache. The manifest applies the release query parameter to every production CSS and application script, rejects duplicate core assets, and supplies the same immutable manifest to the page loader and service worker. `index.html`, the loader, manifest, service-worker core, web manifest, icon, local chime, and all revisioned CSS and scripts form the precached app shell.
 
 Workout-card focus is live-session metadata, not schema migration. `focusedExerciseId` prefers the last interacted exercise while it has incomplete working sets, then falls back to the first incomplete exercise. A manual collapse is authoritative and does not clear focus or session data; automatic advancement opens the next incomplete exercise. Upcoming cards remain collapsed and subdued, while completed cards recede but can be expanded for review. Added sets are ordinary incomplete working sets with fresh IDs and values copied only from the latest valid working set.
 
