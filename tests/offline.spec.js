@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
 
-const CURRENT_CACHE = 'big-gains-shell-v70-ios-home-screen-auth-persistence';
+const CURRENT_CACHE = 'big-gains-shell-v72-bodyweight-effective-load-analytics';
 const PREVIOUS_CACHE = 'big-gains-shell-v69-workout-shell-2a';
 
 async function waitForServiceWorker(page) {
@@ -32,15 +32,15 @@ test('first install precaches one complete, revision-consistent app shell', asyn
     };
   }, CURRENT_CACHE);
 
-  expect(state.release).toBe('v70-ios-home-screen-auth-persistence');
+  expect(state.release).toBe('v72-bodyweight-effective-load-analytics');
   expect(state.cacheNames).toContain(CURRENT_CACHE);
   expect(state.cachedUrls).toEqual(state.expectedUrls);
-  expect(state.cachedUrls).toContain(new URL('/exercise-catalog.js?v=v70-ios-home-screen-auth-persistence', page.url()).href);
-  expect(state.cachedUrls).toContain(new URL('/routine-engine.js?v=v70-ios-home-screen-auth-persistence', page.url()).href);
-  expect(state.cachedUrls).toContain(new URL('/workout-session-controller.js?v=v70-ios-home-screen-auth-persistence', page.url()).href);
-  expect(state.cachedUrls).toContain(new URL('/timer-controller.js?v=v70-ios-home-screen-auth-persistence', page.url()).href);
+  expect(state.cachedUrls).toContain(new URL('/exercise-catalog.js?v=v72-bodyweight-effective-load-analytics', page.url()).href);
+  expect(state.cachedUrls).toContain(new URL('/routine-engine.js?v=v72-bodyweight-effective-load-analytics', page.url()).href);
+  expect(state.cachedUrls).toContain(new URL('/workout-session-controller.js?v=v72-bodyweight-effective-load-analytics', page.url()).href);
+  expect(state.cachedUrls).toContain(new URL('/timer-controller.js?v=v72-bodyweight-effective-load-analytics', page.url()).href);
   expect(state.cachedUrls).toContain(new URL('/auth-setup.html', page.url()).href);
-  expect(state.cachedUrls).toContain(new URL('/auth-setup.js?v=v70-ios-home-screen-auth-persistence', page.url()).href);
+  expect(state.cachedUrls).toContain(new URL('/auth-setup.js?v=v72-bodyweight-effective-load-analytics', page.url()).href);
   expect(state.cachedUrls).toContain(new URL('/assets/timer-ready.wav', page.url()).href);
 });
 
@@ -91,11 +91,11 @@ test('production assets use the manifest release once and contain no duplicate c
   expect(consistency.coreAssets.filter(path => path === './index.html')).toHaveLength(1);
   expect(consistency.coreAssets).not.toContain('./');
   expect(consistency.authSetupScripts).toEqual([
-    './cloud-config.js?v=v70-ios-home-screen-auth-persistence',
-    './vendor/supabase.js?v=v70-ios-home-screen-auth-persistence',
-    './auth-setup.js?v=v70-ios-home-screen-auth-persistence'
+    './cloud-config.js?v=v72-bodyweight-effective-load-analytics',
+    './vendor/supabase.js?v=v72-bodyweight-effective-load-analytics',
+    './auth-setup.js?v=v72-bodyweight-effective-load-analytics'
   ]);
-  expect(consistency.authSetupStyles).toEqual(['./auth-setup.css?v=v70-ios-home-screen-auth-persistence']);
+  expect(consistency.authSetupStyles).toEqual(['./auth-setup.css?v=v72-bodyweight-effective-load-analytics']);
   expect(indexSource).not.toMatch(/\.(?:css|js)\?v=/);
   expect(workerSource).not.toContain('?v=');
   expect(workerSource).toContain("importScripts('./asset-manifest.js', './service-worker-core.js')");

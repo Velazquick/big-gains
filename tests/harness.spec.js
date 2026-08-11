@@ -63,7 +63,7 @@ test('ExerciseCatalog owns an immutable static API outside app.js', async ({ pag
   }));
 
   expect(api).toEqual({
-    keys: ['exercises', 'getById', 'idForName', 'matchesSearch', 'normalizeTerm', 'resolve'],
+    keys: ['exercises', 'getById', 'idForName', 'loadModeFor', 'matchesSearch', 'normalizeTerm', 'resolve'],
     frozen: true,
     compatibilitySame: true,
     exactLookup: 'Seated Iso-Lateral Bench Press',

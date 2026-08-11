@@ -73,6 +73,66 @@ test('editor supports editable blank workouts, exercise ordering, and set add/re
   await expect(page.locator('.retrospective-exercise h3')).toHaveText(firstName);
 });
 
+test('editing historical set values cannot silently mutate working sets into warm-ups', async ({ page }) => {
+  await openCalendar(page);
+  await openEditor(page, '2026-08-03');
+
+  const firstExercise = page.locator('[data-retro-exercise="0"]');
+  const setTypes = firstExercise.locator('[data-retro-field="setType"]');
+  await expect(firstExercise.locator('[data-retro-field="warmup"]')).toHaveCount(0);
+  expect(await setTypes.evaluateAll(selects => selects.map(select => select.value))).toEqual(['warmup', 'working', 'working', 'working']);
+
+  for (let setIndex = 1; setIndex <= 3; setIndex += 1) {
+    await firstExercise.locator(`[data-retro-field="weight"][data-si="${setIndex}"]`).fill(String(100 + setIndex * 5));
+    await firstExercise.locator(`[data-retro-field="reps"][data-si="${setIndex}"]`).fill(String(10 - setIndex));
+    await firstExercise.locator(`[data-retro-field="completed"][data-si="${setIndex}"]`).check();
+  }
+
+  expect(await setTypes.evaluateAll(selects => selects.map(select => select.value))).toEqual(['warmup', 'working', 'working', 'working']);
+  await page.locator('#saveRetrospectiveWorkout').click();
+  const savedSets = (await readStoredJson(page, STORAGE_KEYS.jorge)).workouts[0].exercises[0].sets;
+  expect(savedSets.map(set => set.warmup)).toEqual([false, false, false]);
+});
+
+test('retrospective bodyweight work accepts zero added load while weighted work still requires load', async ({ page }) => {
+  await openCalendar(page, 'completedWorkouts');
+  const historicalBefore = structuredClone((await readStoredJson(page, STORAGE_KEYS.jorge)).workouts[0]);
+  await openEditor(page, '2026-08-02');
+  await page.locator('#retrospectiveExerciseSelect').selectOption('pull-up');
+  await page.locator('#retrospectiveAddExercise').click();
+
+  const pullUp = page.locator('[data-retro-exercise="0"]');
+  await expect(pullUp).toContainText('Log only added load');
+  await expect(pullUp.locator('[data-retro-field="weight"]').nth(1)).toHaveAttribute('aria-label', 'Added load');
+  await pullUp.locator('[data-retro-field="reps"]').nth(1).fill('8');
+  await pullUp.locator('[data-retro-field="completed"]').nth(1).check();
+  await pullUp.locator('[data-retro-field="weight"]').nth(2).fill('25');
+  await pullUp.locator('[data-retro-field="reps"]').nth(2).fill('6');
+  await pullUp.locator('[data-retro-field="completed"]').nth(2).check();
+  await page.locator('#saveRetrospectiveWorkout').click();
+
+  let stored = await readStoredJson(page, STORAGE_KEYS.jorge);
+  expect(stored.workouts[0].exercises[0]).toMatchObject({ definitionId: 'pull-up', name: 'Pull-Up' });
+  expect(stored.workouts[0].exercises[0].sets[0]).toMatchObject({ weight: 0, reps: 8, warmup: false, completed: true });
+  expect(stored.workouts[0].exercises[0].sets[1]).toMatchObject({ weight: 25, reps: 6, warmup: false, completed: true });
+  expect(stored.workouts[1]).toEqual(historicalBefore);
+  await page.locator('#calendarDayWorkouts [data-history-id]').click();
+  await expect(page.locator('#historyDialogContent')).toContainText('Bodyweight × 8');
+  await expect(page.locator('#historyDialogContent')).toContainText('Bodyweight + 25 lb × 6');
+  await page.locator('#closeHistoryDialog').click();
+
+  await openEditor(page, '2026-08-03');
+  const weighted = page.locator('[data-retro-exercise="0"]');
+  await weighted.locator('[data-retro-field="weight"]').nth(1).fill('0');
+  await weighted.locator('[data-retro-field="reps"]').nth(1).fill('8');
+  await weighted.locator('[data-retro-field="completed"]').nth(1).check();
+  await page.locator('#saveRetrospectiveWorkout').click();
+  await expect(page.locator('#retrospectiveError')).toContainText('external load');
+  stored = await readStoredJson(page, STORAGE_KEYS.jorge);
+  expect(stored.workouts).toHaveLength(2);
+  expect(stored.workouts[1]).toEqual(historicalBefore);
+});
+
 test('save requires a completed working set and excludes warmups from volume and working-set count', async ({ page }) => {
   await openCalendar(page);
   await openEditor(page, '2026-08-03');

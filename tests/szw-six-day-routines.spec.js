@@ -262,6 +262,8 @@ test('Dips and Pull-Up complete at zero load while weighted movements still requ
     }, { type, exerciseName });
     await page.evaluate(() => window.bigGainsViewShell.showView('train'));
     const card = page.locator('.active-exercise').filter({ has: page.getByRole('heading', { name: exerciseName }) });
+    await expect(card.locator('.weight-stepper .stepper-label').first()).toHaveText('Added load');
+    await expect(card.locator('.weight-stepper input').first()).toHaveAttribute('aria-label', 'Added load');
     await card.locator('.set-line').nth(1).locator('[data-complete-set]').click();
     const stored = await storedSzwState(page);
     expect(stored.activeWorkout.exercises.find(exercise => exercise.name === exerciseName).sets.find(set => !set.warmup).completed).toBe(true);
@@ -326,7 +328,7 @@ test('retrospective history and analytics accept SZW types and zero-load Pull-Up
     const summary = BigGainsAnalytics.workoutSummary(workout);
     return { workingSets: summary.workingSetCount, totalReps: summary.totalReps, volume: summary.workingSetVolume };
   }, stored.workouts[0]);
-  expect(analytics).toEqual({ workingSets: 1, totalReps: 8, volume: 0 });
+  expect(analytics).toEqual({ workingSets: 1, totalReps: 8, volume: null });
   const acceptedTypes = await page.evaluate(types => {
     const source = state.workouts[0];
     const normalized = statePersistenceApi.normalizeState({

@@ -319,3 +319,25 @@ test('retrospective instance IDs remain distinct while definitionId resolves can
 
   expect(result).toEqual(['barbell-bench-press', 'barbell-bench-press', null]);
 });
+
+test('canonical identity determines bodyweight versus external-load logging without changing catalog metadata', async ({ page }) => {
+  await installLocalStorageFixture(page, 'blankJorge');
+  await openApp(page);
+
+  const modes = await page.evaluate(() => {
+    const catalog = window.BigGainsExerciseCatalog;
+    return {
+      pullUp: catalog.loadModeFor('pull-up'),
+      retrospectivePullUp: catalog.loadModeFor({ id: 'retrospective-instance', definitionId: 'pull-up', equipment: 'Machine' }),
+      weightedDefinitionWins: catalog.loadModeFor({ id: 'barbell-row', equipment: 'Bodyweight' }),
+      legacyBodyweightFallback: catalog.loadModeFor({ id: 'unknown-old-entry', equipment: 'Bodyweight' })
+    };
+  });
+
+  expect(modes).toEqual({
+    pullUp: 'bodyweight',
+    retrospectivePullUp: 'bodyweight',
+    weightedDefinitionWins: 'external',
+    legacyBodyweightFallback: 'bodyweight'
+  });
+});

@@ -33,11 +33,15 @@
     };
   }
 
-  function isCompletableSet(exercise, set) {
+  function defaultLoadMode(exercise) {
+    return exercise?.equipment === 'Bodyweight' ? 'bodyweight' : 'external';
+  }
+
+  function isCompletableSet(exercise, set, loadMode = defaultLoadMode(exercise)) {
     const reps = Number(set?.reps);
     const weight = Number(set?.weight);
     if (!Number.isFinite(reps) || reps <= 0 || !Number.isFinite(weight)) return false;
-    return exercise?.equipment === 'Bodyweight' ? weight >= 0 : weight > 0;
+    return loadMode === 'bodyweight' ? weight >= 0 : weight > 0;
   }
 
   function incompleteWorking(exercise) {
@@ -103,6 +107,7 @@
     setSelectedDay,
     routineEngine,
     exerciseCatalog,
+    resolveLoadMode = defaultLoadMode,
     previousPerformance,
     estimate1RM,
     createId,
@@ -316,9 +321,11 @@
       const current = getActiveWorkout();
       const exercise = current?.exercises?.[exerciseIndex];
       const set = exercise?.sets?.[setIndex];
-      if (!isCompletableSet(exercise, set)) return false;
+      const loadMode = resolveLoadMode(exercise);
+      if (!isCompletableSet(exercise, set, loadMode)) return false;
       focusExercise(exerciseIndex);
       acknowledgeTimerReady();
+      if (!set.completed && loadMode === 'bodyweight' && (set.weight === '' || set.weight == null)) set.weight = 0;
       set.completed = !set.completed;
       persistActiveMutation();
       renderActiveMutation();

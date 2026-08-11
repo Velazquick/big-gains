@@ -84,16 +84,22 @@
       return `Working set ${exercise.sets.filter(item => !item.warmup).indexOf(set) + 1}`;
     }
 
+    function loadModeFor(exercise) {
+      return context.loadModeFor?.(exercise) || (exercise?.equipment === 'Bodyweight' ? 'bodyweight' : 'external');
+    }
+
     function renderExercise(exercise, exerciseIndex) {
+      const loadMode = loadModeFor(exercise);
+      const bodyweight = loadMode === 'bodyweight';
       const sets = exercise.sets.map((set, setIndex) => `<div class="retrospective-set ${set.completed ? 'is-complete' : ''}">
-        <label class="retrospective-set-kind"><input type="checkbox" data-retro-field="warmup" data-ei="${exerciseIndex}" data-si="${setIndex}" ${set.warmup ? 'checked' : ''}><span>${context.escapeHtml(setLabel(exercise, set))}</span></label>
-        <label><span>Weight</span><input type="number" min="0" step="5" inputmode="decimal" data-retro-field="weight" data-ei="${exerciseIndex}" data-si="${setIndex}" value="${set.weight}"></label>
+        <label class="retrospective-set-kind"><span>Set type</span><select data-retro-field="setType" data-ei="${exerciseIndex}" data-si="${setIndex}" aria-label="Set type"><option value="warmup" ${set.warmup ? 'selected' : ''}>Warm-up</option><option value="working" ${set.warmup ? '' : 'selected'}>Working set</option></select></label>
+        <label><span>${bodyweight ? 'Added load' : 'Weight'}</span><input type="number" min="0" step="5" inputmode="decimal" data-retro-field="weight" data-ei="${exerciseIndex}" data-si="${setIndex}" value="${set.weight}" aria-label="${bodyweight ? 'Added load' : 'Weight'}"></label>
         <label><span>Reps</span><input type="number" min="0" step="1" inputmode="numeric" data-retro-field="reps" data-ei="${exerciseIndex}" data-si="${setIndex}" value="${set.reps}"></label>
         <label class="retrospective-set-complete"><input type="checkbox" data-retro-field="completed" data-ei="${exerciseIndex}" data-si="${setIndex}" ${set.completed ? 'checked' : ''}><span>Performed</span></label>
         <button type="button" class="ghost compact" data-retro-remove-set="${setIndex}" data-ei="${exerciseIndex}" aria-label="Remove ${context.escapeHtml(setLabel(exercise, set))}">Remove</button>
       </div>`).join('');
       return `<article class="active-exercise retrospective-exercise" data-retro-exercise="${exerciseIndex}">
-        <div class="exercise-head"><div><span class="exercise-muscle">${context.escapeHtml(exercise.muscle)}</span><h3>${context.escapeHtml(exercise.name)}</h3><p>${context.escapeHtml(exercise.equipment)}${exercise.targetReps ? ` · Target ${context.escapeHtml(exercise.targetReps)}` : ''}</p></div>
+        <div class="exercise-head"><div><span class="exercise-muscle">${context.escapeHtml(exercise.muscle)}</span><h3>${context.escapeHtml(exercise.name)}</h3><p>${context.escapeHtml(exercise.equipment)}${bodyweight ? ' · Log only added load' : ''}${exercise.targetReps ? ` · Target ${context.escapeHtml(exercise.targetReps)}` : ''}</p></div>
         <div class="exercise-head-actions"><div class="exercise-order"><button type="button" data-retro-move="up" data-ei="${exerciseIndex}" ${exerciseIndex === 0 ? 'disabled' : ''} aria-label="Move ${context.escapeHtml(exercise.name)} up">↑</button><button type="button" data-retro-move="down" data-ei="${exerciseIndex}" ${exerciseIndex === draft.exercises.length - 1 ? 'disabled' : ''} aria-label="Move ${context.escapeHtml(exercise.name)} down">↓</button></div><button type="button" class="remove-exercise" data-retro-remove-exercise="${exerciseIndex}" aria-label="Remove ${context.escapeHtml(exercise.name)}">✕</button></div></div>
         <div class="retrospective-set-list">${sets}</div>
         <label class="retrospective-note"><span>Exercise note</span><textarea rows="2" data-retro-exercise-note="${exerciseIndex}" placeholder="Form, setup, or context">${context.escapeHtml(exercise.note || '')}</textarea></label>
@@ -161,13 +167,24 @@
 
     function save() {
       if (!draft || saving) return false;
-      const completedExercises = draft.exercises.map(exercise => ({
-        ...exercise,
-        sets: exercise.sets.filter(set => set.completed).map(set => ({ ...set, completed: true }))
-      })).filter(exercise => exercise.sets.length);
-      const working = completedExercises.flatMap(exercise => exercise.sets.filter(set => !set.warmup && context.canCompleteSet(exercise, set)));
+      const completedExercises = draft.exercises.map(exercise => {
+        const bodyweight = loadModeFor(exercise) === 'bodyweight';
+        return {
+          ...exercise,
+          sets: exercise.sets.filter(set => set.completed).map(set => ({
+            ...set,
+            ...(bodyweight && (set.weight === '' || set.weight == null) ? { weight: 0 } : {}),
+            completed: true
+          }))
+        };
+      }).filter(exercise => exercise.sets.length);
+      const working = completedExercises.flatMap(exercise => exercise.sets.filter(set => !set.warmup).map(set => ({ exercise, set })));
       if (!working.length) {
-        $('retrospectiveError').textContent = 'Complete at least one working set with weight and reps.';
+        $('retrospectiveError').textContent = 'Complete at least one working set.';
+        return false;
+      }
+      if (working.some(({ exercise, set }) => !context.canCompleteSet(exercise, set))) {
+        $('retrospectiveError').textContent = 'Enter reps for bodyweight work and external load plus reps for weighted work.';
         return false;
       }
       const completion = completedAt();
@@ -243,7 +260,11 @@
         const exerciseIndex = Number(event.target.dataset.ei);
         const setIndex = Number(event.target.dataset.si);
         const field = event.target.dataset.retroField;
-        if (field && draft.exercises[exerciseIndex]?.sets[setIndex]) draft.exercises[exerciseIndex].sets[setIndex][field] = event.target.type === 'checkbox' ? event.target.checked : safeNumber(event.target.value);
+        const set = draft.exercises[exerciseIndex]?.sets[setIndex];
+        if (field === 'setType' && set) {
+          set.warmup = event.target.value === 'warmup';
+          render();
+        } else if (field && set) set[field] = event.target.type === 'checkbox' ? event.target.checked : safeNumber(event.target.value);
         if (event.target.dataset.retroExerciseNote !== undefined) draft.exercises[Number(event.target.dataset.retroExerciseNote)].note = event.target.value;
       });
       $('retrospectiveExercises').addEventListener('click', event => {
