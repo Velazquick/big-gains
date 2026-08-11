@@ -27,6 +27,16 @@
   })));
   const exercisesById = new Map(exercises.map(exercise => [exercise.id, exercise]));
   const getById = id => exercisesById.get(id) || null;
+  const definitionFor = value => {
+    if (typeof value === 'string') return getById(value) || resolve(value);
+    if (!value || typeof value !== 'object') return null;
+    return getById(value.definitionId) || getById(value.id) || resolve(value.name);
+  };
+  const loadModeFor = value => {
+    const definition = definitionFor(value);
+    const equipment = definition?.equipment || (value && typeof value === 'object' ? value.equipment : '');
+    return equipment === 'Bodyweight' ? 'bodyweight' : 'external';
+  };
   const resolve = term => {
     const normalized = normalizeTerm(term);
     return exercises.find(exercise => normalizeTerm(exercise.name) === normalized || exercise.aliases.some(alias => normalizeTerm(alias) === normalized)) || null;
@@ -36,7 +46,7 @@
     return !normalized || normalizeTerm([exercise.name, ...exercise.aliases, exercise.muscle, exercise.equipment].join(' ')).includes(normalized);
   };
 
-  const api = Object.freeze({ exercises, getById, idForName, matchesSearch, normalizeTerm, resolve });
+  const api = Object.freeze({ exercises, getById, idForName, loadModeFor, matchesSearch, normalizeTerm, resolve });
   Object.defineProperty(scope, 'BigGainsExerciseCatalog', {
     configurable: false,
     enumerable: true,

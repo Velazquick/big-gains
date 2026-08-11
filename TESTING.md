@@ -2,7 +2,11 @@
 
 The Playwright harness serves the static PWA from `index.html` without rewriting it, so production scripts execute in their declared order.
 
-The current baseline is 315 passing Chromium tests across 39 files with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
+The current baseline is 319 passing Chromium tests across 39 files with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
+
+V71 coverage freezes explicit retrospective set-type selection so ordinary value/performed interactions cannot silently turn working sets into warm-ups. Canonical exercise identity now resolves bodyweight versus external-load validation: bodyweight work accepts zero added load and renders as Bodyweight or Bodyweight + load, weighted exercises still require positive external load, and pre-existing completed-workout payloads remain byte-for-byte equivalent through new logging.
+
+V72 coverage keeps added load as the persisted bodyweight-set value while deriving effective analytics load from the current profile's latest valid bodyweight plus that added load. Missing profile bodyweight produces unavailable effective-load volume/e1RM rather than an invented value, and analytics reads never mutate completed-workout payloads.
 
 ## Install
 

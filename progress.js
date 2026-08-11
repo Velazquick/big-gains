@@ -36,6 +36,13 @@ window.workoutProgress = (() => {
     return hours ? `${hours}h ${String(minutes).padStart(2, '0')}m` : `${minutes}m`;
   };
   const completedAt = workout => new Date(workout?.completedAt || 0).getTime();
+  const analyticsOptions = () => context.getAnalyticsOptions?.() || {};
+  const formatVolume = value => value === null ? '—' : `${formatCompact(value)} lb`;
+  const setLoadLabel = set => {
+    if (set?.loadMode !== 'bodyweight') return `${Number(set?.weight) || 0} lb`;
+    const added = Number(set.weight) || 0;
+    return added > 0 ? `Bodyweight + ${added} lb` : 'Bodyweight';
+  };
 
   function state() {
     return context.getState();
@@ -59,17 +66,17 @@ window.workoutProgress = (() => {
 
   function dashboardSummary(workouts) {
     return workouts.reduce((totals, workout) => {
-      const summary = context.analytics.workoutSummary(workout);
+      const summary = context.analytics.workoutSummary(workout, analyticsOptions());
       totals.sessions += 1;
       totals.workingSets += summary.workingSetCount;
-      totals.volume += summary.workingSetVolume;
+      totals.volume = totals.volume === null || summary.workingSetVolume === null ? null : totals.volume + summary.workingSetVolume;
       totals.prs += summary.prCount;
       return totals;
     }, { sessions: 0, workingSets: 0, volume: 0, prs: 0 });
   }
 
   function sessionHistoryFor(exerciseId) {
-    return context.analytics.exerciseHistory(state().workouts, exerciseId).map(session => ({
+    return context.analytics.exerciseHistory(state().workouts, exerciseId, analyticsOptions()).map(session => ({
       date: session.date,
       sets: session.workingSets,
       best: session.bestWorkingSet,
@@ -82,11 +89,12 @@ window.workoutProgress = (() => {
     return context.exercises.filter(exercise => sessionHistoryFor(exercise.id).length).sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  function bestSetAcross(sessions) {
-    return context.analytics.bestWorkingSet(sessions.flatMap(session => session.sets));
+  function bestSetAcross(sessions, exercise) {
+    return context.analytics.bestWorkingSet(sessions.flatMap(session => session.sets), { ...analyticsOptions(), exercise });
   }
 
   function trendText(sessions) {
+    if (sessions.some(session => session.estimated1RM === null)) return 'Add a profile bodyweight to calculate effective-load strength trends.';
     if (sessions.length < 2) return 'One logged session — the trend starts here.';
     const latest = sessions[0].estimated1RM;
     const first = sessions[sessions.length - 1].estimated1RM;
@@ -121,12 +129,14 @@ window.workoutProgress = (() => {
   }
 
   function workloadGroups() {
-    const muscleTotals = context.analytics.recentMuscleWorkload(state().workouts, { days: selectedWindowDays }).muscles;
+    const muscleTotals = context.analytics.recentMuscleWorkload(state().workouts, { days: selectedWindowDays, ...analyticsOptions() }).muscles;
     return MUSCLE_GROUPS.map(group => {
       const totals = group.sources.reduce((sum, source) => {
         const value = muscleTotals[source] || {};
         sum.workingSets += Number(value.workingSets) || 0;
-        sum.workingSetVolume += Number(value.workingSetVolume) || 0;
+        sum.workingSetVolume = sum.workingSetVolume === null || value.workingSetVolume === null
+          ? null
+          : sum.workingSetVolume + (Number(value.workingSetVolume) || 0);
         sum.totalReps += Number(value.totalReps) || 0;
         return sum;
       }, { workingSets: 0, workingSetVolume: 0, totalReps: 0 });
@@ -192,12 +202,14 @@ window.workoutProgress = (() => {
     workoutsInWindow().forEach(workout => list(workout.exercises).forEach(exercise => {
       const exerciseMuscles = new Set(context.analytics.muscleNames(exercise.muscle));
       if (![...sourceSet].some(source => exerciseMuscles.has(source))) return;
-      const summary = context.analytics.setSummary(exercise);
+      const summary = context.analytics.setSummary(exercise, analyticsOptions());
       if (!summary.workingSetCount) return;
       const key = exercise.definitionId || exercise.id || exercise.name;
       const current = contributors.get(key) || { name: exercise.name || key, workingSets: 0, workingSetVolume: 0 };
       current.workingSets += summary.workingSetCount;
-      current.workingSetVolume += summary.workingSetVolume;
+      current.workingSetVolume = current.workingSetVolume === null || summary.workingSetVolume === null
+        ? null
+        : current.workingSetVolume + summary.workingSetVolume;
       contributors.set(key, current);
     }));
     return [...contributors.values()].sort((left, right) => right.workingSets - left.workingSets || right.workingSetVolume - left.workingSetVolume).slice(0, 5);
@@ -219,7 +231,7 @@ window.workoutProgress = (() => {
     const contributors = muscleContributors(active);
     return `<div class="muscle-detail" data-selected-muscle="${context.escapeHtml(active.key)}">
       <div class="muscle-detail-head"><div><span class="label">Selected muscle</span><h3>${context.escapeHtml(active.label)}</h3></div><strong>${active.workingSets} sets</strong></div>
-      <div class="muscle-detail-metrics"><div><span>Volume</span><strong>${formatCompact(active.workingSetVolume)} lb</strong></div><div><span>Reps</span><strong>${formatCompact(active.totalReps)}</strong></div></div>
+      <div class="muscle-detail-metrics"><div><span>Volume</span><strong>${formatVolume(active.workingSetVolume)}</strong></div><div><span>Reps</span><strong>${formatCompact(active.totalReps)}</strong></div></div>
       <div class="muscle-contributors">${contributors.map(item => `<div><span>${context.escapeHtml(item.name)}</span><strong>${item.workingSets} set${item.workingSets === 1 ? '' : 's'}</strong></div>`).join('') || '<p>No contributing movements in this window.</p>'}</div>
     </div>`;
   }
@@ -234,10 +246,10 @@ window.workoutProgress = (() => {
       preview.textContent = 'No sessions logged for this movement yet.';
       return;
     }
-    const best = bestSetAcross(sessions);
+    const best = bestSetAcross(sessions, exercise);
     const latest = sessions[0];
     preview.className = 'progress-preview';
-    preview.innerHTML = `<div class="progress-preview-copy"><span class="exercise-muscle">${context.escapeHtml(exercise.muscle)}</span><h3>${context.escapeHtml(exercise.name)}</h3><p>${trendText(sessions)}</p></div><div class="progress-preview-stats"><div><span>Best set</span><strong>${Number(best.weight)} × ${Number(best.reps)}</strong></div><div><span>Best e1RM</span><strong>${best.estimated1RM} lb</strong></div><div><span>Latest</span><strong>${latest.estimated1RM} lb</strong></div></div>`;
+    preview.innerHTML = `<div class="progress-preview-copy"><span class="exercise-muscle">${context.escapeHtml(exercise.muscle)}</span><h3>${context.escapeHtml(exercise.name)}</h3><p>${trendText(sessions)}</p></div><div class="progress-preview-stats"><div><span>Best set</span><strong>${context.escapeHtml(setLoadLabel(best))} × ${Number(best.reps)}</strong></div><div><span>Best e1RM</span><strong>${best.estimated1RM === null ? '—' : `${best.estimated1RM} lb`}</strong></div><div><span>Latest</span><strong>${latest.estimated1RM === null ? '—' : `${latest.estimated1RM} lb`}</strong></div></div>`;
   }
 
   function renderProgressDashboard() {
@@ -263,7 +275,7 @@ window.workoutProgress = (() => {
     <div class="progress-overview-grid" aria-label="Progress overview">
       <article><span>Sessions</span><strong>${summary.sessions}</strong><small>${selectedWindowDays} day window</small></article>
       <article><span>Working sets</span><strong>${summary.workingSets}</strong><small>warm-ups excluded</small></article>
-      <article><span>Volume</span><strong>${formatCompact(summary.volume)}</strong><small>lb moved</small></article>
+      <article><span>Volume</span><strong>${formatVolume(summary.volume)}</strong><small>moved</small></article>
       <article><span>PRs</span><strong>${summary.prs}</strong><small>strength markers</small></article>
     </div>
     <section class="progress-workload-card">
@@ -289,8 +301,8 @@ window.workoutProgress = (() => {
     }
     history.className = 'history-list progress-recent-history';
     history.innerHTML = `${workouts.map(workout => {
-      const summary = context.analytics.workoutSummary(workout);
-      return `<button type="button" class="history-item" data-history-id="${workout.id}"><div><strong>${context.escapeHtml(context.workoutLabel(workout.type))}</strong><small>${context.fmtDate(workout.completedAt)} · ${summary.workingSetCount} working sets · ${formatDuration(summary.durationSeconds)}</small>${workout.entryMethod === 'retrospective' ? '<span class="entered-later">Entered later</span>' : ''}<div class="history-open">View session →</div></div><div class="history-meta"><strong>${formatCompact(summary.workingSetVolume)} lb</strong><small>${summary.exerciseCount} exercises${summary.prCount ? ` · ${summary.prCount} PR${summary.prCount === 1 ? '' : 's'}` : ''}</small></div></button>`;
+      const summary = context.analytics.workoutSummary(workout, analyticsOptions());
+      return `<button type="button" class="history-item" data-history-id="${workout.id}"><div><strong>${context.escapeHtml(context.workoutLabel(workout.type))}</strong><small>${context.fmtDate(workout.completedAt)} · ${summary.workingSetCount} working sets · ${formatDuration(summary.durationSeconds)}</small>${workout.entryMethod === 'retrospective' ? '<span class="entered-later">Entered later</span>' : ''}<div class="history-open">View session →</div></div><div class="history-meta"><strong>${formatVolume(summary.workingSetVolume)}</strong><small>${summary.exerciseCount} exercises${summary.prCount ? ` · ${summary.prCount} PR${summary.prCount === 1 ? '' : 's'}` : ''}</small></div></button>`;
     }).join('')}<div class="progress-history-footer"><div><strong>Full archive lives in Calendar.</strong><span>History timeline and filters arrive in 4J4.</span></div><button type="button" class="ghost compact" data-progress-open-calendar>Open Calendar</button></div>`;
   }
 
@@ -314,11 +326,12 @@ window.workoutProgress = (() => {
     if (!sessions.length) {
       content.innerHTML = '<div class="empty">No completed working sets for this exercise yet.</div>';
     } else {
-      const best = bestSetAcross(sessions);
+      const best = bestSetAcross(sessions, exercise);
       const latest = sessions[0];
-      const totalVolume = sessions.reduce((total, session) => total + session.volume, 0);
-      const recent = sessions.slice(0, 8).map(session => `<article class="progress-session"><div><strong>${context.fmtDate(session.date)}</strong><small>${session.sets.length} working set${session.sets.length === 1 ? '' : 's'} · ${Math.round(session.volume).toLocaleString('en-US')} lb volume</small></div><div class="progress-session-meta"><strong>${session.best.weight} × ${session.best.reps}</strong><small>${session.estimated1RM} lb e1RM</small></div><div class="progress-session-sets">${session.sets.map(set => `<span>${Number(set.weight)} × ${Number(set.reps)}</span>`).join('')}</div></article>`).join('');
-      content.innerHTML = `<div class="history-summary-grid progress-summary-grid"><div><span>Best set</span><strong>${Number(best.weight)} lb × ${Number(best.reps)}</strong></div><div><span>Best estimated 1RM</span><strong>${best.estimated1RM} lb</strong></div><div><span>Training history</span><strong>${sessions.length} sessions · ${Math.round(totalVolume).toLocaleString('en-US')} lb</strong></div></div><div class="progress-trend-note"><strong>${latest.estimated1RM} lb latest e1RM</strong><span>${trendText(sessions)}</span></div>${progressChart(sessions)}<div class="progress-recent-head"><span class="label">Recent work</span><h3>Session-by-session</h3></div><div class="progress-session-list">${recent}</div>`;
+      const totalVolume = sessions.some(session => session.volume === null) ? null : sessions.reduce((total, session) => total + session.volume, 0);
+      const recent = sessions.slice(0, 8).map(session => `<article class="progress-session"><div><strong>${context.fmtDate(session.date)}</strong><small>${session.sets.length} working set${session.sets.length === 1 ? '' : 's'} · ${formatVolume(session.volume)} volume</small></div><div class="progress-session-meta"><strong>${context.escapeHtml(setLoadLabel(session.best))} × ${session.best.reps}</strong><small>${session.estimated1RM === null ? 'Effective load unavailable' : `${session.estimated1RM} lb e1RM`}</small></div><div class="progress-session-sets">${session.sets.map(set => `<span>${context.escapeHtml(setLoadLabel(set))} × ${Number(set.reps)}</span>`).join('')}</div></article>`).join('');
+      const chart = sessions.some(session => session.estimated1RM === null) ? '' : progressChart(sessions);
+      content.innerHTML = `<div class="history-summary-grid progress-summary-grid"><div><span>Best set</span><strong>${context.escapeHtml(setLoadLabel(best))} × ${Number(best.reps)}</strong></div><div><span>Best estimated 1RM</span><strong>${best.estimated1RM === null ? '—' : `${best.estimated1RM} lb`}</strong></div><div><span>Training history</span><strong>${sessions.length} sessions · ${formatVolume(totalVolume)}</strong></div></div><div class="progress-trend-note"><strong>${latest.estimated1RM === null ? 'Effective load unavailable' : `${latest.estimated1RM} lb latest e1RM`}</strong><span>${trendText(sessions)}</span></div>${chart}<div class="progress-recent-head"><span class="label">Recent work</span><h3>Session-by-session</h3></div><div class="progress-session-list">${recent}</div>`;
     }
 
     const { dialog } = elements();

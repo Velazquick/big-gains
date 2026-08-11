@@ -215,6 +215,83 @@ test('derived analytics cover performance, deltas, working totals, duration, PRs
   expect(result.warmupIsWorking).toBe(false);
 });
 
+test('bodyweight analytics derive effective load from profile weight without rewriting stored workout sets', async ({ page }) => {
+  await installLocalStorageFixture(page, 'blankJorge');
+  await openApp(page);
+  const workout = {
+    id: 'bodyweight-effective-load', type: 'Pull', completedAt: '2026-08-10T12:00:00.000Z',
+    exercises: [
+      {
+        id: 'retrospective-pull-up', definitionId: 'pull-up', name: 'Pull-Up', muscle: 'Back', equipment: 'Bodyweight',
+        sets: [{ id: 'pull-up-set', weight: 0, reps: 10, warmup: false, completed: true }]
+      },
+      {
+        id: 'dips', name: 'Dips', muscle: 'Chest / Triceps', equipment: 'Bodyweight',
+        sets: [{ id: 'dip-set', weight: 25, reps: 6, warmup: false, completed: true }]
+      },
+      {
+        id: 'barbell-row', name: 'Barbell Row', muscle: 'Back', equipment: 'Barbell',
+        sets: [{ id: 'row-set', weight: 100, reps: 5, warmup: false, completed: true }]
+      }
+    ]
+  };
+
+  const result = await page.evaluate(workout => {
+    const original = structuredClone(workout);
+    const options = { bodyweight: 190, loadModeFor: bigGainsExerciseCatalog.loadModeFor };
+    const summary = BigGainsAnalytics.workoutSummary(workout, options);
+    const pullUp = BigGainsAnalytics.setSummary(workout.exercises[0], options);
+    const dips = BigGainsAnalytics.setSummary(workout.exercises[1], options);
+    const muscles = BigGainsAnalytics.muscleTotals([workout], options);
+    const pullUpHistory = BigGainsAnalytics.exerciseHistory([workout], 'pull-up', options);
+    const pullUpTrend = BigGainsAnalytics.exerciseTrend([workout], 'pull-up', options);
+    const families = BigGainsAnalytics.exerciseFamilyTotals([workout], bigGainsExerciseCatalog.exercises, options);
+    const missing = BigGainsAnalytics.setSummary(workout.exercises[0], {
+      bodyweight: null, loadModeFor: bigGainsExerciseCatalog.loadModeFor
+    });
+    state.weights = [{ weight: 190, date: '2026-08-11T12:00:00.000Z' }];
+    const wiredVolume = volumeForWorkout(workout);
+    state.weights = [];
+    const missingWiredVolume = volumeForWorkout(workout);
+    return {
+      profileWeight: BigGainsAnalytics.profileBodyweight([{ weight: 190 }, { weight: 185 }]),
+      skippedInvalidWeight: BigGainsAnalytics.profileBodyweight([{ weight: 0 }, { weight: 185 }]),
+      missingProfileWeight: BigGainsAnalytics.profileBodyweight([]),
+      summary, pullUp, dips, muscles, pullUpHistory, pullUpTrend, families, missing, wiredVolume, missingWiredVolume,
+      unchanged: JSON.stringify(workout) === JSON.stringify(original),
+      storedPullUp: workout.exercises[0].sets[0],
+      storedDip: workout.exercises[1].sets[0]
+    };
+  }, workout);
+
+  expect(result.profileWeight).toBe(190);
+  expect(result.skippedInvalidWeight).toBe(185);
+  expect(result.missingProfileWeight).toBeNull();
+  expect(result.pullUp).toMatchObject({ workingSetVolume: 1900, effectiveLoadKnown: true });
+  expect(result.pullUp.bestWorkingSet).toMatchObject({ weight: 0, effectiveLoad: 190, volume: 1900, estimated1RM: 253 });
+  expect(result.dips).toMatchObject({ workingSetVolume: 1290, effectiveLoadKnown: true });
+  expect(result.dips.bestWorkingSet).toMatchObject({ weight: 25, effectiveLoad: 215, volume: 1290, estimated1RM: 258 });
+  expect(result.summary).toMatchObject({ workingSetCount: 3, workingSetVolume: 3690, totalReps: 21, effectiveLoadKnown: true });
+  expect(result.muscles).toEqual({
+    Back: { workingSets: 2, workingSetVolume: 2400, totalReps: 15 },
+    Chest: { workingSets: 1, workingSetVolume: 1290, totalReps: 6 },
+    Triceps: { workingSets: 1, workingSetVolume: 1290, totalReps: 6 }
+  });
+  expect(result.pullUpHistory[0]).toMatchObject({ workingSetVolume: 1900, bestWorkingSet: { effectiveLoad: 190 } });
+  expect(result.pullUpTrend).toMatchObject({
+    bestWorkingSet: { effectiveLoad: 190, estimated1RM: 253 },
+    points: [{ workoutId: 'bodyweight-effective-load', workingSetVolume: 1900, estimated1RM: 253 }]
+  });
+  expect(result.families['pull-up']).toEqual({ workingSets: 1, workingSetVolume: 1900, totalReps: 10 });
+  expect(result.missing).toMatchObject({ workingSetVolume: null, effectiveLoadKnown: false });
+  expect(result.missing.bestWorkingSet).toMatchObject({ weight: 0, effectiveLoad: null, volume: null, estimated1RM: null });
+  expect(result.wiredVolume).toBe(3690);
+  expect(result.missingWiredVolume).toBeNull();
+  expect(result.unchanged).toBe(true);
+  expect(result.storedPullUp).toEqual({ id: 'pull-up-set', weight: 0, reps: 10, warmup: false, completed: true });
+  expect(result.storedDip).toEqual({ id: 'dip-set', weight: 25, reps: 6, warmup: false, completed: true });
+});
+
 test('exercise history uses retrospective definition IDs and never combines same-name records', async ({ page }) => {
   await installLocalStorageFixture(page, 'blankJorge');
   await openApp(page);

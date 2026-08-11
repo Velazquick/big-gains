@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v70-ios-home-screen-auth-persistence';
+  const release = 'v72-bodyweight-effective-load-analytics';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];
