@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v75-progress-v2-history-explorer-detail';
+  const release = 'v76-history-explorer-detail-polish';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];

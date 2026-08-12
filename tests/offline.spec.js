@@ -2,8 +2,8 @@ import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
 
-const CURRENT_CACHE = 'big-gains-shell-v75-progress-v2-history-explorer-detail';
-const PREVIOUS_CACHE = 'big-gains-shell-v74-history-v2-workout-management';
+const CURRENT_CACHE = 'big-gains-shell-v76-history-explorer-detail-polish';
+const PREVIOUS_CACHE = 'big-gains-shell-v75-progress-v2-history-explorer-detail';
 
 async function waitForServiceWorker(page) {
   await page.evaluate(async () => {
@@ -32,15 +32,15 @@ test('first install precaches one complete, revision-consistent app shell', asyn
     };
   }, CURRENT_CACHE);
 
-  expect(state.release).toBe('v75-progress-v2-history-explorer-detail');
+  expect(state.release).toBe('v76-history-explorer-detail-polish');
   expect(state.cacheNames).toContain(CURRENT_CACHE);
   expect(state.cachedUrls).toEqual(state.expectedUrls);
-  expect(state.cachedUrls).toContain(new URL('/exercise-catalog.js?v=v75-progress-v2-history-explorer-detail', page.url()).href);
-  expect(state.cachedUrls).toContain(new URL('/routine-engine.js?v=v75-progress-v2-history-explorer-detail', page.url()).href);
-  expect(state.cachedUrls).toContain(new URL('/workout-session-controller.js?v=v75-progress-v2-history-explorer-detail', page.url()).href);
-  expect(state.cachedUrls).toContain(new URL('/timer-controller.js?v=v75-progress-v2-history-explorer-detail', page.url()).href);
+  expect(state.cachedUrls).toContain(new URL('/exercise-catalog.js?v=v76-history-explorer-detail-polish', page.url()).href);
+  expect(state.cachedUrls).toContain(new URL('/routine-engine.js?v=v76-history-explorer-detail-polish', page.url()).href);
+  expect(state.cachedUrls).toContain(new URL('/workout-session-controller.js?v=v76-history-explorer-detail-polish', page.url()).href);
+  expect(state.cachedUrls).toContain(new URL('/timer-controller.js?v=v76-history-explorer-detail-polish', page.url()).href);
   expect(state.cachedUrls).toContain(new URL('/auth-setup.html', page.url()).href);
-  expect(state.cachedUrls).toContain(new URL('/auth-setup.js?v=v75-progress-v2-history-explorer-detail', page.url()).href);
+  expect(state.cachedUrls).toContain(new URL('/auth-setup.js?v=v76-history-explorer-detail-polish', page.url()).href);
   expect(state.cachedUrls).toContain(new URL('/assets/timer-ready.wav', page.url()).href);
 });
 
@@ -91,11 +91,11 @@ test('production assets use the manifest release once and contain no duplicate c
   expect(consistency.coreAssets.filter(path => path === './index.html')).toHaveLength(1);
   expect(consistency.coreAssets).not.toContain('./');
   expect(consistency.authSetupScripts).toEqual([
-    './cloud-config.js?v=v75-progress-v2-history-explorer-detail',
-    './vendor/supabase.js?v=v75-progress-v2-history-explorer-detail',
-    './auth-setup.js?v=v75-progress-v2-history-explorer-detail'
+    './cloud-config.js?v=v76-history-explorer-detail-polish',
+    './vendor/supabase.js?v=v76-history-explorer-detail-polish',
+    './auth-setup.js?v=v76-history-explorer-detail-polish'
   ]);
-  expect(consistency.authSetupStyles).toEqual(['./auth-setup.css?v=v75-progress-v2-history-explorer-detail']);
+  expect(consistency.authSetupStyles).toEqual(['./auth-setup.css?v=v76-history-explorer-detail-polish']);
   expect(indexSource).not.toMatch(/\.(?:css|js)\?v=/);
   expect(workerSource).not.toContain('?v=');
   expect(workerSource).toContain("importScripts('./asset-manifest.js', './service-worker-core.js')");

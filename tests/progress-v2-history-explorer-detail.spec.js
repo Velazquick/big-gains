@@ -94,6 +94,27 @@ test('History Explorer groups newest-first by month and keeps archive cards comp
   }
 });
 
+test('history cards provide full-card hover, keyboard-focus, and pressed feedback', async ({ page }) => {
+  await installState(page);
+  const recentCard = page.locator('#history .progress-history-card').first();
+  await expect(recentCard).toHaveJSProperty('tagName', 'BUTTON');
+  await recentCard.hover();
+  await expect.poll(() => recentCard.evaluate(card => getComputedStyle(card).transform)).not.toBe('none');
+
+  await openArchive(page);
+  const archiveCard = page.locator('#historyArchiveList .history-archive-card').first();
+  await expect(archiveCard).toHaveJSProperty('tagName', 'BUTTON');
+  await archiveCard.focus();
+  await expect(archiveCard).toBeFocused();
+  expect(await archiveCard.evaluate(card => getComputedStyle(card).outlineWidth)).toBe('3px');
+
+  const box = await archiveCard.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await expect.poll(() => archiveCard.evaluate(card => getComputedStyle(card).transform)).toMatch(/^matrix\(0\.992/);
+  await page.mouse.up();
+});
+
 test('archive opens the correct polished detail with bodyweight semantics and working-set hierarchy', async ({ page }) => {
   await installState(page);
   await openArchive(page);
@@ -104,10 +125,12 @@ test('archive opens the correct polished detail with bodyweight semantics and wo
   await expect(page.locator('#historyDialogTitle')).toHaveText('Pull');
   await expect(page.locator('#closeHistoryDialog')).toHaveText('← History');
   await expect(page.locator('#historyDialogDate')).toContainText('July 31, 2026');
-  await expect(page.locator('.history-summary-grid > div')).toHaveCount(5);
+  await expect(page.locator('.history-summary-grid > div')).toHaveCount(4);
   await expect(page.locator('.history-summary-grid')).toContainText('Effective volume');
   await expect(page.locator('.history-summary-grid')).toContainText('3,850 lb');
   await expect(page.locator('.history-summary-grid')).toContainText('3');
+  await expect(page.locator('.history-summary-grid')).not.toContainText('PRs');
+  await expect(page.locator('.history-pr-callout .pr-badge')).toHaveText('1 PR');
   await expect(page.locator('.history-detail-list .history-exercise h3')).toHaveText(['Pull-Up', 'Seated Cable Row']);
 
   const pullUp = page.locator('.history-exercise').first();
@@ -125,6 +148,11 @@ test('archive opens the correct polished detail with bodyweight semantics and wo
   await page.locator('#closeHistoryDialog').click();
   await expect(detail).toBeHidden();
   await expect(page.locator('#historyArchiveDialog')).toBeVisible();
+
+  await page.locator('#historyArchiveList [data-history-id="july-oldest"]').click();
+  await expect(page.locator('.history-summary-grid > div')).toHaveCount(4);
+  await expect(page.locator('.history-pr-callout')).toHaveCount(0);
+  await expect(page.locator('.history-summary-grid')).not.toContainText('PRs');
 });
 
 test('Edit and Delete remain first-class without changing the existing confirmation contract', async ({ page }) => {
@@ -190,6 +218,13 @@ test('archive and detail use mobile sheets while staying bounded on desktop', as
     await page.screenshot({ path: `${process.env.HISTORY_SCREENSHOT_DIR}/history-explorer-mobile.png` });
   }
   await page.locator('#historyArchiveList [data-history-id="july-bodyweight"]').click();
+  const bodyweightRows = page.locator('.history-exercise').first().locator('.history-set');
+  const rowColumns = await bodyweightRows.evaluateAll(rows => rows.map(row => {
+    const load = row.querySelector('.history-set-value > strong:first-child').getBoundingClientRect();
+    const reps = row.querySelector('.history-set-value > strong:last-child').getBoundingClientRect();
+    return { loadRight: load.right, repsLeft: reps.left, repsRight: reps.right };
+  }));
+  expect(rowColumns.every(row => row.loadRight <= row.repsLeft && row.repsRight <= 390)).toBe(true);
   layout = await page.evaluate(() => {
     const detail = document.querySelector('#historyDialog .history-dialog-shell').getBoundingClientRect();
     return { viewport: innerWidth, document: document.documentElement.scrollWidth, width: detail.width, bottom: detail.bottom };
