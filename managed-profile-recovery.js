@@ -70,6 +70,11 @@
     return isRecord(config?.goals) ? config.goals : null;
   }
 
+  function recoverableExercisePreferences(value) {
+    return isRecord(value) && Object.values(value).every(preference =>
+      isRecord(preference) && Object.keys(preference).length === 0);
+  }
+
   function recoverableBlankArtifact(value, target) {
     if (!isRecord(value) || value.version !== 5 || value.profileId !== target.profileClientId
       || Object.keys(value).some(key => !RECOVERABLE_BLANK_KEYS.has(key))
@@ -80,7 +85,7 @@
       || (value.activeWorkout !== null && value.activeWorkout !== undefined)
       || (value.restTimerEndsAt !== null && value.restTimerEndsAt !== undefined)
       || ('exercisePreferences' in value
-        && (!isRecord(value.exercisePreferences) || Object.keys(value.exercisePreferences).length !== 0))
+        && !recoverableExercisePreferences(value.exercisePreferences))
       || !isRecord(value.timerPreferences)
       || Object.keys(value.timerPreferences).sort().join(',') !== 'sound,vibration'
       || value.timerPreferences.sound !== true || value.timerPreferences.vibration !== true) return false;
