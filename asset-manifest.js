@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v73-cross-device-remote-fast-forward';
+  const release = 'v74-history-v2-workout-management';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];

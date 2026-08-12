@@ -190,30 +190,13 @@
     });
   }
 
-  function derivePersonalRecords(workouts) {
-    const personalRecords = {};
-    const chronological = [...workouts].sort((left, right) => new Date(left.completedAt) - new Date(right.completedAt)
-      || String(left.id).localeCompare(String(right.id)));
-    for (const workout of chronological) {
-      for (const exercise of workout.exercises || []) {
-        for (const set of exercise.sets || []) {
-          if (set.warmup) continue;
-          const weight = Number(set.weight);
-          const reps = Number(set.reps);
-          const estimated1RM = reps > 0 ? Math.round(weight * (1 + reps / 30)) : 0;
-          if (estimated1RM > Number(personalRecords[exercise.id]?.estimated1RM || 0)) {
-            personalRecords[exercise.id] = {
-              exercise: exercise.name,
-              estimated1RM,
-              weight,
-              reps,
-              date: workout.completedAt
-            };
-          }
-        }
-      }
-    }
-    return personalRecords;
+  function derivePersonalRecords(workouts, weights = []) {
+    const analytics = window.BigGainsAnalytics;
+    if (!analytics?.derivePersonalRecords) fail('analytics-unavailable', 'Cloud recovery requires the canonical analytics library.');
+    return analytics.derivePersonalRecords(workouts, {
+      bodyweight: analytics.profileBodyweight(weights),
+      loadModeFor: window.BigGainsExerciseCatalog?.loadModeFor
+    }).records;
   }
 
   async function schemaV5FromCloud({ cloud, profileClientId }) {
@@ -293,7 +276,7 @@
     state.weights.sort((left, right) => new Date(right.date) - new Date(left.date)
       || Number(right.weight) - Number(left.weight));
     if (Object.keys(exercisePreferences).length) state.exercisePreferences = exercisePreferences;
-    state.prs = derivePersonalRecords(state.workouts);
+    state.prs = derivePersonalRecords(state.workouts, state.weights);
 
     const issues = preview().validateLocalState(state, profileClientId);
     if (issues.length) fail('fresh-recovery-invalid-schema-v5', 'Cloud rows do not reconstruct a valid schema-v5 profile.', { issues });

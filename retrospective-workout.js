@@ -3,13 +3,18 @@
 
   const $ = id => document.getElementById(id);
   const safeNumber = value => value === '' ? '' : Math.max(0, Number(value) || 0);
+  const clone = value => JSON.parse(JSON.stringify(value));
 
   function create(context) {
     let draft = null;
     let saving = false;
 
+    function selectedDateKey() {
+      return draft?.dateKey || context.getSelectedDateKey();
+    }
+
     function selectedDate() {
-      const [year, month, day] = context.getSelectedDateKey().split('-').map(Number);
+      const [year, month, day] = selectedDateKey().split('-').map(Number);
       return new Date(year, month - 1, day, 12, 0, 0, 0);
     }
 
@@ -30,6 +35,17 @@
     }
 
     function createExercise(definition, workoutType = draft?.type) {
+      if (draft?.mode === 'edit') {
+        return {
+          id: context.createId(),
+          definitionId: definition.id,
+          name: definition.name,
+          muscle: definition.muscle,
+          equipment: definition.equipment,
+          note: '',
+          sets: [{ id: context.createId(), weight: '', reps: '', warmup: false, completed: true }]
+        };
+      }
       const prior = context.lastPerformance(definition.id)?.workingSets || [];
       const working = Number(prior[0]?.weight) || 0;
       const prescription = context.routineEngine.getPrescription(workoutType, definition.id);
@@ -79,6 +95,23 @@
         .sort((a, b) => a.name.localeCompare(b.name));
     }
 
+    function exerciseDefinitionOptions(exercise, exerciseIndex) {
+      const current = definitionFor(exercise);
+      const used = new Set(draft.exercises
+        .filter((_, index) => index !== exerciseIndex)
+        .map(item => definitionFor(item)?.id)
+        .filter(Boolean));
+      const routineIds = new Set(context.routineEngine.getRoutine(draft.type));
+      return context.exercises
+        .filter(definition => !used.has(definition.id))
+        .filter(definition => context.profile.capabilities.allExercises
+          || definition.id === current?.id
+          || definition.day === draft.type
+          || draft.type === 'Other'
+          || routineIds.has(definition.id))
+        .sort((left, right) => left.name.localeCompare(right.name));
+    }
+
     function setLabel(exercise, set) {
       if (set.warmup) return 'Warm-up';
       return `Working set ${exercise.sets.filter(item => !item.warmup).indexOf(set) + 1}`;
@@ -98,9 +131,12 @@
         <label class="retrospective-set-complete"><input type="checkbox" data-retro-field="completed" data-ei="${exerciseIndex}" data-si="${setIndex}" ${set.completed ? 'checked' : ''}><span>Performed</span></label>
         <button type="button" class="ghost compact" data-retro-remove-set="${setIndex}" data-ei="${exerciseIndex}" aria-label="Remove ${context.escapeHtml(setLabel(exercise, set))}">Remove</button>
       </div>`).join('');
+      const currentDefinition = definitionFor(exercise);
+      const definitionEditor = draft.mode === 'edit' ? `<label class="retrospective-exercise-choice"><span>Exercise</span><select data-retro-exercise-definition="${exerciseIndex}" aria-label="Exercise">${exerciseDefinitionOptions(exercise, exerciseIndex).map(definition => `<option value="${definition.id}" ${definition.id === currentDefinition?.id ? 'selected' : ''}>${context.escapeHtml(definition.name)} — ${context.escapeHtml(definition.equipment)}</option>`).join('')}</select></label>` : '';
       return `<article class="active-exercise retrospective-exercise" data-retro-exercise="${exerciseIndex}">
         <div class="exercise-head"><div><span class="exercise-muscle">${context.escapeHtml(exercise.muscle)}</span><h3>${context.escapeHtml(exercise.name)}</h3><p>${context.escapeHtml(exercise.equipment)}${bodyweight ? ' · Log only added load' : ''}${exercise.targetReps ? ` · Target ${context.escapeHtml(exercise.targetReps)}` : ''}</p></div>
         <div class="exercise-head-actions"><div class="exercise-order"><button type="button" data-retro-move="up" data-ei="${exerciseIndex}" ${exerciseIndex === 0 ? 'disabled' : ''} aria-label="Move ${context.escapeHtml(exercise.name)} up">↑</button><button type="button" data-retro-move="down" data-ei="${exerciseIndex}" ${exerciseIndex === draft.exercises.length - 1 ? 'disabled' : ''} aria-label="Move ${context.escapeHtml(exercise.name)} down">↓</button></div><button type="button" class="remove-exercise" data-retro-remove-exercise="${exerciseIndex}" aria-label="Remove ${context.escapeHtml(exercise.name)}">✕</button></div></div>
+        ${definitionEditor}
         <div class="retrospective-set-list">${sets}</div>
         <label class="retrospective-note"><span>Exercise note</span><textarea rows="2" data-retro-exercise-note="${exerciseIndex}" placeholder="Form, setup, or context">${context.escapeHtml(exercise.note || '')}</textarea></label>
         <button type="button" class="add-set" data-retro-add-set="${exerciseIndex}">+ Add set</button>
@@ -110,6 +146,11 @@
     function render() {
       if (!draft) return;
       $('retrospectiveDate').textContent = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(selectedDate());
+      $('retrospectiveLabel').textContent = draft.mode === 'edit' ? 'Completed workout' : 'Log completed workout';
+      $('retrospectiveTitle').textContent = draft.mode === 'edit' ? 'Edit workout' : 'Add workout';
+      $('retrospectiveSourceActions').hidden = draft.mode === 'edit';
+      $('retrospectiveEvaluatePrsLabel').hidden = draft.mode === 'edit';
+      $('saveRetrospectiveWorkout').textContent = draft.mode === 'edit' ? 'Save changes' : 'Save workout';
       $('retrospectiveWorkoutType').innerHTML = availableTypes().map(type => `<option value="${type}" ${type === draft.type ? 'selected' : ''}>${context.escapeHtml(context.workoutLabel(type))}</option>`).join('');
       $('retrospectiveExercises').innerHTML = draft.exercises.length ? draft.exercises.map(renderExercise).join('') : '<div class="empty">Blank workout. Add only the movements you performed.</div>';
       const options = exerciseOptions();
@@ -122,7 +163,9 @@
       if (context.getSelectedDateKey() > context.localDateKey(new Date())) return false;
       const type = plannedType();
       draft = {
+        mode: 'create',
         token: context.createId(),
+        dateKey: context.getSelectedDateKey(),
         type,
         exercises: [],
         completionTime: '',
@@ -146,6 +189,40 @@
       return true;
     }
 
+    function openWorkout(workoutId) {
+      const workout = context.getState().workouts.find(item => item.id === workoutId);
+      if (!workout) return false;
+      const completed = new Date(workout.completedAt);
+      const completionTime = `${String(completed.getHours()).padStart(2, '0')}:${String(completed.getMinutes()).padStart(2, '0')}`;
+      const durationMinutes = String(Number(workout.durationSeconds || 0) / 60);
+      draft = {
+        mode: 'edit',
+        token: context.createId(),
+        workoutId: workout.id,
+        dateKey: context.localDateKey(completed),
+        type: workout.type,
+        exercises: clone(workout.exercises || []),
+        completionTime,
+        originalCompletionTime: completionTime,
+        durationMinutes,
+        originalDurationMinutes: durationMinutes,
+        note: workout.note || '',
+        evaluatePrs: true,
+        originalWorkout: clone(workout)
+      };
+      saving = false;
+      $('saveRetrospectiveWorkout').disabled = false;
+      $('retrospectiveCompletionTime').value = completionTime;
+      $('retrospectiveDuration').value = durationMinutes;
+      $('retrospectiveWorkoutNote').value = draft.note;
+      $('retrospectiveEvaluatePrs').checked = true;
+      render();
+      const dialog = $('retrospectiveDialog');
+      if (dialog.showModal) dialog.showModal(); else dialog.setAttribute('open', '');
+      requestAnimationFrame(() => $('retrospectiveTitle').focus({ preventScroll: true }));
+      return true;
+    }
+
     function close({ discard = true } = {}) {
       const dialog = $('retrospectiveDialog');
       if (dialog.close && dialog.open) dialog.close(); else dialog.removeAttribute('open');
@@ -154,15 +231,18 @@
     }
 
     function completedAt() {
-      const [year, month, day] = context.getSelectedDateKey().split('-').map(Number);
-      const fallback = context.getSelectedDateKey() === context.localDateKey(new Date())
+      if (draft.mode === 'edit' && draft.completionTime === draft.originalCompletionTime) {
+        return new Date(draft.originalWorkout.completedAt);
+      }
+      const [year, month, day] = selectedDateKey().split('-').map(Number);
+      const fallback = selectedDateKey() === context.localDateKey(new Date())
         ? [new Date().getHours(), new Date().getMinutes()]
         : [12, 0];
       const parts = (draft.completionTime || '').split(':').map(Number);
       const hour = Number.isInteger(parts[0]) ? parts[0] : fallback[0];
       const minute = Number.isInteger(parts[1]) ? parts[1] : fallback[1];
       const date = new Date(year, month - 1, day, hour, minute, 0, 0);
-      return context.localDateKey(date) === context.getSelectedDateKey() ? date : null;
+      return context.localDateKey(date) === selectedDateKey() ? date : null;
     }
 
     function save() {
@@ -178,13 +258,14 @@
           }))
         };
       }).filter(exercise => exercise.sets.length);
+      const performed = completedExercises.flatMap(exercise => exercise.sets.map(set => ({ exercise, set })));
       const working = completedExercises.flatMap(exercise => exercise.sets.filter(set => !set.warmup).map(set => ({ exercise, set })));
       if (!working.length) {
         $('retrospectiveError').textContent = 'Complete at least one working set.';
         return false;
       }
-      if (working.some(({ exercise, set }) => !context.canCompleteSet(exercise, set))) {
-        $('retrospectiveError').textContent = 'Enter reps for bodyweight work and external load plus reps for weighted work.';
+      if (performed.some(({ exercise, set }) => !context.canCompleteSet(exercise, set))) {
+        $('retrospectiveError').textContent = 'Every performed set needs reps; weighted work also needs positive external load.';
         return false;
       }
       const completion = completedAt();
@@ -194,13 +275,22 @@
       }
       saving = true;
       $('saveRetrospectiveWorkout').disabled = true;
-      const durationSeconds = Math.round((Number(draft.durationMinutes) || 0) * 60);
+      const durationSeconds = draft.mode === 'edit' && draft.durationMinutes === draft.originalDurationMinutes
+        ? Number(draft.originalWorkout.durationSeconds || 0)
+        : Math.round((Number(draft.durationMinutes) || 0) * 60);
+      const completedAtValue = completion.toISOString();
+      const preserveStartedAt = draft.mode === 'edit'
+        && completedAtValue === new Date(draft.originalWorkout.completedAt).toISOString()
+        && durationSeconds === Number(draft.originalWorkout.durationSeconds || 0);
       const workout = {
-        id: context.createId(),
+        ...(draft.mode === 'edit' ? draft.originalWorkout : {}),
+        id: draft.mode === 'edit' ? draft.workoutId : context.createId(),
         type: draft.type,
-        entryMethod: 'retrospective',
-        startedAt: new Date(completion.getTime() - durationSeconds * 1000).toISOString(),
-        completedAt: completion.toISOString(),
+        ...(draft.mode === 'create' ? { entryMethod: 'retrospective' } : {}),
+        startedAt: preserveStartedAt
+          ? draft.originalWorkout.startedAt
+          : new Date(completion.getTime() - durationSeconds * 1000).toISOString(),
+        completedAt: completedAtValue,
         durationSeconds,
         note: draft.note.trim(),
         exercises: completedExercises,
@@ -208,8 +298,17 @@
       };
       const previousWorkouts = context.getState().workouts;
       const previousPrs = context.getState().prs;
-      const nextPrs = { ...previousPrs };
-      if (draft.evaluatePrs) {
+      let nextWorkouts;
+      let nextPrs;
+      if (draft.mode === 'edit') {
+        nextWorkouts = previousWorkouts.map(existing => existing.id === workout.id ? workout : existing);
+        const derived = context.derivePersonalRecords(nextWorkouts);
+        workout.prs = Number(derived.workoutPrCounts[workout.id] || 0);
+        nextPrs = { ...derived.records };
+      } else {
+        nextPrs = { ...previousPrs };
+      }
+      if (draft.mode === 'create' && draft.evaluatePrs) {
         completedExercises.forEach(exercise => exercise.sets.filter(set => !set.warmup).forEach(set => {
           const key = exercise.definitionId || context.slug(exercise.name);
           const score = context.estimate1RM(Number(set.weight), Number(set.reps));
@@ -220,8 +319,9 @@
           }
         }));
       }
+      if (draft.mode === 'create') nextWorkouts = [workout, ...previousWorkouts];
       context.getState().prs = nextPrs;
-      context.getState().workouts = [workout, ...previousWorkouts];
+      context.getState().workouts = nextWorkouts;
       try {
         context.saveState();
       } catch (error) {
@@ -234,9 +334,11 @@
         return false;
       }
       const savedKey = context.localDateKey(new Date(workout.completedAt));
+      const mode = draft.mode;
       draft = null;
       close({ discard: false });
-      context.afterSave(savedKey, workout.id);
+      if (mode === 'edit') context.afterUpdate(savedKey, workout.id);
+      else context.afterSave(savedKey, workout.id);
       return true;
     }
 
@@ -255,6 +357,19 @@
       $('retrospectiveDuration').addEventListener('input', event => { if (draft) draft.durationMinutes = event.target.value; });
       $('retrospectiveWorkoutNote').addEventListener('input', event => { if (draft) draft.note = event.target.value; });
       $('retrospectiveEvaluatePrs').addEventListener('change', event => { if (draft) draft.evaluatePrs = event.target.checked; });
+      $('retrospectiveExercises').addEventListener('change', event => {
+        if (!draft || event.target.dataset.retroExerciseDefinition === undefined) return;
+        const exercise = draft.exercises[Number(event.target.dataset.retroExerciseDefinition)];
+        const definition = context.exercises.find(item => item.id === event.target.value);
+        if (!exercise || !definition) return;
+        exercise.definitionId = definition.id;
+        exercise.name = definition.name;
+        exercise.muscle = definition.muscle;
+        exercise.equipment = definition.equipment;
+        delete exercise.targetReps;
+        delete exercise.targetWorkingSets;
+        render();
+      });
       $('retrospectiveExercises').addEventListener('input', event => {
         if (!draft) return;
         const exerciseIndex = Number(event.target.dataset.ei);
@@ -280,7 +395,7 @@
         else if (button.dataset.retroAddSet !== undefined) {
           const exercise = draft.exercises[exerciseIndex];
           const prior = exercise.sets.filter(set => !set.warmup).at(-1);
-          exercise.sets.push({ id: context.createId(), weight: safeNumber(prior?.weight ?? ''), reps: safeNumber(prior?.reps ?? ''), warmup: false, completed: false });
+          exercise.sets.push({ id: context.createId(), weight: safeNumber(prior?.weight ?? ''), reps: safeNumber(prior?.reps ?? ''), warmup: false, completed: draft.mode === 'edit' });
         }
         render();
       });
@@ -290,7 +405,7 @@
       dialog.addEventListener('click', event => { if (event.target === dialog) close(); });
     }
 
-    return Object.freeze({ initialize, open, cancel: () => close(), getDraft: () => draft, save });
+    return Object.freeze({ initialize, open, openWorkout, cancel: () => close(), getDraft: () => draft, save });
   }
 
   window.bigGainsRetrospective = Object.freeze({ create });
