@@ -48,7 +48,8 @@ test('Progress is a dark analytics dashboard with overview, heatmap, and capped 
   await expect(page.locator('.progress-overview-grid article').nth(0).locator('strong')).toHaveText('3');
   await expect(page.locator('.muscle-zone')).toHaveCount(24);
   await expect(page.locator('#history .history-item')).toHaveCount(3);
-  await expect(page.locator('.progress-history-footer')).toContainText('Full archive lives in Calendar');
+  await expect(page.locator('.progress-history-footer')).toContainText('Browse every completed session by month');
+  await expect(page.locator('[data-open-history-archive]').first()).toHaveText('View history');
 
   await page.locator('[data-muscle-key="Chest"]').first().click();
   await expect(page.locator('#progressMuscleDetail h3')).toHaveText('Chest');

@@ -196,7 +196,7 @@ test('progress exposes explicit hooks without replacing app globals', async ({ p
   await openApp(page);
 
   expect(await page.evaluate(() => Object.keys(window.workoutProgress))).toEqual([
-    'afterActiveRender', 'afterFullRender', 'afterHistoryOpen', 'afterLibraryRender', 'initialize'
+    'afterActiveRender', 'afterFullRender', 'afterLibraryRender', 'initialize'
   ]);
 
   const progressSource = await (await request.get('/progress.js')).text();
@@ -207,7 +207,7 @@ test('progress exposes explicit hooks without replacing app globals', async ({ p
   const appSource = await (await request.get('/app.js')).text();
   expect(appSource).toContain('progressApi.afterLibraryRender');
   expect(appSource).toContain('progressApi.afterActiveRender');
-  expect(appSource).toContain('progressApi.afterHistoryOpen');
+  expect(appSource).not.toContain('progressApi.afterHistoryOpen');
   expect(appSource).toContain('progressApi.afterFullRender');
 });
 

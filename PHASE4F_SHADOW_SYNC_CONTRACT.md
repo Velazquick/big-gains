@@ -2,7 +2,7 @@
 
 Release: `v49-phase4f-shadow-sync-readiness`
 
-The original Phase 4F release keeps schema-v5 browser state authoritative while maintaining a continuously verifiable, one-way Supabase shadow. Release `v73-cross-device-remote-fast-forward` adds the narrow initialized-device exception documented below. Release `v74-history-v2-workout-management` allows verified higher workout revisions and tombstones through that same exception; it does not add automatic pull or a general merge engine.
+The original Phase 4F release keeps schema-v5 browser state authoritative while maintaining a continuously verifiable, one-way Supabase shadow. Release `v73-cross-device-remote-fast-forward` adds the narrow initialized-device exception documented below. Release `v74-history-v2-workout-management` allows verified higher workout revisions and tombstones through that same exception; it does not add automatic pull or a general merge engine. Release `v75-progress-v2-history-explorer-detail` is presentation-only and leaves every queue, revision, tombstone, and fast-forward rule in this contract unchanged.
 
 ## Runtime order
 
