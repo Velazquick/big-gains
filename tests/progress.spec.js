@@ -28,17 +28,17 @@ test('decorates the active session after an active render', async ({ page }) => 
   await expect(activeExercise.locator('[data-remove-exercise]')).toBeVisible();
 });
 
-test('decorates workout history when history opens', async ({ page }) => {
+test('completed workout detail does not create a deeper exercise progress drill-down', async ({ page }) => {
   await installLocalStorageFixture(page, 'completedWorkouts');
   await openApp(page);
 
   await page.locator('.bottom-nav button[data-view="progress"]').click();
-  await page.locator('[data-history-id="completed-push-1"]').click();
+  await page.locator('#history [data-history-id="completed-push-1"]').click();
 
   await expect(page.locator('#historyDialog')).toBeVisible();
   const exercise = page.locator('#historyDialogContent .history-exercise').first();
-  await expect(exercise.getByRole('button', { name: 'Progress' })).toBeVisible();
-  await expect(exercise.getByRole('button', { name: 'Progress' })).toHaveAttribute('data-progress-exercise', 'seated-machine-chest-press');
+  await expect(exercise.getByRole('button', { name: 'Progress' })).toHaveCount(0);
+  await expect(exercise).not.toHaveAttribute('data-progress-exercise');
 });
 
 test('refreshes the progress panel after a full render without persisting', async ({ page }) => {

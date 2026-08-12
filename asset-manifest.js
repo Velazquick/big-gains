@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v74-history-v2-workout-management';
+  const release = 'v76-history-explorer-detail-polish';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];
@@ -24,6 +24,7 @@
     './controlled-migration.css',
     './jorge-train-v52.css',
     './progress-dashboard-v56.css',
+    './history-explorer-v75.css',
     './routine-prescription-v58.css'
   ];
   const scripts = [

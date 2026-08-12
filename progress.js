@@ -23,6 +23,8 @@ window.workoutProgress = (() => {
     button: document.getElementById('openSelectedProgress'),
     preview: document.getElementById('progressPreview'),
     history: document.getElementById('history'),
+    archive: document.getElementById('historyArchiveDialog'),
+    archiveList: document.getElementById('historyArchiveList'),
     dialog: document.getElementById('progressDialog')
   });
 
@@ -38,6 +40,10 @@ window.workoutProgress = (() => {
   const completedAt = workout => new Date(workout?.completedAt || 0).getTime();
   const analyticsOptions = () => context.getAnalyticsOptions?.() || {};
   const formatVolume = value => value === null ? '—' : `${formatCompact(value)} lb`;
+  const formatMonthHeading = iso => new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(new Date(iso)).toUpperCase();
+  const formatArchiveDate = iso => new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).format(new Date(iso));
+  const formatDay = iso => new Intl.DateTimeFormat('en-US', { day: '2-digit' }).format(new Date(iso));
+  const formatWeekday = iso => new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(new Date(iso)).toUpperCase();
   const setLoadLabel = set => {
     if (set?.loadMode !== 'bodyweight') return `${Number(set?.weight) || 0} lb`;
     const added = Number(set.weight) || 0;
@@ -302,8 +308,57 @@ window.workoutProgress = (() => {
     history.className = 'history-list progress-recent-history';
     history.innerHTML = `${workouts.map(workout => {
       const summary = context.analytics.workoutSummary(workout, analyticsOptions());
-      return `<button type="button" class="history-item" data-history-id="${workout.id}"><div><strong>${context.escapeHtml(context.workoutLabel(workout.type))}</strong><small>${context.fmtDate(workout.completedAt)} · ${summary.workingSetCount} working sets · ${formatDuration(summary.durationSeconds)}</small>${workout.entryMethod === 'retrospective' ? '<span class="entered-later">Entered later</span>' : ''}<div class="history-open">View session →</div></div><div class="history-meta"><strong>${formatVolume(summary.workingSetVolume)}</strong><small>${summary.exerciseCount} exercises${summary.prCount ? ` · ${summary.prCount} PR${summary.prCount === 1 ? '' : 's'}` : ''}</small></div></button>`;
-    }).join('')}<div class="progress-history-footer"><div><strong>Full archive lives in Calendar.</strong><span>History timeline and filters arrive in 4J4.</span></div><button type="button" class="ghost compact" data-progress-open-calendar>Open Calendar</button></div>`;
+      return `<button type="button" class="history-item progress-history-card" data-history-id="${context.escapeHtml(workout.id)}"><div class="progress-history-main"><div class="history-card-title"><strong>${context.escapeHtml(context.workoutLabel(workout.type))}</strong>${summary.prCount ? `<span class="pr-badge">${summary.prCount} PR${summary.prCount === 1 ? '' : 's'}</span>` : ''}</div><small>${formatArchiveDate(workout.completedAt)} · ${formatDuration(summary.durationSeconds)} · ${summary.workingSetCount} working set${summary.workingSetCount === 1 ? '' : 's'}</small>${workout.entryMethod === 'retrospective' ? '<span class="entered-later">Entered later</span>' : ''}</div><div class="history-meta"><strong>${formatVolume(summary.workingSetVolume)}</strong><small>effective volume</small><span class="history-card-arrow" aria-hidden="true">→</span></div></button>`;
+    }).join('')}<div class="progress-history-footer"><div><strong>Keep the full timeline close.</strong><span>Browse every completed session by month.</span></div><button type="button" class="ghost compact" data-open-history-archive>View history</button></div>`;
+  }
+
+  function groupedHistory() {
+    const groups = [];
+    completedWorkouts().forEach(workout => {
+      const heading = formatMonthHeading(workout.completedAt);
+      const latest = groups.at(-1);
+      if (!latest || latest.heading !== heading) groups.push({ heading, workouts: [workout] });
+      else latest.workouts.push(workout);
+    });
+    return groups;
+  }
+
+  function renderHistoryArchive() {
+    const { archiveList } = elements();
+    if (!archiveList) return;
+    const workouts = completedWorkouts();
+    const count = document.getElementById('historyArchiveCount');
+    if (count) count.textContent = workouts.length
+      ? `${workouts.length} completed workout${workouts.length === 1 ? '' : 's'} · newest first`
+      : 'Your completed sessions will collect here.';
+    if (!workouts.length) {
+      archiveList.className = 'history-archive-list empty';
+      archiveList.innerHTML = '<div class="history-archive-empty"><strong>No completed workouts yet.</strong><span>Finish a session or log one from Calendar to begin your archive.</span></div>';
+      return;
+    }
+    archiveList.className = 'history-archive-list';
+    archiveList.innerHTML = groupedHistory().map(group => `<section class="history-month-group" aria-labelledby="history-month-${group.heading.replace(/\s+/g, '-').toLowerCase()}"><div class="history-month-heading"><h3 id="history-month-${group.heading.replace(/\s+/g, '-').toLowerCase()}">${group.heading}</h3><span>${group.workouts.length} session${group.workouts.length === 1 ? '' : 's'}</span></div><div class="history-month-workouts">${group.workouts.map(workout => {
+      const summary = context.analytics.workoutSummary(workout, analyticsOptions());
+      const label = context.workoutLabel(workout.type);
+      return `<button type="button" class="history-archive-card" data-history-id="${context.escapeHtml(workout.id)}" aria-label="Open ${context.escapeHtml(label)} from ${context.escapeHtml(formatArchiveDate(workout.completedAt))}"><span class="history-date-block"><strong>${formatDay(workout.completedAt)}</strong><span>${formatWeekday(workout.completedAt)}</span></span><span class="history-archive-card-main"><span class="history-card-title"><strong>${context.escapeHtml(label)}</strong>${workout.entryMethod === 'retrospective' ? '<span class="entered-later">Entered later</span>' : ''}${summary.prCount ? `<span class="pr-badge">${summary.prCount} PR${summary.prCount === 1 ? '' : 's'}</span>` : ''}</span><span class="history-card-date">${context.escapeHtml(formatArchiveDate(workout.completedAt))}</span><span class="history-card-metrics"><span>${formatDuration(summary.durationSeconds)}</span><span>${summary.workingSetCount} working set${summary.workingSetCount === 1 ? '' : 's'}</span><span>${formatVolume(summary.workingSetVolume)} volume</span></span></span><span class="history-card-arrow" aria-hidden="true">→</span></button>`;
+    }).join('')}</div></section>`).join('');
+  }
+
+  function openHistoryArchive() {
+    const { archive } = elements();
+    if (!archive) return;
+    renderHistoryArchive();
+    if (archive.showModal && !archive.open) archive.showModal();
+    else archive.setAttribute('open', '');
+    const shell = archive.querySelector('.history-archive-shell');
+    if (shell) shell.scrollTop = 0;
+    document.getElementById('historyArchiveTitle')?.focus({ preventScroll: true });
+  }
+
+  function closeHistoryArchive() {
+    const { archive } = elements();
+    if (archive?.close && archive.open) archive.close();
+    else archive?.removeAttribute('open');
   }
 
   function closeProgress() {
@@ -383,21 +438,6 @@ window.workoutProgress = (() => {
     });
   }
 
-  function decorateHistoryDialog() {
-    document.querySelectorAll('#historyDialog .history-exercise').forEach(card => {
-      if (card.querySelector('[data-progress-exercise]')) return;
-      const head = card.querySelector('.history-exercise-head');
-      const exerciseId = card.dataset.exerciseId;
-      if (!head || !exerciseId) return;
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'ghost compact';
-      button.dataset.progressExercise = exerciseId;
-      button.textContent = 'Progress';
-      head.appendChild(button);
-    });
-  }
-
   function handleProgressClick(event) {
     const windowButton = event.target.closest('[data-progress-window]');
     if (windowButton) {
@@ -414,9 +454,15 @@ window.workoutProgress = (() => {
       return;
     }
 
-    const openCalendar = event.target.closest('[data-progress-open-calendar]');
-    if (openCalendar) {
-      window.bigGainsViewShell?.showView('calendar', { workout: false });
+    const openArchive = event.target.closest('[data-open-history-archive]');
+    if (openArchive) {
+      openHistoryArchive();
+      return;
+    }
+
+    const archiveWorkout = event.target.closest('#historyArchiveList [data-history-id]');
+    if (archiveWorkout) {
+      context.openHistory(archiveWorkout.dataset.historyId);
       return;
     }
 
@@ -444,8 +490,8 @@ window.workoutProgress = (() => {
   function initialize(apiContext) {
     context = apiContext;
     if (initialized) return;
-    const { dialog } = elements();
-    if (!document.getElementById('progressPanel') || !dialog) return;
+    const { archive, dialog } = elements();
+    if (!document.getElementById('progressPanel') || !dialog || !archive) return;
 
     document.addEventListener('change', event => {
       if (event.target.id !== 'progressExerciseSelect') return;
@@ -457,6 +503,8 @@ window.workoutProgress = (() => {
     document.addEventListener('keydown', handleProgressKeydown);
     document.getElementById('closeProgressDialog')?.addEventListener('click', closeProgress);
     dialog.addEventListener('click', event => { if (event.target === dialog) closeProgress(); });
+    document.getElementById('closeHistoryArchive')?.addEventListener('click', closeHistoryArchive);
+    archive.addEventListener('click', event => { if (event.target === archive) closeHistoryArchive(); });
     document.getElementById('cancelRoutineDialog')?.addEventListener('click', () => context.closeRoutineEditor());
     initialized = true;
   }
@@ -469,13 +517,10 @@ window.workoutProgress = (() => {
     decorateActive(activeWorkout);
   }
 
-  function afterHistoryOpen() {
-    decorateHistoryDialog();
-  }
-
   function afterFullRender({ activeWorkout }) {
     renderProgressDashboard();
     renderCompactHistory();
+    if (elements().archive?.open) renderHistoryArchive();
     decorateLibrary();
     decorateActive(activeWorkout);
   }
@@ -483,7 +528,6 @@ window.workoutProgress = (() => {
   return {
     afterActiveRender,
     afterFullRender,
-    afterHistoryOpen,
     afterLibraryRender,
     initialize
   };
