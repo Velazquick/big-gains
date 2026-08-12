@@ -2,7 +2,7 @@
 
 Release: `v49-phase4f-shadow-sync-readiness`
 
-The original Phase 4F release keeps schema-v5 browser state authoritative while maintaining a continuously verifiable, one-way Supabase shadow. Release `v73-cross-device-remote-fast-forward` adds the narrow initialized-device exception documented below; it does not add automatic pull or a general merge engine.
+The original Phase 4F release keeps schema-v5 browser state authoritative while maintaining a continuously verifiable, one-way Supabase shadow. Release `v73-cross-device-remote-fast-forward` adds the narrow initialized-device exception documented below. Release `v74-history-v2-workout-management` allows verified higher workout revisions and tombstones through that same exception; it does not add automatic pull or a general merge engine.
 
 ## Runtime order
 
@@ -52,7 +52,7 @@ Source mappings:
 
 Cloud reconstruction accepts the existing `big-gains.migration.v1` envelope and the new `big-gains.shadow.v1` envelope. Reconstruction itself remains read-only. Missing, extra, mismatched, unknown-contract, wrong-profile, stale-version, newer-version, and tombstone conflicts become explicit comparison reasons.
 
-## Release v73 guarded remote fast-forward
+## Release v73/v74 guarded remote fast-forward
 
 A fresh comparison may classify newer cloud rows as **Changes from another device** only when all of these checks pass:
 
@@ -63,7 +63,7 @@ A fresh comparison may classify newer cloud rows as **Changes from another devic
 - at least one remote winner is a new or higher revision;
 - cloud reconstruction returns no ownership issue and reconstructs schema-v5 data at exact semantic parity.
 
-The user must choose **Update this device**. `managed-profile-recovery.js` reconstructs canonical schema-v5 state, rechecks the local payload and queue after reconstruction, and atomically persists the profile state, remote catalog, and parity comparison with rollback on failure. A fresh comparison runs before reload. The queue is not cleared or rewritten. If local data also changed, or an equal revision changes fingerprint/identity, the update remains blocked as a real conflict.
+The user must choose **Update this device**. `managed-profile-recovery.js` reconstructs canonical schema-v5 state, rechecks the local payload and queue after reconstruction, and atomically persists the profile state, remote catalog, and parity comparison with rollback on failure. A fresh comparison runs before reload. The queue is not cleared or rewritten. V74 treats a completed-workout edit or tombstone exactly like another higher monotonic revision; reconstruction validates the resulting schema-v5 history and derived records before adoption. If local data also changed, an expected cloud row disappears without a tombstone, or an equal revision changes fingerprint/identity, the update remains blocked as a real conflict.
 
 ## Production operations
 

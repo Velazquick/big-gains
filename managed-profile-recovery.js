@@ -359,11 +359,6 @@
             remoteReasons.push(`${profileClientId}/${key} advanced revision while moving its timestamp backward.`);
             continue;
           }
-          if (expected.table === 'workouts'
-            && (remote.tombstone || remote.fingerprint !== expected.fingerprint)) {
-            remoteReasons.push(`${profileClientId}/${key} would rewrite completed-workout history.`);
-            continue;
-          }
           advancedRevisions += 1;
           continue;
         }

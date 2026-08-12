@@ -10,6 +10,8 @@ Expanded exercise cards use an accessible chevron that can keep even the focused
 
 Past and current Calendar dates can also open a focused retrospective editor. It preloads the selected profile's planned weekday routine (or a blank workout on rest days), remains independent from any live workout, and saves an ordinary completed workout with the optional `entryMethod: "retrospective"` marker. Completed working sets flow through Calendar, History, Progress, volume, workout counts, backups, and optional PR evaluation without a second database or history path.
 
+Release `v74-history-v2-workout-management` starts History V2 with completed-workout management rather than a new explorer. The shared History detail can open the existing retrospective editor in a prefilled edit mode or show an inline delete confirmation. Edits retain the workout ID, profile namespace, timestamps, nested IDs, and ordering unless the user changes the corresponding fields; saves replace the existing array entry and recompute derived personal records. Deletes remove only the selected local workout and the existing semantic capture emits the next versioned workout tombstone. No schema migration or parallel history store is introduced.
+
 ## Project documentation
 
 - [Architecture](ARCHITECTURE.md) — production load order, module boundaries, state and workout lifecycles, profile isolation, backup and sync behavior, offline assets, and CI
@@ -44,7 +46,7 @@ Release `v52-jorge-train-ui-refresh` gives Jorge's Train preview and active work
 
 Release `v49-phase4f-shadow-sync-readiness` reconstructs Jorge and Alexa from account-scoped Supabase rows, computes deterministic `big-gains.shadow.v1` checksums, adopts the completed Phase 4E migration without rewriting it, and quietly pushes later local source mutations through the durable queue. Every push verifies ownership, base revision, exact idempotency, and affected-row readback before ACK; a full comparison follows.
 
-Release `v73-cross-device-remote-fast-forward` adds one explicit cross-device adoption path without changing schema version 5, Auth, RLS, queue ownership, or write conflict rules. A fresh comparison that proves a verified same-owner remote fast-forward shows **Changes from another device — Update this device**. The existing recovery adapter reconstructs and validates canonical schema-v5 state, persists it with the new catalog atomically, and reloads only after a fresh parity comparison. Any pending queue, local/catalog mismatch, non-monotonic revision, or equal-revision fingerprint mismatch remains blocked as drift or a real sync conflict.
+Release `v73-cross-device-remote-fast-forward` adds one explicit cross-device adoption path without changing schema version 5, Auth, RLS, queue ownership, or write conflict rules. Release v74 permits that same guarded path to adopt a higher completed-workout payload revision or tombstone. A fresh comparison that proves a verified same-owner remote fast-forward shows **Changes from another device — Update this device**. The existing recovery adapter reconstructs and validates canonical schema-v5 state, persists it with the new catalog atomically, and reloads only after a fresh parity comparison. Any pending queue, local/catalog mismatch, non-monotonic revision, or equal-revision fingerprint mismatch remains blocked as drift or a real sync conflict.
 
 ## Storage compatibility
 

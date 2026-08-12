@@ -128,6 +128,42 @@
     };
   }
 
+  function derivePersonalRecords(workouts, options = {}) {
+    const records = {};
+    const workoutPrCounts = {};
+    const chronological = list(workouts)
+      .filter(workout => timestamp(workout?.completedAt) !== null)
+      .slice()
+      .sort((left, right) => timestamp(left.completedAt) - timestamp(right.completedAt)
+        || String(left.id || '').localeCompare(String(right.id || '')));
+    chronological.forEach(workout => {
+      let prCount = 0;
+      list(workout.exercises).forEach(exercise => {
+        const exerciseId = canonicalExerciseId(exercise);
+        if (!exerciseId) return;
+        const loadMode = loadModeFor(exercise, options);
+        workingSets(exercise).forEach(set => {
+          const metrics = metricsForSet(set, { ...options, loadMode });
+          if (metrics.estimated1RM === null || metrics.estimated1RM <= number(records[exerciseId]?.estimated1RM)) return;
+          records[exerciseId] = {
+            exercise: exercise.name || '',
+            estimated1RM: metrics.estimated1RM,
+            weight: metrics.weight,
+            reps: metrics.reps,
+            date: workout.completedAt,
+            ...(metrics.effectiveLoad !== metrics.weight ? { effectiveLoad: metrics.effectiveLoad } : {})
+          };
+          prCount += 1;
+        });
+      });
+      workoutPrCounts[workout.id] = prCount;
+    });
+    return Object.freeze({
+      records: Object.freeze(records),
+      workoutPrCounts: Object.freeze(workoutPrCounts)
+    });
+  }
+
   function completedWorkouts(workouts) {
     return list(workouts)
       .filter(workout => timestamp(workout?.completedAt) !== null)
@@ -273,6 +309,7 @@
 
   scope.BigGainsAnalytics = Object.freeze({
     bestWorkingSet,
+    derivePersonalRecords,
     durationSeconds,
     estimate1RM,
     exerciseFamilyTotals,

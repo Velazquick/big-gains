@@ -11,7 +11,7 @@ const catalogKey = `big-gains-cloud-shadow-catalog-v1-${namespace}`;
 const baselineAt = '2026-08-11T20:00:00.000Z';
 const advancedAt = '2026-08-11T20:05:00.000Z';
 
-function profileState(primary) {
+function profileState(primary, overrides = {}) {
   return {
     version: 5,
     profileId: clientId,
@@ -22,12 +22,13 @@ function profileState(primary) {
     activeWorkout: null,
     restTimerEndsAt: null,
     customRoutines: {},
-    timerPreferences: { sound: true, vibration: true }
+    timerPreferences: { sound: true, vibration: true },
+    ...overrides
   };
 }
 
-async function installReceiver(page, primary = 'Shared baseline') {
-  const state = profileState(primary);
+async function installReceiver(page, input = 'Shared baseline') {
+  const state = typeof input === 'string' ? profileState(input) : input;
   await page.addInitScript(({ authUserId, accountId, profileId, clientId, storageKey, state }) => {
     localStorage.setItem('big-gains-runtime-accounts-v1', JSON.stringify({
       version: 1,
@@ -76,7 +77,13 @@ async function installReceiver(page, primary = 'Shared baseline') {
 
 async function installAuthenticatedCloud(page, remoteInput) {
   const options = typeof remoteInput === 'string' ? { remotePrimary: remoteInput } : remoteInput;
-  const { remotePrimary, goalVersion = 2, goalUpdatedAt = advancedAt } = options;
+  const {
+    remotePrimary = 'Shared baseline',
+    goalVersion = typeof remoteInput === 'string' ? 2 : 1,
+    goalUpdatedAt = goalVersion > 1 ? advancedAt : baselineAt,
+    remoteWorkouts = [],
+    remoteTombstones = []
+  } = options;
   const now = advancedAt;
   await page.addInitScript(({ authUserId, now }) => {
     window.__BIG_GAINS_CLOUD_CONFIG__ = {
@@ -140,7 +147,9 @@ async function installAuthenticatedCloud(page, remoteInput) {
             },
             created_at: baselineAt, updated_at: baselineAt
           }
-        ] : [];
+        ] : table === 'workouts' ? remoteWorkouts
+          : table === 'tombstones' ? remoteTombstones
+            : [];
     return route.fulfill({
       status: 200,
       headers: { ...headers, 'content-range': rows.length ? `0-${rows.length - 1}/${rows.length}` : '*/0' },
@@ -148,6 +157,36 @@ async function installAuthenticatedCloud(page, remoteInput) {
     });
   });
   return writes;
+}
+
+function workoutRow(workout, version, updatedAt) {
+  return {
+    id: `remote-${workout.id}`, account_id: accountId, profile_id: profileId, client_id: workout.id,
+    idempotency_key: `${workout.id}-v${version}`, completed_at: workout.completedAt, version,
+    payload: {
+      contract: 'big-gains.shadow.v1', version: 1, profileClientId: clientId,
+      entityType: 'completedWorkout', clientId: workout.id, data: workout
+    },
+    created_at: baselineAt, updated_at: updatedAt
+  };
+}
+
+function tombstoneRow(workoutId, version = 2, updatedAt = advancedAt) {
+  return {
+    id: `tombstone-${workoutId}`, account_id: accountId, profile_id: profileId,
+    entity_type: 'workouts', entity_id: workoutId, idempotency_key: `${workoutId}-delete-v${version}`,
+    version, deleted_at: updatedAt, created_at: baselineAt, updated_at: updatedAt
+  };
+}
+
+function completedWorkout(id, reps, completedAt = '2026-08-10T18:30:00.000Z') {
+  return {
+    id, type: 'Pull', startedAt: '2026-08-10T17:45:00.000Z', completedAt, durationSeconds: 2700, prs: 1,
+    exercises: [{
+      id: `${id}-exercise`, definitionId: 'lat-pulldown', name: 'Lat Pulldown', muscle: 'Back', equipment: 'Cable', collapsed: true,
+      sets: [{ id: `${id}-set`, weight: 100, reps, warmup: false, completed: true }]
+    }]
+  };
 }
 
 async function expectRemoteFastForward(page, expectedPrimary) {
@@ -216,6 +255,105 @@ test('concurrent local edit remains a real conflict and never overwrites local s
   expect(result.primary).toBe('Local concurrent edit');
   expect(result.pending).toBe(0);
   expect(result.fastForward).toMatchObject({ eligible: false, conflict: true, reason: 'concurrent-local-edit' });
+  expect(writes).toEqual([]);
+});
+
+test('a higher completed-workout revision fast-forwards onto the second device without duplicating or rewriting other history', async ({ page }) => {
+  const baseline = completedWorkout('shared-workout', 120);
+  const corrected = completedWorkout('shared-workout', 12);
+  const unrelated = completedWorkout('unrelated-workout', 8, '2026-08-09T18:30:00.000Z');
+  unrelated.startedAt = '2026-08-09T17:45:00.000Z';
+  await installReceiver(page, profileState('Shared baseline', { workouts: [baseline, unrelated] }));
+  const writes = await installAuthenticatedCloud(page, {
+    remoteWorkouts: [workoutRow(corrected, 2, advancedAt), workoutRow(unrelated, 1, baselineAt)]
+  });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+
+  await page.locator('.bottom-nav [data-view="library"]').click();
+  await expect(page.locator('#cloudShadowHeading')).toHaveText('Changes from another device');
+  expect(await page.evaluate(() => BigGainsCloudSync.status().remoteFastForward)).toMatchObject({
+    eligible: true, conflict: false, reason: 'newer-remote-revisions', advancedRevisions: 1
+  });
+  const reloaded = page.waitForEvent('framenavigated');
+  await page.locator('#cloudRemoteFastForward').click();
+  await reloaded;
+  await expect(page.locator('#cloudShadowHeading')).toHaveText('In sync');
+
+  const result = await page.evaluate(({ storageKey, catalogKey, clientId, workoutId }) => {
+    const state = JSON.parse(localStorage.getItem(storageKey));
+    const catalog = JSON.parse(localStorage.getItem(catalogKey));
+    return {
+      workouts: state.workouts,
+      record: catalog.profiles[clientId].records[BigGainsCloudShadow.keyFor('workouts', workoutId)],
+      pending: BigGainsCloudSync.queue.pending().length
+    };
+  }, { storageKey, catalogKey, clientId, workoutId: baseline.id });
+  expect(result.workouts).toHaveLength(2);
+  expect(result.workouts.find(workout => workout.id === baseline.id)).toEqual(corrected);
+  expect(result.workouts.find(workout => workout.id === unrelated.id)).toEqual(unrelated);
+  expect(result.record).toMatchObject({ version: 2, tombstone: false, data: corrected });
+  expect(result.pending).toBe(0);
+  expect(writes).toEqual([]);
+});
+
+test('a higher workout tombstone fast-forwards onto the second device and cannot resurrect after adoption', async ({ page }) => {
+  const deleted = completedWorkout('deleted-workout', 10);
+  const retained = completedWorkout('retained-workout', 8, '2026-08-09T18:30:00.000Z');
+  retained.startedAt = '2026-08-09T17:45:00.000Z';
+  await installReceiver(page, profileState('Shared baseline', { workouts: [deleted, retained] }));
+  const writes = await installAuthenticatedCloud(page, {
+    remoteWorkouts: [workoutRow(deleted, 1, baselineAt), workoutRow(retained, 1, baselineAt)],
+    remoteTombstones: [tombstoneRow(deleted.id)]
+  });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+
+  await page.locator('.bottom-nav [data-view="library"]').click();
+  await expect(page.locator('#cloudShadowHeading')).toHaveText('Changes from another device');
+  const reloaded = page.waitForEvent('framenavigated');
+  await page.locator('#cloudRemoteFastForward').click();
+  await reloaded;
+  await expect(page.locator('#cloudShadowHeading')).toHaveText('In sync');
+
+  const result = await page.evaluate(({ storageKey, catalogKey, clientId, workoutId }) => {
+    const state = JSON.parse(localStorage.getItem(storageKey));
+    const catalog = JSON.parse(localStorage.getItem(catalogKey));
+    return {
+      workouts: state.workouts,
+      record: catalog.profiles[clientId].records[BigGainsCloudShadow.keyFor('workouts', workoutId)],
+      pending: BigGainsCloudSync.queue.pending().length,
+      comparison: BigGainsCloudSync.status().lastComparison
+    };
+  }, { storageKey, catalogKey, clientId, workoutId: deleted.id });
+  expect(result.workouts).toEqual([retained]);
+  expect(result.record).toMatchObject({ version: 2, tombstone: true, data: null });
+  expect(result.pending).toBe(0);
+  expect(result.comparison.parity).toBe(true);
+  expect(writes).toEqual([]);
+});
+
+test('a stale local workout correction remains blocked when the same workout advanced remotely', async ({ page }) => {
+  const baseline = completedWorkout('conflicting-workout', 8);
+  const remote = completedWorkout('conflicting-workout', 10);
+  await installReceiver(page, profileState('Shared baseline', { workouts: [baseline] }));
+  await page.evaluate(() => {
+    state.workouts[0].exercises[0].sets[0].reps = 9;
+    statePersistenceApi.save(state, state.activeWorkout);
+  });
+  const writes = await installAuthenticatedCloud(page, {
+    remoteWorkouts: [workoutRow(remote, 2, advancedAt)]
+  });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+
+  await expect(page.locator('#cloudShadowHeading')).toHaveText('SYNC CONFLICT');
+  await expect(page.locator('#cloudRemoteFastForward')).toBeHidden();
+  const result = await page.evaluate(storageKey => ({
+    reps: JSON.parse(localStorage.getItem(storageKey)).workouts[0].exercises[0].sets[0].reps,
+    fastForward: BigGainsCloudSync.status().remoteFastForward,
+    pending: BigGainsCloudSync.queue.pending().length
+  }), storageKey);
+  expect(result.reps).toBe(9);
+  expect(result.fastForward).toMatchObject({ eligible: false, conflict: true, reason: 'concurrent-local-edit', advancedRevisions: 1 });
+  expect(result.pending).toBe(0);
   expect(writes).toEqual([]);
 });
 
