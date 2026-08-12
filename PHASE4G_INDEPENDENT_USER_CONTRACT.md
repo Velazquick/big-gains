@@ -1,6 +1,6 @@
 # Phase 4G independent-user contract
 
-Phase 4G makes the production PWA usable by one invited independent Auth user without making that user a member of Jorge's account. Local schema version 5 stays authoritative. There is no cloud-to-local merge, repair, restore, or cutover path.
+Phase 4G makes the production PWA usable by one invited independent Auth user without making that user a member of Jorge's account. Local schema version 5 stays authoritative. The original release has no cloud-to-local merge, repair, restore, or cutover path; release v73 adds only the explicit, catalog-proven remote fast-forward defined in the Phase 4F contract.
 
 ## Runtime account shapes
 
@@ -55,7 +55,7 @@ No RLS policy, ownership trigger, foreign key, queue owner, or account resolver 
 
 The Phase 4F checksum, fingerprint, idempotency, base-revision, ACK readback, tombstone, and conflict rules are unchanged. `cloud-shadow.js` now derives its expected profile set from the runtime account shape.
 
-Managed mode still requires exactly Jorge and Alexa plus the completed Phase 4E journal. Independent mode requires exactly one RLS-visible profile. On the first clean onboarding only, an empty local schema-v5 profile plus an account with zero application rows creates an empty outbound catalog; local preferences then persist first, queue second, and push third. Any non-empty mismatch without an adopted catalog is drift and remains blocked. Cloud values never write local state.
+Managed mode still requires exactly Jorge and Alexa plus the completed Phase 4E journal. Independent mode requires exactly one RLS-visible profile. On the first clean onboarding only, an empty local schema-v5 profile plus an account with zero application rows creates an empty outbound catalog; local preferences then persist first, queue second, and push third. Any non-empty mismatch without an adopted catalog remains blocked. An initialized independent device can adopt cloud values only through the v73 explicit fast-forward guard; no automatic pull or general merge exists.
 
 ## Post-deploy real friend onboarding
 

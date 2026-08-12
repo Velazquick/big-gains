@@ -51,7 +51,7 @@ Recovery is allowed only when all of these checks pass in the same flow:
 
 Only then does recovery write the schema-v5 state, cloud catalog, parity comparison, and completion marker. The marker is written last. Application page lifecycle saves are suppressed during that adoption window. If any target key or meaningful local state already exists, recovery stops without overwrite or merge and shows an actionable review state; it never recommends clearing local storage.
 
-This is not a recurring pull. After the completion marker, normal startup reads local schema v5. Offline use remains local-first and cloud failures cannot block logging.
+This is not an automatic recurring pull. After the completion marker, normal startup reads local schema v5. Release v73 separately allows an explicit initialized-device fast-forward only when the outbound queue is empty, local semantic payload still matches the adopted catalog, and every remote winner is an equal fingerprint-identical revision or a monotonic successor. Offline use remains local-first and cloud failures cannot block logging.
 
 ## Reconstruction and baseline adoption
 

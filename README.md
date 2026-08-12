@@ -28,7 +28,7 @@ The browser suite covers the full local-first app plus the Phase 4D fingerprint,
 
 Release `v53-phase4h-managed-profile-access` adds an administrative membership from a separate Auth user to one existing managed profile. Account ownership stays with Jorge; a verified Alexa member resolves only the existing Alexa profile with no switcher and an Auth/account/profile-derived storage namespace. The browser cannot create memberships or convert a managed member into an independent account.
 
-Cloud remains non-authoritative except for one guarded recovery: a verified managed member may adopt exact cloud-shadow state only into a never-initialized, empty namespace after a fresh ownership-valid readback reconstructs valid schema v5 at semantic parity. Existing local state is never overwritten or merged, and the adopted remote catalog starts with zero pending operations.
+Cloud remains non-authoritative except for guarded recovery and the release-v73 remote fast-forward. Recovery may adopt exact cloud-shadow state only into a verified recoverable namespace. A previously synchronized device may explicitly adopt newer changes from the same account/profile only when its queue is empty, its local payload still matches its current catalog, and every remote revision is a monotonic successor. Existing or concurrently edited local state is never overwritten or generally merged.
 
 ## Phase 4G: invited independent user
 
@@ -40,11 +40,11 @@ Release `v51-szw-presentation-library` adds render-only `merlot` and `slate-dark
 
 Release `v52-jorge-train-ui-refresh` gives Jorge's Train preview and active workout a mobile-first performance hierarchy. The refresh is render-only, scoped to the existing `ember` + `performance-dark` presentation tokens, and leaves workout, timer, storage, schema-v5, ownership, and cloud behavior unchanged.
 
-## Phase 4F: verified one-way cloud shadow
+## Phase 4F: verified cloud shadow
 
 Release `v49-phase4f-shadow-sync-readiness` reconstructs Jorge and Alexa from account-scoped Supabase rows, computes deterministic `big-gains.shadow.v1` checksums, adopts the completed Phase 4E migration without rewriting it, and quietly pushes later local source mutations through the durable queue. Every push verifies ownership, base revision, exact idempotency, and affected-row readback before ACK; a full comparison follows.
 
-Local schema version 5 remains authoritative. The UI never waits for cloud work, cloud reads never write profile storage, and cloud values never restore, repair, normalize, or merge local state. Deletions use versioned tombstones and drift is reported without automatic correction.
+Release `v73-cross-device-remote-fast-forward` adds one explicit cross-device adoption path without changing schema version 5, Auth, RLS, queue ownership, or write conflict rules. A fresh comparison that proves a verified same-owner remote fast-forward shows **Changes from another device — Update this device**. The existing recovery adapter reconstructs and validates canonical schema-v5 state, persists it with the new catalog atomically, and reloads only after a fresh parity comparison. Any pending queue, local/catalog mismatch, non-monotonic revision, or equal-revision fingerprint mismatch remains blocked as drift or a real sync conflict.
 
 ## Storage compatibility
 
