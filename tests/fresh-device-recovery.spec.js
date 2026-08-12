@@ -12,6 +12,13 @@ const SZW_ACCOUNT = '61000000-0000-0000-0000-000000000002';
 const SZW_PROFILE = '61000000-0000-0000-0000-000000000003';
 const SZW_CLIENT = 'independent-09034233fa064233b85018aec182764d';
 const MANAGED_RECOVERY_KEY = 'big-gains-fresh-device-recovery-v1-managed-jorge-alexa';
+const HISTORICAL_DEFAULT_EXERCISE_IDS = [
+  'seated-machine-chest-press', 'incline-iso-machine-press', 'iso-machine-shoulder-press',
+  'seated-pec-deck', 'triceps-pushdown', 'overhead-triceps-extension',
+  'lat-pulldown', 'seated-cable-row', 'chest-supported-row', 'reverse-pec-deck',
+  'dumbbell-curl', 'hammer-curl', 'leg-press', 'leg-extension', 'seated-leg-curl',
+  'romanian-deadlift', 'standing-calf-raise', 'cable-crunch', 'hanging-knee-raise'
+];
 
 const managedIdentity = {
   kind: 'managed-owner', authUserId: MANAGED_AUTH,
@@ -291,6 +298,10 @@ function blankArtifact(profileId, overrides = {}) {
   };
 }
 
+function historicalEmptyExercisePreferences() {
+  return Object.fromEntries(HISTORICAL_DEFAULT_EXERCISE_IDS.map(exerciseId => [exerciseId, {}]));
+}
+
 async function waitForManagedRestore(page, storage) {
   let restored = null;
   await expect.poll(async () => {
@@ -383,6 +394,22 @@ test('managed owner restores when both profile namespaces are exact blank startu
   expect(cloud.writes).toEqual([]);
 });
 
+test('managed owner restores over the historical default-routine empty preference artifact', async ({ page }) => {
+  const storage = await installIdentity(page, managedIdentity, {
+    localStates: {
+      jorge: blankArtifact('jorge', { exercisePreferences: historicalEmptyExercisePreferences() })
+    }
+  });
+  const cloud = await installCloud(page, managedIdentity);
+  await openApp(page);
+
+  const restored = await waitForManagedRestore(page, storage);
+  expect(restored.jorge.workouts[0].id).toBe('jorge-cloud-workout');
+  expect(restored.alexa.workouts[0].id).toBe('alexa-cloud-workout');
+  expect(restored.marker.profiles).toHaveLength(2);
+  expect(cloud.writes).toEqual([]);
+});
+
 const meaningfulBlankMutations = [
   {
     label: 'completed workout',
@@ -402,6 +429,24 @@ const meaningfulBlankMutations = [
   {
     label: 'exercise preference',
     mutate: state => ({ ...state, exercisePreferences: { 'barbell-bench-press': { restSeconds: 90 } } })
+  },
+  {
+    label: 'one configured preference among historical empty preference artifacts',
+    mutate: state => ({
+      ...state,
+      exercisePreferences: {
+        ...historicalEmptyExercisePreferences(),
+        'seated-machine-chest-press': { cue: 'Local cue sentinel' }
+      }
+    })
+  },
+  {
+    label: 'bodyweight alongside historical empty preference artifacts',
+    mutate: state => ({
+      ...state,
+      weights: [{ weight: 222, date: NOW }],
+      exercisePreferences: historicalEmptyExercisePreferences()
+    })
   },
   {
     label: 'changed timer preference',
