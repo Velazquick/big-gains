@@ -56,7 +56,11 @@ test('editing a reps typo updates the same workout and derived analytics without
   await openWorkoutDetail(page, typo.id);
   await page.locator('#editCompletedWorkout').click();
   await expect(page.locator('#retrospectiveTitle')).toHaveText('Edit workout');
-  await expect(page.locator('#retrospectiveCompletionTime')).toHaveValue('14:30');
+  const expectedCompletionTime = await page.evaluate(completedAt => {
+    const date = new Date(completedAt);
+    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  }, typo.completedAt);
+  await expect(page.locator('#retrospectiveCompletionTime')).toHaveValue(expectedCompletionTime);
   await expect(page.locator('[data-retro-exercise-definition="0"]')).toHaveValue('seated-machine-chest-press');
   await page.locator('[data-retro-field="reps"][data-ei="0"][data-si="0"]').fill('12');
   await page.locator('#saveRetrospectiveWorkout').click();
