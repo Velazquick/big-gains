@@ -218,6 +218,7 @@ test('Jorge and Alexa retain their existing presentation tokens and routine edit
   await openApp(page);
   expect(await page.locator('html').evaluate(element => getComputedStyle(element).getPropertyValue('--accent').trim())).not.toBe('#801616');
   await page.locator('.bottom-nav [data-view="library"]').click();
+  await page.locator('#dayTabs [data-day="Push"]').click();
   await page.locator('#editRoutine').click();
   await expect(page.locator('[data-routine-index]')).toHaveCount(6);
   await page.locator('#cancelRoutineDialog').click();

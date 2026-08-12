@@ -15,6 +15,7 @@
   let comparing = false;
   let lastResult = null;
   let lastComparison = readJson(COMPARISON_KEY);
+  let remoteFastForward = null;
   let catalog = readJson(CATALOG_KEY);
   let captureChain = Promise.resolve();
 
@@ -492,6 +493,7 @@
       const localProfiles = await shadow.readLocalProfiles();
       const comparison = await shadow.compare({ localProfiles, cloud: cloudState, expectedCatalog: catalog });
       lastComparison = comparison;
+      remoteFastForward = null;
       writeJson(COMPARISON_KEY, {
         contract: comparison.contract, parity: comparison.parity, comparedAt: comparison.comparedAt,
         profiles: Object.fromEntries(shadow.profileIds.map(id => [id, {
@@ -512,9 +514,19 @@
         catalog = shadow.emptyCatalogFromOwner(cloudOwner);
         writeJson(CATALOG_KEY, catalog);
         await Promise.all(shadow.profileIds.map(profileClientId => captureLocalSnapshot(profileClientId)));
+      } else if (catalog && window.BigGainsManagedProfileRecovery?.inspectRemoteFastForward) {
+        const session = await supabaseBoundary.session();
+        remoteFastForward = window.BigGainsManagedProfileRecovery.inspectRemoteFastForward({
+          owner: cloudOwner,
+          session,
+          localProfiles,
+          cloud: cloudState,
+          catalog
+        });
       }
       return comparison;
     } catch (error) {
+      remoteFastForward = null;
       lastComparison = { parity: false, comparedAt: new Date().toISOString(), reasons: [error?.message || String(error)], errorCode: error?.code || 'comparison-failed' };
       return lastComparison;
     } finally {
@@ -587,6 +599,95 @@
     }
   }
 
+  async function applyRemoteFastForward() {
+    if (busy || comparing) return Object.freeze({ ok: false, busy: true, pending: queue.pending().length });
+    busy = true;
+    render();
+    try {
+      if (queue.pending().length) {
+        remoteFastForward = Object.freeze({
+          eligible: false,
+          conflict: true,
+          reason: 'local-queue-not-empty',
+          reasons: Object.freeze(['Local outbound changes appeared before this device could update.'])
+        });
+        return (lastResult = Object.freeze({ ok: false, blocked: true, conflict: true, reason: 'local-queue-not-empty', pending: queue.pending().length }));
+      }
+      const owner = await verifiedOwnerForSession();
+      if (!owner || !catalog || !sameOwnerMapping(owner)) {
+        return (lastResult = Object.freeze({ ok: false, blocked: true, reason: 'baseline-or-owner-unverified', pending: queue.pending().length }));
+      }
+      const session = await supabaseBoundary.session();
+      const repository = shadow.createRepository({ client: supabaseBoundary.getClient(), accountId: owner.account.id });
+      const remote = await repository.readAll();
+      const journal = shadow.completedMigrationJournal(remote.journals, owner.account.id);
+      if (accountRuntime.kind === 'managed-owner' && !journal) {
+        return (lastResult = Object.freeze({ ok: false, blocked: true, reason: 'baseline-missing', pending: 0 }));
+      }
+      const cloudState = await shadow.reconstructCloud({ ...remote, profiles: owner.profiles, accountId: owner.account.id });
+      const localProfiles = await shadow.readLocalProfiles();
+      const recovery = window.BigGainsManagedProfileRecovery;
+      remoteFastForward = recovery.inspectRemoteFastForward({ owner, session, localProfiles, cloud: cloudState, catalog });
+      if (!remoteFastForward.eligible) {
+        return (lastResult = Object.freeze({
+          ok: false,
+          blocked: true,
+          reason: remoteFastForward.reason,
+          conflict: remoteFastForward.conflict,
+          pending: 0
+        }));
+      }
+      const adopted = await recovery.adoptRemoteFastForward({
+        owner,
+        session,
+        localProfiles,
+        cloud: cloudState,
+        catalog,
+        journal
+      });
+      if (!adopted.ok) {
+        remoteFastForward = Object.freeze({
+          eligible: false,
+          conflict: adopted.conflict === true,
+          reason: adopted.reason,
+          reasons: Object.freeze([...(adopted.details || []), adopted.message].filter(Boolean))
+        });
+        return (lastResult = Object.freeze({
+          ok: false,
+          blocked: true,
+          reason: adopted.reason,
+          conflict: adopted.conflict === true,
+          pending: queue.pending().length,
+          error: adopted.message
+        }));
+      }
+      catalog = adopted.catalog;
+      lastComparison = adopted.comparison;
+      remoteFastForward = null;
+      lastResult = Object.freeze({
+        ok: true,
+        fastForwarded: true,
+        advancedRevisions: adopted.advancedRevisions,
+        pending: queue.pending().length
+      });
+      await compareShadow();
+      window.setTimeout(() => location.reload(), 0);
+      return lastResult;
+    } catch (error) {
+      lastResult = Object.freeze({
+        ok: false,
+        blocked: true,
+        reason: error?.code || 'remote-fast-forward-failed',
+        pending: queue.pending().length,
+        error: error?.message || String(error)
+      });
+      return lastResult;
+    } finally {
+      busy = false;
+      render();
+    }
+  }
+
   function cardMarkup() {
     if (!supabaseBoundary.configured) {
       return '<span class="label">Cloud shadow</span><h3>Not configured</h3><p>Training stays local on this device.</p>';
@@ -602,7 +703,7 @@
         <button id="cloudPasswordReset" class="ghost" type="button">Set or reset password</button>
         ${supabaseBoundary.isStandalone() ? '' : '<button id="cloudMagicLink" class="ghost" type="button">Use Magic Link in this browser</button>'}
       </form>
-      <div class="data-actions"><button id="cloudSyncNow" class="secondary" type="button" hidden>Check now</button><button id="cloudSignOut" class="ghost" type="button" hidden>Sign out</button></div>
+      <div class="data-actions"><button id="cloudRemoteFastForward" class="primary" type="button" hidden>Update this device</button><button id="cloudSyncNow" class="secondary" type="button" hidden>Check now</button><button id="cloudSignOut" class="ghost" type="button" hidden>Sign out</button></div>
       <small id="cloudQueueStatus"></small>`;
   }
 
@@ -623,6 +724,7 @@
     const detail = document.getElementById('cloudAuthDetail');
     const form = document.getElementById('cloudAuthForm');
     const syncButton = document.getElementById('cloudSyncNow');
+    const fastForwardButton = document.getElementById('cloudRemoteFastForward');
     const signOutButton = document.getElementById('cloudSignOut');
     const queueStatus = document.getElementById('cloudQueueStatus');
     const profileBox = document.getElementById('cloudShadowProfiles');
@@ -631,18 +733,29 @@
     let session = null;
     try { session = await supabaseBoundary.session(); } catch {}
     const pending = queue.pending().length;
+    const fastForwardAvailable = remoteFastForward?.eligible === true;
+    const realConflict = remoteFastForward?.reason === 'concurrent-local-edit'
+      || lastResult?.conflict === true
+      || lastResult?.reason === 'remote-revision-conflict'
+      || lastResult?.failures?.some(failure => failure.reason === 'remote-revision-conflict');
     let state = 'CHECKING';
     if (!session) state = online() ? 'SIGNED OUT' : 'OFFLINE';
+    else if (fastForwardAvailable) state = 'REMOTE CHANGES AVAILABLE';
+    else if (realConflict) state = 'SYNC CONFLICT';
     else if (lastResult?.blocked || (!pending && lastComparison?.parity === false)) state = 'DRIFT DETECTED';
     else if (pending && lastResult?.ok === false) state = 'CLOUD BEHIND / RETRYING';
     else if (pending) state = 'LOCAL CHANGES PENDING';
     else if (lastComparison?.parity === true) state = 'IN SYNC';
-    heading.textContent = state === 'IN SYNC' ? 'In sync' : state;
+    heading.textContent = state === 'IN SYNC' ? 'In sync'
+      : state === 'REMOTE CHANGES AVAILABLE' ? 'Changes from another device'
+        : state;
     const profileNames = shadow.profileIds.map(id => window.bigGainsAccounts.registry.resolve(id)?.displayName || id);
     const blockedReason = lastResult?.failures?.[0]?.reason || lastResult?.reason || null;
     detail.textContent = state === 'IN SYNC' ? `${profileNames.join(' and ')} ${profileNames.length === 1 ? 'matches' : 'match'} the private cloud shadow.`
       : state === 'LOCAL CHANGES PENDING' ? `${pending} change${pending === 1 ? '' : 's'} waiting for connection.`
         : state === 'CLOUD BEHIND / RETRYING' ? 'Cloud is catching up. Training stays local.'
+          : state === 'REMOTE CHANGES AVAILABLE' ? 'Verified newer training changes are ready to update this device.'
+            : state === 'SYNC CONFLICT' ? 'Local and remote training both changed. Nothing was overwritten.'
           : state === 'DRIFT DETECTED' ? `${blockedReason ? `Queue blocked: ${blockedReason}. ` : 'Drift detected — '}Local data is unchanged.`
             : state === 'OFFLINE' ? 'Offline. Training stays local.'
               : state === 'SIGNED OUT' ? 'Signed-out training stays local. Sign in to compare the cloud shadow.'
@@ -650,12 +763,15 @@
     form.hidden = Boolean(session);
     syncButton.hidden = !session;
     syncButton.disabled = busy || comparing;
+    fastForwardButton.hidden = !session || !fastForwardAvailable;
+    fastForwardButton.disabled = busy || comparing;
     signOutButton.hidden = !session;
     queueStatus.textContent = `${pending} outbound change${pending === 1 ? '' : 's'} pending${lastResult?.reconciled ? ` · Reconciled ${lastResult.reconciled} obsolete queued change${lastResult.reconciled === 1 ? '' : 's'} after verified readback` : ''}${lastComparison?.comparedAt ? ` · Last checked ${new Date(lastComparison.comparedAt).toLocaleString()}` : ''}.`;
     const profileResults = lastComparison?.profiles;
     profileBox.hidden = !profileResults;
     if (profileResults) profileBox.innerHTML = shadow.profileIds.map(id => `<span><strong>${window.bigGainsAccounts.registry.resolve(id)?.displayName || id}</strong>${profileResults[id]?.parity ? 'In sync' : 'Needs attention'}</span>`).join('');
     const reasons = [...(lastComparison?.reasons || [])];
+    if (realConflict) reasons.push(...(remoteFastForward?.reasons || ['Local and remote training both changed after the last verified revision.']));
     for (const failure of lastResult?.failures || []) {
       reasons.push(`${failure.reason} — ${failure.entityType}/${failure.entityId} v${failure.version} ${failure.mutation}${failure.error ? ` (${failure.error})` : ''}`);
     }
@@ -666,7 +782,7 @@
       reasons.push(`${lastResult.reconciliationFailure.reason}${lastResult.reconciliationFailure.error ? ` — ${lastResult.reconciliationFailure.error}` : ''}`);
     }
     const uniqueReasons = [...new Set(reasons)];
-    drift.hidden = state !== 'DRIFT DETECTED' || uniqueReasons.length === 0;
+    drift.hidden = !['DRIFT DETECTED', 'SYNC CONFLICT'].includes(state) || uniqueReasons.length === 0;
     driftList.innerHTML = uniqueReasons.map(reason => `<li>${String(reason).replace(/[&<>]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[character])}</li>`).join('');
   }
 
@@ -729,6 +845,7 @@
       }
     });
     document.getElementById('cloudSyncNow')?.addEventListener('click', flush);
+    document.getElementById('cloudRemoteFastForward')?.addEventListener('click', applyRemoteFastForward);
     document.getElementById('cloudSignOut')?.addEventListener('click', async () => {
       try { await supabaseBoundary.signOut(); } catch {}
       cloudOwner = null;
@@ -747,6 +864,7 @@
     initialize,
     queue,
     flush,
+    applyRemoteFastForward,
     compareShadow,
     captureLocalSnapshot,
     enqueueSyntheticCompletedWorkout,
@@ -765,7 +883,8 @@
       baselineAdopted: Boolean(catalog),
       busy,
       lastResult,
-      lastComparison
+      lastComparison,
+      remoteFastForward
     })
   });
 })();

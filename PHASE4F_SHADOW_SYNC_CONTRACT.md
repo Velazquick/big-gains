@@ -2,7 +2,7 @@
 
 Release: `v49-phase4f-shadow-sync-readiness`
 
-Phase 4F keeps schema-v5 browser state authoritative while maintaining a continuously verifiable, one-way Supabase shadow. It does not pull, normalize, repair, merge, or restore local state.
+The original Phase 4F release keeps schema-v5 browser state authoritative while maintaining a continuously verifiable, one-way Supabase shadow. Release `v73-cross-device-remote-fast-forward` adds the narrow initialized-device exception documented below; it does not add automatic pull or a general merge engine.
 
 ## Runtime order
 
@@ -50,7 +50,20 @@ Source mappings:
 
 `prs`, volume, progress, and calendar groupings are derived values. They are never separate shadow source records and are recomputed locally from source workouts.
 
-Cloud reconstruction accepts the existing `big-gains.migration.v1` envelope and the new `big-gains.shadow.v1` envelope. It never writes profile storage. Missing, extra, mismatched, unknown-contract, wrong-profile, stale-version, newer-version, and tombstone conflicts become explicit drift reasons.
+Cloud reconstruction accepts the existing `big-gains.migration.v1` envelope and the new `big-gains.shadow.v1` envelope. Reconstruction itself remains read-only. Missing, extra, mismatched, unknown-contract, wrong-profile, stale-version, newer-version, and tombstone conflicts become explicit comparison reasons.
+
+## Release v73 guarded remote fast-forward
+
+A fresh comparison may classify newer cloud rows as **Changes from another device** only when all of these checks pass:
+
+- the current session and fresh account/profile mapping match the runtime and catalog exactly;
+- the durable local outbound queue is verifiably empty;
+- every current local semantic fingerprint still matches the catalog, including absence for cataloged tombstones;
+- every remote winner is either the exact fingerprint/tombstone/timestamp identity at the catalog revision or a higher revision;
+- at least one remote winner is a new or higher revision;
+- cloud reconstruction returns no ownership issue and reconstructs schema-v5 data at exact semantic parity.
+
+The user must choose **Update this device**. `managed-profile-recovery.js` reconstructs canonical schema-v5 state, rechecks the local payload and queue after reconstruction, and atomically persists the profile state, remote catalog, and parity comparison with rollback on failure. A fresh comparison runs before reload. The queue is not cleared or rewritten. If local data also changed, or an equal revision changes fingerprint/identity, the update remains blocked as a real conflict.
 
 ## Production operations
 
@@ -91,9 +104,11 @@ The Phase 4F migration extends the tombstone type constraint to `bodyweight_entr
 - Wrong Auth account or profile mapping: the entire flush blocks before application-table access.
 - Outage or lost response: retry keeps the same key; exact remote state becomes an ACK rather than a duplicate.
 - ACK: requires affected-row readback. Empty queue does not imply parity until comparison succeeds.
-- Drift: local data is unchanged and no automatic repair runs.
+- Verified remote-only advancement: offer **Changes from another device — Update this device**; never adopt automatically.
+- Concurrent local/remote advancement: classify as a sync conflict and leave local data unchanged.
+- Other drift: local data is unchanged and no automatic repair runs.
 
-The Library card shows only `IN SYNC`, `LOCAL CHANGES PENDING`, `CLOUD BEHIND / RETRYING`, `DRIFT DETECTED`, `SIGNED OUT`, or `OFFLINE`, plus Jorge/Alexa parity and details only for drift.
+The Library card shows `IN SYNC`, `LOCAL CHANGES PENDING`, `CLOUD BEHIND / RETRYING`, `Changes from another device`, `SYNC CONFLICT`, `DRIFT DETECTED`, `SIGNED OUT`, or `OFFLINE`, with the remote update action visible only for a currently eligible fast-forward.
 
 ## Real-device cutover-readiness smoke test
 

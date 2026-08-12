@@ -263,6 +263,143 @@
     };
   }
 
+  function catalogMatchesOwner(catalog, owner, targets) {
+    return catalog?.format === 'big-gains.shadow-catalog.v1'
+      && catalog.accountId === owner?.account?.id
+      && catalog.authUserId === runtime.authUserId
+      && Object.keys(catalog.profiles || {}).length === targets.length
+      && targets.every(target => catalog.profiles?.[target.profileClientId]?.profileId === target.cloudProfileId);
+  }
+
+  function validRevisionIdentity(record) {
+    return Number.isSafeInteger(Number(record?.version))
+      && Number(record.version) > 0
+      && typeof record?.updatedAt === 'string'
+      && Number.isFinite(Date.parse(record.updatedAt))
+      && typeof record?.fingerprint === 'string'
+      && record.fingerprint.length > 0;
+  }
+
+  function inspectRemoteFastForward({ owner, session, localProfiles, cloud, catalog }) {
+    if (!verifiedOwner(owner, session)) {
+      return Object.freeze({ eligible: false, conflict: false, reason: 'owner-verification-failed', reasons: Object.freeze(['The signed-in account/profile identity is not verified.']) });
+    }
+    let targets;
+    try { targets = targetsFor(owner); } catch (error) {
+      return Object.freeze({ eligible: false, conflict: false, reason: error.code || 'remote-fast-forward-profile-mismatch', reasons: Object.freeze([error.message]) });
+    }
+    if (!catalogMatchesOwner(catalog, owner, targets)) {
+      return Object.freeze({ eligible: false, conflict: false, reason: 'remote-fast-forward-catalog-mismatch', reasons: Object.freeze(['The local revision catalog does not match the verified account/profile mapping.']) });
+    }
+    if (!verifiablyEmptyQueue()) {
+      return Object.freeze({ eligible: false, conflict: true, reason: 'local-queue-not-empty', reasons: Object.freeze(['Local outbound changes are pending.']) });
+    }
+    if (cloud?.ownershipIssues?.length) {
+      return Object.freeze({ eligible: false, conflict: false, reason: 'cloud-ownership-mismatch', reasons: Object.freeze([...cloud.ownershipIssues]) });
+    }
+
+    const localReasons = [];
+    const remoteReasons = [];
+    let advancedRevisions = 0;
+    for (const target of targets) {
+      const profileClientId = target.profileClientId;
+      const localByKey = new Map((localProfiles?.[profileClientId]?.records || [])
+        .map(record => [shadow.keyFor(record.table, record.clientId), record]));
+      const expectedRecords = catalog.profiles[profileClientId].records || {};
+      const localKeys = new Set([...localByKey.keys(), ...Object.keys(expectedRecords)]);
+      for (const key of localKeys) {
+        const local = localByKey.get(key) || null;
+        const expected = expectedRecords[key] || null;
+        if (!expected && local) {
+          localReasons.push(`${profileClientId}/${key} was added locally after the last verified catalog.`);
+        } else if (expected?.tombstone && local) {
+          localReasons.push(`${profileClientId}/${key} was recreated locally after the last verified catalog.`);
+        } else if (expected && !expected.tombstone && (!local || local.fingerprint !== expected.fingerprint)) {
+          localReasons.push(`${profileClientId}/${key} changed locally after the last verified catalog.`);
+        }
+      }
+
+      const remoteWinners = cloud?.profiles?.[profileClientId]?.winners;
+      if (!(remoteWinners instanceof Map)) {
+        remoteReasons.push(`${profileClientId} has no verified remote revision map.`);
+        continue;
+      }
+      const remoteKeys = new Set([...Object.keys(expectedRecords), ...remoteWinners.keys()]);
+      for (const key of remoteKeys) {
+        const expected = expectedRecords[key] || null;
+        const remote = remoteWinners.get(key) || null;
+        if (expected && !validRevisionIdentity(expected)) {
+          remoteReasons.push(`${profileClientId}/${key} has an invalid local catalog revision identity.`);
+          continue;
+        }
+        if (remote && !validRevisionIdentity(remote)) {
+          remoteReasons.push(`${profileClientId}/${key} has an invalid remote revision identity.`);
+          continue;
+        }
+        if (!expected && remote) {
+          advancedRevisions += 1;
+          continue;
+        }
+        if (expected && !remote) {
+          remoteReasons.push(`${profileClientId}/${key} disappeared instead of advancing through a tombstone.`);
+          continue;
+        }
+        if (!expected || !remote) continue;
+        if (remote.version < expected.version) {
+          remoteReasons.push(`${profileClientId}/${key} moved backward from revision ${expected.version} to ${remote.version}.`);
+          continue;
+        }
+        if (remote.version > expected.version) {
+          if (Date.parse(remote.updatedAt) < Date.parse(expected.updatedAt)) {
+            remoteReasons.push(`${profileClientId}/${key} advanced revision while moving its timestamp backward.`);
+            continue;
+          }
+          if (expected.table === 'workouts'
+            && (remote.tombstone || remote.fingerprint !== expected.fingerprint)) {
+            remoteReasons.push(`${profileClientId}/${key} would rewrite completed-workout history.`);
+            continue;
+          }
+          advancedRevisions += 1;
+          continue;
+        }
+        if (remote.fingerprint !== expected.fingerprint
+          || remote.tombstone !== (expected.tombstone === true)
+          || remote.updatedAt !== expected.updatedAt) {
+          remoteReasons.push(`${profileClientId}/${key} changed identity without advancing revision ${expected.version}.`);
+        }
+      }
+    }
+
+    if (remoteReasons.length) {
+      return Object.freeze({
+        eligible: false,
+        conflict: localReasons.length > 0,
+        reason: 'remote-revision-not-monotonic',
+        reasons: Object.freeze([...localReasons, ...remoteReasons]),
+        advancedRevisions
+      });
+    }
+    if (!advancedRevisions) {
+      return Object.freeze({ eligible: false, conflict: false, reason: 'no-newer-remote-revisions', reasons: Object.freeze([]), advancedRevisions: 0 });
+    }
+    if (localReasons.length) {
+      return Object.freeze({
+        eligible: false,
+        conflict: true,
+        reason: 'concurrent-local-edit',
+        reasons: Object.freeze(localReasons),
+        advancedRevisions
+      });
+    }
+    return Object.freeze({
+      eligible: true,
+      conflict: false,
+      reason: 'newer-remote-revisions',
+      reasons: Object.freeze([]),
+      advancedRevisions
+    });
+  }
+
   function recoveryMarker(owner, targets, comparison) {
     const recoveredAt = new Date().toISOString();
     if (runtime.kind === 'managed-member') {
@@ -315,6 +452,92 @@
       if (rollbackErrors.length) error.rollbackErrors = rollbackErrors;
       throw error;
     }
+  }
+
+  async function adoptRemoteFastForward({ owner, session, localProfiles, cloud, catalog, journal = null }) {
+    const initial = inspectRemoteFastForward({ owner, session, localProfiles, cloud, catalog });
+    if (!initial.eligible) {
+      return blocked(initial.reason, initial.conflict
+        ? 'Local and remote training data both changed after the last verified revision. Nothing was overwritten.'
+        : 'The remote changes could not be verified as a safe fast-forward. Nothing was overwritten.', {
+        conflict: initial.conflict,
+        details: initial.reasons
+      });
+    }
+    let targets;
+    let restoredProfiles;
+    let comparison;
+    try {
+      targets = targetsFor(owner);
+      const restoredEntries = await Promise.all(targets.map(async target => [
+        target.profileClientId,
+        await shadow.schemaV5FromCloud({ cloud, profileClientId: target.profileClientId })
+      ]));
+      restoredProfiles = Object.fromEntries(restoredEntries);
+      comparison = await shadow.compare({
+        localProfiles: Object.fromEntries(restoredEntries.map(([profileClientId, restored]) => [profileClientId, {
+          stateVersion: 5,
+          records: restored.records
+        }])),
+        cloud
+      });
+      if (!comparison.parity) {
+        return blocked('remote-fast-forward-semantic-mismatch', 'The reconstructed schema-v5 profiles did not match the verified remote state. Nothing was overwritten.', {
+          details: comparison.reasons
+        });
+      }
+    } catch (error) {
+      return blocked(
+        error?.code || 'remote-fast-forward-reconstruction-failed',
+        error?.message || 'The remote changes could not reconstruct valid schema-v5 data. Nothing was overwritten.',
+        { details: error?.issues || error?.reasons || null }
+      );
+    }
+
+    let currentLocalProfiles;
+    try { currentLocalProfiles = await shadow.readLocalProfiles(); } catch (error) {
+      return blocked(error?.code || 'remote-fast-forward-local-read-failed', error?.message || 'Local training data could not be rechecked. Nothing was overwritten.');
+    }
+    const finalCheck = inspectRemoteFastForward({ owner, session, localProfiles: currentLocalProfiles, cloud, catalog });
+    if (!finalCheck.eligible) {
+      return blocked(finalCheck.reason, 'Local state, queue state, or verified revisions changed during the update. Nothing was overwritten.', {
+        conflict: finalCheck.conflict,
+        details: finalCheck.reasons
+      });
+    }
+
+    const adoptedCatalog = shadow.catalogFromCloud({ cloud, owner, journal });
+    if (catalog.migrationId) adoptedCatalog.migrationId = catalog.migrationId;
+    const comparisonValue = comparisonDocument(comparison);
+    const documents = [
+      ...targets.map(target => ({ key: target.descriptor.storageKey, value: restoredProfiles[target.profileClientId].state })),
+      { key: runtime.cloudKeys.catalog, value: adoptedCatalog },
+      { key: runtime.cloudKeys.comparison, value: comparisonValue }
+    ];
+    commitProtection = true;
+    try {
+      persistAtomically(documents, () => targets.every(target => {
+        const stored = readJson(target.descriptor.storageKey);
+        return valuesMatch(stored, restoredProfiles[target.profileClientId].state);
+      }) && valuesMatch(readJson(runtime.cloudKeys.catalog), adoptedCatalog)
+        && readJson(runtime.cloudKeys.comparison)?.parity === true);
+    } catch (error) {
+      commitProtection = false;
+      return blocked(
+        'remote-fast-forward-persistence-failed',
+        'The device update could not be finalized. All local writes were rolled back and cloud data was left untouched.',
+        { error: error?.message || String(error), rollbackErrors: error?.rollbackErrors || [] }
+      );
+    }
+    return Object.freeze({
+      ok: true,
+      status: 'fast-forwarded',
+      parity: true,
+      advancedRevisions: finalCheck.advancedRevisions,
+      states: Object.freeze(Object.fromEntries(targets.map(target => [target.profileClientId, restoredProfiles[target.profileClientId].state]))),
+      catalog: adoptedCatalog,
+      comparison
+    });
   }
 
   async function performRestore({ owner, session }) {
@@ -461,6 +684,8 @@
     format: MEMBER_FORMAT,
     freshFormat: FRESH_FORMAT,
     restore,
+    inspectRemoteFastForward,
+    adoptRemoteFastForward,
     completedForCurrentRuntime,
     needsRecoveryForCurrentRuntime,
     suppressingLocalSave
