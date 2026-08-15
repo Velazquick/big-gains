@@ -16,6 +16,7 @@
   let lastResult = null;
   let lastComparison = readJson(COMPARISON_KEY);
   let remoteFastForward = null;
+  let sameEntityConflict = null;
   let catalog = readJson(CATALOG_KEY);
   let captureChain = Promise.resolve();
 
@@ -494,6 +495,7 @@
       const comparison = await shadow.compare({ localProfiles, cloud: cloudState, expectedCatalog: catalog });
       lastComparison = comparison;
       remoteFastForward = null;
+      sameEntityConflict = null;
       writeJson(COMPARISON_KEY, {
         contract: comparison.contract, parity: comparison.parity, comparedAt: comparison.comparedAt,
         profiles: Object.fromEntries(shadow.profileIds.map(id => [id, {
@@ -514,6 +516,17 @@
         catalog = shadow.emptyCatalogFromOwner(cloudOwner);
         writeJson(CATALOG_KEY, catalog);
         await Promise.all(shadow.profileIds.map(profileClientId => captureLocalSnapshot(profileClientId)));
+      } else if (catalog && queue.pending().length) {
+        const session = await supabaseBoundary.session();
+        sameEntityConflict = window.BigGainsManagedProfileRecovery.inspectSameEntityConflict({
+          owner: cloudOwner, session, localProfiles, cloud: cloudState, catalog, operations: queue.pending()
+        });
+        remoteFastForward = Object.freeze({
+          eligible: false,
+          conflict: sameEntityConflict.eligible === true,
+          reason: sameEntityConflict.eligible ? 'remote-revision-conflict' : sameEntityConflict.reason,
+          reasons: sameEntityConflict.reasons
+        });
       } else if (catalog && window.BigGainsManagedProfileRecovery?.inspectRemoteFastForward) {
         const session = await supabaseBoundary.session();
         remoteFastForward = window.BigGainsManagedProfileRecovery.inspectRemoteFastForward({
@@ -527,6 +540,7 @@
       return comparison;
     } catch (error) {
       remoteFastForward = null;
+      sameEntityConflict = null;
       lastComparison = { parity: false, comparedAt: new Date().toISOString(), reasons: [error?.message || String(error)], errorCode: error?.code || 'comparison-failed' };
       return lastComparison;
     } finally {
@@ -688,6 +702,114 @@
     }
   }
 
+  async function resolveSameEntityConflict(choice) {
+    if (busy || comparing) return Object.freeze({ ok: false, busy: true, pending: queue.pending().length });
+    const selected = sameEntityConflict;
+    if (!selected?.eligible || !['cloud', 'device'].includes(choice)) {
+      return Object.freeze({ ok: false, blocked: true, reason: 'same-entity-conflict-unavailable', pending: queue.pending().length });
+    }
+    busy = true;
+    render();
+    try {
+      const owner = await verifiedOwnerForSession();
+      if (!owner || !catalog || !sameOwnerMapping(owner)) {
+        return (lastResult = Object.freeze({ ok: false, blocked: true, reason: 'baseline-or-owner-unverified', pending: queue.pending().length }));
+      }
+      const repository = shadow.createRepository({ client: supabaseBoundary.getClient(), accountId: owner.account.id });
+      const remote = await repository.readAll();
+      const journal = shadow.completedMigrationJournal(remote.journals, owner.account.id);
+      if (accountRuntime.kind === 'managed-owner' && !journal) {
+        return (lastResult = Object.freeze({ ok: false, blocked: true, reason: 'baseline-missing', pending: queue.pending().length }));
+      }
+      const cloudState = await shadow.reconstructCloud({ ...remote, profiles: owner.profiles, accountId: owner.account.id });
+      const session = await supabaseBoundary.session();
+      const localProfiles = await shadow.readLocalProfiles();
+      const recovery = window.BigGainsManagedProfileRecovery;
+      const fresh = recovery.inspectSameEntityConflict({
+        owner, session, localProfiles, cloud: cloudState, catalog, operations: queue.pending()
+      });
+      const sameConflict = fresh.eligible
+        && fresh.idempotencyKey === selected.idempotencyKey
+        && fresh.entityType === selected.entityType
+        && fresh.entityId === selected.entityId
+        && fresh.remoteRevision === selected.remoteRevision
+        && fresh.remoteUpdatedAt === selected.remoteUpdatedAt
+        && fresh.remoteFingerprint === selected.remoteFingerprint
+        && fresh.remoteTombstone === selected.remoteTombstone;
+      if (!sameConflict) {
+        sameEntityConflict = fresh.eligible ? fresh : null;
+        return (lastResult = Object.freeze({
+          ok: false,
+          blocked: true,
+          conflict: true,
+          reason: 'conflict-changed-before-resolution',
+          pending: queue.pending().length,
+          error: 'Cloud or local data changed after this choice was shown. Review the refreshed conflict before choosing again.'
+        }));
+      }
+      const adopted = await recovery.resolveSameEntityConflict({
+        choice, owner, session, localProfiles, cloud: cloudState, catalog,
+        operations: queue.pending(), queue, createOperation: cloud.createOperation, journal
+      });
+      if (!adopted.ok) {
+        return (lastResult = Object.freeze({
+          ok: false,
+          blocked: true,
+          conflict: true,
+          reason: adopted.reason,
+          pending: queue.pending().length,
+          error: adopted.message
+        }));
+      }
+      catalog = adopted.catalog;
+      lastComparison = adopted.comparison;
+      sameEntityConflict = null;
+      remoteFastForward = null;
+      let syncResult = Object.freeze({ ok: true, sent: 0, pending: queue.pending().length });
+      if (choice === 'device') {
+        const ownedOperations = () => queue.pending().filter(operation => operation.owner.accountId === catalog.accountId
+          && Object.values(catalog.profiles).some(profile => profile.profileId === operation.owner.profileId));
+        if (ownedOperations().length !== queue.pending().length) {
+          syncResult = Object.freeze({ ok: false, blocked: true, reason: 'queue-owner-mismatch', pending: queue.pending().length });
+        } else {
+          syncResult = await createSyncRuntime({
+            durableQueue: queue,
+            transport: createProductionTransport({ client: supabaseBoundary.getClient(), owner }),
+            operations: ownedOperations
+          }).flush();
+        }
+      }
+      lastResult = Object.freeze({
+        ...syncResult,
+        conflictResolved: syncResult.ok,
+        choice,
+        entityType: adopted.entityType,
+        entityId: adopted.entityId,
+        remoteVersion: adopted.remoteVersion,
+        rebasedVersion: adopted.rebasedVersion,
+        unrelatedAdvancements: adopted.unrelatedAdvancements,
+        pending: queue.pending().length
+      });
+      await compareShadow();
+      const verified = syncResult.ok && queue.pending().length === 0 && lastComparison?.parity === true;
+      lastResult = Object.freeze({
+        ...lastResult,
+        ok: verified,
+        conflictResolved: verified,
+        pending: queue.pending().length,
+        ...(!verified ? { blocked: true, reason: syncResult.reason || 'conflict-resolution-readback-mismatch' } : {})
+      });
+      window.setTimeout(() => location.reload(), 0);
+      return lastResult;
+    } catch (error) {
+      lastResult = Object.freeze({ ok: false, blocked: true, reason: error?.code || 'conflict-resolution-failed', error: error?.message || String(error), pending: queue.pending().length });
+      return lastResult;
+    } finally {
+      busy = false;
+      render();
+    }
+  }
+
   function cardMarkup() {
     if (!supabaseBoundary.configured) {
       return '<span class="label">Cloud shadow</span><h3>Not configured</h3><p>Training stays local on this device.</p>';
@@ -695,6 +817,15 @@
     return `<span class="label">Cloud shadow</span><h3 id="cloudShadowHeading">Checking quietly…</h3>
       <p id="cloudAuthDetail">Training stays local while the cloud copy is checked.</p>
       <div id="cloudShadowProfiles" class="cloud-shadow-profiles" hidden></div>
+      <section id="cloudConflictResolution" class="cloud-conflict-resolution" hidden>
+        <span class="label">Needs your choice</span><h4 id="cloudConflictTitle"></h4><p id="cloudConflictSummary"></p>
+        <div class="cloud-conflict-choices">
+          <article><strong>This device</strong><span id="cloudConflictLocalSummary"></span></article>
+          <article><strong>Cloud version</strong><span id="cloudConflictRemoteSummary"></span></article>
+        </div>
+        <div class="data-actions cloud-conflict-actions"><button id="cloudKeepDevice" class="primary" type="button">Keep this device version</button><button id="cloudKeepCloud" class="secondary" type="button">Keep cloud version</button></div>
+        <details><summary>Technical details</summary><pre id="cloudConflictTechnical"></pre></details>
+      </section>
       <details id="cloudShadowDrift" class="cloud-shadow-drift" hidden><summary>What needs attention</summary><ul id="cloudShadowDriftList"></ul></details>
       <form id="cloudAuthForm" class="cloud-auth-form" hidden>
         <label><span>Email</span><input id="cloudAuthEmail" type="email" autocomplete="email" required></label>
@@ -728,13 +859,16 @@
     const signOutButton = document.getElementById('cloudSignOut');
     const queueStatus = document.getElementById('cloudQueueStatus');
     const profileBox = document.getElementById('cloudShadowProfiles');
+    const conflictBox = document.getElementById('cloudConflictResolution');
     const drift = document.getElementById('cloudShadowDrift');
     const driftList = document.getElementById('cloudShadowDriftList');
     let session = null;
     try { session = await supabaseBoundary.session(); } catch {}
     const pending = queue.pending().length;
+    const conflict = sameEntityConflict?.eligible === true ? sameEntityConflict : null;
     const fastForwardAvailable = remoteFastForward?.eligible === true;
-    const realConflict = remoteFastForward?.reason === 'concurrent-local-edit'
+    const realConflict = Boolean(conflict)
+      || remoteFastForward?.reason === 'concurrent-local-edit'
       || lastResult?.conflict === true
       || lastResult?.reason === 'remote-revision-conflict'
       || lastResult?.failures?.some(failure => failure.reason === 'remote-revision-conflict');
@@ -755,7 +889,8 @@
       : state === 'LOCAL CHANGES PENDING' ? `${pending} change${pending === 1 ? '' : 's'} waiting for connection.`
         : state === 'CLOUD BEHIND / RETRYING' ? 'Cloud is catching up. Training stays local.'
           : state === 'REMOTE CHANGES AVAILABLE' ? 'Verified newer training changes are ready to update this device.'
-            : state === 'SYNC CONFLICT' ? 'Local and remote training both changed. Nothing was overwritten.'
+            : state === 'SYNC CONFLICT' && conflict ? 'One saved item was edited on two devices. Choose which version to keep.'
+              : state === 'SYNC CONFLICT' ? 'Local and remote training both changed. Nothing was overwritten.'
           : state === 'DRIFT DETECTED' ? `${blockedReason ? `Queue blocked: ${blockedReason}. ` : 'Drift detected — '}Local data is unchanged.`
             : state === 'OFFLINE' ? 'Offline. Training stays local.'
               : state === 'SIGNED OUT' ? 'Signed-out training stays local. Sign in to compare the cloud shadow.'
@@ -766,6 +901,23 @@
     fastForwardButton.hidden = !session || !fastForwardAvailable;
     fastForwardButton.disabled = busy || comparing;
     signOutButton.hidden = !session;
+    conflictBox.hidden = state !== 'SYNC CONFLICT' || !conflict;
+    if (conflict) {
+      const occurredAt = conflict.localSummary?.completedAt || conflict.cloudSummary?.completedAt;
+      const date = occurredAt && Number.isFinite(Date.parse(occurredAt))
+        ? new Date(occurredAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+        : 'Saved item';
+      document.getElementById('cloudConflictTitle').textContent = `${conflict.localSummary?.type || conflict.cloudSummary?.type || 'Workout'} · ${date}`;
+      document.getElementById('cloudConflictSummary').textContent = `This ${conflict.entityType === 'workouts' ? 'workout' : 'item'} changed here and on another device. ${conflict.unrelatedAdvancements ? `${conflict.unrelatedAdvancements} unrelated cloud change${conflict.unrelatedAdvancements === 1 ? '' : 's'} will also be preserved. ` : ''}Nothing changes until your choice is verified.`;
+      const choiceText = (value, revision) => value?.deleted
+        ? `Revision ${revision} · Deleted`
+        : `Revision ${revision}${Number.isFinite(value?.exercises) ? ` · ${value.exercises} exercise${value.exercises === 1 ? '' : 's'} · ${value.workingSets} working set${value.workingSets === 1 ? '' : 's'}` : ''}`;
+      document.getElementById('cloudConflictLocalSummary').textContent = choiceText(conflict.localSummary, conflict.localRevision);
+      document.getElementById('cloudConflictRemoteSummary').textContent = choiceText(conflict.cloudSummary, conflict.remoteRevision);
+      document.getElementById('cloudConflictTechnical').textContent = `${conflict.entityType}/${conflict.entityId}\nPending device revision: v${conflict.localRevision}\nVerified cloud revision: v${conflict.remoteRevision}\nRemote updated: ${conflict.remoteUpdatedAt}`;
+      document.getElementById('cloudKeepCloud').disabled = busy || comparing;
+      document.getElementById('cloudKeepDevice').disabled = busy || comparing;
+    }
     queueStatus.textContent = `${pending} outbound change${pending === 1 ? '' : 's'} pending${lastResult?.reconciled ? ` · Reconciled ${lastResult.reconciled} obsolete queued change${lastResult.reconciled === 1 ? '' : 's'} after verified readback` : ''}${lastComparison?.comparedAt ? ` · Last checked ${new Date(lastComparison.comparedAt).toLocaleString()}` : ''}.`;
     const profileResults = lastComparison?.profiles;
     profileBox.hidden = !profileResults;
@@ -846,6 +998,8 @@
     });
     document.getElementById('cloudSyncNow')?.addEventListener('click', flush);
     document.getElementById('cloudRemoteFastForward')?.addEventListener('click', applyRemoteFastForward);
+    document.getElementById('cloudKeepCloud')?.addEventListener('click', () => resolveSameEntityConflict('cloud'));
+    document.getElementById('cloudKeepDevice')?.addEventListener('click', () => resolveSameEntityConflict('device'));
     document.getElementById('cloudSignOut')?.addEventListener('click', async () => {
       try { await supabaseBoundary.signOut(); } catch {}
       cloudOwner = null;
@@ -865,6 +1019,7 @@
     queue,
     flush,
     applyRemoteFastForward,
+    resolveSameEntityConflict,
     compareShadow,
     captureLocalSnapshot,
     enqueueSyntheticCompletedWorkout,
@@ -884,7 +1039,8 @@
       busy,
       lastResult,
       lastComparison,
-      remoteFastForward
+      remoteFastForward,
+      sameEntityConflict
     })
   });
 })();

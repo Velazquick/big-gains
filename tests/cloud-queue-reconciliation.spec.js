@@ -197,3 +197,50 @@ test('a failed revision blocks later operations only for the same logical entity
   expect(result.pending.map(operation => `${operation.entityId}:v${operation.version}`)).toEqual(['goals:v2', 'goals:v3']);
   expect(result.timerAck.remoteVersion).toBe(2);
 });
+
+test('durable conflict replacement is atomic and cannot lose the original operation on persistence failure', async ({ page }) => {
+  await installLocalStorageFixture(page, 'blankJorge');
+  await openApp(page);
+  const result = await page.evaluate(() => {
+    let stored = null;
+    let rejectWrites = false;
+    const storage = {
+      getItem: () => stored,
+      setItem: (_key, value) => {
+        if (rejectWrites) throw new Error('synthetic storage rejection');
+        stored = value;
+      }
+    };
+    const queue = BigGainsCloud.createDurableQueue({ storage, key: 'atomic-conflict-queue' });
+    const original = BigGainsCloud.createOperation({
+      owner: { accountId: 'account', profileId: 'profile' },
+      entityType: 'workouts', entityId: 'workout', mutation: 'upsert', version: 2,
+      updatedAt: '2026-08-08T00:02:00.000Z', payload: { exact: 'local payload' },
+      baseRevision: { version: 1, updatedAt: '2026-08-08T00:01:00.000Z', fingerprint: 'baseline', tombstone: false }
+    });
+    const rebased = BigGainsCloud.createOperation({
+      ...original,
+      version: 4,
+      updatedAt: '2026-08-08T00:04:00.000Z',
+      baseRevision: { version: 3, updatedAt: '2026-08-08T00:03:00.000Z', fingerprint: 'remote-v3', tombstone: false }
+    });
+    queue.enqueue(original);
+    const before = stored;
+    rejectWrites = true;
+    let error = null;
+    try { queue.replace(original.idempotencyKey, rebased, { reason: 'user-rebased-device-version' }); } catch (caught) { error = caught.message; }
+    return {
+      error,
+      before,
+      after: stored,
+      pending: queue.pending(),
+      acknowledgement: queue.acknowledgement(original.idempotencyKey)
+    };
+  });
+
+  expect(result.error).toBe('synthetic storage rejection');
+  expect(result.after).toBe(result.before);
+  expect(result.pending).toHaveLength(1);
+  expect(result.pending[0]).toMatchObject({ version: 2, payload: { exact: 'local payload' } });
+  expect(result.acknowledgement).toBeNull();
+});

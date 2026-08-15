@@ -28,6 +28,7 @@
   const blocked = (reason, message, details = {}) => Object.freeze({ ok: false, blocked: true, reason, message, ...details });
   const profileRows = owner => Object.values(owner?.profiles || {});
   const isRecord = value => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+  const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
 
   function valuesMatch(left, right) {
     if (left === right) return true;
@@ -283,6 +284,314 @@
       && Number.isFinite(Date.parse(record.updatedAt))
       && typeof record?.fingerprint === 'string'
       && record.fingerprint.length > 0;
+  }
+
+  function sameRevision(left, right) {
+    return Boolean(left && right
+      && Number(left.version) === Number(right.version)
+      && new Date(left.updatedAt).toISOString() === new Date(right.updatedAt).toISOString()
+      && left.fingerprint === right.fingerprint
+      && (left.tombstone === true) === (right.tombstone === true));
+  }
+
+  function conflictChoiceSummary(record) {
+    if (!record || record.tombstone) return Object.freeze({ deleted: true });
+    if (record.table !== 'workouts') return Object.freeze({ deleted: false, entityType: record.entityType });
+    const workout = record.data || {};
+    return Object.freeze({
+      deleted: false,
+      type: typeof workout.type === 'string' && workout.type ? workout.type : 'Workout',
+      completedAt: Number.isFinite(Date.parse(workout.completedAt)) ? new Date(workout.completedAt).toISOString() : null,
+      exercises: Array.isArray(workout.exercises) ? workout.exercises.length : 0,
+      workingSets: Array.isArray(workout.exercises)
+        ? workout.exercises.reduce((total, exercise) => total + (exercise.sets || []).filter(set => set?.completed && !set?.warmup).length, 0)
+        : 0
+    });
+  }
+
+  function inspectSameEntityConflict({ owner, session, localProfiles, cloud, catalog, operations }) {
+    if (!verifiedOwner(owner, session)) {
+      return Object.freeze({ eligible: false, reason: 'owner-verification-failed', reasons: Object.freeze(['The signed-in account/profile identity is not verified.']) });
+    }
+    let targets;
+    try { targets = targetsFor(owner); } catch (error) {
+      return Object.freeze({ eligible: false, reason: error.code || 'same-entity-conflict-profile-mismatch', reasons: Object.freeze([error.message]) });
+    }
+    if (!catalogMatchesOwner(catalog, owner, targets)) {
+      return Object.freeze({ eligible: false, reason: 'same-entity-conflict-catalog-mismatch', reasons: Object.freeze(['The local revision catalog does not match the verified account/profile mapping.']) });
+    }
+    if (cloud?.ownershipIssues?.length) {
+      return Object.freeze({ eligible: false, reason: 'cloud-ownership-mismatch', reasons: Object.freeze([...cloud.ownershipIssues]) });
+    }
+    const pending = [...(operations || [])];
+    if (pending.length !== 1 || pending[0]?.synthetic) {
+      return Object.freeze({
+        eligible: false,
+        reason: 'unsupported-conflict-queue-topology',
+        reasons: Object.freeze(['Safe same-entity recovery currently requires exactly one owned, non-synthetic outbound change.'])
+      });
+    }
+
+    const operation = pending[0];
+    const target = targets.find(candidate => candidate.cloudProfileId === operation.owner?.profileId);
+    if (!target || operation.owner?.accountId !== owner.account.id || !shadow.tables.includes(operation.entityType)) {
+      return Object.freeze({ eligible: false, reason: 'queue-owner-mismatch', reasons: Object.freeze(['The pending operation does not belong to the verified account/profile mapping.']) });
+    }
+    const profileClientId = target.profileClientId;
+    const key = shadow.keyFor(operation.entityType, operation.entityId);
+    const localByKey = new Map((localProfiles?.[profileClientId]?.records || []).map(record => [shadow.keyFor(record.table, record.clientId), record]));
+    const local = localByKey.get(key) || null;
+    const expected = catalog.profiles[profileClientId].records?.[key] || null;
+    const remote = cloud.profiles?.[profileClientId]?.winners?.get(key) || null;
+    const localMatchesOperation = operation.mutation === 'delete'
+      ? !local && expected?.tombstone === true && expected.fingerprint === operation.payloadFingerprint
+      : Boolean(local && !expected?.tombstone
+        && local.fingerprint === operation.payloadFingerprint
+        && expected?.fingerprint === operation.payloadFingerprint
+        && operation.payload?.profileClientId === profileClientId
+        && operation.payload?.entityType === local.entityType
+        && operation.payload?.clientId === local.clientId
+        && valuesMatch(operation.payload?.data, local.data));
+    const catalogMatchesOperation = Boolean(validRevisionIdentity(expected)
+      && Number(expected.version) === Number(operation.version)
+      && new Date(expected.updatedAt).toISOString() === new Date(operation.updatedAt).toISOString()
+      && (expected.tombstone === true) === (operation.mutation === 'delete'));
+    const remoteAdvancedPastBase = Boolean(validRevisionIdentity(operation.baseRevision)
+      && remote
+      && validRevisionIdentity(remote)
+      && Number(remote.version) > Number(operation.baseRevision.version)
+      && Date.parse(remote.updatedAt) >= Date.parse(operation.baseRevision.updatedAt)
+      && !sameRevision(remote, operation.baseRevision));
+    const remoteDiffersFromOperation = Boolean(remote
+      && (remote.fingerprint !== operation.payloadFingerprint
+        || (remote.tombstone === true) !== (operation.mutation === 'delete')));
+    if (!localMatchesOperation || !catalogMatchesOperation || !remoteAdvancedPastBase || !remoteDiffersFromOperation) {
+      return Object.freeze({
+        eligible: false,
+        reason: 'same-entity-conflict-not-proven',
+        reasons: Object.freeze([
+          !localMatchesOperation ? 'The queued payload no longer exactly represents current local data.' : null,
+          !catalogMatchesOperation ? 'The queued revision no longer exactly matches the local revision catalog.' : null,
+          !remoteAdvancedPastBase ? 'The current remote row is not a verified monotonic advancement from the queued base revision.' : null,
+          !remoteDiffersFromOperation ? 'The current remote row already has the same semantic content as the pending operation.' : null
+        ].filter(Boolean))
+      });
+    }
+
+    const unrelatedReasons = [];
+    let unrelatedAdvancements = 0;
+    for (const candidate of targets) {
+      const candidateId = candidate.profileClientId;
+      const candidateLocal = new Map((localProfiles?.[candidateId]?.records || []).map(record => [shadow.keyFor(record.table, record.clientId), record]));
+      const candidateExpected = catalog.profiles[candidateId].records || {};
+      const candidateRemote = cloud.profiles?.[candidateId]?.winners;
+      if (!(candidateRemote instanceof Map)) {
+        unrelatedReasons.push(`${candidateId} has no verified remote revision map.`);
+        continue;
+      }
+      const keys = new Set([...candidateLocal.keys(), ...Object.keys(candidateExpected), ...candidateRemote.keys()]);
+      for (const candidateKey of keys) {
+        if (candidateId === profileClientId && candidateKey === key) continue;
+        const localRecord = candidateLocal.get(candidateKey) || null;
+        const expectedRecord = candidateExpected[candidateKey] || null;
+        const remoteRecord = candidateRemote.get(candidateKey) || null;
+        const localUnchanged = expectedRecord
+          ? expectedRecord.tombstone ? !localRecord : Boolean(localRecord && localRecord.fingerprint === expectedRecord.fingerprint)
+          : !localRecord;
+        if (!localUnchanged) {
+          unrelatedReasons.push(`${candidateId}/${candidateKey} has an unqueued local change.`);
+          continue;
+        }
+        if (!expectedRecord && remoteRecord) {
+          if (!validRevisionIdentity(remoteRecord)) unrelatedReasons.push(`${candidateId}/${candidateKey} has an invalid remote revision identity.`);
+          else unrelatedAdvancements += 1;
+          continue;
+        }
+        if (expectedRecord && !remoteRecord) {
+          unrelatedReasons.push(`${candidateId}/${candidateKey} disappeared instead of advancing through a tombstone.`);
+          continue;
+        }
+        if (!expectedRecord || !remoteRecord) continue;
+        if (!validRevisionIdentity(expectedRecord) || !validRevisionIdentity(remoteRecord)) {
+          unrelatedReasons.push(`${candidateId}/${candidateKey} has an invalid revision identity.`);
+        } else if (remoteRecord.version < expectedRecord.version) {
+          unrelatedReasons.push(`${candidateId}/${candidateKey} moved backward from revision ${expectedRecord.version} to ${remoteRecord.version}.`);
+        } else if (remoteRecord.version === expectedRecord.version && !sameRevision(remoteRecord, expectedRecord)) {
+          unrelatedReasons.push(`${candidateId}/${candidateKey} changed identity without advancing revision ${expectedRecord.version}.`);
+        } else if (remoteRecord.version > expectedRecord.version) {
+          if (Date.parse(remoteRecord.updatedAt) < Date.parse(expectedRecord.updatedAt)) {
+            unrelatedReasons.push(`${candidateId}/${candidateKey} advanced revision while moving its timestamp backward.`);
+          } else unrelatedAdvancements += 1;
+        }
+      }
+    }
+    if (unrelatedReasons.length) {
+      return Object.freeze({ eligible: false, reason: 'unrelated-advancement-not-safe', reasons: Object.freeze(unrelatedReasons) });
+    }
+
+    return Object.freeze({
+      eligible: true,
+      reason: 'same-entity-conflict',
+      profileClientId,
+      entityType: operation.entityType,
+      entityId: operation.entityId,
+      mutation: operation.mutation,
+      idempotencyKey: operation.idempotencyKey,
+      localRevision: operation.version,
+      remoteRevision: remote.version,
+      remoteUpdatedAt: remote.updatedAt,
+      remoteFingerprint: remote.fingerprint,
+      remoteTombstone: remote.tombstone === true,
+      unrelatedAdvancements,
+      localSummary: conflictChoiceSummary(local || expected),
+      cloudSummary: conflictChoiceSummary(remote),
+      reasons: Object.freeze([])
+    });
+  }
+
+  function cloudWithRecord(cloud, profileClientId, replacement) {
+    const original = cloud.profiles[profileClientId];
+    const key = shadow.keyFor(replacement.table, replacement.clientId);
+    const winners = new Map(original.winners);
+    winners.set(key, replacement);
+    const current = [...winners.values()].filter(record => !record.tombstone)
+      .sort((left, right) => left.table.localeCompare(right.table) || left.clientId.localeCompare(right.clientId));
+    return Object.freeze({
+      ...cloud,
+      profiles: Object.freeze({
+        ...cloud.profiles,
+        [profileClientId]: { ...original, winners, current }
+      })
+    });
+  }
+
+  async function resolveSameEntityConflict({ choice, owner, session, localProfiles, cloud, catalog, operations, queue, createOperation, journal = null }) {
+    if (!['cloud', 'device'].includes(choice)) return blocked('invalid-conflict-choice', 'Choose either the verified cloud version or this device version.');
+    const inspection = inspectSameEntityConflict({ owner, session, localProfiles, cloud, catalog, operations });
+    if (!inspection.eligible) {
+      return blocked(inspection.reason, 'The conflict changed before it could be resolved. Nothing was overwritten.', { details: inspection.reasons });
+    }
+    const operation = operations.find(candidate => candidate.idempotencyKey === inspection.idempotencyKey);
+    const profileCloud = cloud.profiles[inspection.profileClientId];
+    const key = shadow.keyFor(inspection.entityType, inspection.entityId);
+    const remote = profileCloud.winners.get(key);
+    const local = (localProfiles[inspection.profileClientId].records || [])
+      .find(record => shadow.keyFor(record.table, record.clientId) === key) || null;
+    let replacementOperation = null;
+    let chosenCloud = cloud;
+    if (choice === 'device') {
+      const nextVersion = Math.max(Number(remote.version), Number(operation.version)) + 1;
+      const updatedAt = new Date(Math.max(Date.now(), Date.parse(remote.updatedAt) + 1)).toISOString();
+      replacementOperation = createOperation({
+        owner: operation.owner,
+        entityType: operation.entityType,
+        entityId: operation.entityId,
+        mutation: operation.mutation,
+        version: nextVersion,
+        updatedAt,
+        payload: clone(operation.payload),
+        payloadFingerprint: operation.payloadFingerprint,
+        baseRevision: {
+          version: remote.version,
+          updatedAt: remote.updatedAt,
+          fingerprint: remote.fingerprint,
+          tombstone: remote.tombstone === true
+        },
+        allowRecreation: operation.mutation === 'upsert' && remote.tombstone === true
+      });
+      const replacementRecord = operation.mutation === 'delete' ? {
+        profileClientId: inspection.profileClientId,
+        table: operation.entityType,
+        entityType: operation.entityType,
+        clientId: operation.entityId,
+        data: null,
+        remoteId: remote.remoteId,
+        idempotencyKey: replacementOperation.idempotencyKey,
+        version: replacementOperation.version,
+        updatedAt: replacementOperation.updatedAt,
+        tombstone: true,
+        fingerprint: replacementOperation.payloadFingerprint
+      } : {
+        ...local,
+        idempotencyKey: replacementOperation.idempotencyKey,
+        version: replacementOperation.version,
+        updatedAt: replacementOperation.updatedAt,
+        tombstone: false
+      };
+      chosenCloud = cloudWithRecord(cloud, inspection.profileClientId, replacementRecord);
+    }
+
+    let targets;
+    let restoredProfiles;
+    let comparison;
+    try {
+      targets = targetsFor(owner);
+      const restoredEntries = await Promise.all(targets.map(async target => [
+        target.profileClientId,
+        await shadow.schemaV5FromCloud({ cloud: chosenCloud, profileClientId: target.profileClientId })
+      ]));
+      restoredProfiles = Object.fromEntries(restoredEntries);
+      comparison = await shadow.compare({
+        localProfiles: Object.fromEntries(restoredEntries.map(([profileClientId, restored]) => [profileClientId, {
+          stateVersion: 5,
+          records: restored.records
+        }])),
+        cloud: chosenCloud
+      });
+      if (!comparison.parity) throw Object.assign(new Error('The selected recovery state did not preserve semantic parity.'), { code: 'same-entity-resolution-semantic-mismatch' });
+      const finalLocalProfiles = await shadow.readLocalProfiles();
+      if (!valuesMatch(finalLocalProfiles, localProfiles) || !valuesMatch(queue.pending(), operations)) {
+        return blocked('local-state-changed-during-conflict-resolution', 'Local training state or the outbound queue changed while the choice was being verified. Nothing was overwritten.');
+      }
+    } catch (error) {
+      return blocked(error?.code || 'same-entity-resolution-reconstruction-failed', error?.message || 'The selected version could not reconstruct valid schema-v5 data.', {
+        details: error?.issues || error?.reasons || null
+      });
+    }
+
+    const adoptedCatalog = shadow.catalogFromCloud({ cloud: chosenCloud, owner, journal });
+    if (catalog.migrationId) adoptedCatalog.migrationId = catalog.migrationId;
+    const comparisonValue = comparisonDocument(comparison);
+    const documents = [
+      ...targets.map(target => ({ key: target.descriptor.storageKey, value: restoredProfiles[target.profileClientId].state })),
+      { key: runtime.cloudKeys.catalog, value: adoptedCatalog },
+      { key: runtime.cloudKeys.comparison, value: comparisonValue }
+    ];
+    commitProtection = true;
+    try {
+      persistAtomically(documents, () => {
+        const documentsMatch = targets.every(target => valuesMatch(readJson(target.descriptor.storageKey), restoredProfiles[target.profileClientId].state))
+          && valuesMatch(readJson(runtime.cloudKeys.catalog), adoptedCatalog);
+        if (!documentsMatch) return false;
+        const queueResult = queue.replace(operation.idempotencyKey, replacementOperation, {
+          remoteId: remote.remoteId || null,
+          remoteVersion: remote.version,
+          reason: choice === 'cloud' ? 'user-kept-cloud-version' : 'user-rebased-device-version',
+          reconciled: true
+        });
+        if (!queueResult) throw new Error('The conflicting queued operation could not be replaced atomically.');
+        return true;
+      });
+    } catch (error) {
+      commitProtection = false;
+      return blocked('same-entity-resolution-persistence-failed', 'The conflict resolution could not be finalized. Local data and the pending change were preserved.', {
+        error: error?.message || String(error), rollbackErrors: error?.rollbackErrors || []
+      });
+    }
+    return Object.freeze({
+      ok: true,
+      status: choice === 'cloud' ? 'cloud-version-adopted' : 'device-version-rebased',
+      choice,
+      entityType: inspection.entityType,
+      entityId: inspection.entityId,
+      replacedVersion: operation.version,
+      remoteVersion: remote.version,
+      rebasedVersion: replacementOperation?.version || null,
+      unrelatedAdvancements: inspection.unrelatedAdvancements,
+      states: Object.freeze(Object.fromEntries(targets.map(target => [target.profileClientId, restoredProfiles[target.profileClientId].state]))),
+      catalog: adoptedCatalog,
+      comparison
+    });
   }
 
   function inspectRemoteFastForward({ owner, session, localProfiles, cloud, catalog }) {
@@ -684,6 +993,8 @@
     format: MEMBER_FORMAT,
     freshFormat: FRESH_FORMAT,
     restore,
+    inspectSameEntityConflict,
+    resolveSameEntityConflict,
     inspectRemoteFastForward,
     adoptRemoteFastForward,
     completedForCurrentRuntime,
