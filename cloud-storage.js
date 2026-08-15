@@ -159,6 +159,25 @@
         acknowledgements.set(idempotencyKey, acknowledgementFor(operation, acknowledgement));
         return true;
       },
+      replace(idempotencyKey, replacement, acknowledgement = {}) {
+        const operation = pendingByKey.get(idempotencyKey);
+        const validReplacement = replacement == null ? null : validPersistedOperation(replacement);
+        if (!operation || (replacement != null && !validReplacement)) return false;
+        if (validReplacement && (validReplacement.owner.accountId !== operation.owner.accountId
+          || validReplacement.owner.profileId !== operation.owner.profileId
+          || validReplacement.entityType !== operation.entityType
+          || validReplacement.entityId !== operation.entityId)) {
+          throw new Error('A queued conflict may only be replaced by the same owned logical entity.');
+        }
+        if (validReplacement && validReplacement.idempotencyKey !== idempotencyKey
+          && pendingByKey.has(validReplacement.idempotencyKey)) return false;
+        pendingByKey.delete(idempotencyKey);
+        acknowledgements.set(idempotencyKey, acknowledgementFor(operation, acknowledgement));
+        if (validReplacement && !acknowledgements.has(validReplacement.idempotencyKey)) {
+          pendingByKey.set(validReplacement.idempotencyKey, validReplacement);
+        }
+        return validReplacement || true;
+      },
       acknowledgement(idempotencyKey) {
         return acknowledgements.get(idempotencyKey) || null;
       }
@@ -200,12 +219,20 @@
       });
     }
 
-    function persist() {
+    function persist(pending = pendingByKey, acknowledged = acknowledgements) {
       storage.setItem(key, JSON.stringify({
         version: 1,
-        pending: [...pendingByKey.values()],
-        acknowledgements: [...acknowledgements.values()].slice(-acknowledgementLimit)
+        pending: [...pending.values()],
+        acknowledgements: [...acknowledged.values()].slice(-acknowledgementLimit)
       }));
+    }
+
+    function commit(candidatePending, candidateAcknowledgements) {
+      persist(candidatePending, candidateAcknowledgements);
+      pendingByKey.clear();
+      candidatePending.forEach((value, operationKey) => pendingByKey.set(operationKey, value));
+      acknowledgements.clear();
+      candidateAcknowledgements.forEach((value, acknowledgementKey) => acknowledgements.set(acknowledgementKey, value));
     }
 
     return Object.freeze({
@@ -217,8 +244,9 @@
         if (acknowledged) return operation;
         const existing = pendingByKey.get(valid.idempotencyKey);
         if (existing) return existing;
-        pendingByKey.set(valid.idempotencyKey, valid);
-        persist();
+        const candidatePending = new Map(pendingByKey);
+        candidatePending.set(valid.idempotencyKey, valid);
+        commit(candidatePending, new Map(acknowledgements));
         return valid;
       },
       pending() { return [...pendingByKey.values()]; },
@@ -226,18 +254,45 @@
         const operation = pendingByKey.get(idempotencyKey);
         if (!operation) return null;
         const retried = retryOperation(operation);
-        pendingByKey.set(idempotencyKey, retried);
-        persist();
+        const candidatePending = new Map(pendingByKey);
+        candidatePending.set(idempotencyKey, retried);
+        commit(candidatePending, new Map(acknowledgements));
         return retried;
       },
       acknowledge(idempotencyKey, acknowledgement) {
         const operation = pendingByKey.get(idempotencyKey);
         if (!operation) return false;
-        pendingByKey.delete(idempotencyKey);
-        acknowledgements.set(idempotencyKey, acknowledgementFor(operation, acknowledgement));
-        while (acknowledgements.size > acknowledgementLimit) acknowledgements.delete(acknowledgements.keys().next().value);
-        persist();
+        const candidatePending = new Map(pendingByKey);
+        const candidateAcknowledgements = new Map(acknowledgements);
+        candidatePending.delete(idempotencyKey);
+        candidateAcknowledgements.set(idempotencyKey, acknowledgementFor(operation, acknowledgement));
+        while (candidateAcknowledgements.size > acknowledgementLimit) candidateAcknowledgements.delete(candidateAcknowledgements.keys().next().value);
+        commit(candidatePending, candidateAcknowledgements);
         return true;
+      },
+      replace(idempotencyKey, replacement, acknowledgement = {}) {
+        const operation = pendingByKey.get(idempotencyKey);
+        if (!operation) return false;
+        const validReplacement = replacement == null ? null : validPersistedOperation(replacement);
+        if (replacement != null && !validReplacement) throw new TypeError('A valid replacement cloud operation is required.');
+        if (validReplacement && (validReplacement.owner.accountId !== operation.owner.accountId
+          || validReplacement.owner.profileId !== operation.owner.profileId
+          || validReplacement.entityType !== operation.entityType
+          || validReplacement.entityId !== operation.entityId)) {
+          throw new Error('A queued conflict may only be replaced by the same owned logical entity.');
+        }
+        if (validReplacement && validReplacement.idempotencyKey !== idempotencyKey
+          && pendingByKey.has(validReplacement.idempotencyKey)) return false;
+        const candidatePending = new Map(pendingByKey);
+        const candidateAcknowledgements = new Map(acknowledgements);
+        candidatePending.delete(idempotencyKey);
+        candidateAcknowledgements.set(idempotencyKey, acknowledgementFor(operation, acknowledgement));
+        if (validReplacement && !candidateAcknowledgements.has(validReplacement.idempotencyKey)) {
+          candidatePending.set(validReplacement.idempotencyKey, validReplacement);
+        }
+        while (candidateAcknowledgements.size > acknowledgementLimit) candidateAcknowledgements.delete(candidateAcknowledgements.keys().next().value);
+        commit(candidatePending, candidateAcknowledgements);
+        return validReplacement || true;
       },
       acknowledgement(idempotencyKey) { return acknowledgements.get(idempotencyKey) || null; },
       snapshot() {

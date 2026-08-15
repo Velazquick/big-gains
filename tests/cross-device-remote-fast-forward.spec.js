@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { createHash } from 'node:crypto';
 import { openApp } from './helpers/app.js';
 
 const authUserId = '85000000-0000-0000-0000-000000000001';
@@ -82,7 +83,10 @@ async function installAuthenticatedCloud(page, remoteInput) {
     goalVersion = typeof remoteInput === 'string' ? 2 : 1,
     goalUpdatedAt = goalVersion > 1 ? advancedAt : baselineAt,
     remoteWorkouts = [],
-    remoteTombstones = []
+    remoteTombstones = [],
+    remoteBodyweights = [],
+    remotePreferences = [],
+    allowWrites = false
   } = options;
   const now = advancedAt;
   await page.addInitScript(({ authUserId, now }) => {
@@ -116,12 +120,22 @@ async function installAuthenticatedCloud(page, remoteInput) {
         user_metadata: {}, identities: [], created_at: now
       }) });
     }
+    if (request.method() === 'PATCH' && allowWrites && url.pathname.endsWith('/workouts')) {
+      const body = request.postDataJSON();
+      const index = remoteWorkouts.findIndex(row => row.client_id === body.client_id);
+      if (index < 0) return route.fulfill({ status: 409, headers, body: JSON.stringify({ message: 'missing synthetic workout' }) });
+      remoteWorkouts[index] = { ...remoteWorkouts[index], ...body };
+      writes.push(`${request.method()} ${url.pathname} v${body.version}`);
+      const response = request.headers().accept?.includes('application/vnd.pgrst.object+json')
+        ? remoteWorkouts[index] : [remoteWorkouts[index]];
+      return route.fulfill({ status: 200, headers, body: JSON.stringify(response) });
+    }
     if (!['GET', 'HEAD'].includes(request.method())) {
       writes.push(`${request.method()} ${url.pathname}`);
       return route.fulfill({ status: 500, headers, body: JSON.stringify({ message: 'Fast-forward must not write cloud data.' }) });
     }
     const table = url.pathname.split('/').pop();
-    const rows = table === 'accounts' ? [{
+    let rows = table === 'accounts' ? [{
       id: accountId, owner_user_id: authUserId, display_name: 'Sontai', created_at: baselineAt
     }] : table === 'profile_memberships' ? []
       : table === 'profiles' ? [{
@@ -146,13 +160,20 @@ async function installAuthenticatedCloud(page, remoteInput) {
               entityType: 'timerPreferences', clientId: 'timer', data: { sound: true, vibration: true }
             },
             created_at: baselineAt, updated_at: baselineAt
-          }
+          },
+          ...remotePreferences
         ] : table === 'workouts' ? remoteWorkouts
+          : table === 'bodyweight_entries' ? remoteBodyweights
           : table === 'tombstones' ? remoteTombstones
             : [];
+    const clientFilter = url.searchParams.get('client_id');
+    const entityFilter = url.searchParams.get('entity_id');
+    if (clientFilter?.startsWith('eq.')) rows = rows.filter(row => row.client_id === clientFilter.slice(3));
+    if (entityFilter?.startsWith('eq.')) rows = rows.filter(row => row.entity_id === entityFilter.slice(3));
+    if (request.headers().accept?.includes('application/vnd.pgrst.object+json')) rows = rows[0] || null;
     return route.fulfill({
       status: 200,
-      headers: { ...headers, 'content-range': rows.length ? `0-${rows.length - 1}/${rows.length}` : '*/0' },
+      headers: { ...headers, 'content-range': Array.isArray(rows) && rows.length ? `0-${rows.length - 1}/${rows.length}` : '*/0' },
       body: request.method() === 'HEAD' ? '' : JSON.stringify(rows)
     });
   });
@@ -176,6 +197,31 @@ function tombstoneRow(workoutId, version = 2, updatedAt = advancedAt) {
     id: `tombstone-${workoutId}`, account_id: accountId, profile_id: profileId,
     entity_type: 'workouts', entity_id: workoutId, idempotency_key: `${workoutId}-delete-v${version}`,
     version, deleted_at: updatedAt, created_at: baselineAt, updated_at: updatedAt
+  };
+}
+
+function exercisePreferenceRow(exerciseId) {
+  return {
+    id: `remote-pref-${exerciseId}`, account_id: accountId, profile_id: profileId,
+    client_id: `exercise:${encodeURIComponent(exerciseId)}`, idempotency_key: `remote-pref-${exerciseId}-v1`, version: 1,
+    payload: {
+      contract: 'big-gains.shadow.v1', version: 1, profileClientId: clientId,
+      entityType: 'exercisePreference', clientId: `exercise:${encodeURIComponent(exerciseId)}`,
+      data: { exerciseId, preference: { note: 'Remote-only preference' } }
+    },
+    created_at: advancedAt, updated_at: advancedAt
+  };
+}
+
+function bodyweightRow() {
+  const identity = { measuredAt: '2026-08-11T12:00:00.000Z', weightValue: 188, unit: 'lb' };
+  const canonical = JSON.stringify(identity, Object.keys(identity).sort());
+  const identityHash = createHash('sha256').update(canonical).digest('hex');
+  return {
+    id: 'remote-bodyweight', account_id: accountId, profile_id: profileId,
+    client_id: `bodyweight:${identityHash}:1`, idempotency_key: 'remote-bodyweight-v1',
+    measured_at: identity.measuredAt, weight_value: identity.weightValue, unit: identity.unit, version: 1,
+    created_at: advancedAt, updated_at: advancedAt
   };
 }
 
@@ -384,3 +430,77 @@ test('equal revision with a different fingerprint remains drift and cannot fast-
   expect(result.fastForward.reasons.join(' ')).toContain('changed identity without advancing revision 1');
   expect(writes).toEqual([]);
 });
+
+for (const choice of [
+  { label: 'Keep Cloud', button: '#cloudKeepCloud', expectedReps: 11, expectedVersion: 3, writes: [] },
+  { label: 'Keep This Device', button: '#cloudKeepDevice', expectedReps: 9, expectedVersion: 4, writes: ['PATCH /rest/v1/workouts v4'] }
+]) {
+  test(`${choice.label} resolves one stale workout while preserving unrelated remote advancement`, async ({ page }) => {
+    const baseline = completedWorkout('7c016750-9636-4379-b224-06438df363ab', 8);
+    const localEdit = completedWorkout(baseline.id, 9);
+    const remoteEdit = completedWorkout(baseline.id, 11);
+    const unrelated = completedWorkout('remote-only-workout', 7, '2026-08-11T19:00:00.000Z');
+    await installReceiver(page, profileState('Shared baseline', { workouts: [baseline] }));
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.evaluate(async localEdit => {
+      state.workouts = [localEdit];
+      statePersistenceApi.save(state, state.activeWorkout);
+      await BigGainsCloudSync.captureLocalSnapshot(state.profileId);
+    }, localEdit);
+    expect(await page.evaluate(() => BigGainsCloudSync.queue.pending()[0])).toMatchObject({
+      entityType: 'workouts', entityId: baseline.id, mutation: 'upsert', version: 2,
+      baseRevision: { version: 1 }
+    });
+
+    const writes = await installAuthenticatedCloud(page, {
+      remoteWorkouts: [workoutRow(remoteEdit, 3, advancedAt), workoutRow(unrelated, 1, advancedAt)],
+      remotePreferences: [exercisePreferenceRow('lat-pulldown')],
+      remoteBodyweights: [bodyweightRow()],
+      allowWrites: choice.expectedVersion === 4
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.locator('.bottom-nav [data-view="library"]').click();
+
+    await expect(page.locator('#cloudShadowHeading')).toHaveText('SYNC CONFLICT');
+    await expect(page.locator('#cloudConflictTitle')).toContainText('Pull');
+    await expect(page.locator('#cloudConflictSummary')).toContainText('changed here and on another device');
+    await expect(page.locator('#cloudConflictSummary')).toContainText('3 unrelated cloud changes will also be preserved');
+    await expect(page.locator('#cloudConflictLocalSummary')).toContainText('Revision 2 · 1 exercise · 1 working set');
+    await expect(page.locator('#cloudConflictRemoteSummary')).toContainText('Revision 3 · 1 exercise · 1 working set');
+    await expect(page.locator('#cloudConflictTechnical')).toBeHidden();
+    const before = await page.evaluate(storageKey => ({
+      state: JSON.parse(localStorage.getItem(storageKey)),
+      pending: BigGainsCloudSync.queue.pending(),
+      conflict: BigGainsCloudSync.status().sameEntityConflict
+    }), storageKey);
+    expect(before.state.workouts[0]).toEqual(localEdit);
+    expect(before.pending).toHaveLength(1);
+    expect(before.conflict).toMatchObject({
+      eligible: true, reason: 'same-entity-conflict', entityId: baseline.id,
+      localRevision: 2, remoteRevision: 3, unrelatedAdvancements: 3
+    });
+
+    const reloaded = page.waitForEvent('framenavigated');
+    await page.locator(choice.button).click();
+    await reloaded;
+    await expect(page.locator('#cloudShadowHeading')).toHaveText('In sync');
+    const after = await page.evaluate(({ storageKey, catalogKey, clientId, workoutId }) => {
+      const state = JSON.parse(localStorage.getItem(storageKey));
+      const catalog = JSON.parse(localStorage.getItem(catalogKey));
+      return {
+        state,
+        pending: BigGainsCloudSync.queue.pending(),
+        comparison: BigGainsCloudSync.status().lastComparison,
+        workoutRevision: catalog.profiles[clientId].records[BigGainsCloudShadow.keyFor('workouts', workoutId)].version
+      };
+    }, { storageKey, catalogKey, clientId, workoutId: baseline.id });
+    expect(after.state.workouts.find(workout => workout.id === baseline.id).exercises[0].sets[0].reps).toBe(choice.expectedReps);
+    expect(after.state.workouts.find(workout => workout.id === unrelated.id)).toEqual(unrelated);
+    expect(after.state.weights).toEqual([{ date: '2026-08-11T12:00:00.000Z', weight: 188 }]);
+    expect(after.state.exercisePreferences['lat-pulldown']).toEqual({ note: 'Remote-only preference' });
+    expect(after.workoutRevision).toBe(choice.expectedVersion);
+    expect(after.pending).toHaveLength(0);
+    expect(after.comparison.parity).toBe(true);
+    expect(writes).toEqual(choice.writes);
+  });
+}
