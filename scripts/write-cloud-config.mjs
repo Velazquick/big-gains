@@ -2,7 +2,19 @@ import { writeFile } from 'node:fs/promises';
 
 const supabaseUrl = String(process.env.SUPABASE_URL || '').trim();
 const supabasePublishableKey = String(process.env.SUPABASE_PUBLISHABLE_KEY || '').trim();
-const automaticReconciliation = /^(1|true)$/i.test(String(process.env.BIG_GAINS_AUTOMATIC_RECONCILIATION || '').trim());
+
+function deploymentBoolean(name, rawValue) {
+  const value = String(rawValue || '').trim().toLowerCase();
+  if (!value || value === 'false') return false;
+  if (value === 'true') return true;
+  console.warn(`${name} must be "true" or "false"; defaulting to false.`);
+  return false;
+}
+
+const automaticReconciliation = deploymentBoolean(
+  'BIG_GAINS_AUTOMATIC_RECONCILIATION',
+  process.env.BIG_GAINS_AUTOMATIC_RECONCILIATION
+);
 
 if (!supabaseUrl || !supabasePublishableKey) {
   throw new Error('SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY are required.');

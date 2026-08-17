@@ -184,7 +184,7 @@ The **Verified Automatic Adoption Predicate** is the conjunction of SS-6.1 throu
 
 ## 12. Resolved implementation decisions
 
-**SS-12.1 — Feature-flag source.** The runtime-readable `automaticReconciliation` cloud-config field defaults off. Builds enable it with `BIG_GAINS_AUTOMATIC_RECONCILIATION=true`. The device-local `big-gains-automatic-reconciliation-paused-v1-<storage namespace>` key is an emergency pause and takes precedence.
+**SS-12.1 — Feature-flag source.** The runtime-readable `automaticReconciliation` cloud-config field defaults off. The Pages workflow passes the non-secret Actions variable `BIG_GAINS_AUTOMATIC_RECONCILIATION` to `scripts/write-cloud-config.mjs`; only case-normalized `true` generates `automaticReconciliation: true`. Missing, `false`, and unexpected values generate `false`. The device-local `big-gains-automatic-reconciliation-paused-v1-<storage namespace>` key is an emergency pause and takes precedence.
 
 **SS-12.2 — Adoption-journal representation.** The device-local `big-gains.automatic-adoption.v1` intent is stored beside the runtime catalog under a namespace-derived key. It freezes the old raw profile, catalog, comparison, and queue documents plus candidate profile/catalog/comparison documents. Startup restores and verifies the complete old set before ordinary save or reconciliation resumes. The journal remains outside schema-v5 profile state and synchronized fingerprints.
 

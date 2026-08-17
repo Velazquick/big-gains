@@ -17,7 +17,32 @@ SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_KEY
 
 The browser must never receive a secret key, legacy service-role key, JWT signing secret, database password, or Supabase access token. Do not paste those values into chat, Git, local storage, screenshots, or `cloud-config.js`.
 
-For deployment, add `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` as GitHub Actions repository variables. The Pages workflow generates `cloud-config.js` only in the deployment artifact. If either variable is absent, the checked-in empty config is deployed and the app remains local-only.
+For deployment, add `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` as GitHub Actions repository variables. The Pages workflow generates `cloud-config.js` only in the deployment artifact. If either variable is absent, the checked-in empty/default-off config is deployed and the app remains local-only.
+
+### Automatic-reconciliation deployment control
+
+`BIG_GAINS_AUTOMATIC_RECONCILIATION` is a non-secret GitHub Actions repository or `github-pages` environment variable. Store it under **Settings → Secrets and variables → Actions → Variables** (or the `github-pages` environment's Variables section), never under Secrets. Keep one authoritative value.
+
+The exact control path is:
+
+```text
+GitHub Actions variable BIG_GAINS_AUTOMATIC_RECONCILIATION
+  → deploy-pages.yml job environment
+  → scripts/write-cloud-config.mjs
+  → deployment-artifact cloud-config.js automaticReconciliation
+  → cloud-sync.js automatic-reconciliation gate
+```
+
+The generator trims and case-normalizes the value. Only `true` enables the generated browser flag. Missing, `false`, or any unexpected value generates `false`; unexpected values also emit a deployment warning. The checked-in config is default-off, and the device-local emergency pause remains an additional off switch.
+
+For a controlled rollout, leave the variable missing or set it to `false`, deploy the reviewed release, and complete the flag-OFF production smoke check first. Enabling is a separate authorized operation: set the variable to `true`, run the Pages deployment again, and verify guarded reconciliation without mutating hosted data.
+
+Rollback is deployment-only and does not require a code or data change:
+
+1. Set `BIG_GAINS_AUTOMATIC_RECONCILIATION` to `false` or delete it.
+2. Run the Pages deployment and wait for it to succeed.
+3. Reload each device while online and confirm automatic reconciliation is off and manual remote-change handling remains available.
+4. If immediate containment is needed while deployment is pending, use the device-local emergency pause; keep the Actions variable false afterward so new or cleared devices also remain off.
 
 ## 2. Auth and iOS Home Screen setup
 

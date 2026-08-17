@@ -88,15 +88,17 @@ async function installAuthenticatedCloud(page, remoteInput) {
     remotePreferences = [],
     remoteActiveSessions = [],
     allowWrites = false,
-    automaticReconciliation = true
+    automaticReconciliation = true,
+    includeAutomaticReconciliation = true
   } = options;
   const now = advancedAt;
-  await page.addInitScript(({ authUserId, now, automaticReconciliation }) => {
-    window.__BIG_GAINS_CLOUD_CONFIG__ = {
+  await page.addInitScript(({ authUserId, now, automaticReconciliation, includeAutomaticReconciliation }) => {
+    const config = {
       supabaseUrl: 'https://synthetic-cross-device.supabase.co',
-      supabasePublishableKey: 'sb_publishable_cross_device',
-      automaticReconciliation
+      supabasePublishableKey: 'sb_publishable_cross_device'
     };
+    if (includeAutomaticReconciliation) config.automaticReconciliation = automaticReconciliation;
+    window.__BIG_GAINS_CLOUD_CONFIG__ = config;
     const encode = value => btoa(JSON.stringify(value)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
     const expiresAt = Math.floor(Date.now() / 1000) + 3600;
     localStorage.setItem('big-gains-supabase-auth-v1', JSON.stringify({
@@ -108,7 +110,7 @@ async function installAuthenticatedCloud(page, remoteInput) {
         user_metadata: {}, identities: [], created_at: now
       }
     }));
-  }, { authUserId, now, automaticReconciliation });
+  }, { authUserId, now, automaticReconciliation, includeAutomaticReconciliation });
 
   const writes = [];
   await page.route('https://synthetic-cross-device.supabase.co/**', async route => {
@@ -322,6 +324,26 @@ test('the rollout flag can keep guarded remote advancement manual on one device'
   await page.locator('#cloudRemoteFastForward').click();
   await reloaded;
   await expect.poll(() => page.evaluate(storageKey => JSON.parse(localStorage.getItem(storageKey)).goals.primary, storageKey)).toBe('Manual rollout advancement');
+  expect(writes).toEqual([]);
+});
+
+test('a missing rollout flag defaults guarded remote advancement to manual', async ({ page }) => {
+  await installReceiver(page);
+  const writes = await installAuthenticatedCloud(page, {
+    remotePrimary: 'Default-off remote advancement',
+    goalVersion: 2,
+    includeAutomaticReconciliation: false
+  });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+
+  await page.locator('.bottom-nav [data-view="library"]').click();
+  await expect(page.locator('#cloudShadowHeading')).toHaveText('Changes from another device');
+  await expect(page.locator('#cloudRemoteFastForward')).toBeVisible();
+  const result = await page.evaluate(storageKey => ({
+    primary: JSON.parse(localStorage.getItem(storageKey)).goals.primary,
+    automaticReconciliationEnabled: BigGainsCloudSync.status().automaticReconciliationEnabled
+  }), storageKey);
+  expect(result).toEqual({ primary: 'Shared baseline', automaticReconciliationEnabled: false });
   expect(writes).toEqual([]);
 });
 
