@@ -194,7 +194,7 @@ For any production app-shell change:
 - Confirm the default hosted invitation/recovery templates work without `{{ .Token }}`, custom SMTP, or a plan upgrade.
 - Confirm Safari and Home Screen storage remain isolated, the Home Screen session persists after its own one-time password sign-in, and all managed-owner/member/independent recovery tests remain green.
 
-# Automatic reconciliation deployment control
+# v79 automatic reconciliation capability/versioning
 
 - Confirm `BIG_GAINS_AUTOMATIC_RECONCILIATION` is an Actions repository or `github-pages` environment **variable**, never a secret, and that the Pages workflow passes it only to `scripts/write-cloud-config.mjs`.
 - Confirm missing, `false`, and unexpected values generate `automaticReconciliation: false`; only case-normalized `true` generates `true`; and checked-in `cloud-config.js` remains default-off.
@@ -203,3 +203,16 @@ For any production app-shell change:
 - Deploy the merged release with the flag off and complete the ordinary online/offline and manual remote-change smoke checks before any separately authorized enablement.
 - To enable later, set the variable to `true`, run Pages again, and complete the non-destructive automatic-reconciliation smoke check.
 - To roll back, set the variable to `false` or delete it, run Pages again, wait for success, reload devices online, and verify manual handling is restored. Use the device-local emergency pause for immediate containment while deployment completes.
+
+# v80 Runtime Reconciliation Control v1
+
+- Confirm the Pages `BIG_GAINS_AUTOMATIC_RECONCILIATION` value is documented and treated only as a static capability gate; it is never the emergency operational authority.
+- Confirm `supabase/functions/reconciliation-control/index.ts` reads no database data, uses no service-role key, exposes no secret, returns contract revision `1`, and treats only exact lowercase `true` as ON.
+- Confirm `[functions.reconciliation-control] verify_jwt = true` remains in `supabase/config.toml`; never deploy this user endpoint with `--no-verify-jwt`.
+- Confirm success, preflight, and method-error responses carry `Cache-Control: no-store`, `Pragma: no-cache`, and `Expires: 0`; confirm the client request is no-store and service-worker handling returns `null` for the cross-origin POST/GET endpoint.
+- Exercise static capability OFF, runtime true/false/missing/unexpected/malformed/unknown-revision responses, timeout/network failure, 401/403, device pause, and repeated opportunities. Every path except exact revision-1 boolean true must fail closed without reusing a previous ON decision.
+- Re-run active-session, nonempty/wrong-owner queue, account/profile ownership, concurrent local edit, revision downgrade/equal-revision conflict, completed-history edit/tombstone, and final-read/lifecycle guard coverage. Runtime ON must not weaken any guard.
+- Confirm runtime OFF/unavailable leaves cloud comparison, the manual **Update this device** action, outbound retry, and local-first workout logging functional.
+- Before any hosted function deployment, set the Supabase Edge Function environment value to `false`. Deploy the function and release only under separate authorization; do not enable production automation in the implementation change.
+- For a later approved rollout, deploy capability ON while runtime remains false, verify the OFF response and manual behavior, then enable the Supabase runtime value as a distinct operation.
+- For operational rollback, set the Supabase Edge Function environment value to false or remove it and verify the next authenticated response is OFF. No Pages redeploy, schema/RLS change, or production data mutation is required.

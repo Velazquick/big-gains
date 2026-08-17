@@ -184,7 +184,17 @@ The **Verified Automatic Adoption Predicate** is the conjunction of SS-6.1 throu
 
 ## 12. Resolved implementation decisions
 
-**SS-12.1 — Feature-flag source.** The runtime-readable `automaticReconciliation` cloud-config field defaults off. The Pages workflow passes the non-secret Actions variable `BIG_GAINS_AUTOMATIC_RECONCILIATION` to `scripts/write-cloud-config.mjs`; only case-normalized `true` generates `automaticReconciliation: true`. Missing, `false`, and unexpected values generate `false`. The device-local `big-gains-automatic-reconciliation-paused-v1-<storage namespace>` key is an emergency pause and takes precedence.
+**SS-12.1 — Three-layer control.** Automatic adoption MUST require all three control layers: the generated Pages `automaticReconciliation` static capability is exactly `true`; a fresh authenticated `reconciliation-control` Edge Function response is exactly `{ automaticReconciliation: true, revision: 1 }`; and the device-local `big-gains-automatic-reconciliation-paused-v1-<storage namespace>` emergency pause is absent. The Pages value permits the code path but MUST NOT be treated as the operational ON/OFF authority.
+
+**SS-12.1a — Runtime fail-closed rule.** A signed-out caller, unavailable client, timeout, network error, HTTP error including 401/403, malformed or non-object JSON, missing or non-boolean control value, or revision other than exactly `1` MUST produce OFF. The Edge Function environment value enables only when it is exactly lowercase `true`; missing, `false`, `1`, `yes`, whitespace variants, and every other value produce a valid OFF response.
+
+**SS-12.1b — Freshness and caching.** A runtime ON decision is scoped to one automatic-adoption attempt. Every later automatic-adoption opportunity MUST invoke the control again. An ON result MUST NOT be persisted or reused as authority. Requests and all function responses MUST be marked no-store, and the service worker MUST NOT intercept or cache the function request.
+
+**SS-12.1c — Existing guards remain authoritative.** Runtime ON only permits evaluation to continue. Queue emptiness and ownership, exact account/profile/session mapping, active-session safeguards, concurrent-local-edit detection, revision monotonicity, completed-history authority, lifecycle generation, and final-read verification MUST still pass immediately before commit. The local pause and guard checks MAY turn OFF after a runtime ON response and MUST still stop commit.
+
+**SS-12.1d — Unrelated paths remain available.** Runtime control failure or OFF MUST NOT block local workout persistence, durable outbound enqueue/retry, cloud shadow comparison, diagnostics, or explicit manual guarded adoption. Manual adoption bypasses the operational switch only; it MUST NOT bypass the existing safety guards.
+
+**SS-12.1e — Diagnostics.** Device-local status MAY report `capability-off`, `runtime-off`, `runtime-unavailable`, `device-paused`, or `guard-blocked`, with a non-secret detail and control revision. It MUST NOT record tokens, keys, account/profile identifiers, workout data, or the Edge Function environment value.
 
 **SS-12.2 — Adoption-journal representation.** The device-local `big-gains.automatic-adoption.v1` intent is stored beside the runtime catalog under a namespace-derived key. It freezes the old raw profile, catalog, comparison, and queue documents plus candidate profile/catalog/comparison documents. Startup restores and verifies the complete old set before ordinary save or reconciliation resumes. The journal remains outside schema-v5 profile state and synchronized fingerprints.
 

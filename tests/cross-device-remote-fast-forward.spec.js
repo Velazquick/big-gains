@@ -89,7 +89,11 @@ async function installAuthenticatedCloud(page, remoteInput) {
     remoteActiveSessions = [],
     allowWrites = false,
     automaticReconciliation = true,
-    includeAutomaticReconciliation = true
+    includeAutomaticReconciliation = true,
+    runtimeControlPayload = { automaticReconciliation: true, revision: 1 },
+    runtimeControlStatus = 200,
+    runtimeControlRawBody = null,
+    runtimeControlNetworkError = false
   } = options;
   const now = advancedAt;
   await page.addInitScript(({ authUserId, now, automaticReconciliation, includeAutomaticReconciliation }) => {
@@ -113,11 +117,22 @@ async function installAuthenticatedCloud(page, remoteInput) {
   }, { authUserId, now, automaticReconciliation, includeAutomaticReconciliation });
 
   const writes = [];
+  const runtimeControlRequests = [];
+  Object.defineProperty(writes, 'runtimeControlRequests', { value: runtimeControlRequests });
   await page.route('https://synthetic-cross-device.supabase.co/**', async route => {
     const request = route.request();
     const url = new URL(request.url());
     const headers = { 'access-control-allow-origin': '*', 'content-type': 'application/json' };
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+    if (url.pathname.endsWith('/functions/v1/reconciliation-control')) {
+      runtimeControlRequests.push({ method: request.method(), headers: request.headers() });
+      if (runtimeControlNetworkError) return route.abort('connectionfailed');
+      return route.fulfill({
+        status: runtimeControlStatus,
+        headers: { ...headers, 'cache-control': 'no-store, no-cache, must-revalidate, max-age=0' },
+        body: runtimeControlRawBody === null ? JSON.stringify(runtimeControlPayload) : runtimeControlRawBody
+      });
+    }
     if (url.pathname.endsWith('/auth/v1/user')) {
       return route.fulfill({ status: 200, headers, body: JSON.stringify({
         id: authUserId, aud: 'authenticated', role: 'authenticated', email: 'sontai@example.test',
@@ -320,6 +335,7 @@ test('the rollout flag can keep guarded remote advancement manual on one device'
   await expect(page.locator('#cloudShadowHeading')).toHaveText('Changes from another device');
   await expect(page.locator('#cloudRemoteFastForward')).toBeVisible();
   expect(await page.evaluate(storageKey => JSON.parse(localStorage.getItem(storageKey)).goals.primary, storageKey)).toBe('Shared baseline');
+  expect(writes.runtimeControlRequests).toHaveLength(0);
   const reloaded = page.waitForEvent('framenavigated');
   await page.locator('#cloudRemoteFastForward').click();
   await reloaded;
@@ -341,9 +357,100 @@ test('a missing rollout flag defaults guarded remote advancement to manual', asy
   await expect(page.locator('#cloudRemoteFastForward')).toBeVisible();
   const result = await page.evaluate(storageKey => ({
     primary: JSON.parse(localStorage.getItem(storageKey)).goals.primary,
-    automaticReconciliationEnabled: BigGainsCloudSync.status().automaticReconciliationEnabled
+    automaticReconciliationEnabled: BigGainsCloudSync.status().automaticReconciliationEnabled,
+    automaticDecision: BigGainsCloudSync.status().automaticDecision
   }), storageKey);
-  expect(result).toEqual({ primary: 'Shared baseline', automaticReconciliationEnabled: false });
+  expect(result).toMatchObject({
+    primary: 'Shared baseline',
+    automaticReconciliationEnabled: false,
+    automaticDecision: { enabled: false, reason: 'capability-off' }
+  });
+  expect(writes.runtimeControlRequests).toHaveLength(0);
+  expect(writes).toEqual([]);
+});
+
+test('runtime OFF keeps a capability-enabled remote advancement manual', async ({ page }) => {
+  await installReceiver(page);
+  const writes = await installAuthenticatedCloud(page, {
+    remotePrimary: 'Runtime-off advancement',
+    goalVersion: 2,
+    runtimeControlPayload: { automaticReconciliation: false, revision: 1 }
+  });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+
+  await page.locator('.bottom-nav [data-view="library"]').click();
+  await expect(page.locator('#cloudShadowHeading')).toHaveText('Changes from another device');
+  await expect(page.locator('#cloudRemoteFastForward')).toBeVisible();
+  expect(await page.evaluate(storageKey => JSON.parse(localStorage.getItem(storageKey)).goals.primary, storageKey)).toBe('Shared baseline');
+  await expect.poll(() => page.evaluate(() => BigGainsCloudSync.status().automaticDecision)).toMatchObject({
+    enabled: false, reason: 'runtime-off', detail: 'remote-disabled', revision: 1
+  });
+  expect(writes.runtimeControlRequests.length).toBeGreaterThanOrEqual(1);
+  expect(writes.runtimeControlRequests[0].method).toBe('POST');
+  expect(writes.runtimeControlRequests[0].headers['cache-control']).toContain('no-store');
+  expect(writes).toEqual([]);
+});
+
+for (const status of [401, 403]) {
+  test(`runtime control HTTP ${status} fails closed without hiding manual recovery`, async ({ page }) => {
+    await installReceiver(page);
+    const writes = await installAuthenticatedCloud(page, {
+      remotePrimary: `HTTP ${status} advancement`,
+      goalVersion: 2,
+      runtimeControlStatus: status,
+      runtimeControlPayload: { error: 'unauthorized' }
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+
+    await page.locator('.bottom-nav [data-view="library"]').click();
+    await expect(page.locator('#cloudShadowHeading')).toHaveText('Changes from another device');
+    await expect(page.locator('#cloudRemoteFastForward')).toBeVisible();
+    await expect.poll(() => page.evaluate(() => BigGainsCloudSync.status().automaticDecision)).toMatchObject({
+      enabled: false, reason: 'runtime-unavailable', detail: `http-${status}`
+    });
+    expect(writes.runtimeControlRequests.length).toBeGreaterThanOrEqual(1);
+    expect(writes).toEqual([]);
+  });
+}
+
+test('the device-local emergency pause overrides runtime ON before the endpoint is called', async ({ page }) => {
+  await installReceiver(page);
+  await page.evaluate(() => BigGainsCloudSync.setAutomaticReconciliationPaused(true));
+  const writes = await installAuthenticatedCloud(page, {
+    remotePrimary: 'Paused advancement',
+    goalVersion: 2
+  });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+
+  await page.locator('.bottom-nav [data-view="library"]').click();
+  await expect(page.locator('#cloudShadowHeading')).toHaveText('Changes from another device');
+  const result = await page.evaluate(() => BigGainsCloudSync.status());
+  expect(result.automaticReconciliationPaused).toBe(true);
+  expect(result.automaticDecision).toMatchObject({ enabled: false, reason: 'device-paused' });
+  expect(writes.runtimeControlRequests).toHaveLength(0);
+  expect(writes).toEqual([]);
+});
+
+test('runtime control network failure fails closed while explicit manual adoption remains functional', async ({ page }) => {
+  await installReceiver(page);
+  const writes = await installAuthenticatedCloud(page, {
+    remotePrimary: 'Manual recovery after runtime outage',
+    goalVersion: 2,
+    runtimeControlNetworkError: true
+  });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+
+  await page.locator('.bottom-nav [data-view="library"]').click();
+  await expect(page.locator('#cloudShadowHeading')).toHaveText('Changes from another device');
+  await expect.poll(() => page.evaluate(() => BigGainsCloudSync.status().automaticDecision)).toMatchObject({
+    enabled: false, reason: 'runtime-unavailable', detail: 'request-failed'
+  });
+  const reloaded = page.waitForEvent('framenavigated');
+  await page.locator('#cloudRemoteFastForward').click();
+  await reloaded;
+  await expect.poll(() => page.evaluate(storageKey => JSON.parse(localStorage.getItem(storageKey)).goals.primary, storageKey))
+    .toBe('Manual recovery after runtime outage');
+  expect(writes.runtimeControlRequests.length).toBeGreaterThanOrEqual(1);
   expect(writes).toEqual([]);
 });
 
@@ -399,25 +506,35 @@ test('an active workout defers automatic adoption without changing local history
   await page.reload({ waitUntil: 'domcontentloaded' });
 
   await expect(page.locator('#cloudShadowHeading')).toHaveText('Updates waiting until the workout ends');
-  const result = await page.evaluate(storageKey => ({
+  await expect.poll(() => page.evaluate(storageKey => ({
     state: JSON.parse(localStorage.getItem(storageKey)),
     pending: BigGainsCloudSync.queue.pending().length,
     fastForward: BigGainsCloudSync.status().remoteFastForward,
     lastResult: BigGainsCloudSync.status().lastResult,
-    observability: BigGainsCloudSync.status().observability
+    observability: BigGainsCloudSync.status().observability,
+    automaticDecision: BigGainsCloudSync.status().automaticDecision
+  }), storageKey)).toMatchObject({ lastResult: { reason: 'active-workout-in-progress' } });
+  const settled = await page.evaluate(storageKey => ({
+    state: JSON.parse(localStorage.getItem(storageKey)),
+    pending: BigGainsCloudSync.queue.pending().length,
+    fastForward: BigGainsCloudSync.status().remoteFastForward,
+    lastResult: BigGainsCloudSync.status().lastResult,
+    observability: BigGainsCloudSync.status().observability,
+    automaticDecision: BigGainsCloudSync.status().automaticDecision
   }), storageKey);
-  expect(result.state.goals.primary).toBe('Shared baseline');
-  expect(result.state.activeWorkout.id).toBe(workout.id);
-  expect(result.pending).toBe(0);
-  expect(result.fastForward).toMatchObject({
+  expect(settled.state.goals.primary).toBe('Shared baseline');
+  expect(settled.state.activeWorkout.id).toBe(workout.id);
+  expect(settled.pending).toBe(0);
+  expect(settled.fastForward).toMatchObject({
     eligible: false,
     conflict: false,
     deferred: true,
     reason: 'active-workout-in-progress',
     advancedRevisions: 1
   });
-  expect(result.lastResult).toMatchObject({ ok: false, deferred: true, reason: 'active-workout-in-progress' });
-  expect(result.observability.counters).toMatchObject({ automaticAdoptions: 0, activeWorkoutDeferrals: 1 });
+  expect(settled.lastResult).toMatchObject({ ok: false, deferred: true, reason: 'active-workout-in-progress' });
+  expect(settled.automaticDecision).toMatchObject({ enabled: false, reason: 'guard-blocked', detail: 'active-workout-in-progress' });
+  expect(settled.observability.counters).toMatchObject({ automaticAdoptions: 0, activeWorkoutDeferrals: 1 });
   expect(writes).toEqual([]);
 });
 
@@ -433,6 +550,7 @@ test('a stale stored rest deadline rejects that adoption generation while canoni
   await page.reload({ waitUntil: 'domcontentloaded' });
 
   await expect(page.locator('#cloudShadowHeading')).toHaveText('Retry needed');
+  await expect.poll(() => page.evaluate(() => BigGainsCloudSync.status().observability.counters.verificationRejections)).toBe(1);
   const result = await page.evaluate(storageKey => ({
     state: JSON.parse(localStorage.getItem(storageKey)),
     fastForward: BigGainsCloudSync.status().remoteFastForward,

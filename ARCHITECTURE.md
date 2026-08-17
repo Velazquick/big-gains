@@ -15,34 +15,35 @@ The production script order is:
 2. `cloud-config.js`
 3. `vendor/supabase.js`
 4. `supabase-client.js`
-5. `cloud-storage.js`
-6. `state-persistence.js`
-7. `profiles.js`
-8. `exercise-catalog.js`
-9. `routine-engine.js`
-10. `analytics.js`
-11. `workout-session-controller.js`
-12. `workout-controls.js`
-13. `notes.js`
-14. `timer-controller.js`
-15. `progress.js`
-16. `retrospective-workout.js`
-17. `cloud-shadow.js`
-18. `managed-profile-recovery.js`
-19. `app.js`
-20. `workout-mode.js`
-21. `v2-shell.js`
-22. `alexa-shell.js`
-23. `training-pet.js`
-24. `design-v21.js`
-25. `session-selector-v26.js`
-26. `sync-gateway.js`
-27. `account-onboarding.js`
-28. `migration-preview.js`
-29. `cloud-sync.js`
-30. `migration-engine.js`
-31. `controlled-migration.js`
-32. `shell-init.js`
+5. `reconciliation-control.js`
+6. `cloud-storage.js`
+7. `state-persistence.js`
+8. `profiles.js`
+9. `exercise-catalog.js`
+10. `routine-engine.js`
+11. `analytics.js`
+12. `workout-session-controller.js`
+13. `workout-controls.js`
+14. `notes.js`
+15. `timer-controller.js`
+16. `progress.js`
+17. `retrospective-workout.js`
+18. `cloud-shadow.js`
+19. `managed-profile-recovery.js`
+20. `app.js`
+21. `workout-mode.js`
+22. `v2-shell.js`
+23. `alexa-shell.js`
+24. `training-pet.js`
+25. `design-v21.js`
+26. `session-selector-v26.js`
+27. `sync-gateway.js`
+28. `account-onboarding.js`
+29. `migration-preview.js`
+30. `cloud-sync.js`
+31. `migration-engine.js`
+32. `controlled-migration.js`
+33. `shell-init.js`
 
 This order is a runtime contract. Persistence and hook APIs exist before `app.js` consumes them. `app.js` loads and renders the current profile before the shell modules initialize. The final script, `shell-init.js`, initializes the shell modules exactly once in this order: Workout Mode, view shell, profile shell, training pet, direction/momentum, session selector, and sync.
 
@@ -52,8 +53,10 @@ This order is a runtime contract. Persistence and hook APIs exist before `app.js
 | --- | --- | --- |
 | `asset-manifest.js` | `BIG_GAINS_ASSET_MANIFEST` | Release and generated cloud-config identifiers, cache names, ordered CSS and script URLs, and the complete offline core-asset list. |
 | `account-context.js` | `bigGainsAccounts` | Existing on-device descriptor registry, selected profile, storage namespaces, and session-key ownership. |
-| `cloud-config.js` | `__BIG_GAINS_CLOUD_CONFIG__` | Empty/default-off checked-in browser configuration. The Pages workflow may replace it in the deployment artifact using browser-safe Actions variables for the project URL, publishable key, and the non-secret automatic-reconciliation deployment control. Missing, false, or unexpected control values remain off. |
+| `cloud-config.js` | `__BIG_GAINS_CLOUD_CONFIG__` | Empty/default-off checked-in browser configuration. The Pages workflow may replace it in the deployment artifact using browser-safe Actions variables for the project URL, publishable key, and the non-secret automatic-reconciliation capability gate. Missing, false, or unexpected control values keep the capability off. |
 | `supabase-client.js` | `BigGainsSupabase` | Lazily creates the vendored browser client, owns container-local persisted Auth sessions, password sign-in, generic password-reset requests, browser-only existing-user Magic Link compatibility, `getUser()` identity verification, local rejection sign-out, and the existing exact account/member/profile-shape reads. |
+| `reconciliation-control.js` | `BigGainsReconciliationControl` | One-shot authenticated runtime-control port. Every `check()` invokes the dedicated Edge Function with the current user session, a four-second timeout, no-store request headers, strict revision-1 boolean validation, and fail-closed decisions. It never caches or persists an ON result. |
+| `supabase/functions/reconciliation-control` | authenticated Edge Function | Reads only the exact `BIG_GAINS_AUTOMATIC_RECONCILIATION=true` environment value, returns `{ automaticReconciliation, revision: 1 }`, and marks success, preflight, and method-error responses no-store. JWT verification remains enabled and the function has no database or service-role dependency. |
 | `auth-setup.html` / `auth-setup.js` | isolated page (no application global) | Consumes a one-time invite/recovery session, verifies it with `getUser()`, sets a password, then signs out only that browser session. It loads no workout, persistence, sync, recovery, or account modules and never reads training data. |
 | `cloud-storage.js` | `BigGainsCloud` | Explicit account/profile sync operations, memory and durable queue contracts, deterministic idempotency keys, local-first coordinator, acknowledgements, and conflict resolution. It contains no network transport. |
 | `cloud-shadow.js` | `BigGainsCloudShadow` | Read-only local/cloud semantic reconstruction, migrated/production envelope parsing, tombstone winner selection, SHA-256 shadow checksums, and exact parity/drift reporting. |
@@ -176,7 +179,7 @@ The notes and progress features attach through explicit app-owned hooks:
 
 ## Asset and service-worker lifecycle
 
-`asset-manifest.js` is the single asset inventory. Release `v79-deployment-config-cache-versioning` retains the v78 automatic-reconciliation semantics while separating deployment configuration invalidation from the static release marker. `scripts/write-cloud-config.mjs` hashes the exact generated `cloud-config.js` bytes with SHA-256, writes the first 16 hexadecimal characters as `cloudConfigVersion`, and updates the deployment artifact's manifest marker. The manifest applies that deterministic version only to `cloud-config.js`, applies the release version to other production assets, and includes both identifiers in shell/runtime cache names. It also exposes a combined `deploymentVersion`; the generator writes that revisioned manifest URL into both HTML entry points and `service-worker.js`, and the manifest precaches its own matching URL. Identical rollback content therefore returns to the same safe URL, while any generated config change rotates the browser config reference, manifest entry point, worker source, and offline caches without a manual release bump. The manifest rejects duplicate core assets and supplies the same immutable inventory to both page loaders and the service worker. `index.html`, `auth-setup.html`, both loaders, the manifest, service-worker core, web manifest, icon, local chime, and all revisioned CSS and scripts form the precached app shell.
+`asset-manifest.js` is the single asset inventory. Release `v80-runtime-reconciliation-control` adds the runtime-control port while retaining v79 content-addressed deployment configuration. `scripts/write-cloud-config.mjs` hashes the exact generated `cloud-config.js` bytes with SHA-256, writes the first 16 hexadecimal characters as `cloudConfigVersion`, and updates the deployment artifact's manifest marker. The manifest applies that deterministic version only to `cloud-config.js`, applies the release version to other production assets, and includes both identifiers in shell/runtime cache names. It also exposes a combined `deploymentVersion`; the generator writes that revisioned manifest URL into both HTML entry points and `service-worker.js`, and the manifest precaches its own matching URL. Identical rollback content therefore returns to the same safe URL, while any generated config change rotates the browser config reference, manifest entry point, worker source, and offline caches without a manual release bump. The manifest rejects duplicate core assets and supplies the same immutable inventory to both page loaders and the service worker. `index.html`, `auth-setup.html`, both loaders, the manifest, service-worker core, web manifest, icon, local chime, and all revisioned CSS and scripts form the precached app shell.
 
 Workout-card focus is live-session metadata, not schema migration. `focusedExerciseId` prefers the last interacted exercise while it has incomplete working sets, then falls back to the first incomplete exercise. A manual collapse is authoritative and does not clear focus or session data; automatic advancement opens the next incomplete exercise. Upcoming cards remain collapsed and subdued, while completed cards recede but can be expanded for review. Added sets are ordinary incomplete working sets with fresh IDs and values copied only from the latest valid working set.
 
@@ -263,6 +266,10 @@ The deployed Jorge account is discovered as exactly two profiles with client IDs
 The SQL migrations define `accounts`, `profiles`, `workouts`, `routines`, `bodyweight_entries`, `preferences`, `active_sessions`, `sync_metadata`, and `tombstones`. All profile data carries the pair `(account_id, profile_id)`, and composite foreign keys prove that the profile belongs to that account. Ownership columns are immutable after creation. Completed workouts and bodyweight entries have unique account/profile/client IDs and account-scoped idempotency keys. Active sessions are unique per account/profile. `sync_metadata.metadata` stores only migration journal metadata.
 
 RLS is enabled and forced on every table. The browser-facing `authenticated` role receives application-table operations, but profile-scoped policies require either account ownership or an exact `(auth.uid(), account_id, profile_id)` membership. Members may read their containing account only for runtime resolution and cannot update it. Membership mutation remains administrative-only. Anonymous/public table grants are revoked. A profile UUID alone is insufficient because authorization always proves the account/profile relationship with a composite key.
+
+Automatic adoption has three independent layers. The generated Pages flag is a static capability gate: it decides whether a build may attempt automation, but it is not an operational authority. When an already-eligible remote fast-forward is about to call the adopter, `cloud-sync.js` asks `reconciliation-control.js` for a fresh authenticated Edge Function decision. Only an exact revision-1 boolean `true` continues; signed-out state, timeout, network or HTTP failure, malformed data, missing or unexpected values, and unknown revisions all stop automatic adoption. The existing device-local pause is checked independently before the request and again at commit. The final commit still requires the unchanged lifecycle, queue, ownership, concurrent-edit, active-session, fingerprint, and monotonic-revision guards.
+
+The runtime result is request-scoped and never stored in local storage, Cache Storage, or a reusable in-memory ON cache. The Edge Function response and request carry no-store directives, the call is cross-origin and POST, and the service worker ignores it. A runtime-control outage leaves cloud comparison, diagnostics, manual guarded adoption, outbound retry, and local-first workout logging available. `BigGainsCloudSync.status().automaticDecision` exposes only metadata categories (`capability-off`, `runtime-off`, `runtime-unavailable`, `device-paused`, or `guard-blocked`) plus a non-secret detail and contract revision.
 
 Phase 4H adds one narrowly scoped empty/recoverable-device cloud-to-local exception. `managed-profile-recovery.js` requires exact fresh account/profile verification, valid shadow winners, schema-v5 validation, and canonical re-serialization parity before writing state. It then adopts remote revisions into the separate catalog with an empty queue and writes a completion marker last. Release v73 reuses that adapter for an explicit fast-forward on an initialized device only when its local payload still exactly matches its current catalog and every remote winner is an equal fingerprint-identical revision or a monotonic successor. Concurrent local edits, ownership drift, malformed records, and unsupported schema still stop without overwrite or merge. See [PHASE4H_MANAGED_PROFILE_ACCESS_CONTRACT.md](PHASE4H_MANAGED_PROFILE_ACCESS_CONTRACT.md).
 

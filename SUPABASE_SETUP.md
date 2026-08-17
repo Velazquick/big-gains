@@ -19,9 +19,9 @@ The browser must never receive a secret key, legacy service-role key, JWT signin
 
 For deployment, add `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` as GitHub Actions repository variables. The Pages workflow generates `cloud-config.js` only in the deployment artifact. If either variable is absent, the checked-in empty/default-off config is deployed and the app remains local-only.
 
-### Automatic-reconciliation deployment control
+### Runtime Reconciliation Control v1
 
-`BIG_GAINS_AUTOMATIC_RECONCILIATION` is a non-secret GitHub Actions repository or `github-pages` environment variable. Store it under **Settings → Secrets and variables → Actions → Variables** (or the `github-pages` environment's Variables section), never under Secrets. Keep one authoritative value.
+Automatic reconciliation now has two separately administered values with the same namespaced key. The GitHub Actions repository or `github-pages` environment **variable** is only the static Pages capability gate. The Supabase Edge Function **secret/environment value** is the authoritative runtime operational switch. The existing device-local pause is a third, independent OFF override. Do not copy either value into browser source.
 
 The exact control path is:
 
@@ -32,19 +32,47 @@ GitHub Actions variable BIG_GAINS_AUTOMATIC_RECONCILIATION
   → deployment-artifact cloud-config.js automaticReconciliation
   → SHA-256-derived cloudConfigVersion in deployment-artifact asset-manifest.js
   → cloud-config.js?v=config-<first 16 hex characters>
-  → cloud-sync.js automatic-reconciliation gate
+  → cloud-sync.js static capability gate
 ```
 
-The generator trims and case-normalizes the value. Only `true` enables the generated browser flag. Missing, `false`, or any unexpected value generates `false`; unexpected values also emit a deployment warning. It hashes the exact generated config payload and updates the deployment artifact's shared asset manifest, both HTML manifest references, and the service-worker manifest import. Any config change therefore receives a different browser URL, manifest entry point, worker source, and offline cache names without a release-string edit. Returning to identical OFF content returns to the same content-addressed URL, which is rollback-safe because those bytes are exactly the desired OFF payload. The checked-in config is default-off, and the device-local emergency pause remains an additional off switch.
+The generator trims and case-normalizes the GitHub value. Only `true` enables the generated browser capability. Missing, `false`, or any unexpected value generates `false`; unexpected values also emit a deployment warning. It hashes the exact generated config payload and updates the deployment artifact's shared asset manifest, both HTML manifest references, and the service-worker manifest import. This content identity remains useful, but a Pages capability value is never sufficient to authorize automatic adoption.
 
-For a controlled rollout, leave the variable missing or set it to `false`, deploy the reviewed release, and complete the flag-OFF production smoke check first. Enabling is a separate authorized operation: set the variable to `true`, run the Pages deployment again, and verify guarded reconciliation without mutating hosted data.
+The runtime path is:
 
-Rollback is deployment-only and does not require a code or data change:
+```text
+Signed-in Supabase user session JWT
+  → POST /functions/v1/reconciliation-control (JWT verification enabled)
+  → Edge Function environment BIG_GAINS_AUTOMATIC_RECONCILIATION
+  → { automaticReconciliation: <boolean>, revision: 1 }
+  → fresh one-attempt decision immediately before guarded adoption
+```
 
-1. Set `BIG_GAINS_AUTOMATIC_RECONCILIATION` to `false` or delete it.
-2. Run the Pages deployment and wait for it to succeed.
-3. Reload each device while online and confirm automatic reconciliation is off and manual remote-change handling remains available.
-4. If immediate containment is needed while deployment is pending, use the device-local emergency pause; keep the Actions variable false afterward so new or cleared devices also remain off.
+The Edge Function accepts only the exact lowercase value `true` as ON. Missing, `false`, `1`, `yes`, case variants, surrounding whitespace, and every other value return a valid OFF response. Success, preflight, and method-error responses carry `Cache-Control: no-store`, `Pragma: no-cache`, and `Expires: 0`. The browser request is also no-store, uses the current user session through `supabase.functions.invoke`, and never receives a service-role or secret key. A four-second timeout, 401/403, network failure, invalid JSON, non-boolean value, or revision other than exactly `1` fails closed.
+
+For local function development, copy `supabase/functions/.env.example` to an ignored local env file and keep the value false:
+
+```sh
+npx supabase start
+npx supabase functions serve --env-file supabase/functions/.env.local
+```
+
+For the hosted project, a separately authorized operator performs both commands using an authenticated CLI session or uses the equivalent Dashboard controls. The value is non-sensitive, but credentials and access tokens still belong only in the secure CLI/Dashboard flow:
+
+```sh
+npx supabase secrets set BIG_GAINS_AUTOMATIC_RECONCILIATION=false --project-ref YOUR_PROJECT_REF
+npx supabase functions deploy reconciliation-control --project-ref YOUR_PROJECT_REF
+```
+
+Deploy the function with JWT verification enabled; do not pass `--no-verify-jwt`. No schema, RLS, table, account, profile, queue, history, or workout change is required. Confirm the hosted secret is false before or immediately after the first deployment. Production must remain runtime OFF until a separate rollout is approved.
+
+For a controlled rollout, first deploy the function with runtime false, then deploy the reviewed Pages release with the static capability still false and complete ordinary online/offline/manual smoke checks. A later capability-ON Pages deployment still leaves automation OFF while the runtime value is false. Runtime ON is a final, separate authorized operation and must be followed by the non-destructive guarded-adoption proof.
+
+Operational rollback does not require a Pages redeploy:
+
+1. Set the Supabase Edge Function `BIG_GAINS_AUTOMATIC_RECONCILIATION` value to exact `false` (or remove it).
+2. Confirm the next authenticated control invocation returns `{ automaticReconciliation: false, revision: 1 }` with no-store headers.
+3. Verify future automatic opportunities remain manual while cloud diagnostics, local logging, outbound sync, and explicit guarded adoption still work.
+4. Use the device-local emergency pause for device-specific immediate containment. Keep the GitHub capability false as well if a full static rollback is desired, but do not rely on Pages propagation for the operational OFF switch.
 
 ## 2. Auth and iOS Home Screen setup
 

@@ -45,6 +45,7 @@ jobs:
           test -f service-worker.js
           test -f service-worker-core.js
           test -f cloud-sync.js
+          test -f reconciliation-control.js
           test -f vendor/supabase.js
           test -f migration-preview.js
           test -f migration-preview.css
@@ -76,6 +77,7 @@ jobs:
           }
 
           const requiredAssets = [
+            ['./reconciliation-control.js', manifest.scripts],
             ['./migration-preview.js', manifest.scripts],
             ['./migration-preview.css', manifest.styles]
           ];

@@ -2,10 +2,10 @@ import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
 
-const CURRENT_RELEASE = 'v79-deployment-config-cache-versioning';
+const CURRENT_RELEASE = 'v80-runtime-reconciliation-control';
 const CURRENT_CONFIG_VERSION = 'config-ab51ee79cd36825d';
 const CURRENT_CACHE = `big-gains-shell-${CURRENT_RELEASE}-${CURRENT_CONFIG_VERSION}`;
-const PREVIOUS_CACHE = 'big-gains-shell-v78-automatic-sync-reconciliation';
+const PREVIOUS_CACHE = 'big-gains-shell-v79-deployment-config-cache-versioning-config-ab51ee79cd36825d';
 const PREVIOUS_CONFIG_CACHE = `big-gains-shell-${CURRENT_RELEASE}-config-0000000000000000`;
 
 async function waitForServiceWorker(page) {
@@ -106,6 +106,7 @@ test('production assets use the release except for content-versioned cloud confi
   expect(consistency.coreAssets).not.toContain('./');
   expect(consistency.cloudConfigVersion).toBe(CURRENT_CONFIG_VERSION);
   expect(consistency.scripts).toContain(`./cloud-config.js?v=${CURRENT_CONFIG_VERSION}`);
+  expect(consistency.scripts).toContain(`./reconciliation-control.js?v=${CURRENT_RELEASE}`);
   expect(consistency.scripts).not.toContain(`./cloud-config.js?v=${CURRENT_RELEASE}`);
   expect(consistency.authSetupScripts).toEqual([
     `./cloud-config.js?v=${CURRENT_CONFIG_VERSION}`,
@@ -198,6 +199,45 @@ test('precache and runtime writes settle before success and propagate write fail
     precacheFailure: 'cache write rejected',
     runtimeFailure: 'cache write rejected'
   });
+});
+
+test('runtime reconciliation control requests are outside every service-worker cache path', async ({ page }) => {
+  await page.goto('/');
+  await page.addScriptTag({ url: '/service-worker-core.js' });
+
+  const result = await page.evaluate(() => {
+    let cacheOpens = 0;
+    let fetches = 0;
+    const runtime = BigGainsServiceWorkerCore.createRuntime({
+      manifest: {
+        release: 'test-release',
+        cachePrefix: 'test-shell-',
+        cacheName: 'test-shell-current',
+        runtimeCachePrefix: 'test-runtime-',
+        runtimeCacheName: 'test-runtime-current',
+        legacyCacheNames: [],
+        coreAssets: [],
+        styles: [],
+        scripts: []
+      },
+      cacheStorage: {
+        async delete() { return true; },
+        async keys() { return []; },
+        async open() { cacheOpens += 1; return { match: async () => null, put: async () => undefined }; }
+      },
+      fetcher: async () => { fetches += 1; return new Response('unexpected'); },
+      baseUrl: 'https://velazquick.github.io/big-gains/service-worker.js',
+      clientApi: { claim: async () => undefined }
+    });
+    return {
+      post: runtime.handle(new Request('https://project.supabase.co/functions/v1/reconciliation-control', { method: 'POST' })),
+      get: runtime.handle(new Request('https://project.supabase.co/functions/v1/reconciliation-control')),
+      cacheOpens,
+      fetches
+    };
+  });
+
+  expect(result).toEqual({ post: null, get: null, cacheOpens: 0, fetches: 0 });
 });
 
 test('reloads offline after the service worker is installed', async ({ context, page }) => {
