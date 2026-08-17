@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v77-same-entity-conflict-recovery';
+  const release = 'v78-automatic-sync-reconciliation';
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];

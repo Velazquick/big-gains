@@ -86,13 +86,16 @@ async function installAuthenticatedCloud(page, remoteInput) {
     remoteTombstones = [],
     remoteBodyweights = [],
     remotePreferences = [],
-    allowWrites = false
+    remoteActiveSessions = [],
+    allowWrites = false,
+    automaticReconciliation = true
   } = options;
   const now = advancedAt;
-  await page.addInitScript(({ authUserId, now }) => {
+  await page.addInitScript(({ authUserId, now, automaticReconciliation }) => {
     window.__BIG_GAINS_CLOUD_CONFIG__ = {
       supabaseUrl: 'https://synthetic-cross-device.supabase.co',
-      supabasePublishableKey: 'sb_publishable_cross_device'
+      supabasePublishableKey: 'sb_publishable_cross_device',
+      automaticReconciliation
     };
     const encode = value => btoa(JSON.stringify(value)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
     const expiresAt = Math.floor(Date.now() / 1000) + 3600;
@@ -105,7 +108,7 @@ async function installAuthenticatedCloud(page, remoteInput) {
         user_metadata: {}, identities: [], created_at: now
       }
     }));
-  }, { authUserId, now });
+  }, { authUserId, now, automaticReconciliation });
 
   const writes = [];
   await page.route('https://synthetic-cross-device.supabase.co/**', async route => {
@@ -163,6 +166,7 @@ async function installAuthenticatedCloud(page, remoteInput) {
           },
           ...remotePreferences
         ] : table === 'workouts' ? remoteWorkouts
+          : table === 'active_sessions' ? remoteActiveSessions
           : table === 'bodyweight_entries' ? remoteBodyweights
           : table === 'tombstones' ? remoteTombstones
             : [];
@@ -225,6 +229,37 @@ function bodyweightRow() {
   };
 }
 
+function activeWorkout(id = 'active-cross-device') {
+  return {
+    id,
+    type: 'Push',
+    startedAt: '2026-08-11T19:30:00.000Z',
+    focusedExerciseId: 'active-bench',
+    exercises: [{
+      id: 'active-bench', definitionId: 'barbell-bench-press', name: 'Barbell Bench Press',
+      muscle: 'Chest', equipment: 'Barbell', collapsed: false,
+      sets: [{ id: 'active-bench-set', weight: '', reps: '', warmup: false, completed: false }]
+    }]
+  };
+}
+
+function activeSessionRow(workout, restTimerEndsAt = null) {
+  return {
+    id: `remote-${workout.id}`,
+    account_id: accountId,
+    profile_id: profileId,
+    client_id: workout.id,
+    idempotency_key: `${workout.id}-v1`,
+    version: 1,
+    payload: {
+      contract: 'big-gains.shadow.v1', version: 1, profileClientId: clientId,
+      entityType: 'activeSession', clientId: workout.id, data: { workout, restTimerEndsAt }
+    },
+    created_at: baselineAt,
+    updated_at: baselineAt
+  };
+}
+
 function completedWorkout(id, reps, completedAt = '2026-08-10T18:30:00.000Z') {
   return {
     id, type: 'Pull', startedAt: '2026-08-10T17:45:00.000Z', completedAt, durationSeconds: 2700, prs: 1,
@@ -235,28 +270,16 @@ function completedWorkout(id, reps, completedAt = '2026-08-10T18:30:00.000Z') {
   };
 }
 
-async function expectRemoteFastForward(page, expectedPrimary) {
+async function expectAutomaticRemoteFastForward(page, expectedPrimary) {
+  await expect(page.locator('#cloudShadowHeading')).toHaveText('In sync');
   await page.locator('.bottom-nav [data-view="library"]').click();
-  await expect(page.locator('#cloudShadowHeading')).toHaveText('Changes from another device');
-  await expect(page.locator('#cloudRemoteFastForward')).toBeVisible();
-  await expect(page.locator('#cloudRemoteFastForward')).toHaveText('Update this device');
-  expect(await page.evaluate(() => BigGainsCloudSync.status().remoteFastForward)).toMatchObject({
-    eligible: true,
-    conflict: false,
-    reason: 'newer-remote-revisions',
-    advancedRevisions: 1
-  });
-
-  const reloaded = page.waitForEvent('framenavigated');
-  await page.locator('#cloudRemoteFastForward').click();
-  await reloaded;
-  await expect.poll(() => page.evaluate(storageKey => JSON.parse(localStorage.getItem(storageKey)).goals.primary, storageKey)).toBe(expectedPrimary);
   await expect(page.locator('#cloudShadowHeading')).toHaveText('In sync');
   const result = await page.evaluate(({ storageKey, catalogKey, clientId }) => ({
     state: JSON.parse(localStorage.getItem(storageKey)),
     catalog: JSON.parse(localStorage.getItem(catalogKey)),
     queuePending: BigGainsCloudSync.queue.pending().length,
     comparison: BigGainsCloudSync.status().lastComparison,
+    observability: BigGainsCloudSync.status().observability,
     goalKey: BigGainsCloudShadow.keyFor('preferences', 'goals'),
     clientId
   }), { storageKey, catalogKey, clientId });
@@ -265,21 +288,141 @@ async function expectRemoteFastForward(page, expectedPrimary) {
   expect(result.catalog.migrationId).toBe('cross-device-baseline');
   expect(result.queuePending).toBe(0);
   expect(result.comparison.parity).toBe(true);
+  expect(result.observability.counters.automaticAdoptions).toBe(1);
 }
 
 for (const direction of [
   { label: 'PC to mobile', remotePrimary: 'PC remote advancement' },
   { label: 'mobile to PC', remotePrimary: 'Mobile remote advancement' }
 ]) {
-  test(`${direction.label} offers and applies a guarded remote fast-forward`, async ({ page }) => {
+  test(`${direction.label} automatically applies a guarded remote fast-forward`, async ({ page }) => {
     await installReceiver(page);
     const writes = await installAuthenticatedCloud(page, direction.remotePrimary);
     await page.reload({ waitUntil: 'domcontentloaded' });
 
-    await expectRemoteFastForward(page, direction.remotePrimary);
+    await expectAutomaticRemoteFastForward(page, direction.remotePrimary);
     expect(writes).toEqual([]);
   });
 }
+
+test('the rollout flag can keep guarded remote advancement manual on one device', async ({ page }) => {
+  await installReceiver(page);
+  const writes = await installAuthenticatedCloud(page, {
+    remotePrimary: 'Manual rollout advancement',
+    goalVersion: 2,
+    automaticReconciliation: false
+  });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+
+  await page.locator('.bottom-nav [data-view="library"]').click();
+  await expect(page.locator('#cloudShadowHeading')).toHaveText('Changes from another device');
+  await expect(page.locator('#cloudRemoteFastForward')).toBeVisible();
+  expect(await page.evaluate(storageKey => JSON.parse(localStorage.getItem(storageKey)).goals.primary, storageKey)).toBe('Shared baseline');
+  const reloaded = page.waitForEvent('framenavigated');
+  await page.locator('#cloudRemoteFastForward').click();
+  await reloaded;
+  await expect.poll(() => page.evaluate(storageKey => JSON.parse(localStorage.getItem(storageKey)).goals.primary, storageKey)).toBe('Manual rollout advancement');
+  expect(writes).toEqual([]);
+});
+
+test('startup rolls an interrupted automatic adoption back to the complete pre-adoption document set', async ({ page }) => {
+  await installReceiver(page);
+  const interrupted = await page.evaluate(({ storageKey, catalogKey }) => {
+    const adoptionKey = BigGainsManagedProfileRecovery.adoptionKey;
+    const comparisonKey = BigGainsCloudSync.comparisonKey;
+    const queueKey = BigGainsCloudSync.queue.key;
+    const stateBefore = localStorage.getItem(storageKey);
+    const catalogBefore = localStorage.getItem(catalogKey);
+    const comparisonBefore = localStorage.getItem(comparisonKey);
+    const queueBefore = localStorage.getItem(queueKey);
+    const candidateState = { ...JSON.parse(stateBefore), goals: { primary: 'Interrupted candidate' } };
+    const candidateCatalog = { ...JSON.parse(catalogBefore), adoptedAt: '2026-08-11T20:06:00.000Z' };
+    const snapshots = [
+      { key: storageKey, before: stateBefore, candidate: JSON.stringify(candidateState) },
+      { key: catalogKey, before: catalogBefore, candidate: JSON.stringify(candidateCatalog) },
+      { key: comparisonKey, before: comparisonBefore, candidate: JSON.stringify({ parity: true }) },
+      { key: queueKey, before: queueBefore, candidate: null }
+    ];
+    localStorage.setItem(adoptionKey, JSON.stringify({
+      format: 'big-gains.automatic-adoption.v1', version: 1,
+      createdAt: '2026-08-11T20:06:00.000Z', snapshots
+    }));
+    localStorage.setItem(storageKey, JSON.stringify(candidateState));
+    localStorage.setItem(catalogKey, JSON.stringify(candidateCatalog));
+    localStorage.setItem(comparisonKey, JSON.stringify({ parity: true }));
+    return { adoptionKey, catalogBefore, queueBefore };
+  }, { storageKey, catalogKey });
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  const restored = await page.evaluate(({ storageKey, catalogKey, adoptionKey }) => ({
+    state: JSON.parse(localStorage.getItem(storageKey)),
+    catalog: localStorage.getItem(catalogKey),
+    journal: localStorage.getItem(adoptionKey),
+    recovery: BigGainsManagedProfileRecovery.adoptionRecoveryStatus()
+  }), { storageKey, catalogKey, adoptionKey: interrupted.adoptionKey });
+  expect(restored.state.goals.primary).toBe('Shared baseline');
+  expect(restored.catalog).toBe(interrupted.catalogBefore);
+  expect(restored.journal).toBeNull();
+  expect(restored.recovery).toEqual({ ok: true, recovered: true });
+});
+
+test('an active workout defers automatic adoption without changing local history, session, queue, or cloud', async ({ page }) => {
+  const workout = activeWorkout();
+  await installReceiver(page, profileState('Shared baseline', { activeWorkout: workout }));
+  const writes = await installAuthenticatedCloud(page, {
+    remotePrimary: 'Waiting remote advancement',
+    goalVersion: 2,
+    remoteActiveSessions: [activeSessionRow(workout)]
+  });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+
+  await expect(page.locator('#cloudShadowHeading')).toHaveText('Updates waiting until the workout ends');
+  const result = await page.evaluate(storageKey => ({
+    state: JSON.parse(localStorage.getItem(storageKey)),
+    pending: BigGainsCloudSync.queue.pending().length,
+    fastForward: BigGainsCloudSync.status().remoteFastForward,
+    lastResult: BigGainsCloudSync.status().lastResult,
+    observability: BigGainsCloudSync.status().observability
+  }), storageKey);
+  expect(result.state.goals.primary).toBe('Shared baseline');
+  expect(result.state.activeWorkout.id).toBe(workout.id);
+  expect(result.pending).toBe(0);
+  expect(result.fastForward).toMatchObject({
+    eligible: false,
+    conflict: false,
+    deferred: true,
+    reason: 'active-workout-in-progress',
+    advancedRevisions: 1
+  });
+  expect(result.lastResult).toMatchObject({ ok: false, deferred: true, reason: 'active-workout-in-progress' });
+  expect(result.observability.counters).toMatchObject({ automaticAdoptions: 0, activeWorkoutDeferrals: 1 });
+  expect(writes).toEqual([]);
+});
+
+test('a stale stored rest deadline rejects that adoption generation while canonical timer lifecycle clears the deadline', async ({ page }) => {
+  const workout = activeWorkout('active-with-stale-timer');
+  const staleDeadline = Date.parse('2026-08-11T19:31:00.000Z');
+  await installReceiver(page, profileState('Shared baseline', { activeWorkout: workout, restTimerEndsAt: staleDeadline }));
+  const writes = await installAuthenticatedCloud(page, {
+    remotePrimary: 'Blocked by stale timer',
+    goalVersion: 2,
+    remoteActiveSessions: [activeSessionRow(workout, staleDeadline)]
+  });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+
+  await expect(page.locator('#cloudShadowHeading')).toHaveText('Retry needed');
+  const result = await page.evaluate(storageKey => ({
+    state: JSON.parse(localStorage.getItem(storageKey)),
+    fastForward: BigGainsCloudSync.status().remoteFastForward,
+    observability: BigGainsCloudSync.status().observability
+  }), storageKey);
+  expect(result.state.goals.primary).toBe('Shared baseline');
+  expect(result.state.activeWorkout.id).toBe(workout.id);
+  expect(result.state.restTimerEndsAt).toBeNull();
+  expect(result.fastForward).toMatchObject({ eligible: false });
+  expect(result.observability.counters.verificationRejections).toBe(1);
+  expect(writes).toEqual([]);
+});
 
 test('concurrent local edit remains a real conflict and never overwrites local state', async ({ page }) => {
   await installReceiver(page);
@@ -315,14 +458,8 @@ test('a higher completed-workout revision fast-forwards onto the second device w
   });
   await page.reload({ waitUntil: 'domcontentloaded' });
 
+  await expect(page.locator('#cloudShadowHeading')).toHaveText('In sync');
   await page.locator('.bottom-nav [data-view="library"]').click();
-  await expect(page.locator('#cloudShadowHeading')).toHaveText('Changes from another device');
-  expect(await page.evaluate(() => BigGainsCloudSync.status().remoteFastForward)).toMatchObject({
-    eligible: true, conflict: false, reason: 'newer-remote-revisions', advancedRevisions: 1
-  });
-  const reloaded = page.waitForEvent('framenavigated');
-  await page.locator('#cloudRemoteFastForward').click();
-  await reloaded;
   await expect(page.locator('#cloudShadowHeading')).toHaveText('In sync');
 
   const result = await page.evaluate(({ storageKey, catalogKey, clientId, workoutId }) => {
@@ -353,11 +490,8 @@ test('a higher workout tombstone fast-forwards onto the second device and cannot
   });
   await page.reload({ waitUntil: 'domcontentloaded' });
 
+  await expect(page.locator('#cloudShadowHeading')).toHaveText('In sync');
   await page.locator('.bottom-nav [data-view="library"]').click();
-  await expect(page.locator('#cloudShadowHeading')).toHaveText('Changes from another device');
-  const reloaded = page.waitForEvent('framenavigated');
-  await page.locator('#cloudRemoteFastForward').click();
-  await reloaded;
   await expect(page.locator('#cloudShadowHeading')).toHaveText('In sync');
 
   const result = await page.evaluate(({ storageKey, catalogKey, clientId, workoutId }) => {
@@ -412,7 +546,7 @@ test('equal revision with a different fingerprint remains drift and cannot fast-
   });
   await page.reload({ waitUntil: 'domcontentloaded' });
 
-  await expect(page.locator('#cloudShadowHeading')).toHaveText('DRIFT DETECTED');
+  await expect(page.locator('#cloudShadowHeading')).toHaveText('Retry needed');
   await expect(page.locator('#cloudRemoteFastForward')).toBeHidden();
   const result = await page.evaluate(storageKey => ({
     primary: JSON.parse(localStorage.getItem(storageKey)).goals.primary,

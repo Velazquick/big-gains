@@ -8,6 +8,9 @@
   const queue = cloud.createDurableQueue({ key: accountRuntime.cloudKeys.queue });
   const CATALOG_KEY = accountRuntime.cloudKeys.catalog;
   const COMPARISON_KEY = accountRuntime.cloudKeys.comparison;
+  const AUTO_PAUSE_KEY = `big-gains-automatic-reconciliation-paused-v1-${accountRuntime.storageNamespace}`;
+  const OBSERVABILITY_KEY = `big-gains-sync-reconciliation-observability-v1-${accountRuntime.storageNamespace}`;
+  const cloudConfig = window.__BIG_GAINS_CLOUD_CONFIG__ || {};
   let initialized = false;
   let authSubscription = null;
   let cloudOwner = null;
@@ -19,9 +22,50 @@
   let sameEntityConflict = null;
   let catalog = readJson(CATALOG_KEY);
   let captureChain = Promise.resolve();
+  let capturePending = 0;
+  let localMutationGeneration = 0;
+  let lifecycleGeneration = 0;
+  let reconciliationTimer = null;
+  let reconciliationInFlight = null;
+  let lastReconciliationTrigger = null;
 
   const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
   const online = () => typeof navigator === 'undefined' || navigator.onLine !== false;
+
+  function automaticReconciliationEnabled() {
+    try { return cloudConfig.automaticReconciliation === true && localStorage.getItem(AUTO_PAUSE_KEY) !== 'true'; } catch { return false; }
+  }
+
+  function pageLifecycleCurrent(generation) {
+    return generation === lifecycleGeneration
+      && (typeof document === 'undefined' || document.visibilityState !== 'hidden');
+  }
+
+  function reconciliationObservability() {
+    const fallback = {
+      format: 'big-gains.sync-reconciliation-observability.v1',
+      version: 1,
+      counters: { automaticAdoptions: 0, conflictsShown: 0, activeWorkoutDeferrals: 0, verificationRejections: 0 },
+      latches: { conflict: false, activeWorkout: false, rejection: false }
+    };
+    const stored = readJson(OBSERVABILITY_KEY);
+    if (stored?.format !== fallback.format || stored.version !== 1) return fallback;
+    if (!Object.keys(fallback.counters).every(key => Number.isSafeInteger(stored.counters?.[key]) && stored.counters[key] >= 0)
+      || !Object.keys(fallback.latches).every(key => typeof stored.latches?.[key] === 'boolean')) return fallback;
+    return stored;
+  }
+
+  function updateReconciliationObservability({ automaticAdoption = false, conflict = false, activeWorkout = false, rejection = false } = {}) {
+    const current = reconciliationObservability();
+    const next = clone(current);
+    if (automaticAdoption) next.counters.automaticAdoptions += 1;
+    if (conflict && !current.latches.conflict) next.counters.conflictsShown += 1;
+    if (activeWorkout && !current.latches.activeWorkout) next.counters.activeWorkoutDeferrals += 1;
+    if (rejection && !current.latches.rejection) next.counters.verificationRejections += 1;
+    next.latches = { conflict, activeWorkout, rejection };
+    try { writeJson(OBSERVABILITY_KEY, next); } catch { return Object.freeze(clone(current)); }
+    return Object.freeze(clone(next));
+  }
 
   function readJson(key) {
     try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch { return null; }
@@ -159,7 +203,20 @@
     return Object.freeze({ ok: true, reconciled: plan.operationCount, logicalEntities: plan.entities.length });
   }
 
-  async function captureLocalSnapshot(profileClientId) {
+  function beginLocalMutation() {
+    capturePending += 1;
+    localMutationGeneration += 1;
+    let finished = false;
+    return () => {
+      if (finished) return;
+      finished = true;
+      capturePending = Math.max(0, capturePending - 1);
+      if (capturePending === 0) scheduleReconciliation('post-local-parity', 0);
+    };
+  }
+
+  async function captureLocalSnapshot(profileClientId, { tracked = false } = {}) {
+    const finishLocalMutation = tracked ? null : beginLocalMutation();
     captureChain = captureChain.then(async () => {
       if (!validCatalog(catalog) || !shadow.profileIds.includes(profileClientId)) return Object.freeze({ queued: 0, reason: 'baseline-not-adopted' });
       const snapshot = window.bigGainsStatePersistence.readProfileSnapshot(profileClientId);
@@ -221,13 +278,14 @@
         writeJson(CATALOG_KEY, catalog);
         lastResult = { ok: true, queued, pending: queue.pending().length };
         render();
-        window.setTimeout(() => flush(), 0);
       }
       return Object.freeze({ queued, pending: queue.pending().length });
     }).catch(error => {
       lastResult = { ok: false, reason: 'capture-failed', error: error?.message || String(error), pending: queue.pending().length };
       render();
       return Object.freeze({ queued: 0, reason: 'capture-failed' });
+    }).finally(() => {
+      finishLocalMutation?.();
     });
     return captureChain;
   }
@@ -534,7 +592,8 @@
           session,
           localProfiles,
           cloud: cloudState,
-          catalog
+          catalog,
+          localMutationPending: capturePending > 0
         });
       }
       return comparison;
@@ -613,8 +672,15 @@
     }
   }
 
-  async function applyRemoteFastForward() {
+  async function applyRemoteFastForward({ automatic = false, generation = lifecycleGeneration } = {}) {
     if (busy || comparing) return Object.freeze({ ok: false, busy: true, pending: queue.pending().length });
+    if (automatic && !automaticReconciliationEnabled()) {
+      return Object.freeze({ ok: false, disabled: true, reason: 'automatic-reconciliation-disabled', pending: queue.pending().length });
+    }
+    if (automatic && (!pageLifecycleCurrent(generation) || capturePending > 0)) {
+      return Object.freeze({ ok: false, deferred: true, reason: 'local-or-lifecycle-work-in-flight', pending: queue.pending().length });
+    }
+    const expectedMutationGeneration = localMutationGeneration;
     busy = true;
     render();
     try {
@@ -641,11 +707,15 @@
       const cloudState = await shadow.reconstructCloud({ ...remote, profiles: owner.profiles, accountId: owner.account.id });
       const localProfiles = await shadow.readLocalProfiles();
       const recovery = window.BigGainsManagedProfileRecovery;
-      remoteFastForward = recovery.inspectRemoteFastForward({ owner, session, localProfiles, cloud: cloudState, catalog });
+      remoteFastForward = recovery.inspectRemoteFastForward({
+        owner, session, localProfiles, cloud: cloudState, catalog,
+        localMutationPending: capturePending > 0
+      });
       if (!remoteFastForward.eligible) {
         return (lastResult = Object.freeze({
           ok: false,
           blocked: true,
+          deferred: remoteFastForward.deferred === true,
           reason: remoteFastForward.reason,
           conflict: remoteFastForward.conflict,
           pending: 0
@@ -657,7 +727,30 @@
         localProfiles,
         cloud: cloudState,
         catalog,
-        journal
+        journal,
+        localMutationPending: capturePending > 0,
+        refreshCloud: async () => {
+          const freshOwner = await verifiedOwnerForSession();
+          if (!freshOwner || !sameOwnerMapping(freshOwner)) {
+            throw Object.assign(new Error('The account/profile mapping changed during the final cloud read.'), { code: 'automatic-adoption-owner-changed' });
+          }
+          const freshRemote = await shadow.createRepository({
+            client: supabaseBoundary.getClient(), accountId: freshOwner.account.id
+          }).readAll();
+          const freshJournal = shadow.completedMigrationJournal(freshRemote.journals, freshOwner.account.id);
+          if (accountRuntime.kind === 'managed-owner' && !freshJournal) {
+            throw Object.assign(new Error('The completed Phase 4E baseline journal was not found.'), { code: 'baseline-missing' });
+          }
+          return {
+            cloud: await shadow.reconstructCloud({ ...freshRemote, profiles: freshOwner.profiles, accountId: freshOwner.account.id }),
+            journal: freshJournal
+          };
+        },
+        canCommit: () => pageLifecycleCurrent(generation)
+          && (!automatic || automaticReconciliationEnabled())
+          && capturePending === 0
+          && localMutationGeneration === expectedMutationGeneration
+          && queue.pending().length === 0
       });
       if (!adopted.ok) {
         remoteFastForward = Object.freeze({
@@ -678,9 +771,11 @@
       catalog = adopted.catalog;
       lastComparison = adopted.comparison;
       remoteFastForward = null;
+      updateReconciliationObservability({ automaticAdoption: automatic });
       lastResult = Object.freeze({
         ok: true,
         fastForwarded: true,
+        automatic,
         advancedRevisions: adopted.advancedRevisions,
         pending: queue.pending().length
       });
@@ -867,6 +962,14 @@
     const pending = queue.pending().length;
     const conflict = sameEntityConflict?.eligible === true ? sameEntityConflict : null;
     const fastForwardAvailable = remoteFastForward?.eligible === true;
+    const automaticFastForward = fastForwardAvailable && automaticReconciliationEnabled();
+    const activeWorkoutDeferral = remoteFastForward?.deferred === true
+      && remoteFastForward.reason === 'active-workout-in-progress';
+    const automaticVerificationRejected = Boolean(remoteFastForward
+      && !remoteFastForward.eligible
+      && !remoteFastForward.deferred
+      && !remoteFastForward.conflict
+      && remoteFastForward.reason !== 'no-newer-remote-revisions');
     const realConflict = Boolean(conflict)
       || remoteFastForward?.reason === 'concurrent-local-edit'
       || lastResult?.conflict === true
@@ -874,13 +977,19 @@
       || lastResult?.failures?.some(failure => failure.reason === 'remote-revision-conflict');
     let state = 'CHECKING';
     if (!session) state = online() ? 'SIGNED OUT' : 'OFFLINE';
+    else if (automaticFastForward || (reconciliationInFlight && automaticReconciliationEnabled())) state = 'UPDATING';
+    else if (activeWorkoutDeferral) state = 'UPDATES WAITING';
     else if (fastForwardAvailable) state = 'REMOTE CHANGES AVAILABLE';
     else if (realConflict) state = 'SYNC CONFLICT';
+    else if (automaticVerificationRejected) state = 'RETRY NEEDED';
     else if (lastResult?.blocked || (!pending && lastComparison?.parity === false)) state = 'DRIFT DETECTED';
     else if (pending && lastResult?.ok === false) state = 'CLOUD BEHIND / RETRYING';
     else if (pending) state = 'LOCAL CHANGES PENDING';
     else if (lastComparison?.parity === true) state = 'IN SYNC';
     heading.textContent = state === 'IN SYNC' ? 'In sync'
+      : state === 'UPDATING' ? 'Updating this device'
+        : state === 'UPDATES WAITING' ? 'Updates waiting until the workout ends'
+          : state === 'RETRY NEEDED' ? 'Retry needed'
       : state === 'REMOTE CHANGES AVAILABLE' ? 'Changes from another device'
         : state;
     const profileNames = shadow.profileIds.map(id => window.bigGainsAccounts.registry.resolve(id)?.displayName || id);
@@ -889,6 +998,9 @@
       : state === 'LOCAL CHANGES PENDING' ? `${pending} change${pending === 1 ? '' : 's'} waiting for connection.`
         : state === 'CLOUD BEHIND / RETRYING' ? 'Cloud is catching up. Training stays local.'
           : state === 'REMOTE CHANGES AVAILABLE' ? 'Verified newer training changes are ready to update this device.'
+            : state === 'UPDATING' ? 'Verified newer training changes are being applied safely.'
+              : state === 'UPDATES WAITING' ? 'Training stays local. Cloud updates will retry after the active workout and its saved changes reach parity.'
+                : state === 'RETRY NEEDED' ? 'Verified cloud changes could not be applied automatically. Local data is unchanged.'
             : state === 'SYNC CONFLICT' && conflict ? 'One saved item was edited on two devices. Choose which version to keep.'
               : state === 'SYNC CONFLICT' ? 'Local and remote training both changed. Nothing was overwritten.'
           : state === 'DRIFT DETECTED' ? `${blockedReason ? `Queue blocked: ${blockedReason}. ` : 'Drift detected — '}Local data is unchanged.`
@@ -898,7 +1010,7 @@
     form.hidden = Boolean(session);
     syncButton.hidden = !session;
     syncButton.disabled = busy || comparing;
-    fastForwardButton.hidden = !session || !fastForwardAvailable;
+    fastForwardButton.hidden = !session || !fastForwardAvailable || automaticFastForward;
     fastForwardButton.disabled = busy || comparing;
     signOutButton.hidden = !session;
     conflictBox.hidden = state !== 'SYNC CONFLICT' || !conflict;
@@ -934,22 +1046,112 @@
       reasons.push(`${lastResult.reconciliationFailure.reason}${lastResult.reconciliationFailure.error ? ` — ${lastResult.reconciliationFailure.error}` : ''}`);
     }
     const uniqueReasons = [...new Set(reasons)];
-    drift.hidden = !['DRIFT DETECTED', 'SYNC CONFLICT'].includes(state) || uniqueReasons.length === 0;
+    drift.hidden = !['DRIFT DETECTED', 'SYNC CONFLICT', 'RETRY NEEDED'].includes(state) || uniqueReasons.length === 0;
     driftList.innerHTML = uniqueReasons.map(reason => `<li>${String(reason).replace(/[&<>]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[character])}</li>`).join('');
+  }
+
+  async function runReconciliation(trigger, generation) {
+    if (reconciliationInFlight) {
+      await reconciliationInFlight;
+      if (pageLifecycleCurrent(generation)) return runReconciliation(trigger, generation);
+      return Object.freeze({ ok: false, superseded: true, reason: 'reconciliation-generation-superseded' });
+    }
+    reconciliationInFlight = (async () => {
+      lastReconciliationTrigger = trigger;
+      if (!pageLifecycleCurrent(generation)) {
+        return Object.freeze({ ok: false, deferred: true, reason: 'page-lifecycle-not-current' });
+      }
+      const recovery = window.BigGainsManagedProfileRecovery;
+      const adoptionRecovery = recovery?.adoptionRecoveryStatus?.();
+      if (adoptionRecovery?.ok === false) {
+        return (lastResult = Object.freeze({
+          ok: false, blocked: true, reason: adoptionRecovery.reason,
+          error: adoptionRecovery.message, pending: queue.pending().length
+        }));
+      }
+      cloudOwner = await verifiedOwnerForSession();
+      if (!cloudOwner) return (lastResult = Object.freeze({ ok: false, signedOut: true, pending: queue.pending().length }));
+      if (!catalog && (recovery?.needsRecoveryForCurrentRuntime()
+        || (accountRuntime.kind === 'managed-member' && !recovery?.completedForCurrentRuntime()))) {
+        return (lastResult = Object.freeze({ ok: false, blocked: true, reason: 'awaiting-fresh-device-recovery', pending: queue.pending().length }));
+      }
+      if (capturePending > 0) {
+        return (lastResult = Object.freeze({ ok: false, deferred: true, reason: 'local-mutation-in-flight', pending: queue.pending().length }));
+      }
+      if (queue.pending().length || !catalog) await flush();
+      else await compareShadow();
+      if (!pageLifecycleCurrent(generation)) {
+        return Object.freeze({ ok: false, deferred: true, reason: 'reconciliation-generation-superseded' });
+      }
+      if (sameEntityConflict?.eligible) {
+        updateReconciliationObservability({ conflict: true });
+        return Object.freeze({ ok: false, conflict: true, reason: 'same-entity-conflict', pending: queue.pending().length });
+      }
+      if (remoteFastForward?.deferred) {
+        updateReconciliationObservability({ activeWorkout: remoteFastForward.reason === 'active-workout-in-progress' });
+      } else if (remoteFastForward && !remoteFastForward.eligible && remoteFastForward.reason !== 'no-newer-remote-revisions') {
+        updateReconciliationObservability({ rejection: true });
+      } else updateReconciliationObservability();
+      if (remoteFastForward?.eligible && automaticReconciliationEnabled()) {
+        return applyRemoteFastForward({ automatic: true, generation });
+      }
+      if (remoteFastForward?.deferred) {
+        lastResult = Object.freeze({
+          ok: false,
+          deferred: true,
+          reason: remoteFastForward.reason,
+          pending: queue.pending().length
+        });
+      }
+      return Object.freeze({
+        ok: lastComparison?.parity === true,
+        pending: queue.pending().length,
+        automaticEligible: remoteFastForward?.eligible === true,
+        reason: remoteFastForward?.reason || null
+      });
+    })().catch(error => {
+      lastResult = Object.freeze({ ok: false, blocked: true, reason: error?.code || 'reconciliation-failed', error: error?.message || String(error), pending: queue.pending().length });
+      return lastResult;
+    }).finally(() => {
+      reconciliationInFlight = null;
+      render();
+    });
+    return reconciliationInFlight;
+  }
+
+  function scheduleReconciliation(trigger, delay = 100) {
+    lifecycleGeneration += 1;
+    const generation = lifecycleGeneration;
+    if (reconciliationTimer !== null) window.clearTimeout(reconciliationTimer);
+    reconciliationTimer = window.setTimeout(() => {
+      reconciliationTimer = null;
+      runReconciliation(trigger, generation);
+    }, delay);
+    return generation;
+  }
+
+  function invalidateReconciliation() {
+    lifecycleGeneration += 1;
+    if (reconciliationTimer !== null) window.clearTimeout(reconciliationTimer);
+    reconciliationTimer = null;
+  }
+
+  function setAutomaticReconciliationPaused(paused) {
+    if (paused) {
+      localStorage.setItem(AUTO_PAUSE_KEY, 'true');
+      invalidateReconciliation();
+    } else localStorage.removeItem(AUTO_PAUSE_KEY);
+    if (!paused) scheduleReconciliation('automatic-reconciliation-resumed', 0);
+    render();
+    return paused === true;
   }
 
   async function handleSignedIn() {
     try {
-      cloudOwner = await verifiedOwnerForSession();
-      const recovery = window.BigGainsManagedProfileRecovery;
-      if (recovery?.needsRecoveryForCurrentRuntime()
-        || (accountRuntime.kind === 'managed-member' && !recovery?.completedForCurrentRuntime())) {
-        lastResult = { ok: false, blocked: true, reason: 'awaiting-fresh-device-recovery', pending: queue.pending().length };
-        render();
-        return;
-      }
-      await compareShadow({ adopt: !catalog });
-      if (catalog) await flush();
+      const generation = scheduleReconciliation('signed-in', 0);
+      if (reconciliationTimer !== null) window.clearTimeout(reconciliationTimer);
+      reconciliationTimer = null;
+      await runReconciliation('signed-in', generation);
     } catch (error) {
       lastResult = { ok: false, blocked: true, reason: 'session-verification-failed', error: error?.message || String(error), pending: queue.pending().length };
     }
@@ -996,20 +1198,26 @@
         document.getElementById('cloudAuthDetail').textContent = error?.message || 'Browser sign-in link could not be sent.';
       }
     });
-    document.getElementById('cloudSyncNow')?.addEventListener('click', flush);
-    document.getElementById('cloudRemoteFastForward')?.addEventListener('click', applyRemoteFastForward);
+    document.getElementById('cloudSyncNow')?.addEventListener('click', () => scheduleReconciliation('manual-recheck', 0));
+    document.getElementById('cloudRemoteFastForward')?.addEventListener('click', () => applyRemoteFastForward({ automatic: false }));
     document.getElementById('cloudKeepCloud')?.addEventListener('click', () => resolveSameEntityConflict('cloud'));
     document.getElementById('cloudKeepDevice')?.addEventListener('click', () => resolveSameEntityConflict('device'));
     document.getElementById('cloudSignOut')?.addEventListener('click', async () => {
+      invalidateReconciliation();
       try { await supabaseBoundary.signOut(); } catch {}
       cloudOwner = null;
       render();
     });
     authSubscription = supabaseBoundary.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session) window.setTimeout(handleSignedIn, 0);
-      if (event === 'SIGNED_OUT') { cloudOwner = null; render(); }
+      if (event === 'SIGNED_OUT') { invalidateReconciliation(); cloudOwner = null; render(); }
     });
-    window.addEventListener('online', () => flush());
+    window.addEventListener('online', () => scheduleReconciliation('online', 0));
+    window.addEventListener('pageshow', () => scheduleReconciliation('pageshow', 0));
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') scheduleReconciliation('visible', 0);
+      else invalidateReconciliation();
+    });
     render().then(async () => { if (await supabaseBoundary.session()) await handleSignedIn(); });
     return true;
   }
@@ -1019,9 +1227,12 @@
     queue,
     flush,
     applyRemoteFastForward,
+    scheduleReconciliation,
+    setAutomaticReconciliationPaused,
     resolveSameEntityConflict,
     compareShadow,
     captureLocalSnapshot,
+    beginLocalMutation,
     enqueueSyntheticCompletedWorkout,
     createCompletedWorkoutTransport,
     createProductionTransport,
@@ -1029,6 +1240,7 @@
     buildObsoleteReconciliationPlan,
     catalogKey: CATALOG_KEY,
     comparisonKey: COMPARISON_KEY,
+    observabilityKey: OBSERVABILITY_KEY,
     status: () => Object.freeze({
       configured: supabaseBoundary.configured,
       initialized,
@@ -1037,6 +1249,14 @@
       ownerReady: Boolean(cloudOwner),
       baselineAdopted: Boolean(catalog),
       busy,
+      capturePending,
+      localMutationGeneration,
+      lifecycleGeneration,
+      reconciliationInFlight: Boolean(reconciliationInFlight),
+      lastReconciliationTrigger,
+      automaticReconciliationEnabled: automaticReconciliationEnabled(),
+      automaticReconciliationPaused: !automaticReconciliationEnabled() && cloudConfig.automaticReconciliation === true,
+      observability: reconciliationObservability(),
       lastResult,
       lastComparison,
       remoteFastForward,

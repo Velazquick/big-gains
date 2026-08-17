@@ -3,6 +3,7 @@
 
   const MEMBER_FORMAT = 'big-gains.managed-profile-recovery.v1';
   const FRESH_FORMAT = 'big-gains.fresh-device-recovery.v1';
+  const ADOPTION_FORMAT = 'big-gains.automatic-adoption.v1';
   const SUPPORTED_KINDS = new Set(['managed-owner', 'independent', 'managed-member']);
   const runtime = window.bigGainsAccounts.runtime;
   const shadow = window.BigGainsCloudShadow;
@@ -10,6 +11,7 @@
   let recoveryInFlight = null;
   let commitProtection = false;
   let protectUnsafeBlankSave = true;
+  const ADOPTION_KEY = `${runtime.cloudKeys.catalog}-automatic-adoption-v1`;
   const RECOVERABLE_BLANK_KEYS = new Set([
     'version', 'profileId', 'goals', 'workouts', 'weights', 'prs', 'activeWorkout',
     'restTimerEndsAt', 'customRoutines', 'timerPreferences', 'exercisePreferences'
@@ -292,6 +294,28 @@
       && new Date(left.updatedAt).toISOString() === new Date(right.updatedAt).toISOString()
       && left.fingerprint === right.fingerprint
       && (left.tombstone === true) === (right.tombstone === true));
+  }
+
+  function localLifecycleBlock(localProfiles) {
+    for (const profileClientId of shadow.profileIds) {
+      const activeSession = (localProfiles?.[profileClientId]?.records || [])
+        .find(record => record.table === 'active_sessions' && record.entityType === 'activeSession');
+      if (!activeSession) continue;
+      const deadline = Number(activeSession.data?.restTimerEndsAt);
+      if (Number.isFinite(deadline) && deadline > 0 && deadline < Date.now() - (5 * 60 * 1000)) {
+        return Object.freeze({
+          deferred: false,
+          reason: 'stale-rest-timer-state',
+          message: 'A stored rest timer is stale and must be reconciled before remote changes can update this device.'
+        });
+      }
+      return Object.freeze({
+        deferred: true,
+        reason: 'active-workout-in-progress',
+        message: 'Verified cloud updates are waiting until the active workout finishes or is discarded and its local changes reach parity.'
+      });
+    }
+    return null;
   }
 
   function conflictChoiceSummary(record) {
@@ -594,7 +618,7 @@
     });
   }
 
-  function inspectRemoteFastForward({ owner, session, localProfiles, cloud, catalog }) {
+  function inspectRemoteFastForward({ owner, session, localProfiles, cloud, catalog, localMutationPending = false }) {
     if (!verifiedOwner(owner, session)) {
       return Object.freeze({ eligible: false, conflict: false, reason: 'owner-verification-failed', reasons: Object.freeze(['The signed-in account/profile identity is not verified.']) });
     }
@@ -700,6 +724,27 @@
         advancedRevisions
       });
     }
+    const lifecycleBlock = localLifecycleBlock(localProfiles);
+    if (lifecycleBlock) {
+      return Object.freeze({
+        eligible: false,
+        conflict: false,
+        deferred: lifecycleBlock.deferred,
+        reason: lifecycleBlock.reason,
+        reasons: Object.freeze([lifecycleBlock.message]),
+        advancedRevisions
+      });
+    }
+    if (localMutationPending) {
+      return Object.freeze({
+        eligible: false,
+        conflict: false,
+        deferred: true,
+        reason: 'local-mutation-in-flight',
+        reasons: Object.freeze(['A local save or semantic capture is still in flight.']),
+        advancedRevisions
+      });
+    }
     return Object.freeze({
       eligible: true,
       conflict: false,
@@ -763,8 +808,105 @@
     }
   }
 
-  async function adoptRemoteFastForward({ owner, session, localProfiles, cloud, catalog, journal = null }) {
-    const initial = inspectRemoteFastForward({ owner, session, localProfiles, cloud, catalog });
+  function adoptionSnapshotKeys(documents) {
+    return [...new Set([...documents.map(document => document.key), runtime.cloudKeys.queue])];
+  }
+
+  function restoreAdoptionSnapshots(snapshots) {
+    const errors = [];
+    for (const snapshot of snapshots) {
+      try {
+        if (snapshot.before === null) removeStorage(snapshot.key);
+        else writeStorage(snapshot.key, snapshot.before);
+        if (readStorage(snapshot.key) !== snapshot.before) throw new Error(`Rollback readback failed for ${snapshot.key}.`);
+      } catch (error) { errors.push(error?.message || String(error)); }
+    }
+    if (errors.length) throw Object.assign(new Error('Automatic-adoption rollback could not be verified.'), { rollbackErrors: errors });
+  }
+
+  function recoverInterruptedAdoption() {
+    let raw;
+    let intent;
+    try { raw = readStorage(ADOPTION_KEY); } catch (error) {
+      commitProtection = true;
+      return blocked('automatic-adoption-journal-unreadable', 'An interrupted device update could not be inspected safely.', { error: error?.message || String(error) });
+    }
+    if (raw === null) return Object.freeze({ ok: true, recovered: false });
+    try { intent = JSON.parse(raw); } catch {
+      commitProtection = true;
+      return blocked('automatic-adoption-journal-invalid', 'An interrupted device update needs manual storage recovery before sync can continue.');
+    }
+    const expectedKeys = [...runtime.descriptors.map(descriptor => descriptor.storageKey), runtime.cloudKeys.catalog, runtime.cloudKeys.comparison, runtime.cloudKeys.queue];
+    const snapshotKeys = intent?.snapshots?.map(snapshot => snapshot?.key) || [];
+    const allowedKeys = new Set(expectedKeys);
+    if (intent?.format !== ADOPTION_FORMAT || intent.version !== 1 || !Array.isArray(intent.snapshots)
+      || intent.snapshots.length !== expectedKeys.length || new Set(snapshotKeys).size !== expectedKeys.length
+      || expectedKeys.some(key => !snapshotKeys.includes(key))
+      || intent.snapshots.some(snapshot => !allowedKeys.has(snapshot?.key)
+        || (snapshot.before !== null && typeof snapshot.before !== 'string')
+        || (snapshot.candidate !== null && typeof snapshot.candidate !== 'string'))) {
+      commitProtection = true;
+      return blocked('automatic-adoption-journal-invalid', 'An interrupted device update needs manual storage recovery before sync can continue.');
+    }
+    try {
+      restoreAdoptionSnapshots(intent.snapshots);
+      removeStorage(ADOPTION_KEY);
+      if (readStorage(ADOPTION_KEY) !== null) throw new Error('The completed rollback journal could not be cleared.');
+      return Object.freeze({ ok: true, recovered: true });
+    } catch (error) {
+      commitProtection = true;
+      return blocked('automatic-adoption-rollback-failed', 'An interrupted device update could not be rolled back safely.', {
+        error: error?.message || String(error), rollbackErrors: error?.rollbackErrors || []
+      });
+    }
+  }
+
+  function beginAdoptionTransaction(documents, validate) {
+    const candidateByKey = new Map(documents.map(document => [document.key, JSON.stringify(document.value)]));
+    const snapshots = adoptionSnapshotKeys(documents).map(key => Object.freeze({
+      key,
+      before: readStorage(key),
+      candidate: candidateByKey.get(key) || null
+    }));
+    const intent = {
+      format: ADOPTION_FORMAT,
+      version: 1,
+      createdAt: new Date().toISOString(),
+      snapshots
+    };
+    writeStorage(ADOPTION_KEY, JSON.stringify(intent));
+    if (!valuesMatch(readJson(ADOPTION_KEY), intent)) throw new Error('The automatic-adoption journal was not retained before the device update.');
+    let closed = false;
+    const rollback = () => {
+      if (closed) return;
+      restoreAdoptionSnapshots(snapshots);
+      removeStorage(ADOPTION_KEY);
+      if (readStorage(ADOPTION_KEY) !== null) throw new Error('The rolled-back automatic-adoption journal could not be cleared.');
+      closed = true;
+    };
+    try {
+      for (const { key, value } of documents) writeStorage(key, JSON.stringify(value));
+      for (const { key, value } of documents) {
+        if (readStorage(key) !== JSON.stringify(value)) throw new Error(`Device storage did not retain ${key}.`);
+      }
+      if (!validate()) throw new Error('The automatic-adoption documents did not validate after persistence.');
+    } catch (error) {
+      try { rollback(); } catch (rollbackError) { error.rollbackErrors = rollbackError.rollbackErrors || [rollbackError?.message || String(rollbackError)]; }
+      throw error;
+    }
+    return Object.freeze({
+      rollback,
+      complete() {
+        if (closed) return;
+        removeStorage(ADOPTION_KEY);
+        if (readStorage(ADOPTION_KEY) !== null) throw new Error('The verified automatic-adoption journal could not be cleared.');
+        closed = true;
+      }
+    });
+  }
+
+  async function adoptRemoteFastForward({ owner, session, localProfiles, cloud, catalog, journal = null, localMutationPending = false, canCommit = () => true, refreshCloud = null }) {
+    let initial = inspectRemoteFastForward({ owner, session, localProfiles, cloud, catalog, localMutationPending });
     if (!initial.eligible) {
       return blocked(initial.reason, initial.conflict
         ? 'Local and remote training data both changed after the last verified revision. Nothing was overwritten.'
@@ -772,6 +914,22 @@
         conflict: initial.conflict,
         details: initial.reasons
       });
+    }
+    if (typeof refreshCloud === 'function') {
+      try {
+        const refreshed = await refreshCloud();
+        cloud = refreshed.cloud;
+        journal = refreshed.journal;
+        initial = inspectRemoteFastForward({ owner, session, localProfiles, cloud, catalog, localMutationPending });
+        if (!initial.eligible) {
+          return blocked(initial.reason, 'Remote or local state changed during the final verified read. Nothing was overwritten.', {
+            conflict: initial.conflict,
+            details: initial.reasons
+          });
+        }
+      } catch (error) {
+        return blocked(error?.code || 'automatic-adoption-final-read-failed', error?.message || 'The final verified cloud read failed. Nothing was overwritten.');
+      }
     }
     let targets;
     let restoredProfiles;
@@ -807,7 +965,7 @@
     try { currentLocalProfiles = await shadow.readLocalProfiles(); } catch (error) {
       return blocked(error?.code || 'remote-fast-forward-local-read-failed', error?.message || 'Local training data could not be rechecked. Nothing was overwritten.');
     }
-    const finalCheck = inspectRemoteFastForward({ owner, session, localProfiles: currentLocalProfiles, cloud, catalog });
+    const finalCheck = inspectRemoteFastForward({ owner, session, localProfiles: currentLocalProfiles, cloud, catalog, localMutationPending });
     if (!finalCheck.eligible) {
       return blocked(finalCheck.reason, 'Local state, queue state, or verified revisions changed during the update. Nothing was overwritten.', {
         conflict: finalCheck.conflict,
@@ -823,15 +981,35 @@
       { key: runtime.cloudKeys.catalog, value: adoptedCatalog },
       { key: runtime.cloudKeys.comparison, value: comparisonValue }
     ];
+    if (!canCommit()) {
+      return blocked('automatic-adoption-generation-changed', 'Local or page lifecycle state changed before the update could commit. Nothing was overwritten.', {
+        deferred: true
+      });
+    }
     commitProtection = true;
+    let transaction = null;
     try {
-      persistAtomically(documents, () => targets.every(target => {
+      transaction = beginAdoptionTransaction(documents, () => targets.every(target => {
         const stored = readJson(target.descriptor.storageKey);
         return valuesMatch(stored, restoredProfiles[target.profileClientId].state);
       }) && valuesMatch(readJson(runtime.cloudKeys.catalog), adoptedCatalog)
         && readJson(runtime.cloudKeys.comparison)?.parity === true);
+      const committedProfiles = await shadow.readLocalProfiles();
+      const committedComparison = await shadow.compare({ localProfiles: committedProfiles, cloud, expectedCatalog: adoptedCatalog });
+      if (!committedComparison.parity || !canCommit()) {
+        throw Object.assign(new Error('Post-commit semantic parity or lifecycle verification failed.'), { code: 'automatic-adoption-post-commit-mismatch' });
+      }
+      transaction.complete();
+      comparison = committedComparison;
+      // Keep ordinary app persistence suppressed until the caller reloads into
+      // the adopted schema-v5 documents; the current page still owns old state.
     } catch (error) {
-      commitProtection = false;
+      try { transaction?.rollback(); } catch (rollbackError) {
+        error.rollbackErrors = rollbackError.rollbackErrors || [rollbackError?.message || String(rollbackError)];
+      }
+      let unresolvedIntent = false;
+      try { unresolvedIntent = readStorage(ADOPTION_KEY) !== null; } catch { unresolvedIntent = true; }
+      commitProtection = Boolean(error.rollbackErrors?.length || unresolvedIntent);
       return blocked(
         'remote-fast-forward-persistence-failed',
         'The device update could not be finalized. All local writes were rolled back and cloud data was left untouched.',
@@ -989,6 +1167,8 @@
     return recoveryInFlight;
   }
 
+  const startupAdoptionRecovery = recoverInterruptedAdoption();
+
   window.BigGainsManagedProfileRecovery = Object.freeze({
     format: MEMBER_FORMAT,
     freshFormat: FRESH_FORMAT,
@@ -997,6 +1177,8 @@
     resolveSameEntityConflict,
     inspectRemoteFastForward,
     adoptRemoteFastForward,
+    adoptionKey: ADOPTION_KEY,
+    adoptionRecoveryStatus: () => startupAdoptionRecovery,
     completedForCurrentRuntime,
     needsRecoveryForCurrentRuntime,
     suppressingLocalSave
