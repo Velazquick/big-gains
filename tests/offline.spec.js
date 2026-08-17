@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
 
-const CURRENT_CACHE = 'big-gains-shell-v77-same-entity-conflict-recovery';
+const CURRENT_CACHE = 'big-gains-shell-v78-automatic-sync-reconciliation';
 const PREVIOUS_CACHE = 'big-gains-shell-v76-history-explorer-detail-polish';
 
 async function waitForServiceWorker(page) {
@@ -32,15 +32,15 @@ test('first install precaches one complete, revision-consistent app shell', asyn
     };
   }, CURRENT_CACHE);
 
-  expect(state.release).toBe('v77-same-entity-conflict-recovery');
+  expect(state.release).toBe('v78-automatic-sync-reconciliation');
   expect(state.cacheNames).toContain(CURRENT_CACHE);
   expect(state.cachedUrls).toEqual(state.expectedUrls);
-  expect(state.cachedUrls).toContain(new URL('/exercise-catalog.js?v=v77-same-entity-conflict-recovery', page.url()).href);
-  expect(state.cachedUrls).toContain(new URL('/routine-engine.js?v=v77-same-entity-conflict-recovery', page.url()).href);
-  expect(state.cachedUrls).toContain(new URL('/workout-session-controller.js?v=v77-same-entity-conflict-recovery', page.url()).href);
-  expect(state.cachedUrls).toContain(new URL('/timer-controller.js?v=v77-same-entity-conflict-recovery', page.url()).href);
+  expect(state.cachedUrls).toContain(new URL('/exercise-catalog.js?v=v78-automatic-sync-reconciliation', page.url()).href);
+  expect(state.cachedUrls).toContain(new URL('/routine-engine.js?v=v78-automatic-sync-reconciliation', page.url()).href);
+  expect(state.cachedUrls).toContain(new URL('/workout-session-controller.js?v=v78-automatic-sync-reconciliation', page.url()).href);
+  expect(state.cachedUrls).toContain(new URL('/timer-controller.js?v=v78-automatic-sync-reconciliation', page.url()).href);
   expect(state.cachedUrls).toContain(new URL('/auth-setup.html', page.url()).href);
-  expect(state.cachedUrls).toContain(new URL('/auth-setup.js?v=v77-same-entity-conflict-recovery', page.url()).href);
+  expect(state.cachedUrls).toContain(new URL('/auth-setup.js?v=v78-automatic-sync-reconciliation', page.url()).href);
   expect(state.cachedUrls).toContain(new URL('/assets/timer-ready.wav', page.url()).href);
 });
 
@@ -91,11 +91,11 @@ test('production assets use the manifest release once and contain no duplicate c
   expect(consistency.coreAssets.filter(path => path === './index.html')).toHaveLength(1);
   expect(consistency.coreAssets).not.toContain('./');
   expect(consistency.authSetupScripts).toEqual([
-    './cloud-config.js?v=v77-same-entity-conflict-recovery',
-    './vendor/supabase.js?v=v77-same-entity-conflict-recovery',
-    './auth-setup.js?v=v77-same-entity-conflict-recovery'
+    './cloud-config.js?v=v78-automatic-sync-reconciliation',
+    './vendor/supabase.js?v=v78-automatic-sync-reconciliation',
+    './auth-setup.js?v=v78-automatic-sync-reconciliation'
   ]);
-  expect(consistency.authSetupStyles).toEqual(['./auth-setup.css?v=v77-same-entity-conflict-recovery']);
+  expect(consistency.authSetupStyles).toEqual(['./auth-setup.css?v=v78-automatic-sync-reconciliation']);
   expect(indexSource).not.toMatch(/\.(?:css|js)\?v=/);
   expect(workerSource).not.toContain('?v=');
   expect(workerSource).toContain("importScripts('./asset-manifest.js', './service-worker-core.js')");

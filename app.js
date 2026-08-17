@@ -38,7 +38,7 @@ const retrospectiveApi=window.bigGainsRetrospective.create({
   afterUpdate:(dateKey,workoutId)=>{calendarSelectedKey=dateKey;calendarMonth=new Date(`${dateKey}T12:00:00`);try{sessionStorage.setItem(calendarSavedKey,dateKey);}catch{}renderAll();openHistory(workoutId);document.dispatchEvent(new CustomEvent('big-gains-workout-updated',{detail:{workoutId}}));}
 });
 function setWorkoutPetState(next){if(next)document.body.dataset.workoutPetState=next;else delete document.body.dataset.workoutPetState;if(typeof window.trainingPet?.render==='function')window.trainingPet.render(true);}
-function saveState(){if(bigGainsAccounts.runtime.kind==='managed-member'&&!statePersistenceApi.hasStoredState())return;if(window.BigGainsManagedProfileRecovery?.suppressingLocalSave(state,active))return;statePersistenceApi.save(state,active);queueMicrotask(()=>window.BigGainsCloudSync?.captureLocalSnapshot(PROFILE.id));}
+function saveState(){if(bigGainsAccounts.runtime.kind==='managed-member'&&!statePersistenceApi.hasStoredState())return;if(window.BigGainsManagedProfileRecovery?.suppressingLocalSave(state,active))return;statePersistenceApi.save(state,active);const finishCloudMutation=window.BigGainsCloudSync?.beginLocalMutation?.();queueMicrotask(async()=>{try{await window.BigGainsCloudSync?.captureLocalSnapshot?.(PROFILE.id,{tracked:true});}finally{finishCloudMutation?.();}});}
 const timerController=BigGainsTimerController.create({
   getState:()=>state,
   getActiveWorkout:()=>active,
