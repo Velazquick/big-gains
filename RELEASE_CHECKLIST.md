@@ -115,14 +115,14 @@ For any production app-shell change:
 - Confirm stale remote versions/timestamps cannot overwrite newer local state, append-only workout ties retain local state, tombstones win exact ties, and ownership changes throw.
 - Review every cloud table for explicit ownership, composite account/profile foreign keys, RLS enable/force statements, authenticated-only ownership policies, revoked anonymous/public grants, immutable ownership triggers, completed-workout uniqueness, and one-active-session-per-profile uniqueness.
 - Inspect the pgTAP adversarial cases for Jorge/Alexa same-account access, friend isolation, cross-account read/write/update/delete denial, forged profile-pair denial, immutable profile ownership, and anonymous denial.
-- Confirm `.env.example` contains only `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`, real environment files are ignored, and no privileged credential exists anywhere in browser code.
+- Confirm `.env.example` contains only the browser-safe Supabase values and the non-secret default-off automatic-reconciliation control, real environment files are ignored, and no privileged credential exists anywhere in browser code.
 - Confirm no live Supabase project was created/linked, no database migration was applied, and no local data was uploaded.
 - Run `npm test` and `npx playwright test --workers=1` with all 104 tests passing and no skips or expected failures.
 
 # v46 Phase 4C auth and synthetic sync
 
 - Confirm the pinned Supabase UMD client, `cloud-config.js`, `supabase-client.js`, `cloud-storage.js`, `cloud-sync.js`, and `cloud-sync.css` each appear once in the `v46-phase4c-auth-synthetic-sync` app shell and offline cache.
-- Confirm the checked-in config is empty, Pages uses only `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` repository variables, and no database password, access token, secret key, or service-role key is committed or exposed to the browser.
+- Confirm the checked-in config is empty/default-off, Pages uses browser-safe Actions variables only (`SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, and the non-secret default-off automatic-reconciliation control), and no database password, access token, secret key, or service-role key is committed or exposed to the browser.
 - Confirm signed-out and unconfigured use remains local, schema version 5 is unchanged, rendering does not write the queue, and existing backups/snapshots exclude the queue.
 - Confirm Jorge magic links use `shouldCreateUser: false`, the exact production redirect, and a hosted project with public signup disabled. Do not create Alexa Auth or friend signup.
 - Confirm ordinary Jorge/Alexa workout completion cannot reach the cloud transport; only explicit synthetic operations are accepted.
@@ -193,3 +193,12 @@ For any production app-shell change:
 - Confirm future trusted invitations specify `redirectTo: https://velazquick.github.io/big-gains/auth-setup.html`; do not add Admin/service-role credentials to browser code.
 - Confirm the default hosted invitation/recovery templates work without `{{ .Token }}`, custom SMTP, or a plan upgrade.
 - Confirm Safari and Home Screen storage remain isolated, the Home Screen session persists after its own one-time password sign-in, and all managed-owner/member/independent recovery tests remain green.
+
+# Automatic reconciliation deployment control
+
+- Confirm `BIG_GAINS_AUTOMATIC_RECONCILIATION` is an Actions repository or `github-pages` environment **variable**, never a secret, and that the Pages workflow passes it only to `scripts/write-cloud-config.mjs`.
+- Confirm missing, `false`, and unexpected values generate `automaticReconciliation: false`; only case-normalized `true` generates `true`; and checked-in `cloud-config.js` remains default-off.
+- For the plumbing release, leave the production variable missing or `false`. Do not combine the code merge with enablement.
+- Deploy the merged release with the flag off and complete the ordinary online/offline and manual remote-change smoke checks before any separately authorized enablement.
+- To enable later, set the variable to `true`, run Pages again, and complete the non-destructive automatic-reconciliation smoke check.
+- To roll back, set the variable to `false` or delete it, run Pages again, wait for success, reload devices online, and verify manual handling is restored. Use the device-local emergency pause for immediate containment while deployment completes.

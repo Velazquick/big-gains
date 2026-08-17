@@ -335,6 +335,7 @@ test('browser cloud module contains no transport, SDK, or privileged credential 
   expect(source).not.toMatch(/service[_-]?role/i);
   expect(envExample.trim().split(/\r?\n/).filter(line => !line.startsWith('#'))).toEqual([
     'SUPABASE_URL=',
-    'SUPABASE_PUBLISHABLE_KEY='
+    'SUPABASE_PUBLISHABLE_KEY=',
+    'BIG_GAINS_AUTOMATIC_RECONCILIATION=false'
   ]);
 });

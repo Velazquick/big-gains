@@ -26,11 +26,12 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
-      - name: Write browser-safe Supabase configuration
+      - name: Write browser-safe deployment configuration
         if: ${{ vars.SUPABASE_URL != '' && vars.SUPABASE_PUBLISHABLE_KEY != '' }}
         env:
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+          BIG_GAINS_AUTOMATIC_RECONCILIATION: ${{ vars.BIG_GAINS_AUTOMATIC_RECONCILIATION }}
         run: node scripts/write-cloud-config.mjs
 
       - name: Validate static site
