@@ -30,10 +30,12 @@ GitHub Actions variable BIG_GAINS_AUTOMATIC_RECONCILIATION
   → deploy-pages.yml job environment
   → scripts/write-cloud-config.mjs
   → deployment-artifact cloud-config.js automaticReconciliation
+  → SHA-256-derived cloudConfigVersion in deployment-artifact asset-manifest.js
+  → cloud-config.js?v=config-<first 16 hex characters>
   → cloud-sync.js automatic-reconciliation gate
 ```
 
-The generator trims and case-normalizes the value. Only `true` enables the generated browser flag. Missing, `false`, or any unexpected value generates `false`; unexpected values also emit a deployment warning. The checked-in config is default-off, and the device-local emergency pause remains an additional off switch.
+The generator trims and case-normalizes the value. Only `true` enables the generated browser flag. Missing, `false`, or any unexpected value generates `false`; unexpected values also emit a deployment warning. It hashes the exact generated config payload and updates the deployment artifact's shared asset manifest, both HTML manifest references, and the service-worker manifest import. Any config change therefore receives a different browser URL, manifest entry point, worker source, and offline cache names without a release-string edit. Returning to identical OFF content returns to the same content-addressed URL, which is rollback-safe because those bytes are exactly the desired OFF payload. The checked-in config is default-off, and the device-local emergency pause remains an additional off switch.
 
 For a controlled rollout, leave the variable missing or set it to `false`, deploy the reviewed release, and complete the flag-OFF production smoke check first. Enabling is a separate authorized operation: set the variable to `true`, run the Pages deployment again, and verify guarded reconciliation without mutating hosted data.
 

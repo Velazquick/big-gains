@@ -2,8 +2,11 @@ import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
 
-const CURRENT_CACHE = 'big-gains-shell-v78-automatic-sync-reconciliation';
-const PREVIOUS_CACHE = 'big-gains-shell-v76-history-explorer-detail-polish';
+const CURRENT_RELEASE = 'v79-deployment-config-cache-versioning';
+const CURRENT_CONFIG_VERSION = 'config-ab51ee79cd36825d';
+const CURRENT_CACHE = `big-gains-shell-${CURRENT_RELEASE}-${CURRENT_CONFIG_VERSION}`;
+const PREVIOUS_CACHE = 'big-gains-shell-v78-automatic-sync-reconciliation';
+const PREVIOUS_CONFIG_CACHE = `big-gains-shell-${CURRENT_RELEASE}-config-0000000000000000`;
 
 async function waitForServiceWorker(page) {
   await page.evaluate(async () => {
@@ -28,28 +31,36 @@ test('first install precaches one complete, revision-consistent app shell', asyn
       cacheNames: await caches.keys(),
       cachedUrls: (await cache.keys()).map(request => request.url).sort(),
       expectedUrls: manifest.coreAssets.map(path => new URL(path, location.href).href).sort(),
+      manifestAsset: manifest.manifestAsset,
       release: manifest.release
     };
   }, CURRENT_CACHE);
 
-  expect(state.release).toBe('v78-automatic-sync-reconciliation');
+  expect(state.release).toBe(CURRENT_RELEASE);
   expect(state.cacheNames).toContain(CURRENT_CACHE);
   expect(state.cachedUrls).toEqual(state.expectedUrls);
-  expect(state.cachedUrls).toContain(new URL('/exercise-catalog.js?v=v78-automatic-sync-reconciliation', page.url()).href);
-  expect(state.cachedUrls).toContain(new URL('/routine-engine.js?v=v78-automatic-sync-reconciliation', page.url()).href);
-  expect(state.cachedUrls).toContain(new URL('/workout-session-controller.js?v=v78-automatic-sync-reconciliation', page.url()).href);
-  expect(state.cachedUrls).toContain(new URL('/timer-controller.js?v=v78-automatic-sync-reconciliation', page.url()).href);
+  expect(state.cachedUrls).toContain(new URL(`/exercise-catalog.js?v=${CURRENT_RELEASE}`, page.url()).href);
+  expect(state.cachedUrls).toContain(new URL(`/routine-engine.js?v=${CURRENT_RELEASE}`, page.url()).href);
+  expect(state.cachedUrls).toContain(new URL(`/workout-session-controller.js?v=${CURRENT_RELEASE}`, page.url()).href);
+  expect(state.cachedUrls).toContain(new URL(`/timer-controller.js?v=${CURRENT_RELEASE}`, page.url()).href);
+  expect(state.cachedUrls).toContain(new URL(`/cloud-config.js?v=${CURRENT_CONFIG_VERSION}`, page.url()).href);
+  expect(state.cachedUrls).toContain(new URL(state.manifestAsset, page.url()).href);
   expect(state.cachedUrls).toContain(new URL('/auth-setup.html', page.url()).href);
-  expect(state.cachedUrls).toContain(new URL('/auth-setup.js?v=v78-automatic-sync-reconciliation', page.url()).href);
+  expect(state.cachedUrls).toContain(new URL(`/auth-setup.js?v=${CURRENT_RELEASE}`, page.url()).href);
   expect(state.cachedUrls).toContain(new URL('/assets/timer-ready.wav', page.url()).href);
 });
 
 test('updates the previous Big Gains cache without deleting unrelated origin caches', async ({ page }) => {
   await page.goto('/manifest.webmanifest?prepare-cache-update');
-  await page.evaluate(async ({ previousCache, unrelatedCache }) => {
+  await page.evaluate(async ({ previousCache, previousConfigCache, unrelatedCache }) => {
     await (await caches.open(previousCache)).put('/old-shell', new Response('old'));
+    await (await caches.open(previousConfigCache)).put('/stale-config-shell', new Response('stale'));
     await (await caches.open(unrelatedCache)).put('/keep-me', new Response('unrelated'));
-  }, { previousCache: PREVIOUS_CACHE, unrelatedCache: 'analytics-library-cache-v1' });
+  }, {
+    previousCache: PREVIOUS_CACHE,
+    previousConfigCache: PREVIOUS_CONFIG_CACHE,
+    unrelatedCache: 'analytics-library-cache-v1'
+  });
 
   await installLocalStorageFixture(page, 'blankJorge');
   await openApp(page);
@@ -59,10 +70,11 @@ test('updates the previous Big Gains cache without deleting unrelated origin cac
     expect.arrayContaining([CURRENT_CACHE, 'analytics-library-cache-v1'])
   );
   expect(await page.evaluate(() => caches.keys())).not.toContain(PREVIOUS_CACHE);
+  expect(await page.evaluate(() => caches.keys())).not.toContain(PREVIOUS_CONFIG_CACHE);
   expect(await page.evaluate(async () => Boolean(await caches.match('/keep-me')))).toBe(true);
 });
 
-test('production assets use the manifest release once and contain no duplicate core entries', async ({ page, request }) => {
+test('production assets use the release except for content-versioned cloud config and contain no duplicates', async ({ page, request }) => {
   await installLocalStorageFixture(page, 'blankJorge');
   await openApp(page);
 
@@ -74,6 +86,7 @@ test('production assets use the manifest release once and contain no duplicate c
       .map(script => script.getAttribute('src'));
     return {
       coreAssets: manifest.coreAssets,
+      cloudConfigVersion: manifest.cloudConfigVersion,
       authSetupScripts: manifest.authSetupScripts,
       authSetupStyles: manifest.authSetupStyles,
       loadedScripts,
@@ -83,6 +96,7 @@ test('production assets use the manifest release once and contain no duplicate c
     };
   });
   const indexSource = await (await request.get('/index.html')).text();
+  const authSetupSource = await (await request.get('/auth-setup.html')).text();
   const workerSource = await (await request.get('/service-worker.js')).text();
 
   expect(consistency.loadedStyles).toEqual(consistency.styles);
@@ -90,15 +104,19 @@ test('production assets use the manifest release once and contain no duplicate c
   expect(new Set(consistency.coreAssets).size).toBe(consistency.coreAssets.length);
   expect(consistency.coreAssets.filter(path => path === './index.html')).toHaveLength(1);
   expect(consistency.coreAssets).not.toContain('./');
+  expect(consistency.cloudConfigVersion).toBe(CURRENT_CONFIG_VERSION);
+  expect(consistency.scripts).toContain(`./cloud-config.js?v=${CURRENT_CONFIG_VERSION}`);
+  expect(consistency.scripts).not.toContain(`./cloud-config.js?v=${CURRENT_RELEASE}`);
   expect(consistency.authSetupScripts).toEqual([
-    './cloud-config.js?v=v78-automatic-sync-reconciliation',
-    './vendor/supabase.js?v=v78-automatic-sync-reconciliation',
-    './auth-setup.js?v=v78-automatic-sync-reconciliation'
+    `./cloud-config.js?v=${CURRENT_CONFIG_VERSION}`,
+    `./vendor/supabase.js?v=${CURRENT_RELEASE}`,
+    `./auth-setup.js?v=${CURRENT_RELEASE}`
   ]);
-  expect(consistency.authSetupStyles).toEqual(['./auth-setup.css?v=v78-automatic-sync-reconciliation']);
-  expect(indexSource).not.toMatch(/\.(?:css|js)\?v=/);
-  expect(workerSource).not.toContain('?v=');
-  expect(workerSource).toContain("importScripts('./asset-manifest.js', './service-worker-core.js')");
+  expect(consistency.authSetupStyles).toEqual([`./auth-setup.css?v=${CURRENT_RELEASE}`]);
+  const expectedManifestReference = `asset-manifest.js?v=${CURRENT_RELEASE}-${CURRENT_CONFIG_VERSION}`;
+  expect(indexSource.match(/[^"']+\.js\?v=[^"']+/g)).toEqual([expectedManifestReference]);
+  expect(authSetupSource.match(/[^"']+\.js\?v=[^"']+/g)).toEqual([expectedManifestReference]);
+  expect(workerSource).toContain(`importScripts('./${expectedManifestReference}', './service-worker-core.js')`);
 });
 
 test('precache and runtime writes settle before success and propagate write failures', async ({ page }) => {

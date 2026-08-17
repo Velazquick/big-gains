@@ -1,4 +1,4 @@
-importScripts('./asset-manifest.js', './service-worker-core.js');
+importScripts('./asset-manifest.js?v=v79-deployment-config-cache-versioning-config-ab51ee79cd36825d', './service-worker-core.js');
 
 const runtime = BigGainsServiceWorkerCore.createRuntime({
   manifest: BIG_GAINS_ASSET_MANIFEST,
