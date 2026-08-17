@@ -7,6 +7,7 @@ const productionScriptOrder = [
   'cloud-config.js',
   'supabase.js',
   'supabase-client.js',
+  'reconciliation-control.js',
   'cloud-storage.js',
   'state-persistence.js',
   'profiles.js',

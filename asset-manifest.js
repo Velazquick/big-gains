@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v79-deployment-config-cache-versioning';
+  const release = 'v80-runtime-reconciliation-control';
   const cloudConfigVersion = 'config-ab51ee79cd36825d'; // BIG_GAINS_CLOUD_CONFIG_VERSION
   const deploymentVersion = `${release}-${cloudConfigVersion}`;
   const manifestAsset = `./asset-manifest.js?v=${encodeURIComponent(deploymentVersion)}`;
@@ -35,6 +35,7 @@
     './cloud-config.js',
     './vendor/supabase.js',
     './supabase-client.js',
+    './reconciliation-control.js',
     './cloud-storage.js',
     './state-persistence.js',
     './profiles.js',

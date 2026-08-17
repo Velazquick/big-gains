@@ -11,6 +11,7 @@
   const AUTO_PAUSE_KEY = `big-gains-automatic-reconciliation-paused-v1-${accountRuntime.storageNamespace}`;
   const OBSERVABILITY_KEY = `big-gains-sync-reconciliation-observability-v1-${accountRuntime.storageNamespace}`;
   const cloudConfig = window.__BIG_GAINS_CLOUD_CONFIG__ || {};
+  const runtimeControl = window.BigGainsReconciliationControl?.create({ supabaseBoundary }) || null;
   let initialized = false;
   let authSubscription = null;
   let cloudOwner = null;
@@ -28,12 +29,48 @@
   let reconciliationTimer = null;
   let reconciliationInFlight = null;
   let lastReconciliationTrigger = null;
+  let lastAutomaticDecision = Object.freeze({
+    enabled: false,
+    reason: cloudConfig.automaticReconciliation === true ? 'runtime-unavailable' : 'capability-off',
+    detail: cloudConfig.automaticReconciliation === true ? 'not-checked' : 'static-capability-disabled',
+    revision: null,
+    checkedAt: null
+  });
 
   const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
   const online = () => typeof navigator === 'undefined' || navigator.onLine !== false;
 
+  function staticCapabilityEnabled() {
+    return cloudConfig.automaticReconciliation === true;
+  }
+
+  function automaticReconciliationPaused() {
+    try { return localStorage.getItem(AUTO_PAUSE_KEY) === 'true'; } catch { return true; }
+  }
+
+  function automaticPrerequisitesEnabled() {
+    return staticCapabilityEnabled() && !automaticReconciliationPaused();
+  }
+
   function automaticReconciliationEnabled() {
-    try { return cloudConfig.automaticReconciliation === true && localStorage.getItem(AUTO_PAUSE_KEY) !== 'true'; } catch { return false; }
+    return automaticPrerequisitesEnabled() && lastAutomaticDecision.enabled === true;
+  }
+
+  function automaticDecision(reason, detail, revision = null) {
+    lastAutomaticDecision = Object.freeze({
+      enabled: reason === 'runtime-on',
+      reason,
+      detail,
+      revision,
+      checkedAt: new Date().toISOString()
+    });
+    return lastAutomaticDecision;
+  }
+
+  function resetAutomaticDecision() {
+    if (!staticCapabilityEnabled()) return automaticDecision('capability-off', 'static-capability-disabled');
+    if (automaticReconciliationPaused()) return automaticDecision('device-paused', 'device-emergency-pause');
+    return automaticDecision('runtime-unavailable', 'not-checked');
   }
 
   function pageLifecycleCurrent(generation) {
@@ -539,6 +576,7 @@
 
   async function compareShadow({ adopt = false } = {}) {
     if (comparing || !cloudOwner) return lastComparison;
+    resetAutomaticDecision();
     comparing = true;
     render();
     try {
@@ -674,8 +712,9 @@
 
   async function applyRemoteFastForward({ automatic = false, generation = lifecycleGeneration } = {}) {
     if (busy || comparing) return Object.freeze({ ok: false, busy: true, pending: queue.pending().length });
-    if (automatic && !automaticReconciliationEnabled()) {
-      return Object.freeze({ ok: false, disabled: true, reason: 'automatic-reconciliation-disabled', pending: queue.pending().length });
+    if (automatic && !automaticPrerequisitesEnabled()) {
+      const decision = resetAutomaticDecision();
+      return Object.freeze({ ok: false, disabled: true, reason: decision.reason, pending: queue.pending().length });
     }
     if (automatic && (!pageLifecycleCurrent(generation) || capturePending > 0)) {
       return Object.freeze({ ok: false, deferred: true, reason: 'local-or-lifecycle-work-in-flight', pending: queue.pending().length });
@@ -712,6 +751,7 @@
         localMutationPending: capturePending > 0
       });
       if (!remoteFastForward.eligible) {
+        if (automatic) automaticDecision('guard-blocked', remoteFastForward.reason || 'remote-fast-forward-ineligible');
         return (lastResult = Object.freeze({
           ok: false,
           blocked: true,
@@ -720,6 +760,28 @@
           conflict: remoteFastForward.conflict,
           pending: 0
         }));
+      }
+      let runtimeDecision = null;
+      if (automatic) {
+        runtimeDecision = await runtimeControl?.check?.() || Object.freeze({
+          enabled: false, reason: 'runtime-unavailable', detail: 'control-port-unavailable', revision: null
+        });
+        lastAutomaticDecision = runtimeDecision;
+        if (!runtimeDecision.enabled) {
+          return (lastResult = Object.freeze({
+            ok: false,
+            disabled: true,
+            reason: runtimeDecision.reason,
+            detail: runtimeDecision.detail,
+            pending: queue.pending().length
+          }));
+        }
+        if (!pageLifecycleCurrent(generation) || capturePending > 0 || localMutationGeneration !== expectedMutationGeneration) {
+          automaticDecision('guard-blocked', 'local-or-lifecycle-work-in-flight', runtimeDecision.revision);
+          return (lastResult = Object.freeze({
+            ok: false, deferred: true, reason: 'local-or-lifecycle-work-in-flight', pending: queue.pending().length
+          }));
+        }
       }
       const adopted = await recovery.adoptRemoteFastForward({
         owner,
@@ -747,12 +809,13 @@
           };
         },
         canCommit: () => pageLifecycleCurrent(generation)
-          && (!automatic || automaticReconciliationEnabled())
+          && (!automatic || (automaticPrerequisitesEnabled() && runtimeDecision?.enabled === true))
           && capturePending === 0
           && localMutationGeneration === expectedMutationGeneration
           && queue.pending().length === 0
       });
       if (!adopted.ok) {
+        if (automatic) automaticDecision('guard-blocked', adopted.reason || 'automatic-adoption-rejected', runtimeDecision?.revision || null);
         remoteFastForward = Object.freeze({
           eligible: false,
           conflict: adopted.conflict === true,
@@ -1058,6 +1121,7 @@
     }
     reconciliationInFlight = (async () => {
       lastReconciliationTrigger = trigger;
+      resetAutomaticDecision();
       if (!pageLifecycleCurrent(generation)) {
         return Object.freeze({ ok: false, deferred: true, reason: 'page-lifecycle-not-current' });
       }
@@ -1084,15 +1148,18 @@
         return Object.freeze({ ok: false, deferred: true, reason: 'reconciliation-generation-superseded' });
       }
       if (sameEntityConflict?.eligible) {
+        if (automaticPrerequisitesEnabled()) automaticDecision('guard-blocked', 'same-entity-conflict');
         updateReconciliationObservability({ conflict: true });
         return Object.freeze({ ok: false, conflict: true, reason: 'same-entity-conflict', pending: queue.pending().length });
       }
       if (remoteFastForward?.deferred) {
+        if (automaticPrerequisitesEnabled()) automaticDecision('guard-blocked', remoteFastForward.reason || 'remote-fast-forward-deferred');
         updateReconciliationObservability({ activeWorkout: remoteFastForward.reason === 'active-workout-in-progress' });
       } else if (remoteFastForward && !remoteFastForward.eligible && remoteFastForward.reason !== 'no-newer-remote-revisions') {
+        if (automaticPrerequisitesEnabled()) automaticDecision('guard-blocked', remoteFastForward.reason || 'remote-fast-forward-rejected');
         updateReconciliationObservability({ rejection: true });
       } else updateReconciliationObservability();
-      if (remoteFastForward?.eligible && automaticReconciliationEnabled()) {
+      if (remoteFastForward?.eligible && automaticPrerequisitesEnabled()) {
         return applyRemoteFastForward({ automatic: true, generation });
       }
       if (remoteFastForward?.deferred) {
@@ -1141,6 +1208,7 @@
       localStorage.setItem(AUTO_PAUSE_KEY, 'true');
       invalidateReconciliation();
     } else localStorage.removeItem(AUTO_PAUSE_KEY);
+    resetAutomaticDecision();
     if (!paused) scheduleReconciliation('automatic-reconciliation-resumed', 0);
     render();
     return paused === true;
@@ -1254,8 +1322,10 @@
       lifecycleGeneration,
       reconciliationInFlight: Boolean(reconciliationInFlight),
       lastReconciliationTrigger,
+      automaticCapabilityEnabled: staticCapabilityEnabled(),
       automaticReconciliationEnabled: automaticReconciliationEnabled(),
-      automaticReconciliationPaused: !automaticReconciliationEnabled() && cloudConfig.automaticReconciliation === true,
+      automaticReconciliationPaused: automaticReconciliationPaused(),
+      automaticDecision: lastAutomaticDecision,
       observability: reconciliationObservability(),
       lastResult,
       lastComparison,

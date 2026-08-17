@@ -137,6 +137,10 @@ Do not pass a database password on the command line. Enter it only in the CLI's 
 
 Phase 4C hosted verification passed all 18 pgTAP assertions. A separate publishable-key proof authenticated two ephemeral users, rejected cross-account reads and writes, recovered one completed workout after an idempotent retry, and then deleted both users. Follow-up verification found zero Auth users, zero application rows, eight forced-RLS tables, and 32 ownership policies.
 
+## Runtime reconciliation control coverage
+
+`tests/runtime-reconciliation-control.spec.js` covers the one-shot authenticated port: exact revision-1 boolean parsing, default/malformed/stale fail-closed behavior, 401/403, network failure, timeout, signed-out handling, request no-store headers, repeated fresh checks, Edge Function default-OFF/JWT/no-store configuration, and local-first persistence during a control outage. `tests/cross-device-remote-fast-forward.spec.js` supplies the integration proof for static capability OFF, runtime OFF/ON, device pause, authenticated failures, manual recovery, and unchanged active-session, queue, ownership, concurrent-edit, history, tombstone, fingerprint, and revision guards. `tests/offline.spec.js` proves the control module is revisioned in the shell while cross-origin function requests bypass every service-worker cache path.
+
 ## Phase 4H managed-member coverage
 
 `tests/phase4h-managed-profile-access.spec.js` uses synthetic Auth/account/profile UUIDs and intercepted browser-safe Supabase requests. It proves exact membership resolution, single-profile rose/wellness presentation, no selector, full schema-v5 reconstruction, tombstone exclusion, zero-queue catalog adoption, offline reload, normal later outbound mutation, no overwrite of a non-empty namespace, malformed membership blocking, and unchanged Jorge managed-owner behavior. Existing Phase 4G tests retain the independent SZW-style isolation contract; the Phase 4F queue-reconciliation suite retains the v50.1 obsolete-operation regression.
