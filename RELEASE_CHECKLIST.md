@@ -41,8 +41,8 @@ For any production app-shell change:
 
 - [ ] Update the `release` value in `asset-manifest.js` to a new, unique, descriptive release ID.
 - [ ] Add, remove, or reorder CSS and scripts only in the manifest's `styles` and `scripts` arrays. Preserve the dependency order documented in [ARCHITECTURE.md](ARCHITECTURE.md).
-- [ ] Confirm each production CSS and script appears exactly once and every required offline asset is present in `coreAssets`.
-- [ ] Do not add revisioned production URLs directly to `index.html` or `service-worker.js`; both consumers share the manifest.
+- [ ] Confirm each production CSS and script appears exactly once and every required offline asset is present in `coreAssets`; `cloud-config.js` alone uses the generated config-content version rather than the release version.
+- [ ] The generated, revisioned `asset-manifest.js` URL is the only production URL written directly into `index.html`, `auth-setup.html`, or `service-worker.js`; all application assets remain shared through the manifest.
 - [ ] Update `CURRENT_CACHE`, `PREVIOUS_CACHE`, and the expected manifest release in `tests/offline.spec.js`.
 - [ ] Add a `legacyCacheNames` entry only when retiring a cache name outside the currently owned shell/runtime prefixes. Ordinary prior releases under those prefixes are already removed during activation.
 - [ ] Do not bump the release for repository-only documentation or test changes that are not shipped in the app shell.
@@ -198,6 +198,7 @@ For any production app-shell change:
 
 - Confirm `BIG_GAINS_AUTOMATIC_RECONCILIATION` is an Actions repository or `github-pages` environment **variable**, never a secret, and that the Pages workflow passes it only to `scripts/write-cloud-config.mjs`.
 - Confirm missing, `false`, and unexpected values generate `automaticReconciliation: false`; only case-normalized `true` generates `true`; and checked-in `cloud-config.js` remains default-off.
+- Confirm OFF → ON changes the generated `cloud-config.js` URL and shell/runtime cache names, and rollback to identical OFF content deterministically restores the original OFF URL. No manual release-string bump may be required for a variable-only deployment.
 - For the plumbing release, leave the production variable missing or `false`. Do not combine the code merge with enablement.
 - Deploy the merged release with the flag off and complete the ordinary online/offline and manual remote-change smoke checks before any separately authorized enablement.
 - To enable later, set the variable to `true`, run Pages again, and complete the non-destructive automatic-reconciliation smoke check.

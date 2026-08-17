@@ -1,7 +1,10 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v78-automatic-sync-reconciliation';
+  const release = 'v79-deployment-config-cache-versioning';
+  const cloudConfigVersion = 'config-ab51ee79cd36825d'; // BIG_GAINS_CLOUD_CONFIG_VERSION
+  const deploymentVersion = `${release}-${cloudConfigVersion}`;
+  const manifestAsset = `./asset-manifest.js?v=${encodeURIComponent(deploymentVersion)}`;
   const cachePrefix = 'big-gains-shell-';
   const runtimeCachePrefix = 'big-gains-runtime-';
   const legacyCacheNames = ['big-gains-v33-state-persistence-api'];
@@ -61,7 +64,9 @@
     './controlled-migration.js',
     './shell-init.js'
   ];
-  const revision = path => `${path}?v=${encodeURIComponent(release)}`;
+  const revision = path => `${path}?v=${encodeURIComponent(
+    path === './cloud-config.js' ? cloudConfigVersion : release
+  )}`;
   const revisionedStyles = styles.map(revision);
   const revisionedScripts = scripts.map(revision);
   const authSetupStyles = ['./auth-setup.css'].map(revision);
@@ -69,7 +74,7 @@
   const coreAssets = [
     './index.html',
     './auth-setup.html',
-    './asset-manifest.js',
+    manifestAsset,
     './asset-loader.js',
     './auth-setup-loader.js',
     './service-worker-core.js',
@@ -88,10 +93,13 @@
 
   const manifest = Object.freeze({
     release,
+    cloudConfigVersion,
+    deploymentVersion,
+    manifestAsset,
     cachePrefix,
-    cacheName: `${cachePrefix}${release}`,
+    cacheName: `${cachePrefix}${release}-${cloudConfigVersion}`,
     runtimeCachePrefix,
-    runtimeCacheName: `${runtimeCachePrefix}${release}`,
+    runtimeCacheName: `${runtimeCachePrefix}${release}-${cloudConfigVersion}`,
     legacyCacheNames: Object.freeze([...legacyCacheNames]),
     styles: Object.freeze(revisionedStyles),
     scripts: Object.freeze(revisionedScripts),

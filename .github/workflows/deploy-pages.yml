@@ -55,6 +55,25 @@ jobs:
           if (!manifest || typeof manifest.release !== 'string' || !manifest.release.trim()) {
             throw new Error('asset-manifest.js must declare a non-empty release.');
           }
+          if (!/^config-[a-f0-9]{16}$/.test(manifest.cloudConfigVersion)) {
+            throw new Error('asset-manifest.js must declare a generated cloud-config version.');
+          }
+
+          const expectedCloudConfig = `./cloud-config.js?v=${manifest.cloudConfigVersion}`;
+          if (!manifest.scripts.includes(expectedCloudConfig)
+              || !manifest.authSetupScripts.includes(expectedCloudConfig)) {
+            throw new Error('Cloud config references must use the generated config version.');
+          }
+          if (manifest.cloudConfigVersion === manifest.release
+              || !manifest.cacheName.endsWith(`-${manifest.cloudConfigVersion}`)
+              || !manifest.runtimeCacheName.endsWith(`-${manifest.cloudConfigVersion}`)) {
+            throw new Error('Cloud config version must rotate the deployment cache names independently.');
+          }
+          const expectedManifestAsset = `./asset-manifest.js?v=${encodeURIComponent(manifest.deploymentVersion)}`;
+          if (manifest.manifestAsset !== expectedManifestAsset
+              || !manifest.coreAssets.includes(expectedManifestAsset)) {
+            throw new Error('The generated deployment manifest reference must be precached.');
+          }
 
           const requiredAssets = [
             ['./migration-preview.js', manifest.scripts],
@@ -70,7 +89,7 @@ jobs:
           NODE
           grep -Fq "logRetrospectiveWorkout" index.html
           grep -Fq "./service-worker.js" app.js
-          grep -Fq "'./asset-manifest.js'" service-worker.js
+          grep -Fq "importScripts('./asset-manifest.js?v=" service-worker.js
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
