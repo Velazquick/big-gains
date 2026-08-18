@@ -10,6 +10,26 @@
     const warmupWeight = working ? Math.round(working * .6 / 5) * 5 : 0;
     const workingSets = Number(prescription?.workingSets) || 3;
     const targetReps = typeof prescription?.targetReps === 'string' ? prescription.targetReps : '';
+    const measurement = definition.measurement || null;
+    const trackingModel = measurement?.trackingModel || 'load_reps';
+    const usesLoad = ['load_reps', 'assistance_reps', 'load_duration', 'load_distance'].includes(trackingModel);
+    const usesReps = ['load_reps', 'reps_only', 'assistance_reps'].includes(trackingModel);
+    const usesDistance = ['distance_duration', 'load_distance', 'distance_only'].includes(trackingModel);
+    const usesDuration = ['duration', 'distance_duration', 'load_duration'].includes(trackingModel);
+    const seed = (priorSet, field, fallback = '') => {
+      const value = priorSet?.[field];
+      return value === '' || value == null || !Number.isFinite(Number(value)) ? fallback : Number(value);
+    };
+    const makeSet = (priorSet, warmup = false) => ({
+      id: createId(),
+      weight: usesLoad ? seed(priorSet, 'weight', warmup ? warmupWeight : working) : 0,
+      reps: usesReps ? seed(priorSet, 'reps', warmup ? 10 : '') : 0,
+      ...(usesDistance ? { distance: seed(priorSet, 'distance', '') } : {}),
+      ...(usesDuration ? { duration: seed(priorSet, 'duration', '') } : {}),
+      warmup,
+      completed: false
+    });
+    const supportsWarmup = ['load_reps', 'assistance_reps'].includes(trackingModel);
     return {
       id: definition.id,
       name: definition.name,
@@ -21,14 +41,8 @@
         ...(targetReps ? { targetReps } : {})
       } : {}),
       sets: [
-        { id: createId(), weight: warmupWeight, reps: 10, warmup: true, completed: false },
-        ...Array.from({ length: workingSets }, (_, index) => ({
-          id: createId(),
-          weight: prior[index] ? Number(prior[index].weight) || working : working,
-          reps: prior[index] ? Number(prior[index].reps) || '' : '',
-          warmup: false,
-          completed: false
-        }))
+        ...(supportsWarmup ? [makeSet(null, true)] : []),
+        ...Array.from({ length: workingSets }, (_, index) => makeSet(prior[index], false))
       ]
     };
   }
@@ -37,11 +51,40 @@
     return exercise?.equipment === 'Bodyweight' ? 'bodyweight' : 'external';
   }
 
-  function isCompletableSet(exercise, set, loadMode = defaultLoadMode(exercise)) {
+  function measurementFor(exercise, contract = null) {
+    if (contract && typeof contract === 'object') return contract;
+    if (typeof contract === 'string') return {
+      trackingModel: 'load_reps',
+      loadSemantics: { resistanceSemantics: contract === 'bodyweight' ? 'bodyweight_plus_external' : 'external' },
+      ui: { loadMayBeZero: contract === 'bodyweight' }
+    };
+    return exercise?.measurement || {
+      trackingModel: 'load_reps',
+      loadSemantics: {
+        resistanceSemantics: defaultLoadMode(exercise) === 'bodyweight' ? 'bodyweight_plus_external' : 'external'
+      },
+      ui: { loadMayBeZero: defaultLoadMode(exercise) === 'bodyweight' }
+    };
+  }
+
+  // EKF-4.4/9.5: validation follows the canonical tracking model, never a per-set override.
+  function isCompletableSet(exercise, set, contract = null) {
+    const measurement = measurementFor(exercise, contract);
+    const model = measurement?.trackingModel || 'load_reps';
     const reps = Number(set?.reps);
     const weight = Number(set?.weight);
-    if (!Number.isFinite(reps) || reps <= 0 || !Number.isFinite(weight)) return false;
-    return loadMode === 'bodyweight' ? weight >= 0 : weight > 0;
+    const distance = Number(set?.distance);
+    const duration = Number(set?.duration ?? set?.durationSeconds);
+    if (['load_reps', 'reps_only', 'assistance_reps'].includes(model) && (!Number.isFinite(reps) || reps <= 0)) return false;
+    if (['load_reps', 'assistance_reps', 'load_duration', 'load_distance'].includes(model)) {
+      if (!Number.isFinite(weight)) return false;
+      const mayBeZero = measurement?.ui?.loadMayBeZero === true
+        || ['bodyweight_plus_external', 'assistance'].includes(measurement?.loadSemantics?.resistanceSemantics);
+      if (mayBeZero ? weight < 0 : weight <= 0) return false;
+    }
+    if (['distance_duration', 'load_distance', 'distance_only'].includes(model) && (!Number.isFinite(distance) || distance <= 0)) return false;
+    if (['duration', 'distance_duration', 'load_duration'].includes(model) && (!Number.isFinite(duration) || duration <= 0)) return false;
+    return true;
   }
 
   function incompleteWorking(exercise) {
@@ -108,6 +151,8 @@
     routineEngine,
     exerciseCatalog,
     resolveLoadMode = defaultLoadMode,
+    resolveMeasurement = exercise => exerciseCatalog?.measurementFor?.(exercise) || exercise?.measurement || null,
+    metricsForSet = null,
     previousPerformance,
     estimate1RM,
     createId,
@@ -287,6 +332,8 @@
         id: createId(),
         weight: valid(recent?.weight) ? Number(recent.weight) : '',
         reps: valid(recent?.reps) ? Number(recent.reps) : '',
+        ...(Object.hasOwn(recent || {}, 'distance') ? { distance: valid(recent.distance) ? Number(recent.distance) : '' } : {}),
+        ...(Object.hasOwn(recent || {}, 'duration') ? { duration: valid(recent.duration) ? Number(recent.duration) : '' } : {}),
         warmup: false,
         completed: false
       };
@@ -321,11 +368,13 @@
       const current = getActiveWorkout();
       const exercise = current?.exercises?.[exerciseIndex];
       const set = exercise?.sets?.[setIndex];
-      const loadMode = resolveLoadMode(exercise);
-      if (!isCompletableSet(exercise, set, loadMode)) return false;
+      const measurement = resolveMeasurement(exercise);
+      if (!isCompletableSet(exercise, set, measurement || resolveLoadMode(exercise))) return false;
       focusExercise(exerciseIndex);
       acknowledgeTimerReady();
-      if (!set.completed && loadMode === 'bodyweight' && (set.weight === '' || set.weight == null)) set.weight = 0;
+      const usesLoad = ['load_reps', 'assistance_reps', 'load_duration', 'load_distance'].includes(measurement?.trackingModel || 'load_reps');
+      if (!set.completed && !usesLoad && (set.weight === '' || set.weight == null)) set.weight = 0;
+      if (!set.completed && ['bodyweight_plus_external', 'assistance'].includes(measurement?.loadSemantics?.resistanceSemantics) && (set.weight === '' || set.weight == null)) set.weight = 0;
       set.completed = !set.completed;
       persistActiveMutation();
       renderActiveMutation();
@@ -357,14 +406,17 @@
       const state = getState();
       let newPRs = 0;
       completed.forEach(exercise => exercise.sets.filter(set => !set.warmup).forEach(set => {
-        const score = estimate1RM(Number(set.weight), Number(set.reps));
+        const interpreted = typeof metricsForSet === 'function' ? metricsForSet(exercise, set) : null;
+        const score = interpreted ? interpreted.estimated1RM : estimate1RM(Number(set.weight), Number(set.reps));
+        if (score === null) return;
         if (score > ((state.prs[exercise.id] && state.prs[exercise.id].estimated1RM) || 0)) {
           state.prs[exercise.id] = {
             exercise: exercise.name,
             estimated1RM: score,
             weight: Number(set.weight),
             reps: Number(set.reps),
-            date: completedAt
+            date: completedAt,
+            ...(interpreted?.formulaId ? { formulaId: interpreted.formulaId, formulaVersion: interpreted.formulaVersion, e1rmLoadBasis: interpreted.e1rm?.loadBasis } : {})
           };
           newPRs += 1;
         }

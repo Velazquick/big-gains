@@ -1,4 +1,4 @@
-importScripts('./asset-manifest.js?v=v80-runtime-reconciliation-control-config-ab51ee79cd36825d', './service-worker-core.js');
+importScripts('./asset-manifest.js?v=v81-ekf2-measurement-semantics-config-ab51ee79cd36825d', './service-worker-core.js');
 
 const runtime = BigGainsServiceWorkerCore.createRuntime({
   manifest: BIG_GAINS_ASSET_MANIFEST,

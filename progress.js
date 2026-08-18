@@ -39,13 +39,21 @@ window.workoutProgress = (() => {
   };
   const completedAt = workout => new Date(workout?.completedAt || 0).getTime();
   const analyticsOptions = () => context.getAnalyticsOptions?.() || {};
-  const formatVolume = value => value === null ? '—' : `${formatCompact(value)} lb`;
+  const formatVolume = (value, kind = null) => value === null ? '—' : `${formatCompact(value)} ${kind === 'indicated_load' ? 'indicated lb' : kind === 'modeled_system_load' ? 'modeled lb' : 'lb'}`;
+  const workloadLabel = kind => kind === 'indicated_load' ? 'indicated workload' : kind === 'modeled_system_load' ? 'modeled system volume' : kind === 'external_load' ? 'external-load volume' : 'comparable workload';
   const formatMonthHeading = iso => new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(new Date(iso)).toUpperCase();
   const formatArchiveDate = iso => new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).format(new Date(iso));
   const formatDay = iso => new Intl.DateTimeFormat('en-US', { day: '2-digit' }).format(new Date(iso));
   const formatWeekday = iso => new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(new Date(iso)).toUpperCase();
   const setLoadLabel = set => {
-    if (set?.loadMode !== 'bodyweight') return `${Number(set?.weight) || 0} lb`;
+    if (set?.trackingModel === 'duration') return `${Number(set.duration) || 0} sec`;
+    if (set?.trackingModel === 'load_distance') return `${Number(set.weight) || 0} lb · ${Number(set.distance) || 0}`;
+    if (set?.trackingModel === 'reps_only') return 'Bodyweight';
+    if (set?.resistanceSemantics === 'assistance') return `${Number(set.weight) || 0} lb assistance`;
+    if (set?.loadMode !== 'bodyweight') {
+      const suffix = set?.loadBasis === 'per_hand' ? ' per hand' : set?.loadBasis === 'per_side' ? ' per side' : '';
+      return `${Number(set?.weight) || 0} lb${suffix}`;
+    }
     const added = Number(set.weight) || 0;
     return added > 0 ? `Bodyweight + ${added} lb` : 'Bodyweight';
   };
@@ -87,7 +95,8 @@ window.workoutProgress = (() => {
       sets: session.workingSets,
       best: session.bestWorkingSet,
       estimated1RM: session.bestWorkingSet.estimated1RM,
-      volume: session.workingSetVolume
+      volume: session.workingSetVolume,
+      volumeKind: session.workingSetVolumeKind
     }));
   }
 
@@ -100,7 +109,7 @@ window.workoutProgress = (() => {
   }
 
   function trendText(sessions) {
-    if (sessions.some(session => session.estimated1RM === null)) return 'Add a profile bodyweight to calculate effective-load strength trends.';
+    if (sessions.some(session => session.estimated1RM === null)) return 'e1RM is unavailable for this exercise\'s measurement contract or required context.';
     if (sessions.length < 2) return 'One logged session — the trend starts here.';
     const latest = sessions[0].estimated1RM;
     const first = sessions[sessions.length - 1].estimated1RM;
@@ -308,7 +317,7 @@ window.workoutProgress = (() => {
     history.className = 'history-list progress-recent-history';
     history.innerHTML = `${workouts.map(workout => {
       const summary = context.analytics.workoutSummary(workout, analyticsOptions());
-      return `<button type="button" class="history-item progress-history-card" data-history-id="${context.escapeHtml(workout.id)}"><div class="progress-history-main"><div class="history-card-title"><strong>${context.escapeHtml(context.workoutLabel(workout.type))}</strong>${summary.prCount ? `<span class="pr-badge">${summary.prCount} PR${summary.prCount === 1 ? '' : 's'}</span>` : ''}</div><small>${formatArchiveDate(workout.completedAt)} · ${formatDuration(summary.durationSeconds)} · ${summary.workingSetCount} working set${summary.workingSetCount === 1 ? '' : 's'}</small>${workout.entryMethod === 'retrospective' ? '<span class="entered-later">Entered later</span>' : ''}</div><div class="history-meta"><strong>${formatVolume(summary.workingSetVolume)}</strong><small>effective volume</small><span class="history-card-arrow" aria-hidden="true">→</span></div></button>`;
+      return `<button type="button" class="history-item progress-history-card" data-history-id="${context.escapeHtml(workout.id)}"><div class="progress-history-main"><div class="history-card-title"><strong>${context.escapeHtml(context.workoutLabel(workout.type))}</strong>${summary.prCount ? `<span class="pr-badge">${summary.prCount} PR${summary.prCount === 1 ? '' : 's'}</span>` : ''}</div><small>${formatArchiveDate(workout.completedAt)} · ${formatDuration(summary.durationSeconds)} · ${summary.workingSetCount} working set${summary.workingSetCount === 1 ? '' : 's'}</small>${workout.entryMethod === 'retrospective' ? '<span class="entered-later">Entered later</span>' : ''}</div><div class="history-meta"><strong>${formatVolume(summary.workingSetVolume,summary.workingSetVolumeKind)}</strong><small>${workloadLabel(summary.workingSetVolumeKind)}</small><span class="history-card-arrow" aria-hidden="true">→</span></div></button>`;
     }).join('')}<div class="progress-history-footer"><div><strong>Keep the full timeline close.</strong><span>Browse every completed session by month.</span></div><button type="button" class="ghost compact" data-open-history-archive>View history</button></div>`;
   }
 
@@ -383,10 +392,12 @@ window.workoutProgress = (() => {
     } else {
       const best = bestSetAcross(sessions, exercise);
       const latest = sessions[0];
-      const totalVolume = sessions.some(session => session.volume === null) ? null : sessions.reduce((total, session) => total + session.volume, 0);
-      const recent = sessions.slice(0, 8).map(session => `<article class="progress-session"><div><strong>${context.fmtDate(session.date)}</strong><small>${session.sets.length} working set${session.sets.length === 1 ? '' : 's'} · ${formatVolume(session.volume)} volume</small></div><div class="progress-session-meta"><strong>${context.escapeHtml(setLoadLabel(session.best))} × ${session.best.reps}</strong><small>${session.estimated1RM === null ? 'Effective load unavailable' : `${session.estimated1RM} lb e1RM`}</small></div><div class="progress-session-sets">${session.sets.map(set => `<span>${context.escapeHtml(setLoadLabel(set))} × ${Number(set.reps)}</span>`).join('')}</div></article>`).join('');
+      const volumeKinds = new Set(sessions.map(session => session.volumeKind).filter(Boolean));
+      const totalVolumeKind = volumeKinds.size === 1 ? [...volumeKinds][0] : volumeKinds.size > 1 ? 'mixed' : null;
+      const totalVolume = sessions.some(session => session.volume === null) || totalVolumeKind === 'mixed' ? null : sessions.reduce((total, session) => total + session.volume, 0);
+      const recent = sessions.slice(0, 8).map(session => `<article class="progress-session"><div><strong>${context.fmtDate(session.date)}</strong><small>${session.sets.length} working set${session.sets.length === 1 ? '' : 's'} · ${formatVolume(session.volume,session.volumeKind)} ${workloadLabel(session.volumeKind)}</small></div><div class="progress-session-meta"><strong>${context.escapeHtml(setLoadLabel(session.best))} × ${session.best.reps}</strong><small>${session.estimated1RM === null ? 'e1RM unavailable for this measurement contract' : `${session.estimated1RM} lb e1RM`}</small></div><div class="progress-session-sets">${session.sets.map(set => `<span>${context.escapeHtml(setLoadLabel(set))} × ${Number(set.reps)}</span>`).join('')}</div></article>`).join('');
       const chart = sessions.some(session => session.estimated1RM === null) ? '' : progressChart(sessions);
-      content.innerHTML = `<div class="history-summary-grid progress-summary-grid"><div><span>Best set</span><strong>${context.escapeHtml(setLoadLabel(best))} × ${Number(best.reps)}</strong></div><div><span>Best estimated 1RM</span><strong>${best.estimated1RM === null ? '—' : `${best.estimated1RM} lb`}</strong></div><div><span>Training history</span><strong>${sessions.length} sessions · ${formatVolume(totalVolume)}</strong></div></div><div class="progress-trend-note"><strong>${latest.estimated1RM === null ? 'Effective load unavailable' : `${latest.estimated1RM} lb latest e1RM`}</strong><span>${trendText(sessions)}</span></div>${chart}<div class="progress-recent-head"><span class="label">Recent work</span><h3>Session-by-session</h3></div><div class="progress-session-list">${recent}</div>`;
+      content.innerHTML = `<div class="history-summary-grid progress-summary-grid"><div><span>Best set</span><strong>${context.escapeHtml(setLoadLabel(best))} × ${Number(best.reps)}</strong></div><div><span>Best estimated 1RM</span><strong>${best.estimated1RM === null ? '—' : `${best.estimated1RM} lb`}</strong></div><div><span>Training history</span><strong>${sessions.length} sessions · ${formatVolume(totalVolume,totalVolumeKind)}</strong></div></div><div class="progress-trend-note"><strong>${latest.estimated1RM === null ? 'e1RM unavailable' : `${latest.estimated1RM} lb latest e1RM`}</strong><span>${trendText(sessions)}</span></div>${chart}<div class="progress-recent-head"><span class="label">Recent work</span><h3>Session-by-session</h3></div><div class="progress-session-list">${recent}</div>`;
     }
 
     const { dialog } = elements();

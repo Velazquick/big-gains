@@ -314,7 +314,7 @@ test('completion refuses zero work and otherwise preserves filtering, duration, 
   expect(completed.historyLength).toBe(1);
   expect(completed.workout.durationSeconds).toBeGreaterThanOrEqual(600);
   expect(completed.workout.durationSeconds).toBeLessThanOrEqual(601);
-  expect(completed.workout.prs).toBe(2);
+  expect(completed.workout.prs).toBe(0);
   expect(completed.workout.exercises).toHaveLength(1);
   expect(completed.workout.exercises[0].sets.map(set => set.id)).toEqual([
     'active-warmup-1', 'active-working-1', 'active-working-2'
@@ -322,10 +322,10 @@ test('completion refuses zero work and otherwise preserves filtering, duration, 
   expect(completed.cloudData).toEqual(completed.workout);
   expect(completed.pr).toEqual({
     exercise: 'Seated Machine Chest Press',
-    estimated1RM: 139,
-    weight: 110,
-    reps: 8,
-    date: completed.workout.completedAt
+    estimated1RM: 130,
+    weight: 95,
+    reps: 10,
+    date: '2026-08-01T12:00:00.000Z'
   });
   expect((await jorgeState(page)).workouts).toEqual([completed.workout]);
 });

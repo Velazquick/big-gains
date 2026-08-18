@@ -280,7 +280,7 @@ test('fresh managed member restores exact Alexa schema v5, adopts a zero-queue b
     exercisePreferences: { 'lat-pulldown': { cue: 'Drive elbows down', restSeconds: 90 } },
     activeWorkout: { id: 'alexa-active' },
     restTimerEndsAt: Date.parse('2036-08-08T12:02:00.000Z'),
-    prs: { 'lat-pulldown': { estimated1RM: 160, weight: 120, reps: 10, date: '2026-08-07T15:00:00.000Z' } }
+    prs: {}
   });
   expect(restored.state.workouts.map(workout => workout.id)).toEqual(['alexa-completed']);
   expect(restored.pending).toBe(0);

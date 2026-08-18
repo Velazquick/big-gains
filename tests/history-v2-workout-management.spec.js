@@ -67,7 +67,7 @@ test('editing a reps typo updates the same workout and derived analytics without
 
   await expect(page.locator('#historyDialog')).toBeVisible();
   await expect(page.locator('#historyDialogContent')).toContainText('100 lb × 12');
-  await expect(page.locator('#historyDialogContent')).toContainText('1,200 lb');
+  await expect(page.locator('#historyDialogContent')).toContainText('1,200 indicated lb');
   const stored = await readStoredJson(page, STORAGE_KEYS.jorge);
   expect(stored.workouts).toHaveLength(2);
   const updated = stored.workouts.find(workout => workout.id === typo.id);
@@ -82,7 +82,7 @@ test('editing a reps typo updates the same workout and derived analytics without
   expect(updated.exercises[0]).toMatchObject({ id: 'historical-exercise-id', definitionId: 'seated-machine-chest-press', note: 'Original exercise note' });
   expect(updated.exercises[0].sets[0]).toEqual({ id: 'historical-set-id', weight: 100, reps: 12, warmup: false, completed: true });
   expect(stored.workouts.find(workout => workout.id === unrelated.id)).toEqual(unrelatedBefore);
-  expect(stored.prs['seated-machine-chest-press']).toMatchObject({ estimated1RM: 140, weight: 100, reps: 12 });
+  expect(stored.prs['seated-machine-chest-press']).toBeUndefined();
 });
 
 test('edit mode preserves effective bodyweight load while supporting set, exercise, order, and type corrections', async ({ page }) => {
@@ -134,7 +134,7 @@ test('edit mode preserves effective bodyweight load while supporting set, exerci
     const workout = state.workouts.find(item => item.id === workoutId);
     return BigGainsAnalytics.workoutSummary(workout, { bodyweight: 200, loadModeFor: BigGainsExerciseCatalog.loadModeFor });
   }, workout.id);
-  expect(analytics).toMatchObject({ workingSetCount: 2, workingSetVolume: 2250 });
+  expect(analytics).toMatchObject({ workingSetCount: 2, workingSetVolume: null, workingSetVolumeKind: 'mixed', effectiveSystemLoadVolume: 1350, indicatedLoadVolume: 900 });
   expect(stored.prs['pull-up']).toMatchObject({ weight: 25, effectiveLoad: 225, reps: 6 });
 });
 
@@ -213,7 +213,7 @@ test('delete confirms clearly, removes only the selected workout, and queues its
     };
   }, deleted.id);
   expect(result.state.workouts).toEqual([retainedBefore]);
-  expect(result.state.prs['lat-pulldown']).toMatchObject({ weight: 90, reps: 10 });
+  expect(result.state.prs['lat-pulldown']).toBeUndefined();
   expect(result.tombstone).toMatchObject({ clientId: deleted.id, version: 2, tombstone: true, data: null });
   expect(result.operation).toMatchObject({ entityType: 'workouts', entityId: deleted.id, mutation: 'delete', version: 2 });
   await expect(page.locator(`[data-history-id="${deleted.id}"]`)).toHaveCount(0);

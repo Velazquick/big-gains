@@ -35,6 +35,15 @@
     }
 
     function createExercise(definition, workoutType = draft?.type) {
+      const inputFields = context.inputFieldsFor?.(definition) || [{ name: 'weight' }, { name: 'reps' }];
+      const uses = name => inputFields.some(field => field.name === name);
+      const measurement = context.measurementFor?.(definition);
+      const supportsWarmup = ['load_reps', 'assistance_reps'].includes(measurement?.trackingModel || 'load_reps');
+      const blankSet = (completed = false) => ({
+        id: context.createId(), weight: uses('weight') ? '' : 0, reps: uses('reps') ? '' : 0,
+        ...(uses('distance') ? { distance: '' } : {}), ...(uses('duration') ? { duration: '' } : {}),
+        warmup: false, completed
+      });
       if (draft?.mode === 'edit') {
         return {
           id: context.createId(),
@@ -43,7 +52,7 @@
           muscle: definition.muscle,
           equipment: definition.equipment,
           note: '',
-          sets: [{ id: context.createId(), weight: '', reps: '', warmup: false, completed: true }]
+          sets: [blankSet(true)]
         };
       }
       const prior = context.lastPerformance(definition.id)?.workingSets || [];
@@ -51,6 +60,15 @@
       const prescription = context.routineEngine.getPrescription(workoutType, definition.id);
       const workingSets = Number(prescription?.workingSets) || 3;
       const targetReps = typeof prescription?.targetReps === 'string' ? prescription.targetReps : '';
+      const previousValue = (set, field, fallback) => set?.[field] === '' || set?.[field] == null ? fallback : Number(set[field]);
+      const workingSet = (set, warmup = false) => ({
+        id: context.createId(),
+        weight: uses('weight') ? previousValue(set, 'weight', warmup ? (working ? Math.round(working * .6 / 5) * 5 : 0) : working || 0) : 0,
+        reps: uses('reps') ? previousValue(set, 'reps', warmup ? 10 : 0) : 0,
+        ...(uses('distance') ? { distance: previousValue(set, 'distance', '') } : {}),
+        ...(uses('duration') ? { duration: previousValue(set, 'duration', '') } : {}),
+        warmup, completed: false
+      });
       return {
         id: context.createId(),
         definitionId: definition.id,
@@ -60,14 +78,8 @@
         note: '',
         ...(targetReps ? { targetReps, targetWorkingSets: workingSets } : {}),
         sets: [
-          { id: context.createId(), weight: working ? Math.round(working * .6 / 5) * 5 : 0, reps: 10, warmup: true, completed: false },
-          ...Array.from({ length: workingSets }, (_, index) => ({
-            id: context.createId(),
-            weight: Number(prior[index]?.weight) || working || 0,
-            reps: Number(prior[index]?.reps) || 0,
-            warmup: false,
-            completed: false
-          }))
+          ...(supportsWarmup ? [workingSet(null, true)] : []),
+          ...Array.from({ length: workingSets }, (_, index) => workingSet(prior[index], false))
         ]
       };
     }
@@ -124,17 +136,21 @@
     function renderExercise(exercise, exerciseIndex) {
       const loadMode = loadModeFor(exercise);
       const bodyweight = loadMode === 'bodyweight';
+      const inputFields = context.inputFieldsFor?.(exercise) || [
+        { name: 'weight', label: bodyweight ? 'Added weight' : 'Weight', unit: 'lb', step: 5 },
+        { name: 'reps', label: 'Reps', unit: '', step: 1 }
+      ];
+      const fieldInput = (field, set, setIndex) => `<label><span>${context.escapeHtml(field.label)}</span><span class="retrospective-input-value"><input type="number" min="0" step="${field.step}" inputmode="decimal" data-retro-field="${field.name}" data-ei="${exerciseIndex}" data-si="${setIndex}" value="${set[field.name] ?? ''}" aria-label="${context.escapeHtml(field.label)}">${field.unit ? `<small>${context.escapeHtml(field.unit)}</small>` : ''}</span></label>`;
       const sets = exercise.sets.map((set, setIndex) => `<div class="retrospective-set ${set.completed ? 'is-complete' : ''}">
         <label class="retrospective-set-kind"><span>Set type</span><select data-retro-field="setType" data-ei="${exerciseIndex}" data-si="${setIndex}" aria-label="Set type"><option value="warmup" ${set.warmup ? 'selected' : ''}>Warm-up</option><option value="working" ${set.warmup ? '' : 'selected'}>Working set</option></select></label>
-        <label><span>${bodyweight ? 'Added load' : 'Weight'}</span><input type="number" min="0" step="5" inputmode="decimal" data-retro-field="weight" data-ei="${exerciseIndex}" data-si="${setIndex}" value="${set.weight}" aria-label="${bodyweight ? 'Added load' : 'Weight'}"></label>
-        <label><span>Reps</span><input type="number" min="0" step="1" inputmode="numeric" data-retro-field="reps" data-ei="${exerciseIndex}" data-si="${setIndex}" value="${set.reps}"></label>
+        ${inputFields.map(field => fieldInput(field, set, setIndex)).join('')}
         <label class="retrospective-set-complete"><input type="checkbox" data-retro-field="completed" data-ei="${exerciseIndex}" data-si="${setIndex}" ${set.completed ? 'checked' : ''}><span>Performed</span></label>
         <button type="button" class="ghost compact" data-retro-remove-set="${setIndex}" data-ei="${exerciseIndex}" aria-label="Remove ${context.escapeHtml(setLabel(exercise, set))}">Remove</button>
       </div>`).join('');
       const currentDefinition = definitionFor(exercise);
       const definitionEditor = draft.mode === 'edit' ? `<label class="retrospective-exercise-choice"><span>Exercise</span><select data-retro-exercise-definition="${exerciseIndex}" aria-label="Exercise">${exerciseDefinitionOptions(exercise, exerciseIndex).map(definition => `<option value="${definition.id}" ${definition.id === currentDefinition?.id ? 'selected' : ''}>${context.escapeHtml(definition.name)} — ${context.escapeHtml(definition.equipment)}</option>`).join('')}</select></label>` : '';
       return `<article class="active-exercise retrospective-exercise" data-retro-exercise="${exerciseIndex}">
-        <div class="exercise-head"><div><span class="exercise-muscle">${context.escapeHtml(exercise.muscle)}</span><h3>${context.escapeHtml(exercise.name)}</h3><p>${context.escapeHtml(exercise.equipment)}${bodyweight ? ' · Log only added load' : ''}${exercise.targetReps ? ` · Target ${context.escapeHtml(exercise.targetReps)}` : ''}</p></div>
+        <div class="exercise-head"><div><span class="exercise-muscle">${context.escapeHtml(exercise.muscle)}</span><h3>${context.escapeHtml(exercise.name)}</h3><p>${context.escapeHtml(exercise.equipment)} · ${context.escapeHtml(inputFields.map(field => field.label).join(' + '))}${bodyweight ? ' · Log only added load' : ''}${exercise.targetReps ? ` · Target ${context.escapeHtml(exercise.targetReps)}` : ''}</p></div>
         <div class="exercise-head-actions"><div class="exercise-order"><button type="button" data-retro-move="up" data-ei="${exerciseIndex}" ${exerciseIndex === 0 ? 'disabled' : ''} aria-label="Move ${context.escapeHtml(exercise.name)} up">↑</button><button type="button" data-retro-move="down" data-ei="${exerciseIndex}" ${exerciseIndex === draft.exercises.length - 1 ? 'disabled' : ''} aria-label="Move ${context.escapeHtml(exercise.name)} down">↓</button></div><button type="button" class="remove-exercise" data-retro-remove-exercise="${exerciseIndex}" aria-label="Remove ${context.escapeHtml(exercise.name)}">✕</button></div></div>
         ${definitionEditor}
         <div class="retrospective-set-list">${sets}</div>
@@ -248,12 +264,14 @@
     function save() {
       if (!draft || saving) return false;
       const completedExercises = draft.exercises.map(exercise => {
-        const bodyweight = loadModeFor(exercise) === 'bodyweight';
+        const measurement = context.measurementFor?.(exercise);
+        const usesLoad = ['load_reps', 'assistance_reps', 'load_duration', 'load_distance'].includes(measurement?.trackingModel || 'load_reps');
         return {
           ...exercise,
           sets: exercise.sets.filter(set => set.completed).map(set => ({
             ...set,
-            ...(bodyweight && (set.weight === '' || set.weight == null) ? { weight: 0 } : {}),
+            ...(!usesLoad && (set.weight === '' || set.weight == null) ? { weight: 0 } : {}),
+            ...(['bodyweight_plus_external', 'assistance'].includes(measurement?.loadSemantics?.resistanceSemantics) && (set.weight === '' || set.weight == null) ? { weight: 0 } : {}),
             completed: true
           }))
         };
@@ -265,7 +283,7 @@
         return false;
       }
       if (performed.some(({ exercise, set }) => !context.canCompleteSet(exercise, set))) {
-        $('retrospectiveError').textContent = 'Every performed set needs reps; weighted work also needs positive external load.';
+        $('retrospectiveError').textContent = 'Each performed set needs its required values; weighted work needs positive external load, and distance/duration work needs a positive result.';
         return false;
       }
       const completion = completedAt();
@@ -311,10 +329,12 @@
       if (draft.mode === 'create' && draft.evaluatePrs) {
         completedExercises.forEach(exercise => exercise.sets.filter(set => !set.warmup).forEach(set => {
           const key = exercise.definitionId || context.slug(exercise.name);
-          const score = context.estimate1RM(Number(set.weight), Number(set.reps));
+          const interpreted = context.metricsForSet?.(exercise, set);
+          const score = interpreted ? interpreted.estimated1RM : context.estimate1RM(Number(set.weight), Number(set.reps));
+          if (score === null) return;
           const current = nextPrs[key];
           if (score > (current?.estimated1RM || 0)) {
-            nextPrs[key] = { exercise: exercise.name, estimated1RM: score, weight: Number(set.weight), reps: Number(set.reps), date: workout.completedAt };
+            nextPrs[key] = { exercise: exercise.name, estimated1RM: score, weight: Number(set.weight), reps: Number(set.reps), date: workout.completedAt, ...(interpreted?.formulaId ? { formulaId: interpreted.formulaId, formulaVersion: interpreted.formulaVersion, e1rmLoadBasis: interpreted.e1rm?.loadBasis } : {}) };
             workout.prs += 1;
           }
         }));
@@ -395,7 +415,8 @@
         else if (button.dataset.retroAddSet !== undefined) {
           const exercise = draft.exercises[exerciseIndex];
           const prior = exercise.sets.filter(set => !set.warmup).at(-1);
-          exercise.sets.push({ id: context.createId(), weight: safeNumber(prior?.weight ?? ''), reps: safeNumber(prior?.reps ?? ''), warmup: false, completed: draft.mode === 'edit' });
+          const fields = context.inputFieldsFor?.(exercise) || [{ name: 'weight' }, { name: 'reps' }];
+          exercise.sets.push({ id: context.createId(), weight: fields.some(field => field.name === 'weight') ? safeNumber(prior?.weight ?? '') : 0, reps: fields.some(field => field.name === 'reps') ? safeNumber(prior?.reps ?? '') : 0, ...Object.fromEntries(fields.filter(field => ['distance', 'duration'].includes(field.name)).map(field => [field.name, safeNumber(prior?.[field.name] ?? '')])), warmup: false, completed: draft.mode === 'edit' });
         }
         render();
       });

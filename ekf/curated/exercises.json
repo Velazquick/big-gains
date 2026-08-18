@@ -1,10 +1,10 @@
 {
   "$schema": "../schema/exercise-identity.schema.json",
   "release": {
-    "id": "ekf-1-big-gains-compatibility-v1",
+    "id": "ekf-2-measurement-semantics-v1",
     "schemaVersion": 1,
     "sourceBaseline": "big-gains-v64",
-    "description": "Identity-only EKF baseline for the existing Big Gains compatibility catalog."
+    "description": "Stable EKF identity plus exercise-defined measurement semantics for the existing Big Gains compatibility catalog."
   },
   "canonicalDefaults": {
     "schemaVersion": 1,

@@ -91,7 +91,23 @@ test('EKF-T14/T16: invalid identities, aliases, references, and required fields 
   }
 });
 
-test('EKF-13.2: EKF-1 leaves measurement and analytics semantics explicitly inactive', async () => {
+test('EKF-T12/T16: missing, duplicate, unknown, and cross-field-invalid measurement contracts fail closed', async t => {
+  const baseline = await loadInputs(repository);
+  const invalidCases = [
+    ['missing contract', input => { input.measurements.contracts.pop(); }, /every exercise requires exactly one measurement contract/],
+    ['duplicate contract', input => { input.measurements.contracts.push(clone(input.measurements.contracts[0])); }, /duplicate measurement contract/],
+    ['unknown tracking model', input => { input.measurements.contracts[0].measurement.trackingModel = 'unknown'; }, /trackingModel must be explicit/],
+    ['load basis mismatch', input => { input.measurements.contracts[0].measurement.loadSemantics.loadBasis = 'not_applicable'; }, /load basis does not match tracking model/],
+    ['machine e1RM', input => { input.measurements.contracts[0].analytics = { e1rmPermitted: true, e1rmLoadBasis: 'entered_load' }; }, /resistance semantics are ineligible for e1RM/]
+  ];
+  for (const [name, mutate, expected] of invalidCases) await t.test(name, () => {
+    const input = clone(baseline);
+    mutate(input);
+    assert.throws(() => renderArtifacts(input), expected);
+  });
+});
+
+test('EKF-13.2/13.3: identity defaults stay inactive while the EKF-2 overlay owns measurement semantics', async () => {
   const inputs = await loadInputs(repository);
   const defaults = inputs.exercises.canonicalDefaults;
 

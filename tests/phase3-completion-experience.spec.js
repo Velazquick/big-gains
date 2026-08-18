@@ -97,11 +97,11 @@ test('the saved-workout completion receipt is accurate, focused, reviewable, and
   await expect(page.locator('#completionDuration')).toHaveText(expectedDuration);
   await expect(page.locator('#completionExercises')).toHaveText('2');
   await expect(page.locator('#completionWorkingSets')).toHaveText('2');
-  await expect(page.locator('#completionVolume')).toHaveText('1,900 lb');
-  await expect(page.locator('#completionPrCount')).toHaveText('2');
-  await expect(page.locator('#completionPrCopy')).toHaveText('2 new PRs.');
+  await expect(page.locator('#completionVolume')).toHaveText('1,900 indicated lb');
+  await expect(page.locator('#completionPrCount')).toHaveText('0');
+  await expect(page.locator('#completionPrCopy')).toBeHidden();
   await expect(page.locator('#completionPetSlot #trainingPetCard')).toBeVisible();
-  await expect(page.locator('#trainingPet')).toHaveAttribute('data-state', 'pr');
+  await expect(page.locator('#trainingPet')).toHaveAttribute('data-state', 'complete');
   await expect.poll(() => page.evaluate(() => document.activeElement?.id)).toBe('workoutCompletionTitle');
 
   expect(saved.exercises.flatMap(exercise => exercise.sets)).toHaveLength(3);

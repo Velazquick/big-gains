@@ -187,7 +187,7 @@ test('derived analytics cover performance, deltas, working totals, duration, PRs
   }, { workouts, now: '2026-08-06T12:00:00.000Z' });
 
   expect(result.latest).toMatchObject({
-    workingSetCount: 4, workingSetVolume: 5490, totalReps: 44,
+    workingSetCount: 4, workingSetVolume: null, workingSetVolumeKind: 'mixed', externalLoadVolume: 3290, indicatedLoadVolume: 2200, totalReps: 44,
     durationSeconds: 3600, prCount: 2, exerciseCount: 2
   });
   expect(result.latest.bestWorkingSet).toMatchObject({ id: 'latest-1', weight: 155, reps: 10, estimated1RM: 207 });
@@ -198,10 +198,11 @@ test('derived analytics cover performance, deltas, working totals, duration, PRs
   });
   expect(result.trend.points.map(point => point.workoutId)).toEqual(['older', 'previous', 'latest']);
   expect(result.trend.bestWorkingSet).toMatchObject({ id: 'latest-1', weight: 155, reps: 10 });
-  expect(result.muscles).toEqual({
+  expect(result.muscles.primary).toEqual({
     Chest: { workingSets: 5, workingSetVolume: 5990, totalReps: 50 },
     Calves: { workingSets: 3, workingSetVolume: 5200, totalReps: 37 }
   });
+  expect(result.muscles.secondary).toEqual({});
   expect(result.windows.sevenDay).toMatchObject({
     days: 7, workoutCount: 2,
     muscles: {
@@ -271,12 +272,12 @@ test('bodyweight analytics derive effective load from profile weight without rew
   expect(result.pullUp.bestWorkingSet).toMatchObject({ weight: 0, effectiveLoad: 190, volume: 1900, estimated1RM: 253 });
   expect(result.dips).toMatchObject({ workingSetVolume: 1290, effectiveLoadKnown: true });
   expect(result.dips.bestWorkingSet).toMatchObject({ weight: 25, effectiveLoad: 215, volume: 1290, estimated1RM: 258 });
-  expect(result.summary).toMatchObject({ workingSetCount: 3, workingSetVolume: 3690, totalReps: 21, effectiveLoadKnown: true });
-  expect(result.muscles).toEqual({
-    Back: { workingSets: 2, workingSetVolume: 2400, totalReps: 15 },
-    Chest: { workingSets: 1, workingSetVolume: 1290, totalReps: 6 },
-    Triceps: { workingSets: 1, workingSetVolume: 1290, totalReps: 6 }
+  expect(result.summary).toMatchObject({ workingSetCount: 3, workingSetVolume: null, workingSetVolumeKind: 'mixed', externalLoadVolume: 650, effectiveSystemLoadVolume: 3190, totalReps: 21, effectiveLoadKnown: false });
+  expect(result.muscles.primary).toEqual({
+    Back: { workingSets: 2, workingSetVolume: null, totalReps: 15 },
+    Chest: { workingSets: 1, workingSetVolume: 1290, totalReps: 6 }
   });
+  expect(result.muscles.secondary).toEqual({ Triceps: { workingSets: 1, workingSetVolume: 1290, totalReps: 6 } });
   expect(result.pullUpHistory[0]).toMatchObject({ workingSetVolume: 1900, bestWorkingSet: { effectiveLoad: 190 } });
   expect(result.pullUpTrend).toMatchObject({
     bestWorkingSet: { effectiveLoad: 190, estimated1RM: 253 },
@@ -285,7 +286,7 @@ test('bodyweight analytics derive effective load from profile weight without rew
   expect(result.families['pull-up']).toEqual({ workingSets: 1, workingSetVolume: 1900, totalReps: 10 });
   expect(result.missing).toMatchObject({ workingSetVolume: null, effectiveLoadKnown: false });
   expect(result.missing.bestWorkingSet).toMatchObject({ weight: 0, effectiveLoad: null, volume: null, estimated1RM: null });
-  expect(result.wiredVolume).toBe(3690);
+  expect(result.wiredVolume).toBeNull();
   expect(result.missingWiredVolume).toBeNull();
   expect(result.unchanged).toBe(true);
   expect(result.storedPullUp).toEqual({ id: 'pull-up-set', weight: 0, reps: 10, warmup: false, completed: true });
@@ -350,8 +351,8 @@ test('completed-workout recap is driven by working analytics and excludes warmup
   await expect(page.locator('#workoutCompletion')).toBeVisible();
   await expect(page.locator('#completionDuration')).toHaveText('60:00');
   await expect(page.locator('#completionWorkingSets')).toHaveText('2');
-  await expect(page.locator('#completionVolume')).toHaveText('1,250 lb');
-  await expect(page.locator('#completionPrCount')).toHaveText('1');
+  await expect(page.locator('#completionVolume')).toHaveText('1,250 indicated lb');
+  await expect(page.locator('#completionPrCount')).toHaveText('0');
   const stored = await jorgeState(page);
   expect(stored.workouts[0].sets).toBeUndefined();
   expect(stored.workouts[0].exercises[0].sets).toHaveLength(3);

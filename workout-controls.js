@@ -1,22 +1,26 @@
 (() => {
   const sessionDomain = window.BigGainsWorkoutSessionController;
 
-  function controlLabel(field, loadMode = 'external') {
-    return field === 'weight' ? (loadMode === 'bodyweight' ? 'Added load' : 'Weight') : 'Reps';
+  function controlLabel(field, { loadMode = 'external', label = null } = {}) {
+    if (label) return label;
+    if (field === 'weight') return loadMode === 'bodyweight' ? 'Added weight' : 'Weight';
+    if (field === 'duration') return 'Duration';
+    if (field === 'distance') return 'Distance';
+    return 'Reps';
   }
 
-  function renderStepper(field, exerciseIndex, setIndex, value, step, { loadMode = 'external' } = {}) {
+  function renderStepper(field, exerciseIndex, setIndex, value, step, options = {}) {
     const safeValue = value === '' ? '' : Number(value);
-    const label = controlLabel(field, loadMode);
-    const unit = field === 'weight' ? '<span class="stepper-unit">lb</span>' : '';
-    const className = field === 'reps' ? 'stepper reps-stepper' : 'stepper weight-stepper';
+    const label = controlLabel(field, options);
+    const unit = options.unit ? `<span class="stepper-unit">${options.unit}</span>` : '';
+    const className = `stepper ${field}-stepper`;
     return `
       <div class="${className}">
         <span class="stepper-label">${label}</span>
         <div class="stepper-control">
           <button type="button" data-adjust="-${step}" data-field="${field}" data-ei="${exerciseIndex}" data-si="${setIndex}" aria-label="Decrease ${label}">−</button>
           <div class="stepper-value">
-            <input data-field="${field}" data-ei="${exerciseIndex}" data-si="${setIndex}" type="number" min="0" step="${step}" inputmode="decimal" value="${safeValue}" placeholder="${field === 'weight' && loadMode === 'bodyweight' ? '0' : '—'}" aria-label="${label}">
+            <input data-field="${field}" data-ei="${exerciseIndex}" data-si="${setIndex}" type="number" min="0" step="${step}" inputmode="decimal" value="${safeValue}" placeholder="${options.mayBeZero ? '0' : '—'}" aria-label="${label}">
             ${unit}
           </div>
           <button type="button" data-adjust="${step}" data-field="${field}" data-ei="${exerciseIndex}" data-si="${setIndex}" aria-label="Increase ${label}">+</button>
@@ -25,14 +29,16 @@
     `;
   }
 
-  function summaryFor(exercise, estimate1RM) {
+  function summaryFor(exercise, estimate1RM, summarize = null) {
     const working = (exercise.sets || []).filter(set => !set.warmup);
     const completed = working.filter(set => set.completed);
     const best = completed.reduce((winner, set) => {
       if (!winner) return set;
       return estimate1RM(Number(set.weight), Number(set.reps)) > estimate1RM(Number(winner.weight), Number(winner.reps)) ? set : winner;
     }, null);
-    const volume = completed.reduce((total, set) => total + Number(set.weight || 0) * Number(set.reps || 0), 0);
+    const semantic = typeof summarize === 'function' ? summarize(exercise) : null;
+    const volume = semantic?.workingSetVolume ?? completed.reduce((total, set) => total + Number(set.weight || 0) * Number(set.reps || 0), 0);
+    const volumeLabel = semantic?.workingSetVolume === null ? 'Workload unavailable' : `${Math.round(volume).toLocaleString('en-US')} ${semantic?.workingSetVolumeKind === 'indicated_load' ? 'indicated lb' : 'lb volume'}`;
     return {
       complete: working.length > 0 && completed.length === working.length,
       completed: completed.length,
@@ -40,7 +46,7 @@
       progress: working.length ? `Set ${Math.min(completed.length + 1, working.length)} of ${working.length}` : 'No working sets',
       status: working.length ? `${completed.length}/${working.length} working sets` : 'No working sets',
       best: best ? `Best ${Number(best.weight)} × ${Number(best.reps)}` : 'Tap to open and start',
-      volume: `${Math.round(volume).toLocaleString('en-US')} lb volume`
+      volume: volumeLabel
     };
   }
 
@@ -64,7 +70,7 @@
     return `Set ${position} of ${working.length}`;
   }
 
-  function renderActive({ activeWorkout, box, finishButton, lastPerformance, performanceDelta, estimate1RM, escapeHtml, stepper, loadModeFor = exercise => exercise?.equipment === 'Bodyweight' ? 'bodyweight' : 'external' }) {
+  function renderActive({ activeWorkout, box, finishButton, lastPerformance, performanceDelta, estimate1RM, escapeHtml, stepper, loadModeFor = exercise => exercise?.equipment === 'Bodyweight' ? 'bodyweight' : 'external', inputFieldsFor = () => null, setSummaryFor = null }) {
     if (!activeWorkout) return;
     if (!activeWorkout.exercises.length) {
       box.innerHTML = '<div class="empty">Choose a routine or an exercise above.</div>';
@@ -76,13 +82,17 @@
 
     box.innerHTML = activeWorkout.exercises.map((exercise, exerciseIndex) => {
       const loadMode = loadModeFor(exercise);
+      const inputFields = inputFieldsFor(exercise) || [
+        { name: 'weight', label: loadMode === 'bodyweight' ? 'Added weight' : 'Weight', unit: 'lb', step: 5, mayBeZero: loadMode === 'bodyweight' },
+        { name: 'reps', label: 'Reps', unit: '', step: 1, mayBeZero: false }
+      ];
       const last = lastPerformance(exercise.id);
       const previous = last ? `${last.bestWorkingSet.weight} × ${last.bestWorkingSet.reps}` : 'First time logged';
       const previousSets = last?.workingSets?.length > 1
         ? last.workingSets.map(set => `${set.weight} × ${set.reps}`).join(' · ')
         : '';
       const improvement = performanceDelta(exercise, last)?.improvement || null;
-      const summary = summaryFor(exercise, estimate1RM);
+      const summary = summaryFor(exercise, estimate1RM, setSummaryFor);
       const hasPersistedFocus = activeWorkout.focusedExerciseId === activeWorkout.exercises[activeIndex]?.id;
       const collapsed = exerciseIndex === activeIndex && !hasPersistedFocus ? false : isCollapsed(exercise);
       const isActive = exerciseIndex === activeIndex;
@@ -102,8 +112,7 @@
               <strong>${label}</strong>
             </div>
             <span class="set-number">${set.warmup ? 'W' : exercise.sets.filter(item => !item.warmup).indexOf(set) + 1}</span>
-            ${stepper('weight', exerciseIndex, setIndex, set.weight, 5, { loadMode })}
-            ${stepper('reps', exerciseIndex, setIndex, set.reps, 1, { loadMode })}
+            ${inputFields.map(field => stepper(field.name, exerciseIndex, setIndex, set[field.name] ?? '', field.step, { ...field, loadMode })).join('')}
             <button type="button" class="set-done" data-complete-set="1" data-ei="${exerciseIndex}" data-si="${setIndex}" aria-label="${set.completed ? 'Mark set incomplete' : `Complete ${label}`}">
               <span class="set-done-icon">✓</span>
               <span class="set-done-text">${set.completed ? 'Done' : 'Complete'}</span>

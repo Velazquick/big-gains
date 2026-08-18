@@ -1,8 +1,9 @@
 {
   "schemaVersion": 1,
-  "releaseId": "ekf-1-big-gains-compatibility-v1",
+  "releaseId": "ekf-2-measurement-semantics-v1",
   "generatedFrom": [
     "ekf/curated/exercises.json",
+    "ekf/curated/measurement-contracts.json",
     "ekf/curated/families.json",
     "ekf/curated/references.json"
   ],

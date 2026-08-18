@@ -387,6 +387,16 @@ EKF-1 is implemented as a source-controlled, static compatibility layer. `ekf/cu
 
 **EKF-13.3 — EKF-2: Measurement semantics and analytics correctness.** EKF-2 implements entered-versus-derived load semantics, repetition/laterality arithmetic, metric availability, e1RM eligibility/versioning, muscle-role separation, and golden regressions. It includes the minimum workout-card/input semantics needed to make future entered values explicit while preserving existing stored history. The UI shape and historical bodyweight resolver policy are product decisions to settle before this phase.
 
+### EKF-2 implementation shape (informative)
+
+EKF-2 activates the approved exercise-defined measurement contract. `ekf/curated/measurement-contracts.json` explicitly maps all 119 compatibility exercises to a tracking model, orthogonal load basis and resistance semantics, rep basis, laterality, bodyweight model, card labels/units, e1RM gate, and primary/secondary muscle roles. The deterministic generator rejects missing, duplicate, unknown, or cross-field-invalid contracts and produces the review table at `ekf/audit/measurement-contracts.md` alongside the offline catalog projection.
+
+The data path has three deliberately separate phases: (1) the exact gym-entered schema-v5 facts such as `set.weight`, reps, optional distance, and optional duration; (2) the canonical EKF interpretation selected by exercise identity; and (3) runtime-derived combined external load, machine-indicated workload, modeled effective system load, load-distance, duration, and eligible Epley v1 estimates. Neither analytics nor rendering rewrites historical or future entered load. Missing context yields unavailable rather than inferred values under EKF-4.20.
+
+Standard curated exercise semantics are read-only and not set-overridable. Train and retrospective cards derive their compact fields, labels, units, validation, History wording, and analytics interpretation from the selected canonical exercise. A machine with different load meaning requires the correct canonical definition/variant. Custom-exercise measurement-contract UX remains deferred rather than creating a new custom-exercise subsystem.
+
+EKF-2 does not select a historical bodyweight-at-performance resolver and does not add machine model/instance capture. It preserves the current explicit-bodyweight calculation input and missing-bodyweight fail-safe; those remaining product decisions stay governed by EKF-14.12 and EKF-14.13.
+
 **EKF-13.4 — EKF-3: Curated catalog expansion.** EKF-3 evaluates allowed source records, creates provenance-complete assertions, performs human-reviewed deduplication, and expands the catalog only through validated releases. Bulk import and third-party media remain prohibited by default.
 
 **EKF-13.5 — Later work.** Anatomy ontology crosswalks, joint actions, richer instructions, stronger release/signing infrastructure, remote distribution, calibrated equipment models, personalized strength modeling, advanced programming, and a broader Strength Knowledge layer follow only when their own contracts and evidence exist.
@@ -417,9 +427,9 @@ EKF-1 is implemented as a source-controlled, static compatibility layer. `ekf/cu
 
 **EKF-14.10 — V1 defaults frozen here.** Load basis and resistance interpretation are orthogonal; per-hand and per-side remain distinct; per-handle uses per-side basis with a handle label; alternating dumbbell-curl reps mean total events; push-up tonnage is unavailable without an approved model; machine-indicated loads do not produce free-weight tonnage or e1RM; and Epley v1 uses an explicit basis with a 1–12 rep eligibility gate.
 
-### 14.2 Remaining product decisions (not EKF-0 blockers)
+**EKF-14.11 — Workout-card control shape.** Measurement meaning is read-only from the selected canonical exercise for standard curated EKF records. Workout cards MUST derive fields, labels, validation, and analytics interpretation from that contract and MUST NOT expose a per-set semantic override. A materially different machine/load meaning requires the correct canonical exercise or variant.
 
-**EKF-14.11 — Workout-card control shape.** Before EKF-2, the product must choose whether measurement meaning is read-only from the canonical exercise, user-selectable per exercise/equipment, or overridable per set. The safe default is read-only semantics with an explicit distinct exercise when meaning differs.
+### 14.2 Remaining product decisions (not EKF-2 blockers)
 
 **EKF-14.12 — Historical bodyweight resolver.** Before EKF-2 exposes historical system-load metrics, the product must choose a versioned bodyweight-at-performance policy (for example, strict contemporaneous-only versus nearest qualifying prior measurement labeled approximate). The safe default is unavailable when no defensible time-associated value exists.
 

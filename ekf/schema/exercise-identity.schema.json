@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://big-gains.local/ekf/schema/exercise-identity-v1",
-  "title": "Big Gains EKF-1 identity and compatibility source",
+  "title": "Big Gains EKF identity and compatibility source",
   "type": "object",
   "additionalProperties": false,
   "required": ["$schema", "release", "canonicalDefaults", "exercises"],
@@ -20,7 +20,7 @@
     },
     "canonicalDefaults": {
       "type": "object",
-      "description": "Materialized into every record before canonical validation. EKF-1 keeps all deferred semantic values explicitly unknown and inactive."
+      "description": "Materialized into every record before canonical validation. EKF-2 overlays the separately validated measurement contract source without changing identity."
     },
     "exercises": {
       "type": "array",
