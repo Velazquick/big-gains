@@ -379,6 +379,12 @@ Failure of any condition produces unavailable, not zero.
 
 **EKF-13.2 — EKF-1: Stable identity and compatibility generation.** EKF-1 introduces opaque canonical IDs, permanent legacy resolution, the minimum record schema, deterministic validation, and generation of the existing catalog compatibility API. It MUST make no analytics behavior change and MUST rewrite no schema-v5 history.
 
+### EKF-1 implementation shape (informative)
+
+EKF-1 is implemented as a source-controlled, static compatibility layer. `ekf/curated/exercises.json` persists the opaque exercise IDs and legacy compatibility fields; `families.json` persists the separate opaque family IDs; and `references.json` records the honest Big Gains-curated/project-owned baseline without inventing external provenance. The EKF-1 canonical defaults materialize the required record shape while leaving deferred taxonomy, measurement, and analytics meaning explicitly unknown/inactive.
+
+`scripts/generate-exercise-catalog.mjs` validates the source and deterministically produces both `exercise-catalog.js` and `ekf/compatibility/legacy-exercise-ids.json`. The generated browser artifact adds `BigGainsExerciseIdentity` beneath the unchanged enumerable `BigGainsExerciseCatalog` API. Current public IDs remain permanent legacy IDs, and schema-v5 workouts, active sessions, retrospective `definitionId` values, routines, PR keys, preferences, backups, and sync payloads are not rewritten. No Supabase or other network dependency is introduced. This note records the EKF-1 implementation; it does not alter the normative clauses or authorize EKF-2 behavior.
+
 **EKF-13.3 — EKF-2: Measurement semantics and analytics correctness.** EKF-2 implements entered-versus-derived load semantics, repetition/laterality arithmetic, metric availability, e1RM eligibility/versioning, muscle-role separation, and golden regressions. It includes the minimum workout-card/input semantics needed to make future entered values explicit while preserving existing stored history. The UI shape and historical bodyweight resolver policy are product decisions to settle before this phase.
 
 **EKF-13.4 — EKF-3: Curated catalog expansion.** EKF-3 evaluates allowed source records, creates provenance-complete assertions, performs human-reviewed deduplication, and expands the catalog only through validated releases. Bulk import and third-party media remain prohibited by default.

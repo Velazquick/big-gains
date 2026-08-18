@@ -252,6 +252,41 @@ test('every canonical name and alias resolves and searches to its existing owner
   expect(result.generatedIds).toEqual(['seated-iso-lateral-bench-press', '45-degree-back-extension', 'ez-bar-curl']);
 });
 
+test('EKF-1 exposes stable opaque identity beneath the unchanged catalog API', async ({ page }) => {
+  await installLocalStorageFixture(page, 'blankJorge');
+  await openApp(page);
+
+  const result = await page.evaluate(() => {
+    const catalog = window.BigGainsExerciseCatalog;
+    const identity = window.BigGainsExerciseIdentity;
+    const canonicalId = identity.canonicalIdFor('barbell-bench-press');
+    const retrospective = { id: 'retrospective-instance', definitionId: 'barbell-bench-press' };
+    return {
+      identityKeys: Object.keys(identity),
+      identityFrozen: Object.isFrozen(identity),
+      canonicalId,
+      canonicalIsOpaque: /^[0-9a-f]{8}-[0-9a-f-]{27}$/.test(canonicalId),
+      legacyRoundTrip: identity.compatibilityForCanonicalId(canonicalId)?.id,
+      catalogCanonicalLookup: catalog.getById(canonicalId)?.id,
+      retrospectiveCanonicalId: identity.canonicalIdFor(retrospective),
+      aliasCanonicalId: identity.resolveCanonicalId('Bench'),
+      unknown: identity.canonicalIdFor('not-a-real-exercise')
+    };
+  });
+
+  expect(result).toEqual({
+    identityKeys: ['canonicalIdFor', 'compatibilityForCanonicalId', 'resolveCanonicalId'],
+    identityFrozen: true,
+    canonicalId: result.canonicalId,
+    canonicalIsOpaque: true,
+    legacyRoundTrip: 'barbell-bench-press',
+    catalogCanonicalLookup: 'barbell-bench-press',
+    retrospectiveCanonicalId: result.canonicalId,
+    aliasCanonicalId: result.canonicalId,
+    unknown: null
+  });
+});
+
 test('catalog search preserves v64 normalization, matching, and ordering', async ({ page }) => {
   await installLocalStorageFixture(page, 'blankJorge');
   await openApp(page);
