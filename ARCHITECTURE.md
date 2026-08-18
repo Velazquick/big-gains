@@ -95,6 +95,8 @@ The application uses classic scripts, so `app.js` helpers such as `state`, `acti
 
 Catalog identity is data compatibility, not display normalization. Normal active-workout exercises normally store the canonical catalog ID in `exercise.id`. Retrospective exercise rows retain their fresh instance ID in `exercise.id` and store canonical identity separately in `definitionId`; analytics and history continue to resolve those records through `definitionId || id`. Catalog lookup never rewrites an instance ID, completed workout, PR key, exercise preference, or custom-routine entry.
 
+The accepted [Exercise Knowledge Foundation contract](EXERCISE_KNOWLEDGE_FOUNDATION.md) defines the future canonical identity, measurement, taxonomy, provenance, and compatibility rules underneath this API. EKF-0 is documentation only: the current catalog, workout cards, schema-v5 records, analytics, and serving architecture remain unchanged until a separately approved implementation phase.
+
 ## Workout-session lifecycle
 
 1. At startup, `app.js` loads the current profile state, sets `active` from `state.activeWorkout`, and creates `workoutSessionController` with live getter/setter ports. Setting an active workout updates both bindings to the same object; importing or otherwise replacing state is immediately visible through the getters.
