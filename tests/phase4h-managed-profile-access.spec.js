@@ -403,7 +403,7 @@ test('managed-member active session upsert then delete adopts the higher tombsto
     isOnline: () => true
   }).flush());
   expect(acknowledged).toMatchObject({ ok: true, sent: 2, pending: 0 });
-  await page.evaluate(({ catalogKey }) => {
+  const staleComparisonAt = await page.evaluate(({ catalogKey, comparisonKey }) => {
     const catalog = JSON.parse(localStorage.getItem(catalogKey));
     const key = `active_sessions\u0000alexa-active`;
     catalog.profiles.alexa.records[key] = {
@@ -411,14 +411,35 @@ test('managed-member active session upsert then delete adopts the higher tombsto
       tombstone: false, data: { workout: { id: 'alexa-active' }, restTimerEndsAt: null }
     };
     localStorage.setItem(catalogKey, JSON.stringify(catalog));
-  }, { catalogKey });
+    return JSON.parse(localStorage.getItem(comparisonKey)).comparedAt;
+  }, { catalogKey, comparisonKey });
 
   await context.setOffline(false);
   await page.unrouteAll({ behavior: 'wait' });
   const deletedCloud = await installCloudRoutes(page, { activeSessionDeleted: true });
   await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect.poll(() => page.evaluate(({ storageKey, catalogKey, comparisonKey, staleComparisonAt }) => {
+    const state = JSON.parse(localStorage.getItem(storageKey));
+    const catalog = JSON.parse(localStorage.getItem(catalogKey));
+    const comparison = JSON.parse(localStorage.getItem(comparisonKey));
+    return {
+      activeWorkoutId: state?.activeWorkout?.id || null,
+      pending: BigGainsCloudSync.queue.pending().length,
+      winner: catalog?.profiles?.alexa?.records?.[`active_sessions\u0000alexa-active`] || null,
+      comparisonAdvanced: comparison?.comparedAt !== staleComparisonAt,
+      comparison
+    };
+  }, { storageKey, catalogKey, comparisonKey, staleComparisonAt })).toMatchObject({
+    activeWorkoutId: null,
+    pending: 0,
+    winner: { version: 3, tombstone: true, data: null },
+    comparisonAdvanced: true,
+    comparison: {
+      parity: true,
+      profiles: { alexa: { parity: true } }
+    }
+  });
   await expect(page.locator('#cloudShadowHeading')).toHaveText('In sync');
-  await expect.poll(() => page.evaluate(() => BigGainsCloudSync.queue.pending().length)).toBe(0);
 
   const healed = await page.evaluate(({ catalogKey }) => {
     const catalog = JSON.parse(localStorage.getItem(catalogKey));
