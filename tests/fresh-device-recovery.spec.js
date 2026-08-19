@@ -339,9 +339,13 @@ test('managed owner restores persisted blank Jorge plus missing Alexa before nor
         sessionStorage.setItem('big-gains-test-partial-recovery-ui-seen', 'true');
       }
       const status = window.BigGainsCloudSync?.status?.();
-      if (status?.lastResult?.reason === 'awaiting-fresh-device-recovery'
+      const bootStatus = window.BigGainsBootGate?.status?.();
+      if ((panelText.includes('Restoring your training to this device')
+          && bootStatus?.state === 'unresolved'
+          && status?.initialized === false)
+        || (status?.lastResult?.reason === 'awaiting-fresh-device-recovery'
         && status.lastComparison?.comparedAt === '2026-08-09T12:00:00.000Z'
-        && status.lastComparison?.reasons?.includes('Fresh local profile was empty during the first comparison.')) {
+        && status.lastComparison?.reasons?.includes('Fresh local profile was empty during the first comparison.'))) {
         sessionStorage.setItem('big-gains-test-recovery-preempted-comparison', 'true');
       }
     };

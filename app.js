@@ -241,7 +241,7 @@ function closeRoutineEditor(){const d=$('routineDialog');if(d.close)d.close();el
 function saveRoutine(){state.customRoutines[routineDraftDay]=routineDraft.map(entry=>({exerciseId:entry.exerciseId,workingSets:Math.min(12,Math.max(1,Math.round(Number(entry.workingSets)||3))),targetReps:String(entry.targetReps||'').trim().slice(0,20)}));saveState();renderLibrary();closeRoutineEditor();}
 function resetRoutine(){delete state.customRoutines[routineDraftDay];delete routineVariantSelections[routineDraftDay];routineDraft=routineEngine.getDraft(routineDraftDay);saveState();renderRoutineEditor();renderLibrary();}
 function renderWeights(){const box=$('weightHistory');if(!state.weights.length){box.className='mini-list empty';box.textContent='No weigh-ins yet.';return;}box.className='mini-list';box.innerHTML=state.weights.slice(0,5).map(x=>`<div class="weight-row"><strong>${x.weight} lb</strong><small>${fmtDate(x.date)}</small></div>`).join('');}
-function renderAll(){renderGreeting();renderHero();renderStats();renderEquipment();renderLibrary();renderHistory();renderCalendar();renderWeights();goalsApi.render();timerController.renderPreferences();if(active)showActive(false);else timerController.deactivate();progressApi.afterFullRender({activeWorkout:active});}
+function renderAll(){if(window.BigGainsBootGate&&!window.BigGainsBootGate.canRender())return false;renderGreeting();renderHero();renderStats();renderEquipment();renderLibrary();renderHistory();renderCalendar();renderWeights();goalsApi.render();timerController.renderPreferences();if(active)showActive(false);else timerController.deactivate();progressApi.afterFullRender({activeWorkout:active});return true;}
 function bind(id,event,handler){const el=$(id);if(el)el.addEventListener(event,handler);}
 timerController.initialize();
 goalsApi.initialize();
@@ -304,4 +304,6 @@ if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serv
 notesApi.initialize({state,saveState});
 progressApi.initialize({getState:()=>state,getAnalyticsOptions:analyticsOptions,exercises:CATALOG_EXERCISES,analytics:analyticsApi,fmtDate,escapeHtml,workoutLabel:completionWorkoutLabel,openHistory,closeHistory,closeRoutineEditor});
 retrospectiveApi.initialize();
-renderAll();
+document.addEventListener('big-gains-boot-authorized',renderAll);
+if(!window.BigGainsSupabase?.configured)window.BigGainsBootGate?.authorize('local-config-unavailable');
+else renderAll();

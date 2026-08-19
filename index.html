@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-boot-state="unresolved">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -9,6 +9,18 @@
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icon.svg" />
   <title>Big Gains</title>
+  <style data-big-gains-critical-boot>
+    :root { color-scheme: dark; background: #080a0d; }
+    body { margin: 0; min-height: 100vh; min-height: 100dvh; background: #080a0d; color: #f4f1ea; }
+    #bootShell { box-sizing: border-box; min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 24px; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    #bootShell[hidden], html[data-boot-state="verified"] #bootShell { display: none; }
+    .boot-shell-card { width: min(100%, 420px); padding: 28px; border: 1px solid #242a31; border-radius: 22px; background: #101318; box-shadow: 0 18px 60px rgb(0 0 0 / 35%); }
+    .boot-shell-mark { display: inline-block; margin-bottom: 18px; color: #f0a36b; font-size: 12px; font-weight: 800; letter-spacing: .18em; }
+    .boot-shell-card h1 { margin: 0 0 10px; font-size: clamp(24px, 7vw, 34px); line-height: 1.05; }
+    .boot-shell-card p { margin: 0; color: #aeb5bf; font-size: 15px; line-height: 1.55; }
+    html:not([data-boot-state="verified"]) body > .app-shell,
+    html:not([data-boot-state="verified"]) body > dialog { display: none !important; }
+  </style>
   <script>
     (() => {
       const parameters = new URLSearchParams(location.hash.slice(1));
@@ -19,6 +31,14 @@
   </script>
 </head>
 <body class="session-selector-ready">
+  <section id="bootShell" role="status" aria-live="polite" aria-label="Big Gains is starting">
+    <div class="boot-shell-card">
+      <span class="boot-shell-mark">BIG GAINS</span>
+      <h1>Preparing your training space.</h1>
+      <p id="bootShellDetail">Checking this device before showing private training data.</p>
+      <noscript><p>Big Gains needs JavaScript to open. Enable it, then reload this page.</p></noscript>
+    </div>
+  </section>
   <div class="app-shell">
     <header class="topbar" id="top">
       <div><p class="eyebrow">BIG GAINS</p><h1 id="greeting">Welcome to Big Gains.</h1></div>
@@ -271,7 +291,7 @@
     <p id="retrospectiveError" class="retrospective-error" role="alert" aria-live="polite"></p>
   </div></dialog>
 
-  <script src="asset-manifest.js?v=v85-goals-v1-1-observation-fixes-config-ab51ee79cd36825d" data-big-gains-manifest></script>
+  <script src="asset-manifest.js?v=v86-boot-render-profile-isolation-config-ab51ee79cd36825d" data-big-gains-manifest></script>
   <script src="asset-loader.js"></script>
 </body>
 </html>
