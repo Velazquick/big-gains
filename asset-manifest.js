@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v85-goals-v1-1-observation-fixes';
+  const release = 'v86-boot-render-profile-isolation';
   const cloudConfigVersion = 'config-ab51ee79cd36825d'; // BIG_GAINS_CLOUD_CONFIG_VERSION
   const deploymentVersion = `${release}-${cloudConfigVersion}`;
   const manifestAsset = `./asset-manifest.js?v=${encodeURIComponent(deploymentVersion)}`;
@@ -32,6 +32,7 @@
     './goals.css'
   ];
   const scripts = [
+    './boot-render-gate.js',
     './account-context.js',
     './cloud-config.js',
     './vendor/supabase.js',

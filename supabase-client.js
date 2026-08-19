@@ -103,6 +103,7 @@
     const secret = String(password || '');
     if (!secret) throw new Error('Enter your password.');
     if (passwordSignInBusy) throw new Error('Sign-in is already being checked.');
+    const transition = window.BigGainsBootGate?.beginTransition('auth-sign-in');
     passwordSignInBusy = true;
     try {
       const { data, error } = await current.auth.signInWithPassword({ email: normalized, password: secret });
@@ -115,6 +116,9 @@
       }
       const user = await verifiedUser(data.session.user.id, { rejectOnFailure: true });
       return Object.freeze({ session: data.session, user });
+    } catch (error) {
+      window.BigGainsBootGate?.restore(transition);
+      throw error;
     } finally {
       passwordSignInBusy = false;
     }
@@ -166,9 +170,15 @@
   async function signOut({ scope = 'global' } = {}) {
     const current = getClient();
     if (!current) return false;
-    const { error } = await current.auth.signOut({ scope });
-    if (error) throw error;
-    return true;
+    const transition = window.BigGainsBootGate?.beginTransition('auth-sign-out');
+    try {
+      const { error } = await current.auth.signOut({ scope });
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      window.BigGainsBootGate?.restore(transition);
+      throw error;
+    }
   }
 
   async function readAccountState(expectedAuthUserId = null) {
@@ -329,7 +339,12 @@
   function onAuthStateChange(callback) {
     const current = getClient();
     if (!current) return Object.freeze({ unsubscribe() {} });
-    const { data } = current.auth.onAuthStateChange((event, nextSession) => callback(event, nextSession));
+    const { data } = current.auth.onAuthStateChange((event, nextSession) => {
+      if (['SIGNED_IN', 'SIGNED_OUT', 'PASSWORD_RECOVERY', 'USER_UPDATED'].includes(event)) {
+        window.BigGainsBootGate?.beginTransition(`auth-${event.toLowerCase().replaceAll('_', '-')}`);
+      }
+      callback(event, nextSession);
+    });
     return data.subscription;
   }
 

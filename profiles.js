@@ -125,6 +125,7 @@ function switchProfile(profileId) {
   if (!bigGainsAccounts.runtime.switcherVisible) return;
   const account = bigGainsAccounts.registry.resolve(profileId);
   if (!account || account.accountId === ACCOUNT.accountId) return;
+  window.BigGainsBootGate?.beginTransition('managed-profile-switch');
   bigGainsStatePersistence.saveActiveProfileId(account.profileId);
   location.reload();
 }

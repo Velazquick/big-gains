@@ -2,6 +2,7 @@
   'use strict';
 
   const boundary = window.BigGainsSupabase;
+  const bootGate = window.BigGainsBootGate;
   let initialized = false;
   let subscription = null;
   let busy = false;
@@ -94,17 +95,25 @@
   async function performRefresh() {
     if (!boundary?.configured) {
       if (window.bigGainsAccounts.runtime.kind === 'guest') show(signInMarkup('Private cloud is not configured on this build.'), { blocking: false });
+      bootGate?.authorize('local-config-unavailable');
       return null;
     }
+    bootGate?.beginTransition('identity-resolution');
     let currentSession = null;
     try { currentSession = await boundary.session(); } catch (error) {
       show(`<span class="label">Private cloud</span><h2>Sign-in could not be checked.</h2><p>${escapeHtml(error?.message || 'Try again when connected.')}</p>`);
+      bootGate?.recover('Sign-in could not be checked. Try again when connected.', 'session-check-failed');
       return null;
     }
     if (!currentSession?.user?.id) {
       if (rejectionMessage) show(rejectionMarkup(rejectionMessage));
       else if (window.bigGainsAccounts.runtime.kind === 'guest') show(signInMarkup());
       else hide();
+      if (window.bigGainsAccounts.runtime.kind === 'guest' || rejectionMessage) {
+        bootGate?.recover(rejectionMessage || 'Sign in to open your private training space.', 'signed-out');
+      } else {
+        bootGate?.authorize('local-signed-out');
+      }
       return null;
     }
     let verifiedUser;
@@ -114,35 +123,42 @@
       if (error?.code === 'identity-verification-unavailable'
         && restoredRuntimeAvailableOffline(currentSession.user.id)) {
         hide();
+        bootGate?.authorize('offline-cached-identity');
         return Object.freeze({ status: 'offline-cached', reason: error?.message || 'Cloud unavailable.' });
       }
       await boundary.signOut({ scope: 'local' }).catch(() => {});
       rejectionMessage = error?.message || 'The signed-in identity could not be verified.';
       show(rejectionMarkup(rejectionMessage));
+      bootGate?.recover(rejectionMessage, 'identity-verification-failed');
       return null;
     }
     let accountState;
     try { accountState = await boundary.readAccountState(verifiedUser.id); } catch (error) {
       if (restoredRuntimeAvailableOffline(verifiedUser.id)) {
         hide();
+        bootGate?.authorize('offline-cached-account');
         return Object.freeze({ status: 'offline-cached', reason: error?.message || 'Cloud unavailable.' });
       }
       show(`<span class="label">Private cloud</span><h2>Account check stopped safely.</h2><p>${escapeHtml(error?.message || 'The account could not be verified.')}</p>`);
+      bootGate?.recover('Account access could not be verified. Try again when connected.', 'account-verification-failed');
       return null;
     }
     if (accountState.status === 'needs-provisioning') {
       if (window.bigGainsAccounts.runtime.kind === 'managed-member'
         && window.bigGainsAccounts.runtime.authUserId === verifiedUser.id) {
         show('<span class="label">Private cloud</span><h2>Managed access needs review.</h2><p>The previously verified profile membership is no longer available. Independent onboarding is disabled for this device identity.</p><small>No local or cloud training data was changed.</small>');
+        bootGate?.recover('Managed profile access needs review.', 'managed-access-review');
         return accountState;
       }
       show(provisionMarkup(verifiedUser.email));
+      bootGate?.recover('Finish setting up this private profile to continue.', 'profile-provisioning');
       return accountState;
     }
     if (accountState.status !== 'ready') {
       rejectionMessage = accountState.reason || 'Unexpected account/profile state.';
       await boundary.signOut({ scope: 'local' }).catch(() => {});
       show(rejectionMarkup(rejectionMessage));
+      bootGate?.recover(rejectionMessage, 'account-shape-rejected');
       return accountState;
     }
     rejectionMessage = '';
@@ -166,10 +182,12 @@
       }
       if (!recovery.ok) {
         show(`<span class="label">Recovery stopped safely</span><h2>This profile was not restored.</h2><p>${escapeHtml(recovery.message)}</p><small>No existing local training data was overwritten or merged.</small>`);
+        bootGate?.recover('Profile recovery stopped safely. Review the recovery details.', 'profile-recovery-failed');
         return Object.freeze({ ...accountState, recovery });
       }
     }
     hide();
+    bootGate?.authorize('verified-account-profile');
     return accountState;
   }
 
