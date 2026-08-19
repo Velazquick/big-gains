@@ -294,7 +294,7 @@ The card can say:
 
 ## 11. Goals information architecture
 
-**G1-11.1 — Contained page model.** V1 has one Goals overview and one goal-detail view (page, sheet, or dialog), with no nested strategy/settings hierarchy. The exact primary-navigation entry is an open UI decision in Section 15.
+**G1-11.1 — Contained page model.** V1 has one standalone Goals hub and one goal-detail view (page, sheet, or dialog), with no nested strategy/settings hierarchy. Its primary v1 entry is the contextual strength-goal summary card on Today; Goals is not a sixth persistent bottom-navigation destination.
 
 **G1-11.2 — Overview.** The overview shows active strength goals first: exercise, destination, observed/inferred progress label, status, optional date, guidance state, and next/blocked reason. It also provides `Create strength goal` and one collapsed `Past goals` area for completed/archived goals.
 
@@ -306,17 +306,17 @@ The card can say:
 
 **G1-11.6 — Empty and blocked states.** Empty Goals invites one strength goal without implying Train control. Blocked states name the missing action: select eligible exercise, log/adopt baseline, resolve routine conflict, correct unit/identity, or re-enable guidance.
 
-### 11.1 Navigation design comparison (final choice open)
+### 11.1 Navigation decision
 
-The current shell has exactly five bottom destinations: `Today`, `Train`, `Calendar`, `Progress`, and `Library`. Goals answers **“Where am I going?”** while Progress answers **“How am I doing?”** They should cross-link, but Goals MUST remain a destination/planning concept rather than a subsection silently buried inside Progress. A sixth cramped bottom-navigation item is not the default.
+The current shell has exactly five bottom destinations: `Today`, `Train`, `Calendar`, `Progress`, and `Library`. Goals answers **“Where am I going?”** while Progress answers **“How am I doing?”** They should cross-link, but Goals MUST remain a standalone destination/planning concept rather than a subsection silently buried inside Progress. V1 preserves all five bottom destinations and enters Goals primarily through a contextual strength-goal summary card on Today. The architecture MUST preserve the ability to promote Goals into primary navigation later without redesigning the goal model.
 
 | Option | Concrete entry pattern | Advantages | Tradeoffs |
 | --- | --- | --- | --- |
-| **A — Today launch into a full Goals hub (recommended for review)** | A visible Goals card/shortcut on Today opens the complete Goals overview; exact-exercise Progress and guided Train cards deep-link to the same goal detail. | Preserves five bottom destinations; keeps destination-setting near the daily home surface; maintains Goals as its own contained hub and Progress as evidence. | Discoverability depends on a strong Today treatment; users may expect a persistent primary-tab entry. |
+| **A — Today launch into a full Goals hub (accepted for v1)** | A visible Goals card/shortcut on Today opens the complete Goals overview; exact-exercise Progress and guided Train cards may deep-link to the same goal detail in later intervals. | Preserves five bottom destinations; keeps destination-setting near the daily home surface; maintains Goals as its own contained hub and Progress as evidence. | Discoverability depends on a strong Today treatment; users may expect a persistent primary-tab entry. |
 | **B — Reframe Library as Plan** | Rename/restructure `Library` as a `Plan` destination with peer entries for Goals and Routines/Library, each opening its own overview. | Creates a durable planning home without six tabs; makes Goals and routine/program structure visibly related but separate. | Larger information-architecture change; risks confusing existing Library habits and requires careful routine-authority copy. |
 | **C — Primary-navigation utility launcher** | Add a clearly labeled Goals entry to a top-level utility/profile/overflow launcher while retaining contextual links from Today, Train, and Progress. | Minimal bottom-nav disruption and clear conceptual separation from Progress. | Lowest persistent visibility; adds a navigation layer and may make goal creation feel secondary. |
 
-**G1-11.7 — Navigation recommendation status.** Option A is the recommended direction for user review because it preserves the current five-destination shell and gives Goals a full hub without conflating it with Progress. This is a design recommendation only; the final navigation choice remains OPEN and no runtime implementation is authorized.
+**G1-11.7 — Navigation decision status.** Option A is accepted for v1: a contextual Today card opens the standalone Goals hub, the bottom navigation remains at five destinations, and the navigation boundary remains capable of promoting Goals into a primary destination later. Today remains what matters now, Goals where the user is going, Progress how the user is doing, and Train what the user is performing.
 
 **G1-11.8 — Cross-link consistency.** Regardless of the chosen entry, Today, Train, and exact-exercise Progress MAY link to the same canonical goal detail. Those links MUST NOT create separate goal state, editors, or attainment calculations.
 
@@ -382,11 +382,11 @@ The current shell has exactly five bottom destinations: `Today`, `Train`, `Calen
 - Saved-goal removal is non-destructive archive in v1.
 - A future Programming/Strength Planning layer may own longer-horizon blocks, phases, intensity objectives, or deload strategy through a versioned extension boundary.
 
-### 15.2 Remaining open product question
+### 15.2 Resolved navigation decision
 
-**OQ-5 — Where does Goals enter navigation?** The existing app has five primary destinations: Today, Train, Calendar, Progress, and Library. Review Options A–C in Section 11.1. Option A (a visible Today launch into a full Goals hub, with contextual deep links) is recommended, but the final choice remains open. Goals must remain conceptually distinct from Progress, and a sixth cramped bottom destination is not the default.
+**OQ-5 — Where does Goals enter navigation?** Resolved: a contextual strength-goal summary card on Today opens a full standalone Goals hub. V1 keeps the existing five bottom destinations—Today, Train, Calendar, Progress, and Library—and does not add a sixth. The architecture preserves later promotion of Goals into primary navigation without redesigning the goal model.
 
-OQ-1 through OQ-4 are resolved by this revision. OQ-5 does not block review of the architecture, safety, attainment, or progression-policy contract, but it does block freezing the primary navigation implementation.
+OQ-1 through OQ-5 are resolved. The conceptual separation remains: Today is what matters now, Goals is where the user is going, Progress is how the user is doing, and Train is what the user is performing.
 
 ## 16. Evidence notes and references (informative)
 

@@ -14,6 +14,7 @@ const productionScriptOrder = [
   'exercise-catalog.js',
   'routine-engine.js',
   'analytics.js',
+  'goals.js',
   'workout-session-controller.js',
   'workout-controls.js',
   'notes.js',

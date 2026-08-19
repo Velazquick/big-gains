@@ -2,6 +2,8 @@
 
 Big Gains is a static, local-first strength-training PWA with the existing managed Jorge/Alexa account plus invited, one-profile independent accounts, JSON backup and restore, one-way private cloud shadows, and a tested offline app shell.
 
+Release `v83-goals-1a-local-model` adds a standalone Goals hub reached from a compact Today strength-goal card without adding a sixth bottom-navigation destination. V1 goals are exact-exercise 1RM destinations selected through EKF eligibility. Their profile-scoped source records use the existing schema-v5 goals preference and `preferences/goals` shadow identity. Guidance defaults off and persists as authorization only; this interval does not modify routines, active workouts, Train values, completed history, analytics formulas, Supabase schema/RLS, or queue behavior.
+
 Timer completion always uses the visual and accessible READY cue as its primary feedback. A short repository-owned chime is a best-effort enhancement after the persistent audio element is armed by a trusted workout interaction; installed iOS PWAs may still suppress audio because of device or WebKit policy.
 
 Finishing a workout saves it first, clears the live session once, and then shows a focused, session-only completion summary with duration, completed exercises and working sets, working-set volume, and PR count. Done returns to Today; Review workout reuses the existing history detail.
@@ -15,7 +17,7 @@ Release `v76-history-explorer-detail-polish` completes the first History V2 prod
 ## Project documentation
 
 - [Architecture](ARCHITECTURE.md) — production load order, module boundaries, state and workout lifecycles, profile isolation, backup and sync behavior, offline assets, and CI
-- [Goals v1 specification](GOALS_V1_SPEC.md) — documentation-only exact-exercise 1RM lifecycle, estimated-versus-achieved semantics, conservative next-exposure policy, routine/Train authority, evidence notes, open navigation comparison, and implementation acceptance criteria
+- [Goals v1 specification](GOALS_V1_SPEC.md) — normative exact-exercise 1RM lifecycle, estimated-versus-achieved semantics, conservative next-exposure policy, routine/Train authority, evidence notes, navigation decision, and implementation acceptance criteria
 - [Release checklist](RELEASE_CHECKLIST.md) — the required checks for production, storage, backup, and service-worker changes
 - [Browser testing](TESTING.md) — local commands, fixtures, coverage, and known limits
 - [Phase 4 account roadmap](PHASE4_ACCOUNT_ROADMAP.md) — cloud ownership, conflict rules, migration, and friend onboarding

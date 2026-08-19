@@ -4,6 +4,7 @@
   const views = [...document.querySelectorAll('.view')];
   const navButtons = [...document.querySelectorAll('.bottom-nav [data-view]')];
   const activePanel = document.getElementById('activePanel');
+  const validViews = new Set(['today', 'goals', 'train', 'calendar', 'progress', 'library']);
   let initialized = false;
 
   function showView(name, options = {}) {
@@ -70,9 +71,9 @@
     const saved = (() => { try { return sessionStorage.getItem('big-gains-view'); } catch { return null; } })();
     const hasActiveWorkout = activePanel && !activePanel.classList.contains('hidden');
     const explicitlyExited = window.bigGainsWorkoutMode?.wasExplicitlyExited();
-    const initial = ['today','train','calendar','progress','library'].includes(requested)
+    const initial = validViews.has(requested)
       ? requested
-      : (hasActiveWorkout && !explicitlyExited ? 'train' : saved || 'today');
+      : (hasActiveWorkout && !explicitlyExited ? 'train' : (validViews.has(saved) ? saved : 'today'));
     showView(initial, { instant: true, scroll: false, workout: !explicitlyExited });
     return true;
   }
