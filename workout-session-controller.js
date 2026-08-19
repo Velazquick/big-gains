@@ -157,6 +157,7 @@
     estimate1RM,
     createId,
     persist,
+    prepareExercise = ({ exercise }) => exercise,
     now = () => Date.now(),
     deactivateTimer = () => {},
     clearWorkoutTicker = () => {},
@@ -184,13 +185,20 @@
       throw new TypeError('WorkoutSessionController requires live state/session ports, routine and catalog APIs, analytics, IDs, and persistence.');
     }
 
-    function makeExercise(definition, prescription = null) {
-      return buildExercise({
+    function makeExercise(definition, prescription = null, context = {}) {
+      const exercise = buildExercise({
         definition,
         prescription,
         previousPerformance: previousPerformance(definition.id),
         createId
       });
+      return prepareExercise({
+        exercise,
+        definition,
+        prescription,
+        evidenceCutoff: getActiveWorkout()?.startedAt,
+        ...context
+      }) || exercise;
     }
 
     function begin(day) {
@@ -207,7 +215,7 @@
       routineEngine.getRoutine(day).forEach(id => {
         const definition = exerciseCatalog.getById(id);
         if (definition && !current.exercises.some(exercise => exercise.id === definition.id)) {
-          current.exercises.push(makeExercise(definition, routineEngine.getPrescription(day, id)));
+          current.exercises.push(makeExercise(definition, routineEngine.getPrescription(day, id), { source: 'saved_routine', day }));
         }
       });
       return current.exercises.length - before;
@@ -289,7 +297,7 @@
       if (created) begin(getSelectedDay());
       const current = getActiveWorkout();
       if (current.exercises.some(exercise => exercise.id === id)) return current;
-      current.exercises.push(makeExercise(definition));
+      current.exercises.push(makeExercise(definition, null, { source: 'current_workout', day: current.type }));
       persistActiveMutation();
       if (created) renderActiveSession(scroll);
       else renderLoadedSession(scroll);

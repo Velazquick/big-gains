@@ -256,6 +256,47 @@
               reps: 1
             };
           }
+          const progression = goal.progressionState;
+          const normalizeDecision = decision => {
+            if (!isRecord(decision)
+              || typeof decision.decisionId !== 'string' || !decision.decisionId
+              || !validDate(decision.issuedAt)
+              || !validDate(decision.evidenceCutoff)
+              || decision.exerciseId !== normalized.exerciseId
+              || !Number.isFinite(Number(decision.enteredLoad)) || Number(decision.enteredLoad) <= 0
+              || decision.unit !== normalized.unit
+              || decision.loadBasis !== normalized.targetBasis
+              || !Number.isInteger(Number(decision.workingSetCount))
+              || Number(decision.workingSetCount) < 1 || Number(decision.workingSetCount) > 12
+              || !Array.isArray(decision.repTargets)
+              || decision.repTargets.length !== Number(decision.workingSetCount)
+              || decision.repTargets.some(rep => !Number.isInteger(Number(rep)) || Number(rep) < 1)) return null;
+            return {
+              decisionId: decision.decisionId,
+              issuedAt: decision.issuedAt,
+              evidenceCutoff: decision.evidenceCutoff,
+              exerciseId: normalized.exerciseId,
+              enteredLoad: Number(decision.enteredLoad),
+              unit: normalized.unit,
+              loadBasis: normalized.targetBasis,
+              workingSetCount: Number(decision.workingSetCount),
+              repTargets: decision.repTargets.map(Number),
+              decisionCode: typeof decision.decisionCode === 'string' ? decision.decisionCode : 'HOLD',
+              reasonCode: typeof decision.reasonCode === 'string' ? decision.reasonCode : 'EVIDENCE_UNAVAILABLE',
+              explanation: typeof decision.explanation === 'string' ? decision.explanation.slice(0, 1000) : '',
+              policy: { id: 'strength_double_progression_v1', version: 1 },
+              selectedExposureIds: Array.isArray(decision.selectedExposureIds) ? decision.selectedExposureIds.filter(id => typeof id === 'string' && id).slice(0, 3) : [],
+              attainmentState: ['in_progress', 'estimated_reached', 'achieved'].includes(decision.attainmentState) ? decision.attainmentState : 'in_progress'
+            };
+          };
+          const currentDecision = normalizeDecision(progression?.current);
+          if (currentDecision) {
+            const trace = Array.isArray(progression.trace) ? progression.trace.map(normalizeDecision).filter(Boolean).slice(0, 8) : [];
+            normalized.progressionState = {
+              current: currentDecision,
+              trace: [currentDecision, ...trace.filter(item => item.decisionId !== currentDecision.decisionId)].slice(0, 8)
+            };
+          }
           return normalized;
         }).filter(Boolean) : [];
       }

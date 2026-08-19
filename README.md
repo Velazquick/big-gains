@@ -2,7 +2,7 @@
 
 Big Gains is a static, local-first strength-training PWA with the existing managed Jorge/Alexa account plus invited, one-profile independent accounts, JSON backup and restore, one-way private cloud shadows, and a tested offline app shell.
 
-Release `v83-goals-1a-local-model` adds a standalone Goals hub reached from a compact Today strength-goal card without adding a sixth bottom-navigation destination. V1 goals are exact-exercise 1RM destinations selected through EKF eligibility. Their profile-scoped source records use the existing schema-v5 goals preference and `preferences/goals` shadow identity. Guidance defaults off and persists as authorization only; this interval does not modify routines, active workouts, Train values, completed history, analytics formulas, Supabase schema/RLS, or queue behavior.
+Release `v84-goals-1c-train-guidance` connects explicitly enabled exact-exercise strength goals to newly constructed Train cards through the pure Goals progression engine. Safe recommendations prefill editable working-set targets, retain a bounded decision trace in the existing schema-v5 `preferences/goals` record, and persist an immutable starting-target snapshot with the active session. Saved routines keep structural authority; warm-ups, completed history, analytics formulas, Supabase schema/RLS, and queue behavior remain unchanged.
 
 Timer completion always uses the visual and accessible READY cue as its primary feedback. A short repository-owned chime is a best-effort enhancement after the persistent audio element is armed by a trusted workout interaction; installed iOS PWAs may still suppress audio because of device or WebKit policy.
 

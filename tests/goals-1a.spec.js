@@ -94,7 +94,7 @@ test('G1-1.3: only EKF external-load e1RM exercises are selectable', async ({ pa
   await expect(page.locator('#saveGoal')).toBeDisabled();
 });
 
-test('G1-2.8/G1-5.2: guidance persists but both off and on leave Train untouched in 1A', async ({ page }) => {
+test('G1-2.8/G1-5.2: guidance toggle does not rewrite an already-created active session', async ({ page }) => {
   await openApp(page);
   await page.evaluate(() => {
     startWorkout('Other', false);
@@ -108,7 +108,7 @@ test('G1-2.8/G1-5.2: guidance persists but both off and on leave Train untouched
   const guidance = page.locator('[data-goal-guidance]').first();
   await expect(guidance).not.toBeChecked();
   await guidance.check();
-  await expect(page.locator('#activeGoalsList')).toContainText('Train remains unchanged');
+  await expect(page.locator('#activeGoalsList')).toContainText('Future eligible Train cards may use this goal');
 
   const after = await page.evaluate(() => ({ active: structuredClone(active), routines: structuredClone(state.customRoutines), workouts: structuredClone(state.workouts) }));
   expect(after).toEqual(before);

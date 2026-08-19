@@ -224,7 +224,7 @@
       }
       const timestamp = isoNow();
       const next = scopedGoals().map(goal => goal.goalId === goalId ? { ...goal, guidanceEnabled: Boolean(enabled), updatedAt: timestamp } : goal);
-      return commit(next, enabled ? 'Guidance is on for future Goals work. Train remains unchanged in Goals-1A.' : 'Guidance is off. The goal is still tracked.')
+      return commit(next, enabled ? 'Guidance is on for future eligible Train cards.' : 'Guidance is off. The goal is still tracked.')
         ? { ok: true }
         : { ok: false, reason: 'save-failed' };
     }
@@ -292,7 +292,7 @@
       const guidance = PAST_STATUSES.has(goal.status) ? '' : `
         <label class="goal-guidance-toggle">
           <input type="checkbox" data-goal-guidance="${escapeHtml(goal.goalId)}" ${goal.guidanceEnabled ? 'checked' : ''} ${active ? '' : 'disabled'}>
-          <span><strong>Use this goal to guide workouts</strong><small>${goal.guidanceEnabled ? 'On · Train remains unchanged until progression guidance ships.' : 'Off · Tracking only.'}</small></span>
+          <span><strong>Use this goal to guide workouts</strong><small>${goal.guidanceEnabled ? 'On · Future eligible Train cards may use this goal.' : 'Off · Tracking only.'}</small></span>
         </label>`;
       return `<article class="goal-card" data-goal-id="${escapeHtml(goal.goalId)}">
         <header><div><span class="label">${escapeHtml(lifecycle)} strength goal</span><h3>${escapeHtml(exercise?.name || 'Unavailable exercise')}</h3></div><strong class="goal-target">${escapeHtml(target)}</strong></header>
@@ -300,7 +300,7 @@
         <div class="goal-card-meta"><span>1RM target</span>${date}</div>
         <div class="goal-evidence">${evidenceMarkup(goal)}</div>
         ${guidance}
-        ${goal.guidanceEnabled ? '<p class="goal-guidance-note">Guidance is saved, but Goals-1A does not change routines, active workouts, or Train card values.</p>' : ''}
+        ${goal.guidanceEnabled ? '<p class="goal-guidance-note">Guidance applies only when Train can build a safe exact-exercise target. Routines and completed history stay unchanged.</p>' : ''}
         ${actions}
       </article>`;
     }

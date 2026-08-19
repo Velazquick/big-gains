@@ -37,6 +37,16 @@ const goalsApi=BigGainsGoals.create({
   escapeHtml
 });
 window.bigGainsGoals=goalsApi;
+const goalsTrainGuidance=BigGainsGoalsTrainGuidance.create({
+  account:ACCOUNT,
+  profile:PROFILE,
+  catalog:exerciseCatalog,
+  analytics:analyticsApi,
+  analyticsOptions,
+  getState:()=>state,
+  createId:uid
+});
+window.bigGainsGoalsTrainGuidance=goalsTrainGuidance;
 const localDateKey=value=>{const date=value instanceof Date?value:new Date(value);return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;};
 const calendarSavedKey=bigGainsAccounts.registry.sessionKey(ACCOUNT,'calendar-date');
 let calendarSelectedKey=(()=>{try{return sessionStorage.getItem(calendarSavedKey);}catch{return null;}})()||localDateKey(new Date());
@@ -146,6 +156,7 @@ const workoutSessionController=BigGainsWorkoutSessionController.create({
   estimate1RM,
   createId:uid,
   persist:saveState,
+  prepareExercise:context=>goalsTrainGuidance.prepareExercise(context),
   deactivateTimer:()=>timerController.deactivate(),
   clearWorkoutTicker:()=>clearInterval(workoutTicker),
   setPetState:setWorkoutPetState,
@@ -170,7 +181,7 @@ function addExercise(id,scroll=true){return workoutSessionController.addExercise
 function loadRoutine(day=selectedDay,scroll=true){if(active&&active.type===day&&active.exercises.length===0&&workoutSessionController.repairEmpty(active,{scroll}))return active;return workoutSessionController.loadRoutine(day,{scroll});}
 function renderWorkoutClock(){if(active)$('workoutClock').textContent=fmtTime((Date.now()-new Date(active.startedAt))/1000);}
 function stepper(field,ei,si,value,step,options){return workoutControlsApi.renderStepper(field,ei,si,value,step,options);}
-function renderActive(){const result=workoutControlsApi.renderActive({activeWorkout:active,box:$('activeExercises'),finishButton:$('finishWorkout'),lastPerformance,performanceDelta:(current,previous)=>analyticsApi.performanceDelta(current,previous,analyticsOptions()),estimate1RM,escapeHtml,stepper,loadModeFor:exerciseCatalog.loadModeFor,inputFieldsFor:exerciseCatalog.inputFieldsFor,setSummaryFor:exercise=>analyticsApi.setSummary(exercise,analyticsOptions())});notesApi.renderActiveNotes({activeWorkout:active,box:$('activeExercises'),state,defaultRest:DEFAULT_REST,escapeHtml});progressApi.afterActiveRender({activeWorkout:active});return result;}
+function renderActive(){const result=workoutControlsApi.renderActive({activeWorkout:active,box:$('activeExercises'),finishButton:$('finishWorkout'),lastPerformance,performanceDelta:(current,previous)=>analyticsApi.performanceDelta(current,previous,analyticsOptions()),estimate1RM,escapeHtml,stepper,loadModeFor:exerciseCatalog.loadModeFor,inputFieldsFor:exerciseCatalog.inputFieldsFor,setSummaryFor:exercise=>analyticsApi.setSummary(exercise,analyticsOptions()),guidanceMarkupFor:exercise=>goalsTrainGuidance.render(exercise,escapeHtml)});notesApi.renderActiveNotes({activeWorkout:active,box:$('activeExercises'),state,defaultRest:DEFAULT_REST,escapeHtml});progressApi.afterActiveRender({activeWorkout:active});return result;}
 function startRestTimer(exerciseIndex){return timerController.start(exerciseIndex);}
 function acknowledgeTimerReady(){return timerController.acknowledgeReady();}
 function discardWorkout(){return workoutSessionController.discard();}
@@ -247,6 +258,10 @@ bind('activeExercises','input',e=>{const {ei,si,field}=e.target.dataset;if(field
 bind('activeExercises','change',e=>{const rest=e.target.closest('[data-rest-seconds]');if(rest){workoutSessionController.focusExercise(Number(rest.dataset.restSeconds));notesApi.saveRest({activeWorkout:active,state,index:Number(rest.dataset.restSeconds),value:rest.value,defaultRest:DEFAULT_REST,saveState,summary:document.querySelector(`[data-note-block="${rest.dataset.restSeconds}"] summary span`)});}});
 bind('activeExercises','click',e=>{
   if(!active)return;
+  const reviewRoutine=e.target.closest('[data-goal-review-routine]');
+  if(reviewRoutine){e.preventDefault();openRoutineEditor();return;}
+  const useToday=e.target.closest('[data-goal-use-today]');
+  if(useToday){e.preventDefault();const card=useToday.closest('.active-exercise'),index=[...document.querySelectorAll('#activeExercises .active-exercise')].indexOf(card);if(index>=0&&goalsTrainGuidance.useForToday(active.exercises[index])){saveState();renderActive();}return;}
   const move=e.target.closest('[data-move-exercise]');
   if(move){e.preventDefault();workoutSessionController.moveExercise(Number(move.dataset.index),move.dataset.moveExercise);return;}
   const toggle=e.target.closest('[data-toggle-exercise]');

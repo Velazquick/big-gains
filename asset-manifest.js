@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v83-goals-1a-local-model';
+  const release = 'v84-goals-1c-train-guidance';
   const cloudConfigVersion = 'config-ab51ee79cd36825d'; // BIG_GAINS_CLOUD_CONFIG_VERSION
   const deploymentVersion = `${release}-${cloudConfigVersion}`;
   const manifestAsset = `./asset-manifest.js?v=${encodeURIComponent(deploymentVersion)}`;
@@ -43,7 +43,9 @@
     './exercise-catalog.js',
     './routine-engine.js',
     './analytics.js',
+    './goals-progression.js',
     './goals.js',
+    './goals-train-guidance.js',
     './workout-session-controller.js',
     './workout-controls.js',
     './notes.js',
