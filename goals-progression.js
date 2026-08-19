@@ -183,6 +183,150 @@
     return rounded > 0 && (direction > 0 ? rounded > current : rounded < current) ? rounded : null;
   }
 
+  function successfulTransition(current, routine, loadability) {
+    const atTop = current.repTargets.every(rep => rep === routine.effectiveRepRange.max);
+    if (atTop) {
+      const advanced = nextLoad(current.enteredLoad, 1, loadability);
+      if (advanced === null) return null;
+      return {
+        enteredLoad: advanced,
+        repTargets: Array(routine.workingSetCount).fill(routine.effectiveRepRange.min),
+        decisionCode: DECISION.INCREASE_LOAD,
+        reasonCode: REASON.ADD_LOAD_RESET_REPS,
+        objective: OBJECTIVE.EARN_NEXT_LOAD,
+        explanation: `All comparable working sets completed ${routine.effectiveRepRange.max} reps. Advance one valid load increment and reset to ${routine.effectiveRepRange.min} reps.`
+      };
+    }
+    return {
+      enteredLoad: current.enteredLoad,
+      repTargets: current.repTargets.map(rep => Math.min(rep + 1, routine.effectiveRepRange.max)),
+      decisionCode: DECISION.HOLD_LOAD_BUILD_REPS,
+      reasonCode: REASON.ADD_REPS,
+      objective: OBJECTIVE.BUILD_STRENGTH_VOLUME,
+      explanation: 'All comparable working sets completed the issued rep target. Keep the demonstrated load and add one rep per set.'
+    };
+  }
+
+  function projectionInputs(input) {
+    const recommendation = input?.recommendation;
+    const workingSetCount = wholePositive(recommendation?.workingSetCount);
+    const enteredLoadValue = positive(recommendation?.enteredLoad);
+    const repRange = parseRepRange(recommendation?.repRange ?? POLICY_REP_RANGE);
+    const repTargets = list(recommendation?.repTargets).map(wholePositive);
+    const loadability = normalizeLoadability(input || {}, { ui: { loadStep: input?.loadIncrement } });
+    if (workingSetCount === null || enteredLoadValue === null || !repRange || repRange === undefined || !loadability
+      || repTargets.length !== workingSetCount
+      || repTargets.some(rep => rep === null || rep < repRange.min || rep > repRange.max)) return null;
+    return {
+      current: { enteredLoad: enteredLoadValue, repTargets },
+      routine: { workingSetCount, effectiveRepRange: repRange },
+      loadability
+    };
+  }
+
+  function projectTrajectory(input = {}) {
+    const normalized = projectionInputs(input);
+    if (!normalized) return freeze({ status: 'unavailable', current: null, steps: [], condition: null, conditional: true });
+    const stepCount = Math.min(3, Math.max(2, wholePositive(input.stepCount) || 3));
+    const steps = [];
+    let current = normalized.current;
+    for (let index = 0; index < stepCount; index += 1) {
+      const next = successfulTransition(current, normalized.routine, normalized.loadability);
+      if (!next) break;
+      steps.push({
+        sequence: index + 1,
+        enteredLoad: next.enteredLoad,
+        repTargets: [...next.repTargets],
+        workingSetCount: normalized.routine.workingSetCount,
+        decisionCode: next.decisionCode,
+        reasonCode: next.reasonCode,
+        condition: `If all ${normalized.routine.workingSetCount} working sets complete the current rep target.`
+      });
+      current = { enteredLoad: next.enteredLoad, repTargets: [...next.repTargets] };
+    }
+    const max = normalized.routine.effectiveRepRange.max;
+    return freeze({
+      status: steps.length ? 'available' : 'unavailable',
+      current: {
+        enteredLoad: normalized.current.enteredLoad,
+        repTargets: [...normalized.current.repTargets],
+        workingSetCount: normalized.routine.workingSetCount,
+        repRange: { ...normalized.routine.effectiveRepRange }
+      },
+      steps,
+      condition: `Complete all ${normalized.routine.workingSetCount} sets at ${max} reps to earn the next load step.`,
+      conditional: true
+    });
+  }
+
+  function exposuresToLoadSteps(normalized, loadSteps) {
+    let current = normalized.current;
+    let advancedLoads = 0;
+    let exposures = 0;
+    const limit = Math.max(12, loadSteps * (normalized.routine.effectiveRepRange.max - normalized.routine.effectiveRepRange.min + 2));
+    while (advancedLoads < loadSteps && exposures < limit) {
+      const next = successfulTransition(current, normalized.routine, normalized.loadability);
+      if (!next) return null;
+      exposures += 1;
+      if (next.enteredLoad > current.enteredLoad) advancedLoads += 1;
+      current = { enteredLoad: next.enteredLoad, repTargets: [...next.repTargets] };
+    }
+    return advancedLoads === loadSteps ? exposures : null;
+  }
+
+  function deadlineOutlook(input = {}) {
+    if (!input.targetDate) {
+      return freeze({ status: 'no_deadline', label: 'No deadline', explanation: 'No target date is set.', requiredExposures: null, availableExposures: null, prescriptionChanged: false });
+    }
+    const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(input.targetDate));
+    const cutoffMs = timestamp(input.evidenceCutoff);
+    if (!dateMatch || cutoffMs === null) {
+      return freeze({ status: 'unclear', label: 'Unclear', explanation: 'The target date or evidence cutoff is not valid enough for deterministic schedule math.', requiredExposures: null, availableExposures: null, prescriptionChanged: false });
+    }
+    const deadlineEndMs = Date.UTC(Number(dateMatch[1]), Number(dateMatch[2]) - 1, Number(dateMatch[3]) + 1) - 1;
+    const targetValue = positive(input.targetValue);
+    const currentEstimate = positive(input.currentEstimate);
+    const cadence = positive(input.exposuresPerWeek);
+    const normalized = projectionInputs(input);
+    if (targetValue !== null && currentEstimate !== null && currentEstimate >= targetValue) {
+      return freeze({ status: 'on_pace', label: 'On pace', explanation: 'Current eligible estimated strength is already at or above the destination; a completed target single is still required for achievement.', requiredExposures: 0, availableExposures: cadence === null ? null : Math.max(0, Math.floor(((deadlineEndMs - cutoffMs) / DAY_MS) * cadence / 7)), prescriptionChanged: false });
+    }
+    if (targetValue === null || currentEstimate === null || cadence === null || !normalized) {
+      const reason = cadence === null
+        ? 'Saved routine frequency for this exact exercise is unknown, so Big Gains will not invent a weekly cadence.'
+        : 'Current exact-exercise strength context is not complete enough for deterministic deadline math.';
+      return freeze({ status: 'unclear', label: 'Unclear', explanation: reason, requiredExposures: null, availableExposures: null, prescriptionChanged: false });
+    }
+    const increment = normalized.loadability.increment;
+    if (increment === null) {
+      return freeze({ status: 'unclear', label: 'Unclear', explanation: 'A uniform valid load increment is required for transparent deadline math.', requiredExposures: null, availableExposures: null, prescriptionChanged: false });
+    }
+    const loadSteps = Math.ceil(Math.max(0, targetValue - currentEstimate) / increment);
+    const requiredExposures = exposuresToLoadSteps(normalized, loadSteps);
+    const availableExposures = Math.max(0, Math.floor(((deadlineEndMs - cutoffMs) / DAY_MS) * cadence / 7));
+    if (requiredExposures === null) {
+      return freeze({ status: 'unclear', label: 'Unclear', explanation: 'The current load sequence cannot be projected safely through the target gap.', requiredExposures: null, availableExposures, prescriptionChanged: false });
+    }
+    if (availableExposures < requiredExposures) {
+      return freeze({
+        status: 'aggressive',
+        label: 'Aggressive',
+        explanation: `The current deterministic path needs at least ${requiredExposures} successful conditional exposure${requiredExposures === 1 ? '' : 's'}, while the saved routine provides about ${availableExposures} before the target date. Faster-than-current progress would be required.`,
+        requiredExposures,
+        availableExposures,
+        prescriptionChanged: false
+      });
+    }
+    return freeze({
+      status: 'on_pace',
+      label: 'On pace',
+      explanation: `The current deterministic path needs at least ${requiredExposures} successful conditional exposure${requiredExposures === 1 ? '' : 's'} and the saved routine provides about ${availableExposures}. This is schedule math, not a promise.`,
+      requiredExposures,
+      availableExposures,
+      prescriptionChanged: false
+    });
+  }
+
   function validateGoalAndMeasurement(input) {
     const goal = input.goal;
     const measurement = input.measurement;
@@ -593,26 +737,17 @@
         });
       }
       if (current.kind === 'success') {
-        const atTop = prior.repTargets.every(rep => rep === routine.effectiveRepRange.max);
-        if (atTop) {
-          const advanced = nextLoad(prior.enteredLoad, 1, loadability);
-          if (advanced === null) {
+        const next = successfulTransition(prior, routine, loadability);
+        if (!next) {
+          if (prior.repTargets.every(rep => rep === routine.effectiveRepRange.max)) {
             return unavailable({ goal, routine, evidence, attainment, reasonCode: REASON.LOADABILITY_UNAVAILABLE, explanation: 'The top of the rep range was completed, but no higher valid one-step load is available.' });
           }
-          return recommendation({
-            goal, routine, load: advanced, reps: routine.effectiveRepRange.min,
-            decisionCode: DECISION.INCREASE_LOAD, reasonCode: REASON.ADD_LOAD_RESET_REPS,
-            objective: OBJECTIVE.EARN_NEXT_LOAD,
-            explanation: `All comparable working sets completed ${routine.effectiveRepRange.max} reps. Advance one valid load increment and reset to ${routine.effectiveRepRange.min} reps.`,
-            evidence, attainment, priorOutcome: current
-          });
+          return unavailable({ goal, routine, evidence, attainment, reasonCode: REASON.EVIDENCE_UNAVAILABLE, explanation: 'A successful progression transition could not be projected safely.' });
         }
         return recommendation({
-          goal, routine, load: prior.enteredLoad,
-          reps: prior.repTargets.map(rep => Math.min(rep + 1, routine.effectiveRepRange.max)),
-          decisionCode: DECISION.HOLD_LOAD_BUILD_REPS, reasonCode: REASON.ADD_REPS,
-          objective: OBJECTIVE.BUILD_STRENGTH_VOLUME,
-          explanation: 'All comparable working sets completed the issued rep target. Keep the demonstrated load and add one rep per set.',
+          goal, routine, load: next.enteredLoad, reps: next.repTargets,
+          decisionCode: next.decisionCode, reasonCode: next.reasonCode,
+          objective: next.objective, explanation: next.explanation,
           evidence, attainment, priorOutcome: current
         });
       }
@@ -660,6 +795,8 @@
   }
 
   const api = freeze({
+    deadlineOutlook,
+    projectTrajectory,
     resolve,
     policy: POLICY,
     constants: {

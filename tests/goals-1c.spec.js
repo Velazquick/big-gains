@@ -219,7 +219,7 @@ test('G1-10.4/G1-12.5: progression snapshots stay schema-v5/profile-scoped and w
   const stored = await readStoredJson(page, STORAGE_KEYS.jorge);
   expect(stored.version).toBe(5);
   expect(stored.goals.strengthGoals[0]).toMatchObject({ accountId: 'local-jorge', profileId: 'jorge' });
-  expect(stored.goals.strengthGoals[0].progressionState.current).toMatchObject({ enteredLoad: 190, repTargets: [6, 6, 6, 6] });
+  expect(stored.goals.strengthGoals[0].progressionState.current).toMatchObject({ enteredLoad: 190, repTargets: [6, 6, 6, 6], repRange: { min: 4, max: 6 } });
   expect(stored.goals.strengthGoals[0].progressionState.trace.length).toBeLessThanOrEqual(8);
   await page.reload();
   await expect(page.locator('[data-goal-guidance-status="available"]')).toContainText('Today: 190 lb × 6 · 4 sets');

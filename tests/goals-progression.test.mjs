@@ -555,10 +555,108 @@ test('G1-7.7/G1-7.15: top completion fails closed when no higher valid load exis
   assert.equal(result.recommendation, null);
 });
 
+const projectionRecommendation = (overrides = {}) => ({
+  enteredLoad: 215,
+  workingSetCount: 5,
+  repTargets: [5, 5, 5, 5, 5],
+  repRange: { min: 4, max: 6 },
+  ...overrides
+});
+
+test('G1.1 trajectory: 215 × 5 projects only conditional double-progression transitions', () => {
+  const result = engine.projectTrajectory({
+    recommendation: projectionRecommendation(),
+    loadability: { increment: 5 }
+  });
+  assert.equal(result.status, 'available');
+  assert.deepEqual(result.current, { enteredLoad: 215, repTargets: [5, 5, 5, 5, 5], workingSetCount: 5, repRange: { min: 4, max: 6 } });
+  assert.deepEqual(result.steps.map(step => [step.enteredLoad, step.repTargets[0], step.decisionCode]), [
+    [215, 6, 'HOLD_LOAD_BUILD_REPS'],
+    [220, 4, 'INCREASE_LOAD'],
+    [220, 5, 'HOLD_LOAD_BUILD_REPS']
+  ]);
+  assert.match(result.condition, /all 5 sets at 6 reps/);
+  assert.equal(result.conditional, true);
+  assert.equal(JSON.stringify(result).includes('date'), false);
+  assert.equal(JSON.stringify(result).includes('week'), false);
+});
+
+test('G1.1 trajectory: build-reps and add-load starting decisions change the first projection step', () => {
+  const fromSixes = engine.projectTrajectory({
+    recommendation: projectionRecommendation({ repTargets: [6, 6, 6, 6, 6] }),
+    loadability: { increment: 5 }
+  });
+  const fromNewLoad = engine.projectTrajectory({
+    recommendation: projectionRecommendation({ enteredLoad: 220, repTargets: [4, 4, 4, 4, 4] }),
+    loadability: { increment: 5 }
+  });
+  assert.deepEqual([fromSixes.steps[0].enteredLoad, fromSixes.steps[0].repTargets[0]], [220, 4]);
+  assert.deepEqual([fromNewLoad.steps[0].enteredLoad, fromNewLoad.steps[0].repTargets[0]], [220, 5]);
+});
+
+test('G1.1 deadline: absent date is No deadline and unknown cadence is Unclear', () => {
+  const base = {
+    evidenceCutoff: CUTOFF,
+    targetValue: 315,
+    currentEstimate: 251,
+    recommendation: projectionRecommendation(),
+    loadability: { increment: 5 }
+  };
+  assert.deepEqual(engine.deadlineOutlook(base), {
+    status: 'no_deadline', label: 'No deadline', explanation: 'No target date is set.',
+    requiredExposures: null, availableExposures: null, prescriptionChanged: false
+  });
+  const unclear = engine.deadlineOutlook({ ...base, targetDate: '2026-09-14' });
+  assert.equal(unclear.status, 'unclear');
+  assert.match(unclear.explanation, /will not invent a weekly cadence/);
+  assert.equal(unclear.prescriptionChanged, false);
+});
+
+test('G1.1 deadline: reliable cadence yields deterministic Aggressive and On pace schedule math', () => {
+  const aggressiveInput = {
+    targetDate: '2026-09-14',
+    evidenceCutoff: CUTOFF,
+    targetValue: 315,
+    currentEstimate: 251,
+    exposuresPerWeek: 1,
+    recommendation: projectionRecommendation(),
+    loadability: { increment: 5 }
+  };
+  const before = structuredClone(aggressiveInput.recommendation);
+  const aggressive = engine.deadlineOutlook(aggressiveInput);
+  assert.equal(aggressive.status, 'aggressive');
+  assert.equal(aggressive.availableExposures, 3);
+  assert.ok(aggressive.requiredExposures > aggressive.availableExposures);
+  assert.equal(aggressive.prescriptionChanged, false);
+  assert.deepEqual(aggressiveInput.recommendation, before);
+
+  const onPace = engine.deadlineOutlook({ ...aggressiveInput, targetValue: 255, exposuresPerWeek: 2 });
+  assert.equal(onPace.status, 'on_pace');
+  assert.ok(onPace.availableExposures >= onPace.requiredExposures);
+});
+
+test('G1.1 explainability helpers are deterministic, immutable, and never rewrite the resolver recommendation', () => {
+  const trajectoryInput = { recommendation: projectionRecommendation(), loadability: { increment: 5 } };
+  const firstPath = engine.projectTrajectory(trajectoryInput);
+  const secondPath = engine.projectTrajectory(structuredClone(trajectoryInput));
+  assert.deepEqual(firstPath, secondPath);
+  assert.equal(Object.isFrozen(firstPath), true);
+  assert.equal(Object.isFrozen(firstPath.steps[0]), true);
+
+  const resolved = engine.resolve(input({ evidence: [exposure('unchanged-baseline', 1, uniformSets(215, 5, 5))], routine: routine({ workingSetCount: 5 }) }));
+  const recommendationBefore = structuredClone(resolved.recommendation);
+  engine.projectTrajectory({ recommendation: resolved.recommendation, loadability: { increment: 5 } });
+  engine.deadlineOutlook({
+    targetDate: '2026-09-14', evidenceCutoff: CUTOFF, targetValue: 315, currentEstimate: 251,
+    exposuresPerWeek: 1, recommendation: resolved.recommendation, loadability: { increment: 5 }
+  });
+  assert.deepEqual(resolved.recommendation, recommendationBefore);
+});
+
 test('G1-3.2/G1-12.1/G1-12.4: module boundary contains no DOM, persistence, cloud, or session ownership', async () => {
   const source = await readFile(new URL('../goals-progression.js', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /\b(?:document|localStorage|sessionStorage|fetch|Supabase)\b/);
   assert.doesNotMatch(source, /\b(?:saveState|persist|enqueue|activeWorkout|customRoutines)\b/);
   assert.match(source, /Object\.defineProperty\(scope, 'BigGainsGoalsProgression'/);
-  assert.equal(Object.keys(engine).join(','), 'resolve,policy,constants');
+  assert.equal(Object.keys(engine).join(','), 'deadlineOutlook,projectTrajectory,resolve,policy,constants');
 });

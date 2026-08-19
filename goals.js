@@ -60,6 +60,8 @@
       createId,
       escapeHtml,
       now = () => new Date(),
+      scheduledExposuresPerWeek = () => null,
+      confirmDelete = message => scope.confirm(message),
       getElement = id => document.getElementById(id)
     } = options;
     if (!account || !profile || !catalog || !analytics || typeof getState !== 'function' || typeof persist !== 'function') {
@@ -69,9 +71,8 @@
     let initialized = false;
     let editingGoalId = null;
     const $ = getElement;
-    const scopedGoals = () => list(getState()?.goals?.strengthGoals).filter(goal => (
-      goal?.profileId === profile.id && goal?.accountId === account.accountId
-    ));
+    const ownsGoal = goal => goal?.profileId === profile.id && goal?.accountId === account.accountId;
+    const scopedGoals = () => list(getState()?.goals?.strengthGoals).filter(ownsGoal);
     const goalById = goalId => scopedGoals().find(goal => goal.goalId === goalId) || null;
     const exerciseForGoal = goal => catalog.getById(goal?.exerciseId) || catalog.getById(goal?.legacyExerciseId) || null;
     const isoNow = () => now().toISOString();
@@ -87,7 +88,8 @@
     function commit(nextGoals, successMessage = '') {
       const state = getState();
       const previous = state.goals;
-      state.goals = { ...previous, strengthGoals: nextGoals };
+      const foreignGoals = list(previous?.strengthGoals).filter(goal => !ownsGoal(goal));
+      state.goals = { ...previous, strengthGoals: [...foreignGoals, ...nextGoals] };
       try {
         persist();
       } catch (error) {
@@ -259,6 +261,15 @@
       return commit(next, message) ? { ok: true } : { ok: false, reason: 'save-failed' };
     }
 
+    function deleteGoal(goalId) {
+      const current = goalById(goalId);
+      if (!current || !PAST_STATUSES.has(current.status)) return { ok: false, reason: 'Only a past goal can be permanently deleted.' };
+      const next = scopedGoals().filter(goal => goal.goalId !== goalId);
+      return commit(next, 'Past goal deleted permanently. Workouts and routines were not changed.')
+        ? { ok: true }
+        : { ok: false, reason: 'save-failed' };
+    }
+
     function formatTarget(goal, exercise) {
       return `${goal.targetValue.toLocaleString('en-US')} ${targetLabelFor(exercise)}`;
     }
@@ -274,6 +285,54 @@
       return '<span class="goal-attainment">Tracked · No eligible completed evidence yet</span>';
     }
 
+    function displayExposure(load, repTargets, workingSetCount) {
+      const unique = [...new Set(list(repTargets))];
+      const reps = unique.length === 1 ? unique[0] : list(repTargets).join('/');
+      return `${Number(load).toLocaleString('en-US')} × ${reps} × ${workingSetCount}`;
+    }
+
+    function trajectoryMarkup(goal, exercise, evidence) {
+      if (PAST_STATUSES.has(goal.status) || !exercise) return '';
+      const engine = scope.BigGainsGoalsProgression;
+      if (!engine?.projectTrajectory || !engine?.deadlineOutlook) return '';
+      const current = goal.progressionState?.current;
+      const recommendation = current && current.exerciseId === goal.exerciseId ? {
+        enteredLoad: current.enteredLoad,
+        workingSetCount: current.workingSetCount,
+        repTargets: current.repTargets,
+        repRange: current.repRange || { min: 4, max: 6 }
+      } : null;
+      const increment = exercise.measurement?.ui?.loadStep;
+      const trajectory = engine.projectTrajectory({ recommendation, loadability: { increment } });
+      const cadence = Number(scheduledExposuresPerWeek(goal.exerciseId));
+      const exposuresPerWeek = Number.isFinite(cadence) && cadence > 0 ? cadence : null;
+      const outlook = engine.deadlineOutlook({
+        targetDate: goal.targetDate,
+        evidenceCutoff: isoNow(),
+        targetValue: goal.targetValue,
+        currentEstimate: evidence.bestEstimate,
+        exposuresPerWeek,
+        recommendation,
+        loadability: { increment }
+      });
+      const path = trajectory.status === 'available'
+        ? `<p><strong>Current next exposure:</strong> ${escapeHtml(displayExposure(trajectory.current.enteredLoad, trajectory.current.repTargets, trajectory.current.workingSetCount))}</p>
+          <p>${escapeHtml(trajectory.condition)}</p>
+          <ol>${trajectory.steps.map(step => `<li><span>${step.decisionCode === 'INCREASE_LOAD' ? 'Then, if completed' : 'If completed'}</span><strong>${escapeHtml(displayExposure(step.enteredLoad, step.repTargets, step.workingSetCount))}</strong></li>`).join('')}</ol>
+          <small>Conditional projection only. The path changes when actual performance differs.</small>`
+        : '<p>A conditional path will appear after Train resolves a safe exact-exercise starting target.</p>';
+      const cadenceCopy = exposuresPerWeek ? `<small>Saved routine cadence: about ${exposuresPerWeek} exposure${exposuresPerWeek === 1 ? '' : 's'} per week.</small>` : '';
+      return `<details class="goal-trajectory">
+        <summary>Path / trajectory</summary>
+        ${path}
+      </details>
+      <section class="goal-deadline-outlook" data-deadline-status="${escapeHtml(outlook.status)}">
+        <span>Deadline outlook</span><strong>${escapeHtml(outlook.label)}</strong>
+        <p>${escapeHtml(outlook.explanation)}</p>${cadenceCopy}
+        <small>The deadline explains the path; it never changes today's prescription.</small>
+      </section>`;
+    }
+
     function cardMarkup(goal) {
       const exercise = exerciseForGoal(goal);
       const evidence = evidenceForGoal(goal);
@@ -282,7 +341,10 @@
       const lifecycle = active ? 'Active' : goal.status === 'paused' ? 'Paused' : goal.status === 'completed' ? 'Completed' : 'Archived';
       const date = goal.targetDate ? `<span>Target date ${escapeHtml(goal.targetDate)}</span>` : '<span>No target date</span>';
       const completeDisabled = evidence.state !== 'achieved';
-      const actions = PAST_STATUSES.has(goal.status) ? '' : `
+      const actions = PAST_STATUSES.has(goal.status) ? `
+        <div class="goal-card-actions goal-past-actions">
+          <button class="ghost compact danger" type="button" data-goal-action="delete" data-goal-id="${escapeHtml(goal.goalId)}">Delete permanently</button>
+        </div>` : `
         <div class="goal-card-actions">
           <button class="ghost compact" type="button" data-goal-action="edit" data-goal-id="${escapeHtml(goal.goalId)}">Edit</button>
           <button class="ghost compact" type="button" data-goal-action="${active ? 'pause' : 'resume'}" data-goal-id="${escapeHtml(goal.goalId)}">${active ? 'Pause' : 'Resume'}</button>
@@ -301,6 +363,7 @@
         <div class="goal-evidence">${evidenceMarkup(goal)}</div>
         ${guidance}
         ${goal.guidanceEnabled ? '<p class="goal-guidance-note">Guidance applies only when Train can build a safe exact-exercise target. Routines and completed history stay unchanged.</p>' : ''}
+        ${trajectoryMarkup(goal, exercise, evidence)}
         ${actions}
       </article>`;
     }
@@ -403,6 +466,15 @@
       if (!button) return;
       const { goalAction: action, goalId } = button.dataset;
       if (action === 'edit') return openEditor(goalId);
+      if (action === 'delete') {
+        const goal = goalById(goalId);
+        if (!goal || !PAST_STATUSES.has(goal.status)) return setNotice('Only a past goal can be permanently deleted.', 'error');
+        const exercise = exerciseForGoal(goal);
+        if (!confirmDelete(`Delete the past ${exercise?.name || 'strength'} goal permanently? Workouts, history, and routines will stay unchanged.`)) return;
+        const result = deleteGoal(goalId);
+        if (!result.ok) setNotice(result.reason, 'error');
+        return;
+      }
       const result = transition(goalId, action);
       if (!result.ok) setNotice(result.reason, 'error');
     }
@@ -430,12 +502,14 @@
       $('goalExerciseSearch')?.addEventListener('input', event => renderExerciseOptions(event.target.value, $('goalExerciseSelect').value));
       $('activeGoalsList')?.addEventListener('click', handleAction);
       $('activeGoalsList')?.addEventListener('change', handleGuidance);
+      $('pastGoalsList')?.addEventListener('click', handleAction);
       render();
       return true;
     }
 
     return Object.freeze({
       createGoal,
+      deleteGoal,
       editGoal,
       evidenceForGoal,
       initialize,

@@ -34,7 +34,8 @@ const goalsApi=BigGainsGoals.create({
   getState:()=>state,
   persist:saveState,
   createId:uid,
-  escapeHtml
+  escapeHtml,
+  scheduledExposuresPerWeek
 });
 window.bigGainsGoals=goalsApi;
 const goalsTrainGuidance=BigGainsGoalsTrainGuidance.create({
@@ -77,6 +78,7 @@ function autosave(){saveState();renderHero();}
 function todaysWorkout(){return WEEK_PLAN[new Date().getDay()];}
 function routineFor(day){return routineEngine.getRoutine(day);}
 function routinePrescription(day,exerciseId){return routineEngine.getPrescription(day,exerciseId);}
+function scheduledExposuresPerWeek(exerciseId){const canonical=exerciseCatalog.canonicalIdFor(exerciseId);if(!canonical)return null;const count=Object.values(WEEK_PLAN).filter(day=>day&&day!=='Rest').filter(day=>routineFor(day).some(id=>exerciseCatalog.canonicalIdFor(id)===canonical)).length;return count||null;}
 function selectRoutineVariant(day,exerciseId){const selection=routineEngine.resolveVariantSelection(day,exerciseId);if(!selection)return false;routineVariantSelections[day]=selection;return true;}
 function fmtDate(iso){return new Intl.DateTimeFormat('en-US',{month:'short',day:'numeric',year:'numeric'}).format(new Date(iso));}
 function fmtDateLong(iso){return new Intl.DateTimeFormat('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}).format(new Date(iso));}

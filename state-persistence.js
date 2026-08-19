@@ -281,6 +281,13 @@
               loadBasis: normalized.targetBasis,
               workingSetCount: Number(decision.workingSetCount),
               repTargets: decision.repTargets.map(Number),
+              ...(isRecord(decision.repRange)
+                && Number.isInteger(Number(decision.repRange.min))
+                && Number.isInteger(Number(decision.repRange.max))
+                && Number(decision.repRange.min) > 0
+                && Number(decision.repRange.min) <= Number(decision.repRange.max)
+                ? { repRange: { min: Number(decision.repRange.min), max: Number(decision.repRange.max) } }
+                : {}),
               decisionCode: typeof decision.decisionCode === 'string' ? decision.decisionCode : 'HOLD',
               reasonCode: typeof decision.reasonCode === 'string' ? decision.reasonCode : 'EVIDENCE_UNAVAILABLE',
               explanation: typeof decision.explanation === 'string' ? decision.explanation.slice(0, 1000) : '',
