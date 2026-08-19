@@ -233,6 +233,11 @@ export function validateInputs({ exercises: source, families, references, measur
     if (!Array.isArray(record.legacyIds) || !record.legacyIds.length) fail(`${label}.legacyIds must not be empty`);
     if (!Array.isArray(record.aliases)) fail(`${label}.aliases must be an array`);
     if (!isObject(record.compatibility)) fail(`${label}.compatibility is required`);
+    if (!Array.isArray(record.programmingTags) || !Array.isArray(record.movementPatterns) || !record.movementPatterns.length) fail(`${label} programming and movement taxonomy must be explicit after materialization`);
+    if (!isObject(record.equipment) || !Array.isArray(record.equipment.assertions)) fail(`${label}.equipment assertions are required`);
+    if (!Array.isArray(record.provenanceRefs) || !record.provenanceRefs.length || !Array.isArray(record.rightsRefs) || !record.rightsRefs.length) fail(`${label} provenance and rights references are required`);
+    record.provenanceRefs.forEach(reference => { if (!referenceIndexes.provenanceIds.has(reference)) fail(`unresolved provenance reference ${reference} on ${id}`); });
+    record.rightsRefs.forEach(reference => { if (!referenceIndexes.rightsIds.has(reference)) fail(`unresolved rights reference ${reference} on ${id}`); });
     const legacyId = nonempty(record.compatibility.legacyId, `${label}.compatibility.legacyId`);
     if (!record.legacyIds.includes(legacyId)) fail(`${label}.compatibility.legacyId must be retained in legacyIds`);
     if (record.slug !== legacyId) fail(`${label}.slug and current compatibility legacyId must match in EKF-1`);
@@ -276,7 +281,15 @@ function runtimeRecords(validated) {
     equipment: record.compatibility.equipment,
     aliases: [...record.aliases],
     family: record.familyId ? validated.familyById.get(record.familyId).legacyId : null,
+    variantOf: record.variantOf,
     contentRevision: record.contentRevision,
+    modality: record.modality,
+    programmingTags: [...record.programmingTags],
+    movementPatterns: [...record.movementPatterns],
+    mechanics: record.mechanics,
+    equipmentRoles: record.equipment.assertions.map(assertion => ({ ...assertion })),
+    provenanceRefs: [...record.provenanceRefs],
+    rightsRefs: [...record.rightsRefs],
     laterality: record.laterality,
     measurement: structuredClone(record.measurement),
     analytics: structuredClone(record.analytics),
@@ -297,7 +310,7 @@ export function renderLegacyIndex(validated, release) {
   const index = {
     schemaVersion: 1,
     releaseId: release.id,
-    generatedFrom: ['ekf/curated/exercises.json', 'ekf/curated/measurement-contracts.json', 'ekf/curated/families.json', 'ekf/curated/references.json'],
+    generatedFrom: ['ekf/curated/exercises.json', 'ekf/curated/ekf-3-exercises.json', 'ekf/curated/measurement-contracts.json', 'ekf/curated/ekf-3-measurement-contracts.json', 'ekf/curated/families.json', 'ekf/curated/ekf-3-families.json', 'ekf/curated/references.json', 'ekf/curated/ekf-3-references.json'],
     entries: validated.records.flatMap(record => record.legacyIds.map(legacyId => ({ legacyId, canonicalId: record.id })))
   };
   return `${JSON.stringify(index, null, 2)}\n`;
@@ -317,7 +330,7 @@ export function renderMeasurementAudit(validated, release) {
     return `| \`${record.compatibility.legacyId}\` | ${record.canonicalName} | \`${measurement.trackingModel}\` | \`${measurement.loadSemantics.loadBasis}\` | \`${measurement.loadSemantics.resistanceSemantics}\` | \`${measurement.repSemantics}\` | \`${record.laterality}\` | ${fields} | ${record.analytics.e1rmPermitted ? `yes (\`${record.analytics.e1rmLoadBasis}\`)` : 'no'} | ${roles} |`;
   });
   const unknown = validated.records.filter(record => JSON.stringify({ measurement: record.measurement, laterality: record.laterality }).includes('unknown'));
-  return `# EKF-2 Measurement Contract Audit\n\nGenerated deterministically from the curated EKF sources for release \`${release.id}\`. Stored workout values remain entered facts; this table describes runtime interpretation only (EKF-4.2, EKF-4.3, EKF-4.13).\n\n- Exercises: **${validated.records.length}**\n- Explicit contracts: **${validated.measurementOwners.size}**\n- Unknown/unresolved contracts: **${unknown.length}**\n\n| Legacy ID | Exercise | Tracking | Load basis | Resistance | Reps | Laterality | Card inputs | e1RM | Muscle roles |\n|---|---|---|---|---|---|---|---|---|---|\n${rows.join('\n')}\n`;
+  return `# EKF Measurement Contract Audit\n\nGenerated deterministically from the curated EKF sources for release \`${release.id}\`. Stored workout values remain entered facts; this table describes runtime interpretation only (EKF-4.2, EKF-4.3, EKF-4.13).\n\n- Exercises: **${validated.records.length}**\n- Explicit contracts: **${validated.measurementOwners.size}**\n- Unknown/unresolved contracts: **${unknown.length}**\n\n| Legacy ID | Exercise | Tracking | Load basis | Resistance | Reps | Laterality | Card inputs | e1RM | Muscle roles |\n|---|---|---|---|---|---|---|---|---|---|\n${rows.join('\n')}\n`;
 }
 
 export function renderArtifacts(inputs) {
@@ -335,12 +348,29 @@ async function readJson(root, relativePath) {
 }
 
 export async function loadInputs(root = DEFAULT_ROOT) {
-  const [exercises, families, references, measurements] = await Promise.all([
+  const [baseExercises, additions, baseFamilies, addedFamilies, baseReferences, addedReferences, baseMeasurements, addedMeasurements] = await Promise.all([
     readJson(root, path.join('ekf', 'curated', 'exercises.json')),
+    readJson(root, path.join('ekf', 'curated', 'ekf-3-exercises.json')),
     readJson(root, path.join('ekf', 'curated', 'families.json')),
+    readJson(root, path.join('ekf', 'curated', 'ekf-3-families.json')),
     readJson(root, path.join('ekf', 'curated', 'references.json')),
-    readJson(root, path.join('ekf', 'curated', 'measurement-contracts.json'))
+    readJson(root, path.join('ekf', 'curated', 'ekf-3-references.json')),
+    readJson(root, path.join('ekf', 'curated', 'measurement-contracts.json')),
+    readJson(root, path.join('ekf', 'curated', 'ekf-3-measurement-contracts.json'))
   ]);
+  const exercises = {
+    ...baseExercises,
+    release: {
+      id: 'ekf-3-curated-catalog-v1',
+      schemaVersion: 1,
+      sourceBaseline: 'ekf-2@50acb63e10f4380e8ef6799fe16596fbad33b95d',
+      description: 'Stable EKF-2 catalog plus the curated, provenance-tracked EKF-3 commercial-gym expansion.'
+    },
+    exercises: [...baseExercises.exercises, ...additions.exercises]
+  };
+  const families = { ...baseFamilies, families: [...baseFamilies.families, ...addedFamilies.families] };
+  const references = { schemaVersion: 1, provenance: [...baseReferences.provenance, ...addedReferences.provenance], rights: [...baseReferences.rights, ...addedReferences.rights] };
+  const measurements = { ...baseMeasurements, releaseId: exercises.release.id, description: 'Explicit exercise-defined measurement contracts for the 155-entry EKF-3 compatibility catalog.', contracts: [...baseMeasurements.contracts, ...addedMeasurements.contracts] };
   return { exercises, families, references, measurements };
 }
 

@@ -1,8 +1,8 @@
 export function renderCatalogRuntime({ data, releaseId }) {
   return `// GENERATED FILE - DO NOT EDIT.
-// Sources: ekf/curated/exercises.json, measurement-contracts.json, families.json, references.json
+// Sources: EKF-2 baseline plus deterministic ekf/curated/ekf-3-* curation artifacts
 // Generator: scripts/generate-exercise-catalog.mjs
-// EKF-2 compatibility + measurement projection: EKF-4.2 through EKF-4.20, EKF-6.3, EKF-11.1.
+// EKF-3 compatibility + measurement projection: EKF-4.2 through EKF-4.20, EKF-6.3, EKF-11.1.
 ((scope) => {
   'use strict';
 
@@ -23,8 +23,16 @@ export function renderCatalogRuntime({ data, releaseId }) {
     equipment: record.equipment,
     aliases: [...record.aliases],
     family: record.family,
+    variantOf: record.variantOf,
     canonicalId: record.canonicalId,
     contentRevision: record.contentRevision,
+    modality: record.modality,
+    programmingTags: record.programmingTags,
+    movementPatterns: record.movementPatterns,
+    mechanics: record.mechanics,
+    equipmentRoles: record.equipmentRoles,
+    provenanceRefs: record.provenanceRefs,
+    rightsRefs: record.rightsRefs,
     laterality: record.laterality,
     measurement: { ...record.measurement, laterality: record.laterality, analytics: record.analytics, canonicalExerciseId: record.canonicalId, contentRevision: record.contentRevision },
     analytics: record.analytics,
@@ -83,7 +91,7 @@ export function renderCatalogRuntime({ data, releaseId }) {
   };
   const matchesSearch = (exercise, term) => {
     const normalized = normalizeTerm(term);
-    return !normalized || normalizeTerm([exercise.name, ...exercise.aliases, exercise.muscle, exercise.equipment].join(' ')).includes(normalized);
+    return !normalized || normalizeTerm([exercise.name, ...exercise.aliases, exercise.muscle, exercise.equipment, ...exercise.programmingTags, ...exercise.movementPatterns].join(' ')).includes(normalized);
   };
 
   const api = Object.freeze({ canonicalIdFor, definitionFor, exercises, getById, idForName, inputFieldsFor, loadModeFor, matchesSearch, measurementFor, normalizeTerm, resolve });

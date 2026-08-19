@@ -16,9 +16,9 @@ test('EKF-T01: every legacy ID, canonical ID, name, and alias resolves to one ow
   const identity = globalThis.BigGainsExerciseIdentity;
   const catalog = globalThis.BigGainsExerciseCatalog;
 
-  assert.equal(validated.records.length, 119);
-  assert.equal(validated.legacyOwners.size, 119);
-  assert.equal(new Set(validated.records.map(record => record.id)).size, 119);
+  assert.equal(validated.records.length, 155);
+  assert.equal(validated.legacyOwners.size, 155);
+  assert.equal(new Set(validated.records.map(record => record.id)).size, 155);
   for (const record of validated.records) {
     assert.equal(identity.canonicalIdFor(record.compatibility.legacyId), record.id);
     assert.equal(identity.canonicalIdFor(record.id), record.id);

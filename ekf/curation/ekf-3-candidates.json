@@ -1,0 +1,1292 @@
+{
+  "schemaVersion": 1,
+  "releaseId": "ekf-3-curated-catalog-v1",
+  "summary": {
+    "reviewed": 58,
+    "accepted": 36,
+    "human_review": 5,
+    "quarantined": 5,
+    "rejected": 12
+  },
+  "candidates": [
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Cable_Chest_Press",
+      "decision": "accepted",
+      "canonicalId": "6b4b0288-3909-4184-ac21-64d4ff6f2c8d",
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Useful coverage gap; source assertion mapped and Big Gains semantics curated independently.",
+      "sourceRecord": {
+        "name": "Cable Chest Press",
+        "equipment": "cable",
+        "mechanic": "compound",
+        "primaryMuscles": [
+          "chest"
+        ],
+        "secondaryMuscles": [
+          "shoulders",
+          "triceps"
+        ]
+      },
+      "sourcePayloadSha256": "0e2f000895d541f64617167b9ebc4a8b8628546bb518273a556c674322386642"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Dumbbell_Flyes",
+      "decision": "accepted",
+      "canonicalId": "2735823a-2a0c-453a-97b3-1c1143f73df4",
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Useful coverage gap; source assertion mapped and Big Gains semantics curated independently.",
+      "sourceRecord": {
+        "name": "Dumbbell Flyes",
+        "equipment": "dumbbell",
+        "mechanic": "isolation",
+        "primaryMuscles": [
+          "chest"
+        ],
+        "secondaryMuscles": []
+      },
+      "sourcePayloadSha256": "ce44a78a87a3391f3f74be8293aa19f9743a5dffd472cddbea1d1f0e0959fc0d"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Bent-Arm_Dumbbell_Pullover",
+      "decision": "accepted",
+      "canonicalId": "7bd126a3-ae15-40c7-9022-c86db7164bbc",
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Useful coverage gap; source assertion mapped and Big Gains semantics curated independently.",
+      "sourceRecord": {
+        "name": "Bent-Arm Dumbbell Pullover",
+        "equipment": "dumbbell",
+        "mechanic": "compound",
+        "primaryMuscles": [
+          "chest"
+        ],
+        "secondaryMuscles": [
+          "lats",
+          "shoulders",
+          "triceps"
+        ]
+      },
+      "sourcePayloadSha256": "b38009623b2d72bb74da83a9ded571950c9ce543726daefb8efb7cb5f0ec6406"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Dumbbell_Floor_Press",
+      "decision": "accepted",
+      "canonicalId": "c24045d6-7940-4d41-9235-613e9dbbb03e",
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Useful coverage gap; source assertion mapped and Big Gains semantics curated independently.",
+      "sourceRecord": {
+        "name": "Dumbbell Floor Press",
+        "equipment": "dumbbell",
+        "mechanic": "compound",
+        "primaryMuscles": [
+          "triceps"
+        ],
+        "secondaryMuscles": [
+          "chest",
+          "shoulders"
+        ]
+      },
+      "sourcePayloadSha256": "19cacfceeb4583205a5ee6af045cb9a33997e278c515fb7b13539fd2376c583c"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Dip_Machine",
+      "decision": "accepted",
+      "canonicalId": "7d32114f-b311-4779-ab6c-66a1d853f218",
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Useful coverage gap; source assertion mapped and Big Gains semantics curated independently.",
+      "sourceRecord": {
+        "name": "Dip Machine",
+        "equipment": "machine",
+        "mechanic": "compound",
+        "primaryMuscles": [
+          "triceps"
+        ],
+        "secondaryMuscles": [
+          "chest",
+          "shoulders"
+        ]
+      },
+      "sourcePayloadSha256": "7239b44d1936c546278b581022a2df743121de9547e70e2cb1d3c731312ab6b4"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Machine_Bicep_Curl",
+      "decision": "accepted",
+      "canonicalId": "7f3b7f8c-5e83-40f4-a292-3e4a520c144a",
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Useful coverage gap; source assertion mapped and Big Gains semantics curated independently.",
+      "sourceRecord": {
+        "name": "Machine Bicep Curl",
+        "equipment": "machine",
+        "mechanic": "isolation",
+        "primaryMuscles": [
+          "biceps"
+        ],
+        "secondaryMuscles": []
+      },
+      "sourcePayloadSha256": "9af8a9e7f407c524ae2ed830859a464ad2d3e34260030cfa2219b1e278c4bb1c"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Machine_Triceps_Extension",
+      "decision": "accepted",
+      "canonicalId": "df2db845-a0db-4e72-8a4c-17c8d82fd856",
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Useful coverage gap; source assertion mapped and Big Gains semantics curated independently.",
+      "sourceRecord": {
+        "name": "Machine Triceps Extension",
+        "equipment": "machine",
+        "mechanic": "isolation",
+        "primaryMuscles": [
+          "triceps"
+        ],
+        "secondaryMuscles": []
+      },
+      "sourcePayloadSha256": "d626d585d6df65a5e706416756b8dabb4ee1880f22df98f6ff40845f354151f1"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Front_Dumbbell_Raise",
+      "decision": "accepted",
+      "canonicalId": "fbfcb0b8-7e32-4149-89a9-01d5222e3dd8",
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Useful coverage gap; source assertion mapped and Big Gains semantics curated independently.",
+      "sourceRecord": {
+        "name": "Front Dumbbell Raise",
+        "equipment": "dumbbell",
+        "mechanic": "isolation",
+        "primaryMuscles": [
+          "shoulders"
+        ],
+        "secondaryMuscles": []
+      },
+      "sourcePayloadSha256": "168435a7e35dc7827468a4cdd2241231ecf5cf4d4c1373ceab19d83f7198a124"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Smith_Machine_Overhead_Shoulder_Press",
+      "decision": "accepted",
+      "canonicalId": "356aade0-1c4c-4859-80c3-aaf0d70b65e3",
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Useful coverage gap; source assertion mapped and Big Gains semantics curated independently.",
+      "sourceRecord": {
+        "name": "Smith Machine Overhead Shoulder Press",
+        "equipment": "machine",
+        "mechanic": "compound",
+        "primaryMuscles": [
+          "shoulders"
+        ],
+        "secondaryMuscles": [
+          "triceps"
+        ]
+      },
+      "sourcePayloadSha256": "658072a5f3aaf0a970e37a2020523f6f826de6700a36111fe140cc479d867595"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Leverage_High_Row",
+      "decision": "accepted",
+      "canonicalId": "4f5681be-74cb-4cab-b104-9773299f6073",
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Useful coverage gap; source assertion mapped and Big Gains semantics curated independently.",
+      "sourceRecord": {
+        "name": "Leverage High Row",
+        "equipment": "machine",
+        "mechanic": "compound",
+        "primaryMuscles": [
+          "middle back"
+        ],
+        "secondaryMuscles": [
+          "lats"
+        ]
+      },
+      "sourcePayloadSha256": "239a99c7847b8672739423c02fd83235c47002965acf28f764a62f02d1b0c957"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Inverted_Row",
+      "decision": "accepted",
+      "canonicalId": "be95b20e-588f-4b5d-a44c-4df806e79798",
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Useful coverage gap; source assertion mapped and Big Gains semantics curated independently.",
+      "sourceRecord": {
+        "name": "Inverted Row",
+        "equipment": null,
+        "mechanic": "compound",
+        "primaryMuscles": [
+          "middle back"
+        ],
+        "secondaryMuscles": [
+          "lats"
+        ]
+      },
+      "sourcePayloadSha256": "4a6f77ef6dfebe7b51fbee727626f0fb168fa116caeb2b60e5af3f7bb44db02c"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Smith_Machine_Bent_Over_Row",
+      "decision": "accepted",
+      "canonicalId": "67e2fc5b-f97b-42b6-b064-af388b135115",
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Useful coverage gap; source assertion mapped and Big Gains semantics curated independently.",
+      "sourceRecord": {
+        "name": "Smith Machine Bent Over Row",
+        "equipment": "machine",
+        "mechanic": "compound",
+        "primaryMuscles": [
+          "middle back"
+        ],
+        "secondaryMuscles": [
+          "biceps",
+          "lats",
+          "shoulders"
+        ]
+      },
+      "sourcePayloadSha256": "bb99ef4cef7a168eaca65d6d9f1bd085c49a0f6eab081413ff2295a0d99ea6f0"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Standing_Leg_Curl",
+      "decision": "accepted",
+      "canonicalId": "e31d21c2-7861-4ac1-b127-b619f7d291f0",
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Useful coverage gap; source assertion mapped and Big Gains semantics curated independently.",
+      "sourceRecord": {
+        "name": "Standing Leg Curl",
+        "equipment": "machine",
+        "mechanic": "isolation",
+        "primaryMuscles": [
+          "hamstrings"
+        ],
+        "secondaryMuscles": []
+      },
+      "sourcePayloadSha256": "48bd127978f6929081fe89fe921a0b1e07d6fbed56b4b1dca858a4983e564aa0"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Glute_Ham_Raise",
+      "decision": "accepted",
+      "canonicalId": "27803211-c8f0-4210-9857-4fc4aeab039d",
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Useful coverage gap; source assertion mapped and Big Gains semantics curated independently.",
+      "sourceRecord": {
+        "name": "Glute Ham Raise",
+        "equipment": "machine",
+        "mechanic": "compound",
+        "primaryMuscles": [
+          "hamstrings"
+        ],
+        "secondaryMuscles": [
+          "calves",
+          "glutes"
+        ]
+      },
+      "sourcePayloadSha256": "495be4d36c66a3d6d9d49b03951e3de49e01ff8f339e0b66c3c7d5b02bbb2487"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Good_Morning",
+      "decision": "accepted",
+      "canonicalId": "292eccd2-d34e-4b91-9e99-b655fee2bc01",
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Useful coverage gap; source assertion mapped and Big Gains semantics curated independently.",
+      "sourceRecord": {
+        "name": "Good Morning",
+        "equipment": "barbell",
+        "mechanic": "compound",
+        "primaryMuscles": [
+          "hamstrings"
+        ],
+        "secondaryMuscles": [
+          "abdominals",
+          "glutes",
+          "lower back"
+        ]
+      },
+      "sourcePayloadSha256": "4e0fc5435018f3b449d897b3c531bd7b8a5d72c16617bb62156dfc31a872bc6a"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Sumo_Deadlift",
+      "decision": "accepted",
+      "canonicalId": "3b1944c8-b9dc-48a0-85e8-98a41ddf7cef",
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Useful coverage gap; source assertion mapped and Big Gains semantics curated independently.",
+      "sourceRecord": {
+        "name": "Sumo Deadlift",
+        "equipment": "barbell",
+        "mechanic": "compound",
+        "primaryMuscles": [
+          "hamstrings"
+        ],
+        "secondaryMuscles": [
+          "adductors",
+          "forearms",
+          "glutes",
+          "lower back",
+          "middle back",
+          "quadriceps",
+          "traps"
+        ]
+      },
+      "sourcePayloadSha256": "e11c64fe150e755d7f6d618f265dfefa0bcdc0a37b6723c67064b07d5b97d874"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Smith_Single-Leg_Split_Squat",
+      "decision": "accepted",
+      "canonicalId": "a8b31e87-3f30-4ea8-89ba-db6f9e5a872c",
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Useful coverage gap; source assertion mapped and Big Gains semantics curated independently.",
+      "sourceRecord": {
+        "name": "Smith Single-Leg Split Squat",
+        "equipment": "machine",
+        "mechanic": "compound",
+        "primaryMuscles": [
+          "quadriceps"
+        ],
+        "secondaryMuscles": [
+          "calves",
+          "glutes",
+          "hamstrings"
+        ]
+      },
+      "sourcePayloadSha256": "325270fcd4ea63735bd86494a9ba0a0e01c435208fe89fdeb3bccb06700815e2"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Smith_Machine_Calf_Raise",
+      "decision": "accepted",
+      "canonicalId": "c056e322-1298-4fd3-a934-02266e6133b4",
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Useful coverage gap; source assertion mapped and Big Gains semantics curated independently.",
+      "sourceRecord": {
+        "name": "Smith Machine Calf Raise",
+        "equipment": "machine",
+        "mechanic": "isolation",
+        "primaryMuscles": [
+          "calves"
+        ],
+        "secondaryMuscles": []
+      },
+      "sourcePayloadSha256": "d9ed2dcd33d1ba205c7a9f7d3a77d77a5c8b775234437f7cd76464042132b6c7"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Standing_Cable_Wood_Chop",
+      "decision": "accepted",
+      "canonicalId": "18b80e62-4a20-4275-b87d-d1a4f4344df4",
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Useful coverage gap; source assertion mapped and Big Gains semantics curated independently.",
+      "sourceRecord": {
+        "name": "Standing Cable Wood Chop",
+        "equipment": "cable",
+        "mechanic": "compound",
+        "primaryMuscles": [
+          "abdominals"
+        ],
+        "secondaryMuscles": [
+          "shoulders"
+        ]
+      },
+      "sourcePayloadSha256": "378df5889b5906d7234b0566ec462e3b557adbda2a48f24e43cbbb0b146142af"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Sled_Push",
+      "decision": "accepted",
+      "canonicalId": "fa1606ef-97f4-42cc-97e2-c52636755dad",
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Useful coverage gap; source assertion mapped and Big Gains semantics curated independently.",
+      "sourceRecord": {
+        "name": "Sled Push",
+        "equipment": "other",
+        "mechanic": "compound",
+        "primaryMuscles": [
+          "quadriceps"
+        ],
+        "secondaryMuscles": [
+          "calves",
+          "chest",
+          "glutes",
+          "hamstrings",
+          "triceps"
+        ]
+      },
+      "sourcePayloadSha256": "ae1930938aa568e7c6e32905af20b704195e5fa1f0093964155bfa5c609f5697"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Backward_Drag",
+      "decision": "accepted",
+      "canonicalId": "03b856c5-c1e1-49b5-80a7-c567199909b6",
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Useful coverage gap; source assertion mapped and Big Gains semantics curated independently.",
+      "sourceRecord": {
+        "name": "Backward Drag",
+        "equipment": "other",
+        "mechanic": "compound",
+        "primaryMuscles": [
+          "quadriceps"
+        ],
+        "secondaryMuscles": [
+          "calves",
+          "forearms",
+          "glutes",
+          "hamstrings",
+          "lower back"
+        ]
+      },
+      "sourcePayloadSha256": "5a24fb8edd97dcf3ad27f63db553723b6a50be14f92dbc98873bc0e7de3593e4"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Air_Bike",
+      "decision": "accepted",
+      "canonicalId": "63ce5b42-a77d-4e17-8fde-992e99646d82",
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Useful coverage gap; source assertion mapped and Big Gains semantics curated independently.",
+      "sourceRecord": {
+        "name": "Air Bike",
+        "equipment": "body only",
+        "mechanic": "compound",
+        "primaryMuscles": [
+          "abdominals"
+        ],
+        "secondaryMuscles": []
+      },
+      "sourcePayloadSha256": "647007853d07d23a2ab8b0b2a7e23a2a58644a6b077330863e3943fc0a41b0e8"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Palms-Up_Dumbbell_Wrist_Curl_Over_A_Bench",
+      "decision": "accepted",
+      "canonicalId": "b078a32f-81ee-4455-ac88-e0eb75291840",
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Useful coverage gap; source assertion mapped and Big Gains semantics curated independently.",
+      "sourceRecord": {
+        "name": "Palms-Up Dumbbell Wrist Curl Over A Bench",
+        "equipment": "dumbbell",
+        "mechanic": "isolation",
+        "primaryMuscles": [
+          "forearms"
+        ],
+        "secondaryMuscles": []
+      },
+      "sourcePayloadSha256": "d29f182f4d68bf3327f5508a0abccaf42af63e818722b4086cbc0f9d09eab87e"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Palms-Down_Dumbbell_Wrist_Curl_Over_A_Bench",
+      "decision": "accepted",
+      "canonicalId": "b5f7b82a-5463-4621-80ad-d869f50c0c86",
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Useful coverage gap; source assertion mapped and Big Gains semantics curated independently.",
+      "sourceRecord": {
+        "name": "Palms-Down Dumbbell Wrist Curl Over A Bench",
+        "equipment": "dumbbell",
+        "mechanic": "isolation",
+        "primaryMuscles": [
+          "forearms"
+        ],
+        "secondaryMuscles": []
+      },
+      "sourcePayloadSha256": "782d083586c9d870ea550381fab612f167750ebb9f29523999d3ac1eecac2547"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Machine_Bench_Press",
+      "decision": "rejected",
+      "canonicalId": null,
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Duplicates the released selectorized Seated Machine Chest Press identity.",
+      "sourceRecord": {
+        "name": "Machine Bench Press",
+        "equipment": "machine",
+        "mechanic": "compound",
+        "primaryMuscles": [
+          "chest"
+        ],
+        "secondaryMuscles": [
+          "shoulders",
+          "triceps"
+        ]
+      },
+      "sourcePayloadSha256": "6120aca484352a96ccb41d4ecb6cd178ac7e3247d466cbacf8da9c83d72572e6"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Leverage_Chest_Press",
+      "decision": "rejected",
+      "canonicalId": null,
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Machine coupling and load basis are unclear against two existing chest-press identities.",
+      "sourceRecord": {
+        "name": "Leverage Chest Press",
+        "equipment": "machine",
+        "mechanic": "compound",
+        "primaryMuscles": [
+          "chest"
+        ],
+        "secondaryMuscles": [
+          "shoulders",
+          "triceps"
+        ]
+      },
+      "sourcePayloadSha256": "7329678699e328900a4b761a892a5213848c0139bdbfd18f1bde22683c27f899"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Leverage_Incline_Chest_Press",
+      "decision": "rejected",
+      "canonicalId": null,
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Does not add a defensible identity beyond the released incline iso-machine press.",
+      "sourceRecord": {
+        "name": "Leverage Incline Chest Press",
+        "equipment": "machine",
+        "mechanic": "compound",
+        "primaryMuscles": [
+          "chest"
+        ],
+        "secondaryMuscles": [
+          "shoulders",
+          "triceps"
+        ]
+      },
+      "sourcePayloadSha256": "f7d125c6b921eee6025fbec1c34194e5a34b8c395ac97e51fea9c07d5985b471"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Machine_Preacher_Curls",
+      "decision": "rejected",
+      "canonicalId": null,
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Duplicates the released Machine Preacher Curl.",
+      "sourceRecord": {
+        "name": "Machine Preacher Curls",
+        "equipment": "machine",
+        "mechanic": "isolation",
+        "primaryMuscles": [
+          "biceps"
+        ],
+        "secondaryMuscles": []
+      },
+      "sourcePayloadSha256": "15b572a52f6fa00c8e16b23f71c691b117d4a7b6517902872342c134881281a3"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Reverse_Machine_Flyes",
+      "decision": "rejected",
+      "canonicalId": null,
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Duplicates the released Reverse Pec Deck.",
+      "sourceRecord": {
+        "name": "Reverse Machine Flyes",
+        "equipment": "machine",
+        "mechanic": "isolation",
+        "primaryMuscles": [
+          "shoulders"
+        ],
+        "secondaryMuscles": []
+      },
+      "sourcePayloadSha256": "13d5e0628996e790d3d72f70eda94a6677a44615907c950fc0073148768c82a8"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Calf_Press_On_The_Leg_Press_Machine",
+      "decision": "rejected",
+      "canonicalId": null,
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Duplicates the released Calf Press on Leg Press.",
+      "sourceRecord": {
+        "name": "Calf Press On The Leg Press Machine",
+        "equipment": "machine",
+        "mechanic": "isolation",
+        "primaryMuscles": [
+          "calves"
+        ],
+        "secondaryMuscles": []
+      },
+      "sourcePayloadSha256": "620099cddf16e6a1d9e7e5a4a138ea9d442b33602f7ec1216d108e69334ff112"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Ab_Crunch_Machine",
+      "decision": "rejected",
+      "canonicalId": null,
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Duplicates the released Machine Crunch.",
+      "sourceRecord": {
+        "name": "Ab Crunch Machine",
+        "equipment": "machine",
+        "mechanic": "isolation",
+        "primaryMuscles": [
+          "abdominals"
+        ],
+        "secondaryMuscles": []
+      },
+      "sourcePayloadSha256": "c265fb99c0f399132f25e10d2817d32f314d7d50da6e4195c98bf01830b2cd3d"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Farmers_Walk",
+      "decision": "rejected",
+      "canonicalId": null,
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Duplicates the released Farmer Carry.",
+      "sourceRecord": {
+        "name": "Farmer's Walk",
+        "equipment": "other",
+        "mechanic": "compound",
+        "primaryMuscles": [
+          "forearms"
+        ],
+        "secondaryMuscles": [
+          "abdominals",
+          "glutes",
+          "hamstrings",
+          "lower back",
+          "quadriceps",
+          "traps"
+        ]
+      },
+      "sourcePayloadSha256": "228428682e1acbc3f9babc2a224077196e90ce1352921f33da9ffedd58e4a726"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Decline_Smith_Press",
+      "decision": "rejected",
+      "canonicalId": null,
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Narrow angle variant did not clear the EKF-3 useful-coverage threshold.",
+      "sourceRecord": {
+        "name": "Decline Smith Press",
+        "equipment": "machine",
+        "mechanic": "compound",
+        "primaryMuscles": [
+          "chest"
+        ],
+        "secondaryMuscles": [
+          "shoulders",
+          "triceps"
+        ]
+      },
+      "sourcePayloadSha256": "845c0cd7c94592aa371f7f3b1c370e06750de3b07033e42099aeff96fe584d42"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Standing_Cable_Chest_Press",
+      "decision": "rejected",
+      "canonicalId": null,
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Captured as an alias of Cable Chest Press instead of a second canonical identity.",
+      "sourceRecord": {
+        "name": "Standing Cable Chest Press",
+        "equipment": "cable",
+        "mechanic": "compound",
+        "primaryMuscles": [
+          "chest"
+        ],
+        "secondaryMuscles": [
+          "shoulders",
+          "triceps"
+        ]
+      },
+      "sourcePayloadSha256": "70cd9c340d09f8fc84c5e919c12ba99f768ccace21307088e2fd9f779e696667"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Natural_Glute_Ham_Raise",
+      "decision": "rejected",
+      "canonicalId": null,
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Overlaps the released Nordic Hamstring Curl and adds no machine identity.",
+      "sourceRecord": {
+        "name": "Natural Glute Ham Raise",
+        "equipment": "body only",
+        "mechanic": "compound",
+        "primaryMuscles": [
+          "hamstrings"
+        ],
+        "secondaryMuscles": [
+          "calves",
+          "glutes",
+          "lower back"
+        ]
+      },
+      "sourcePayloadSha256": "99a4e7f3041fb0df54d59aa30f179a1ad68fea3d9248dc9f27737939258c4340"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Machine_Shoulder_Military_Press",
+      "decision": "rejected",
+      "canonicalId": null,
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "reviewed",
+      "rationale": "Duplicates the released Machine Shoulder Press.",
+      "sourceRecord": {
+        "name": "Machine Shoulder (Military) Press",
+        "equipment": "machine",
+        "mechanic": "compound",
+        "primaryMuscles": [
+          "shoulders"
+        ],
+        "secondaryMuscles": [
+          "triceps"
+        ]
+      },
+      "sourcePayloadSha256": "1649f2d2a2831ef22836b2393bf473cc56ede4f686ee131dffccb44ae87e3602"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Leverage_Iso_Row",
+      "decision": "human_review",
+      "canonicalId": null,
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "unresolved",
+      "rationale": "May duplicate the released Iso-Lateral Row; source does not prove handle path or load basis.",
+      "sourceRecord": {
+        "name": "Leverage Iso Row",
+        "equipment": "machine",
+        "mechanic": "compound",
+        "primaryMuscles": [
+          "lats"
+        ],
+        "secondaryMuscles": [
+          "biceps",
+          "middle back"
+        ]
+      },
+      "sourcePayloadSha256": "3e4591705581f89fb0f8a17c98db5dbad2d748439550f2e478a9110045d22e4b"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Straight-Arm_Dumbbell_Pullover",
+      "decision": "human_review",
+      "canonicalId": null,
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "unresolved",
+      "rationale": "Elbow configuration may justify a separate identity from the accepted bent-arm pullover.",
+      "sourceRecord": {
+        "name": "Straight-Arm Dumbbell Pullover",
+        "equipment": "dumbbell",
+        "mechanic": "compound",
+        "primaryMuscles": [
+          "chest"
+        ],
+        "secondaryMuscles": [
+          "lats",
+          "shoulders",
+          "triceps"
+        ]
+      },
+      "sourcePayloadSha256": "03c4125874ae8e75ee9f0d753061a874c10169d528dd789e7cc756b28fd0317f"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Donkey_Calf_Raises",
+      "decision": "human_review",
+      "canonicalId": null,
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "unresolved",
+      "rationale": "Source equipment is other, leaving bodyweight, partner-loaded, and machine variants unresolved.",
+      "sourceRecord": {
+        "name": "Donkey Calf Raises",
+        "equipment": "other",
+        "mechanic": "isolation",
+        "primaryMuscles": [
+          "calves"
+        ],
+        "secondaryMuscles": []
+      },
+      "sourcePayloadSha256": "69a865acaad7f65a8a3fd0bbf5dc23773a8c0f06b87b8cac9a4c0b4bbceff161"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Leverage_Decline_Chest_Press",
+      "decision": "human_review",
+      "canonicalId": null,
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "unresolved",
+      "rationale": "Potentially useful, but coupling and per-side versus total load semantics are not proven.",
+      "sourceRecord": {
+        "name": "Leverage Decline Chest Press",
+        "equipment": "machine",
+        "mechanic": "compound",
+        "primaryMuscles": [
+          "chest"
+        ],
+        "secondaryMuscles": [
+          "shoulders",
+          "triceps"
+        ]
+      },
+      "sourcePayloadSha256": "2632c1c3f3040c425cca34d3a3d97c1b47565da74685f1fa3576f2be4edfdc99"
+    },
+    {
+      "sourceRegistryId": "free-exercise-db",
+      "sourceSnapshotId": "free-exercise-db-b0eed061",
+      "sourceNativeRecordId": "Smith_Machine_Stiff-Legged_Deadlift",
+      "decision": "human_review",
+      "canonicalId": null,
+      "rightsStatus": "approved_unlicense",
+      "licenseExpression": "Unlicense",
+      "sourceLineage": "wrkout/exercises.json",
+      "reviewStatus": "unresolved",
+      "rationale": "Must not be auto-merged with the curated Smith Romanian deadlift; knee and hip semantics may differ.",
+      "sourceRecord": {
+        "name": "Smith Machine Stiff-Legged Deadlift",
+        "equipment": "machine",
+        "mechanic": "compound",
+        "primaryMuscles": [
+          "hamstrings"
+        ],
+        "secondaryMuscles": [
+          "glutes",
+          "lower back"
+        ]
+      },
+      "sourcePayloadSha256": "6d236b0f73eb179b4b931e647cc921f2b1178b7bf782608dea3481c7938a14e1"
+    },
+    {
+      "sourceRegistryId": "big-gains-source-zero",
+      "sourceSnapshotId": "ekf-2-50acb63",
+      "sourceNativeRecordId": "big-gains:machine-lateral-raise",
+      "decision": "accepted",
+      "canonicalId": "c23dead5-dc07-4397-9695-8e46bfc7c5c5",
+      "rightsStatus": "approved_project_owned",
+      "licenseExpression": "LicenseRef-Big-Gains-Project-Owned",
+      "sourceLineage": "big-gains",
+      "reviewStatus": "reviewed",
+      "rationale": "Big Gains-curated definition fills a verified commercial-gym gap without importing third-party expression.",
+      "sourceRecord": {
+        "name": "Machine Lateral Raise"
+      }
+    },
+    {
+      "sourceRegistryId": "big-gains-source-zero",
+      "sourceSnapshotId": "ekf-2-50acb63",
+      "sourceNativeRecordId": "big-gains:plate-loaded-low-row",
+      "decision": "accepted",
+      "canonicalId": "e6b99d0a-18e6-46a6-aae3-a5e9badd341b",
+      "rightsStatus": "approved_project_owned",
+      "licenseExpression": "LicenseRef-Big-Gains-Project-Owned",
+      "sourceLineage": "big-gains",
+      "reviewStatus": "reviewed",
+      "rationale": "Big Gains-curated definition fills a verified commercial-gym gap without importing third-party expression.",
+      "sourceRecord": {
+        "name": "Plate-Loaded Low Row"
+      }
+    },
+    {
+      "sourceRegistryId": "big-gains-source-zero",
+      "sourceSnapshotId": "ekf-2-50acb63",
+      "sourceNativeRecordId": "big-gains:single-arm-lat-pulldown",
+      "decision": "accepted",
+      "canonicalId": "7fbd6433-c9f1-4311-8b55-4803aefc9933",
+      "rightsStatus": "approved_project_owned",
+      "licenseExpression": "LicenseRef-Big-Gains-Project-Owned",
+      "sourceLineage": "big-gains",
+      "reviewStatus": "reviewed",
+      "rationale": "Big Gains-curated definition fills a verified commercial-gym gap without importing third-party expression.",
+      "sourceRecord": {
+        "name": "Single-Arm Lat Pulldown"
+      }
+    },
+    {
+      "sourceRegistryId": "big-gains-source-zero",
+      "sourceSnapshotId": "ekf-2-50acb63",
+      "sourceNativeRecordId": "big-gains:single-leg-leg-extension",
+      "decision": "accepted",
+      "canonicalId": "c4da1857-3f99-4655-87f0-699402e50e03",
+      "rightsStatus": "approved_project_owned",
+      "licenseExpression": "LicenseRef-Big-Gains-Project-Owned",
+      "sourceLineage": "big-gains",
+      "reviewStatus": "reviewed",
+      "rationale": "Big Gains-curated definition fills a verified commercial-gym gap without importing third-party expression.",
+      "sourceRecord": {
+        "name": "Single-Leg Leg Extension"
+      }
+    },
+    {
+      "sourceRegistryId": "big-gains-source-zero",
+      "sourceSnapshotId": "ekf-2-50acb63",
+      "sourceNativeRecordId": "big-gains:single-leg-seated-leg-curl",
+      "decision": "accepted",
+      "canonicalId": "7561911b-4087-47a1-83f5-9fe1def2093b",
+      "rightsStatus": "approved_project_owned",
+      "licenseExpression": "LicenseRef-Big-Gains-Project-Owned",
+      "sourceLineage": "big-gains",
+      "reviewStatus": "reviewed",
+      "rationale": "Big Gains-curated definition fills a verified commercial-gym gap without importing third-party expression.",
+      "sourceRecord": {
+        "name": "Single-Leg Seated Leg Curl"
+      }
+    },
+    {
+      "sourceRegistryId": "big-gains-source-zero",
+      "sourceSnapshotId": "ekf-2-50acb63",
+      "sourceNativeRecordId": "big-gains:smith-machine-romanian-deadlift",
+      "decision": "accepted",
+      "canonicalId": "873d7ad1-7c25-41e9-a80c-821bdcd0bc2e",
+      "rightsStatus": "approved_project_owned",
+      "licenseExpression": "LicenseRef-Big-Gains-Project-Owned",
+      "sourceLineage": "big-gains",
+      "reviewStatus": "reviewed",
+      "rationale": "Big Gains-curated definition fills a verified commercial-gym gap without importing third-party expression.",
+      "sourceRecord": {
+        "name": "Smith Machine Romanian Deadlift"
+      }
+    },
+    {
+      "sourceRegistryId": "big-gains-source-zero",
+      "sourceSnapshotId": "ekf-2-50acb63",
+      "sourceNativeRecordId": "big-gains:smith-machine-hip-thrust",
+      "decision": "accepted",
+      "canonicalId": "d1c6bd5a-f193-4207-9e03-9a311d0813bc",
+      "rightsStatus": "approved_project_owned",
+      "licenseExpression": "LicenseRef-Big-Gains-Project-Owned",
+      "sourceLineage": "big-gains",
+      "reviewStatus": "reviewed",
+      "rationale": "Big Gains-curated definition fills a verified commercial-gym gap without importing third-party expression.",
+      "sourceRecord": {
+        "name": "Smith Machine Hip Thrust"
+      }
+    },
+    {
+      "sourceRegistryId": "big-gains-source-zero",
+      "sourceSnapshotId": "ekf-2-50acb63",
+      "sourceNativeRecordId": "big-gains:glute-drive-machine",
+      "decision": "accepted",
+      "canonicalId": "796289cd-eac0-4ec3-b569-4f5731a74eb0",
+      "rightsStatus": "approved_project_owned",
+      "licenseExpression": "LicenseRef-Big-Gains-Project-Owned",
+      "sourceLineage": "big-gains",
+      "reviewStatus": "reviewed",
+      "rationale": "Big Gains-curated definition fills a verified commercial-gym gap without importing third-party expression.",
+      "sourceRecord": {
+        "name": "Glute Drive Machine"
+      }
+    },
+    {
+      "sourceRegistryId": "big-gains-source-zero",
+      "sourceSnapshotId": "ekf-2-50acb63",
+      "sourceNativeRecordId": "big-gains:machine-glute-kickback",
+      "decision": "accepted",
+      "canonicalId": "b4eea2ad-81e8-4a93-9bfc-563884204cd4",
+      "rightsStatus": "approved_project_owned",
+      "licenseExpression": "LicenseRef-Big-Gains-Project-Owned",
+      "sourceLineage": "big-gains",
+      "reviewStatus": "reviewed",
+      "rationale": "Big Gains-curated definition fills a verified commercial-gym gap without importing third-party expression.",
+      "sourceRecord": {
+        "name": "Machine Glute Kickback"
+      }
+    },
+    {
+      "sourceRegistryId": "big-gains-source-zero",
+      "sourceSnapshotId": "ekf-2-50acb63",
+      "sourceNativeRecordId": "big-gains:rotary-torso-machine",
+      "decision": "accepted",
+      "canonicalId": "9b0f4524-f54d-4b20-88ce-bea81b7707ef",
+      "rightsStatus": "approved_project_owned",
+      "licenseExpression": "LicenseRef-Big-Gains-Project-Owned",
+      "sourceLineage": "big-gains",
+      "reviewStatus": "reviewed",
+      "rationale": "Big Gains-curated definition fills a verified commercial-gym gap without importing third-party expression.",
+      "sourceRecord": {
+        "name": "Rotary Torso Machine"
+      }
+    },
+    {
+      "sourceRegistryId": "big-gains-source-zero",
+      "sourceSnapshotId": "ekf-2-50acb63",
+      "sourceNativeRecordId": "big-gains:ski-erg",
+      "decision": "accepted",
+      "canonicalId": "38ed2c6d-9ff2-4bb5-9b08-108d9443cac6",
+      "rightsStatus": "approved_project_owned",
+      "licenseExpression": "LicenseRef-Big-Gains-Project-Owned",
+      "sourceLineage": "big-gains",
+      "reviewStatus": "reviewed",
+      "rationale": "Big Gains-curated definition fills a verified commercial-gym gap without importing third-party expression.",
+      "sourceRecord": {
+        "name": "Ski Erg"
+      }
+    },
+    {
+      "sourceRegistryId": "big-gains-source-zero",
+      "sourceSnapshotId": "ekf-2-50acb63",
+      "sourceNativeRecordId": "big-gains:battle-rope-waves",
+      "decision": "accepted",
+      "canonicalId": "872759cb-cc58-4fc9-ba84-9eb784d6c542",
+      "rightsStatus": "approved_project_owned",
+      "licenseExpression": "LicenseRef-Big-Gains-Project-Owned",
+      "sourceLineage": "big-gains",
+      "reviewStatus": "reviewed",
+      "rationale": "Big Gains-curated definition fills a verified commercial-gym gap without importing third-party expression.",
+      "sourceRecord": {
+        "name": "Battle Rope Waves"
+      }
+    },
+    {
+      "sourceRegistryId": "wger-exercise-data",
+      "sourceSnapshotId": "wger-d353d3c8",
+      "sourceNativeRecordId": "translation:2387",
+      "decision": "quarantined",
+      "canonicalId": null,
+      "rightsStatus": "quarantined",
+      "licenseExpression": "CC-BY-SA-4.0",
+      "sourceLineage": "wger-project/wger",
+      "reviewStatus": "reviewed",
+      "rationale": "Exact entry is ShareAlike; EKF-3 policy does not admit BY-SA data into the distributable catalog.",
+      "sourceRecord": {
+        "name": "Biceps Curl Machine"
+      },
+      "sourcePayloadSha256": "775fd60a25df3a5199b88a42b7f6f246b2aee81d1beb2c9d5fb073332e2c9446",
+      "attribution": "hpmbala@gmail.com",
+      "translationUuid": "f07d4a46-2ece-4d2f-9319-cc23f4086320",
+      "exercisePk": 1424,
+      "exerciseUuid": "e68f6d51-fe02-4175-b277-dec0c1521f36"
+    },
+    {
+      "sourceRegistryId": "wger-exercise-data",
+      "sourceSnapshotId": "wger-d353d3c8",
+      "sourceNativeRecordId": "translation:2079",
+      "decision": "quarantined",
+      "canonicalId": null,
+      "rightsStatus": "quarantined",
+      "licenseExpression": "CC-BY-SA-4.0",
+      "sourceLineage": "wger-project/wger",
+      "reviewStatus": "reviewed",
+      "rationale": "Exact entry is ShareAlike; EKF-3 policy does not admit BY-SA data into the distributable catalog.",
+      "sourceRecord": {
+        "name": "Dumbbell farmer's carry"
+      },
+      "sourcePayloadSha256": "ede922e0813b07b8223933b985b46a9060fe41e6e367f660026ef63413e4a117",
+      "attribution": "philip",
+      "translationUuid": "22319024-a420-4a24-849d-759c4ae79bf8",
+      "exercisePk": 1116,
+      "exerciseUuid": "3393db0b-98b7-4d53-a0d4-985f97875295"
+    },
+    {
+      "sourceRegistryId": "wger-exercise-data",
+      "sourceSnapshotId": "wger-d353d3c8",
+      "sourceNativeRecordId": "translation:2159",
+      "decision": "quarantined",
+      "canonicalId": null,
+      "rightsStatus": "quarantined",
+      "licenseExpression": "CC-BY-SA-4.0",
+      "sourceLineage": "wger-project/wger",
+      "reviewStatus": "reviewed",
+      "rationale": "Exact entry is ShareAlike; EKF-3 policy does not admit BY-SA data into the distributable catalog.",
+      "sourceRecord": {
+        "name": "Tibialis raises"
+      },
+      "sourcePayloadSha256": "5280e6f2ead84c0cb7fad55d5a1ce26f0882edf8b58244f33de47a9986545893",
+      "attribution": "cynomops",
+      "translationUuid": "121f6364-0901-4e90-9895-b3937b348fb4",
+      "exercisePk": 1200,
+      "exerciseUuid": "f5252fbe-1e00-4b8d-8781-2e56d6a5250f"
+    },
+    {
+      "sourceRegistryId": "wger-exercise-data",
+      "sourceSnapshotId": "wger-d353d3c8",
+      "sourceNativeRecordId": "translation:2109",
+      "decision": "quarantined",
+      "canonicalId": null,
+      "rightsStatus": "quarantined",
+      "licenseExpression": "CC-BY-SA-4.0",
+      "sourceLineage": "wger-project/wger",
+      "reviewStatus": "reviewed",
+      "rationale": "Exact entry is ShareAlike; EKF-3 policy does not admit BY-SA data into the distributable catalog.",
+      "sourceRecord": {
+        "name": "Extensión de gluteo en máquina"
+      },
+      "sourcePayloadSha256": "e58e667b02960629a82957828a6272482438fbe502997268276b01a6f62e3675",
+      "attribution": "Franpol",
+      "translationUuid": "00a01320-1382-4f36-aa1e-d603a180c0e6",
+      "exercisePk": 1132,
+      "exerciseUuid": "ab872d04-ca20-4341-b3c9-76763b25ef42"
+    },
+    {
+      "sourceRegistryId": "wger-exercise-data",
+      "sourceSnapshotId": "wger-d353d3c8",
+      "sourceNativeRecordId": "translation:2338",
+      "decision": "quarantined",
+      "canonicalId": null,
+      "rightsStatus": "quarantined",
+      "licenseExpression": "CC-BY-SA-4.0",
+      "sourceLineage": "wger-project/wger",
+      "reviewStatus": "reviewed",
+      "rationale": "Exact entry is ShareAlike; EKF-3 policy does not admit BY-SA data into the distributable catalog.",
+      "sourceRecord": {
+        "name": "Triceps Dips (Assisted)"
+      },
+      "sourcePayloadSha256": "32120c66c9362cea321b1879c2aa8913b2ce4f7ed982ce2f9b35ec58e1504c9c",
+      "attribution": "matpn",
+      "translationUuid": "a449c082-6e26-44fe-a2bf-506ad7753005",
+      "exercisePk": 1372,
+      "exerciseUuid": "3dd0db1c-450a-46d1-ad46-d7854bdc26ed"
+    }
+  ]
+}

@@ -69,7 +69,33 @@
             "muscle": { "type": "string", "minLength": 1 },
             "equipment": { "type": "string", "minLength": 1 }
           }
-        }
+        },
+        "modality": { "type": "string", "minLength": 1 },
+        "programmingTags": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "movementPatterns": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "mechanics": { "type": "string", "minLength": 1 },
+        "equipment": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "assertions"],
+          "properties": {
+            "state": { "enum": ["unknown", "curated"] },
+            "assertions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["equipmentId", "role"],
+                "properties": {
+                  "equipmentId": { "type": "string", "minLength": 1 },
+                  "role": { "type": "string", "minLength": 1 }
+                }
+              }
+            }
+          }
+        },
+        "provenanceRefs": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "rightsRefs": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }
       }
     }
   }

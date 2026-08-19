@@ -14,15 +14,15 @@ const analytics = globalThis.BigGainsAnalytics;
 const completed = (weight, reps, extra = {}) => ({ id: crypto.randomUUID(), weight, reps, completed: true, warmup: false, ...extra });
 const exercise = (id, sets) => ({ ...catalog.getById(id), sets });
 
-test('EKF-T04/T05: all 119 exercises publish explicit measurement contracts and a byte-stable audit', async () => {
+test('EKF-T04/T05: all 155 exercises publish explicit measurement contracts and a byte-stable audit', async () => {
   const inputs = await loadInputs(repository);
   const validated = validateInputs(inputs);
   const artifacts = renderArtifacts(inputs);
   const audit = await readFile(new URL('../ekf/audit/measurement-contracts.md', import.meta.url), 'utf8');
 
-  assert.equal(validated.records.length, 119);
-  assert.equal(validated.measurementOwners.size, 119);
-  assert.equal(catalog.exercises.length, 119);
+  assert.equal(validated.records.length, 155);
+  assert.equal(validated.measurementOwners.size, 155);
+  assert.equal(catalog.exercises.length, 155);
   for (const definition of catalog.exercises) {
     const contract = catalog.measurementFor(definition);
     assert.ok(contract, definition.id);
@@ -31,7 +31,7 @@ test('EKF-T04/T05: all 119 exercises publish explicit measurement contracts and 
     assert.notEqual(contract.loadSemantics.resistanceSemantics, 'unknown', definition.id);
   }
   assert.equal(audit, artifacts.measurementAudit);
-  assert.equal((audit.match(/^\| `[^`]+` \|/gm) || []).length, 119);
+  assert.equal((audit.match(/^\| `[^`]+` \|/gm) || []).length, 155);
   assert.equal(catalog.measurementFor('dumbbell-bench-press').loadSemantics.loadBasis, 'per_hand');
   assert.equal(catalog.measurementFor('seated-iso-lateral-bench-press').loadSemantics.loadBasis, 'per_side');
 });
@@ -103,6 +103,19 @@ test('EKF-T09/T11: push-up, carry, sled, and plank use their own eligible quanti
   assert.deepEqual([carry.combinedExternalLoad, carry.externalLoadDistance, carry.externalLoadVolume, carry.estimated1RM], [120, 12000, null, null]);
   assert.deepEqual([sled.indicatedLoadDistance, sled.externalLoadDistance, sled.estimated1RM], [9000, null, null]);
   assert.deepEqual([plank.duration, plank.volume, plank.estimated1RM], [60, null, null]);
+});
+
+test('EKF-3: new machine, unilateral, sled, erg, and timed records preserve their explicit quantities', () => {
+  const highRow = analytics.metricsForSet(completed(90, 8), { exercise: catalog.getById('plate-loaded-high-row') });
+  const legExtension = analytics.metricsForSet(completed(70, 10), { exercise: catalog.getById('single-leg-leg-extension') });
+  const sled = analytics.metricsForSet(completed(180, 0, { distance: 50 }), { exercise: catalog.getById('sled-push') });
+  const bike = analytics.metricsForSet(completed(0, 0, { distance: 2.5, duration: 600 }), { exercise: catalog.getById('air-bike') });
+  const ropes = analytics.metricsForSet(completed(0, 0, { duration: 45 }), { exercise: catalog.getById('battle-rope-waves') });
+  assert.deepEqual([highRow.enteredLoad, highRow.combinedIndicatedLoad, highRow.indicatedLoadVolume, highRow.estimated1RM], [90, 180, 1440, null]);
+  assert.deepEqual([legExtension.repEventCount, legExtension.indicatedLoadVolume, legExtension.estimated1RM], [20, 1400, null]);
+  assert.deepEqual([sled.indicatedLoadDistance, sled.externalLoadDistance], [9000, null]);
+  assert.deepEqual([bike.distance, bike.duration, bike.volume], [2.5, 600, null]);
+  assert.deepEqual([ropes.duration, ropes.volume, ropes.estimated1RM], [45, null, null]);
 });
 
 test('EKF-T12: Epley results identify formula, release semantics, and eligibility failures', () => {

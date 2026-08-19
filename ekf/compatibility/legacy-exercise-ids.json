@@ -1,11 +1,15 @@
 {
   "schemaVersion": 1,
-  "releaseId": "ekf-2-measurement-semantics-v1",
+  "releaseId": "ekf-3-curated-catalog-v1",
   "generatedFrom": [
     "ekf/curated/exercises.json",
+    "ekf/curated/ekf-3-exercises.json",
     "ekf/curated/measurement-contracts.json",
+    "ekf/curated/ekf-3-measurement-contracts.json",
     "ekf/curated/families.json",
-    "ekf/curated/references.json"
+    "ekf/curated/ekf-3-families.json",
+    "ekf/curated/references.json",
+    "ekf/curated/ekf-3-references.json"
   ],
   "entries": [
     {
@@ -483,6 +487,150 @@
     {
       "legacyId": "kettlebell-swing",
       "canonicalId": "14015b5b-b608-4edb-9c18-aa6a932d24a9"
+    },
+    {
+      "legacyId": "cable-chest-press",
+      "canonicalId": "6b4b0288-3909-4184-ac21-64d4ff6f2c8d"
+    },
+    {
+      "legacyId": "dumbbell-chest-fly",
+      "canonicalId": "2735823a-2a0c-453a-97b3-1c1143f73df4"
+    },
+    {
+      "legacyId": "dumbbell-pullover",
+      "canonicalId": "7bd126a3-ae15-40c7-9022-c86db7164bbc"
+    },
+    {
+      "legacyId": "dumbbell-floor-press",
+      "canonicalId": "c24045d6-7940-4d41-9235-613e9dbbb03e"
+    },
+    {
+      "legacyId": "dip-machine",
+      "canonicalId": "7d32114f-b311-4779-ab6c-66a1d853f218"
+    },
+    {
+      "legacyId": "machine-biceps-curl",
+      "canonicalId": "7f3b7f8c-5e83-40f4-a292-3e4a520c144a"
+    },
+    {
+      "legacyId": "machine-triceps-extension",
+      "canonicalId": "df2db845-a0db-4e72-8a4c-17c8d82fd856"
+    },
+    {
+      "legacyId": "dumbbell-front-raise",
+      "canonicalId": "fbfcb0b8-7e32-4149-89a9-01d5222e3dd8"
+    },
+    {
+      "legacyId": "machine-lateral-raise",
+      "canonicalId": "c23dead5-dc07-4397-9695-8e46bfc7c5c5"
+    },
+    {
+      "legacyId": "smith-machine-overhead-press",
+      "canonicalId": "356aade0-1c4c-4859-80c3-aaf0d70b65e3"
+    },
+    {
+      "legacyId": "plate-loaded-high-row",
+      "canonicalId": "4f5681be-74cb-4cab-b104-9773299f6073"
+    },
+    {
+      "legacyId": "plate-loaded-low-row",
+      "canonicalId": "e6b99d0a-18e6-46a6-aae3-a5e9badd341b"
+    },
+    {
+      "legacyId": "single-arm-lat-pulldown",
+      "canonicalId": "7fbd6433-c9f1-4311-8b55-4803aefc9933"
+    },
+    {
+      "legacyId": "inverted-row",
+      "canonicalId": "be95b20e-588f-4b5d-a44c-4df806e79798"
+    },
+    {
+      "legacyId": "smith-machine-bent-over-row",
+      "canonicalId": "67e2fc5b-f97b-42b6-b064-af388b135115"
+    },
+    {
+      "legacyId": "standing-leg-curl",
+      "canonicalId": "e31d21c2-7861-4ac1-b127-b619f7d291f0"
+    },
+    {
+      "legacyId": "single-leg-leg-extension",
+      "canonicalId": "c4da1857-3f99-4655-87f0-699402e50e03"
+    },
+    {
+      "legacyId": "single-leg-seated-leg-curl",
+      "canonicalId": "7561911b-4087-47a1-83f5-9fe1def2093b"
+    },
+    {
+      "legacyId": "glute-ham-raise",
+      "canonicalId": "27803211-c8f0-4210-9857-4fc4aeab039d"
+    },
+    {
+      "legacyId": "good-morning",
+      "canonicalId": "292eccd2-d34e-4b91-9e99-b655fee2bc01"
+    },
+    {
+      "legacyId": "sumo-deadlift",
+      "canonicalId": "3b1944c8-b9dc-48a0-85e8-98a41ddf7cef"
+    },
+    {
+      "legacyId": "smith-machine-romanian-deadlift",
+      "canonicalId": "873d7ad1-7c25-41e9-a80c-821bdcd0bc2e"
+    },
+    {
+      "legacyId": "smith-machine-split-squat",
+      "canonicalId": "a8b31e87-3f30-4ea8-89ba-db6f9e5a872c"
+    },
+    {
+      "legacyId": "smith-machine-hip-thrust",
+      "canonicalId": "d1c6bd5a-f193-4207-9e03-9a311d0813bc"
+    },
+    {
+      "legacyId": "glute-drive-machine",
+      "canonicalId": "796289cd-eac0-4ec3-b569-4f5731a74eb0"
+    },
+    {
+      "legacyId": "machine-glute-kickback",
+      "canonicalId": "b4eea2ad-81e8-4a93-9bfc-563884204cd4"
+    },
+    {
+      "legacyId": "smith-machine-calf-raise",
+      "canonicalId": "c056e322-1298-4fd3-a934-02266e6133b4"
+    },
+    {
+      "legacyId": "cable-wood-chop",
+      "canonicalId": "18b80e62-4a20-4275-b87d-d1a4f4344df4"
+    },
+    {
+      "legacyId": "rotary-torso-machine",
+      "canonicalId": "9b0f4524-f54d-4b20-88ce-bea81b7707ef"
+    },
+    {
+      "legacyId": "sled-push",
+      "canonicalId": "fa1606ef-97f4-42cc-97e2-c52636755dad"
+    },
+    {
+      "legacyId": "backward-sled-drag",
+      "canonicalId": "03b856c5-c1e1-49b5-80a7-c567199909b6"
+    },
+    {
+      "legacyId": "air-bike",
+      "canonicalId": "63ce5b42-a77d-4e17-8fde-992e99646d82"
+    },
+    {
+      "legacyId": "ski-erg",
+      "canonicalId": "38ed2c6d-9ff2-4bb5-9b08-108d9443cac6"
+    },
+    {
+      "legacyId": "battle-rope-waves",
+      "canonicalId": "872759cb-cc58-4fc9-ba84-9eb784d6c542"
+    },
+    {
+      "legacyId": "dumbbell-wrist-curl",
+      "canonicalId": "b078a32f-81ee-4455-ac88-e0eb75291840"
+    },
+    {
+      "legacyId": "dumbbell-reverse-wrist-curl",
+      "canonicalId": "b5f7b82a-5463-4621-80ad-d869f50c0c86"
     }
   ]
 }

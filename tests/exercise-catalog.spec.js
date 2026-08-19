@@ -127,6 +127,21 @@ const V64_CANONICAL_IDS = [
   'kettlebell-swing'
 ];
 
+const EKF3_CANONICAL_IDS = [
+  'cable-chest-press', 'dumbbell-chest-fly', 'dumbbell-pullover', 'dumbbell-floor-press',
+  'dip-machine', 'machine-biceps-curl', 'machine-triceps-extension', 'dumbbell-front-raise',
+  'machine-lateral-raise', 'smith-machine-overhead-press', 'plate-loaded-high-row',
+  'plate-loaded-low-row', 'single-arm-lat-pulldown', 'inverted-row', 'smith-machine-bent-over-row',
+  'standing-leg-curl', 'single-leg-leg-extension', 'single-leg-seated-leg-curl', 'glute-ham-raise',
+  'good-morning', 'sumo-deadlift', 'smith-machine-romanian-deadlift', 'smith-machine-split-squat',
+  'smith-machine-hip-thrust', 'glute-drive-machine', 'machine-glute-kickback',
+  'smith-machine-calf-raise', 'cable-wood-chop', 'rotary-torso-machine', 'sled-push',
+  'backward-sled-drag', 'air-bike', 'ski-erg', 'battle-rope-waves', 'dumbbell-wrist-curl',
+  'dumbbell-reverse-wrist-curl'
+];
+
+const ALL_CANONICAL_IDS = [...V64_CANONICAL_IDS, ...EKF3_CANONICAL_IDS];
+
 const JORGE_PUSH_IDS = V64_CANONICAL_IDS.slice(0, 24).concat(V64_CANONICAL_IDS.slice(27, 35));
 
 const SEARCH_RESULTS = {
@@ -183,19 +198,20 @@ async function installSzwRuntime(page) {
   }, { authUserId, cloudAccountId, cloudProfileId, clientId: SZW_CLIENT_ID, storageKey });
 }
 
-test('the complete v64 canonical identity and metadata snapshot remains exact', async ({ page }) => {
+test('the complete v64 canonical identity and metadata snapshot remains exact within EKF-3', async ({ page }) => {
   await installLocalStorageFixture(page, 'blankJorge');
   await openApp(page);
 
   const result = await page.evaluate(() => {
     const catalog = window.BigGainsExerciseCatalog;
-    const snapshot = catalog.exercises.map(({ id, name, day, muscle, equipment, aliases, family }) => ({
+    const snapshot = catalog.exercises.slice(0, 119).map(({ id, name, day, muscle, equipment, aliases, family }) => ({
       id, name, day, muscle, equipment, aliases: [...aliases], family
     }));
     return {
       snapshot,
       compatibilitySame: catalog === window.bigGainsExerciseCatalog,
-      families: Object.fromEntries(catalog.exercises.filter(exercise => exercise.family).map(exercise => [exercise.id, exercise.family])),
+      count: catalog.exercises.length,
+      families: Object.fromEntries(catalog.exercises.slice(0, 119).filter(exercise => exercise.family).map(exercise => [exercise.id, exercise.family])),
       frozen: {
         api: Object.isFrozen(catalog),
         exercises: Object.isFrozen(catalog.exercises),
@@ -205,6 +221,7 @@ test('the complete v64 canonical identity and metadata snapshot remains exact', 
   });
 
   expect(result.snapshot.map(exercise => exercise.id)).toEqual(V64_CANONICAL_IDS);
+  expect(result.count).toBe(155);
   expect(createHash('sha256').update(JSON.stringify(result.snapshot)).digest('hex')).toBe(V64_METADATA_SHA256);
   expect(result.compatibilitySame).toBe(true);
   expect(result.families).toEqual({
@@ -250,6 +267,21 @@ test('every canonical name and alias resolves and searches to its existing owner
   expect(result.failures).toEqual([]);
   expect(result.normalized).toEqual(['dumbbell and cable', 'seated iso lateral chest press', '']);
   expect(result.generatedIds).toEqual(['seated-iso-lateral-bench-press', '45-degree-back-extension', 'ez-bar-curl']);
+});
+
+test('EKF-3 common commercial-gym language resolves without brand-specific canonical identities', async ({ page }) => {
+  await installLocalStorageFixture(page, 'blankJorge');
+  await openApp(page);
+  const result = await page.evaluate(() => Object.fromEntries([
+    'hammer strength high row', 'hip thrust machine', 'assault bike', 'single arm cable pulldown', 'lateral raise machine'
+  ].map(term => [term, BigGainsExerciseCatalog.resolve(term)?.id || null])));
+  expect(result).toEqual({
+    'hammer strength high row': 'plate-loaded-high-row',
+    'hip thrust machine': 'glute-drive-machine',
+    'assault bike': 'air-bike',
+    'single arm cable pulldown': 'single-arm-lat-pulldown',
+    'lateral raise machine': 'machine-lateral-raise'
+  });
 });
 
 test('EKF-1 exposes stable opaque identity beneath the unchanged catalog API', async ({ page }) => {
@@ -299,8 +331,8 @@ test('catalog search preserves v64 normalization, matching, and ordering', async
     ]));
   }, Object.keys(SEARCH_RESULTS));
 
-  expect(results['']).toEqual(V64_CANONICAL_IDS);
-  expect(Object.fromEntries(Object.keys(SEARCH_RESULTS).map(term => [term, results[term]]))).toEqual(SEARCH_RESULTS);
+  expect(results['']).toEqual(ALL_CANONICAL_IDS);
+  expect(Object.fromEntries(Object.keys(SEARCH_RESULTS).map(term => [term, results[term].filter(id => V64_CANONICAL_IDS.includes(id))]))).toEqual(SEARCH_RESULTS);
 });
 
 test('Jorge stays day-filtered while Alexa retains the full managed library', async ({ page }) => {
@@ -310,12 +342,13 @@ test('Jorge stays day-filtered while Alexa retains the full managed library', as
   await page.locator('.bottom-nav [data-view="library"]').click();
 
   const jorgeIds = await page.locator('#exerciseLibrary [data-add]').evaluateAll(buttons => buttons.map(button => button.dataset.add));
-  expect(jorgeIds).toEqual(JORGE_PUSH_IDS);
+  expect(jorgeIds.filter(id => V64_CANONICAL_IDS.includes(id))).toEqual(JORGE_PUSH_IDS);
+  expect(jorgeIds).toEqual(expect.arrayContaining(['cable-chest-press', 'dip-machine', 'machine-lateral-raise']));
 
   await Promise.all([page.waitForNavigation(), page.locator('#profileSelect').selectOption('alexa')]);
   await page.locator('.bottom-nav [data-view="library"]').click();
   const alexaIds = await page.locator('#exerciseLibrary [data-add]').evaluateAll(buttons => buttons.map(button => button.dataset.add));
-  expect(alexaIds).toEqual(V64_CANONICAL_IDS);
+  expect(alexaIds).toEqual(ALL_CANONICAL_IDS);
 });
 
 test('SZW retains the full library and every six-day routine entry resolves canonically', async ({ page }) => {
@@ -333,7 +366,7 @@ test('SZW retains the full library and every six-day routine entry resolves cano
     };
   });
 
-  expect(result.ids).toEqual(V64_CANONICAL_IDS);
+  expect(result.ids).toEqual(ALL_CANONICAL_IDS);
   expect(Object.keys(result.routineIds)).toEqual(['SzwPush1', 'SzwPull1', 'SzwLegs1', 'SzwPush2', 'SzwPull2', 'SzwLegs2']);
   expect(result.unresolved).toEqual([]);
 });

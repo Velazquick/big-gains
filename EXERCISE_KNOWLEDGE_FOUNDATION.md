@@ -399,6 +399,12 @@ EKF-2 does not select a historical bodyweight-at-performance resolver and does n
 
 **EKF-13.4 — EKF-3: Curated catalog expansion.** EKF-3 evaluates allowed source records, creates provenance-complete assertions, performs human-reviewed deduplication, and expands the catalog only through validated releases. Bulk import and third-party media remain prohibited by default.
 
+### EKF-3 implementation shape (informative)
+
+EKF-3 adds 36 human-curated commercial-gym definitions to the accepted 119-entry baseline. The release combines project-authored definitions with selected structured assertions from a pinned Unlicense snapshot of Free Exercise DB; it copies no external instructions, images, or video. Candidate decisions, pinned source hashes, source lineage, assertion-level provenance, exact rights classifications, and unresolved duplicate reviews are generated into `ekf/curation/`, `ekf/source-lock.json`, `ekf/source-registry.json`, and `ekf/audit/ekf-3-curation-report.md`. Per-entry CC-BY-SA wger candidates remain quarantined and do not enter the distributable catalog.
+
+The combined 155-entry catalog is generated statically and retains all 119 EKF-2 canonical IDs, legacy mappings, aliases, and measurement contracts exactly. Every new record has an opaque identity, explicit taxonomy and equipment roles, a complete EKF-2 measurement contract, reviewed family/variant relationships, and approved rights references. The generator rejects alias collisions, incomplete provenance, unresolved references, prohibited media fields, ambiguous auto-merges, and nondeterministic output. Schema v5, workout history, analytics formulas, Supabase, and runtime lookup boundaries remain unchanged.
+
 **EKF-13.5 — Later work.** Anatomy ontology crosswalks, joint actions, richer instructions, stronger release/signing infrastructure, remote distribution, calibrated equipment models, personalized strength modeling, advanced programming, and a broader Strength Knowledge layer follow only when their own contracts and evidence exist.
 
 **EKF-13.6 — Approval boundary.** Completion of EKF-0 does not authorize EKF-1 implementation. Each phase requires separate approval.

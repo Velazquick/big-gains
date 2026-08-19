@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "importerVersion": "ekf3-curation-importer-v1",
+  "retrievedAt": "2026-08-19T02:32:25Z",
+  "snapshots": [
+    {
+      "id": "free-exercise-db-b0eed061",
+      "sourceRegistryId": "free-exercise-db",
+      "commit": "b0eed061e1c832b3ed815fbaa4b45b3cdc14df49",
+      "retrievedAt": "2026-08-19T02:32:25Z",
+      "repositoryStatus": "active",
+      "recordCount": 873,
+      "dataPath": "dist/exercises.json",
+      "dataSha256": "d68a817484964095e6af0be2cdcbcc2c2504168d1d190c7d5c725ce52f3ae1f4",
+      "licensePath": "LICENSE.md",
+      "licenseExpression": "Unlicense",
+      "licenseSha256": "6b0382b16279f26ff69014300541967a356a666eb0b91b422f6862f6b7dad17e",
+      "sourceLineage": "wrkout/exercises.json",
+      "mediaIncluded": false
+    },
+    {
+      "id": "wger-d353d3c8",
+      "sourceRegistryId": "wger-exercise-data",
+      "commit": "d353d3c82a474f06953c24618167cc15b37c44c6",
+      "retrievedAt": "2026-08-19T02:32:25Z",
+      "repositoryStatus": "active",
+      "baseRecordCount": 872,
+      "translationRecordCount": 2429,
+      "baseDataPath": "wger/exercises/fixtures/exercise-base-data.json",
+      "baseDataSha256": "3b003dd64259ef6e06fac5e6cd6fbc7a1170aafebf1ee82b69039454cfc30254",
+      "translationDataPath": "wger/exercises/fixtures/translations.json",
+      "translationDataSha256": "e76dc38796fa4e002855832209772535aac819043c348a88a98fe3949596c207",
+      "licensesPath": "wger/core/fixtures/licenses.json",
+      "licensesSha256": "edf3db0c27a00e4650bf6200753f0e02dd851439c95cc846c1aa78c0d07e2c54",
+      "codeLicense": "AGPL-3.0-or-later",
+      "dataLicensePolicy": "per_entry",
+      "mediaIncluded": false
+    }
+  ]
+}

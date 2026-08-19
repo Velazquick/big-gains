@@ -129,7 +129,7 @@ test('catalog preserves every prior stable ID and adds 29 unique commercial-gym 
     };
   }, { baselineIds, additions });
 
-  expect(catalog.count).toBe(119);
+  expect(catalog.count).toBe(155);
   expect(catalog.missingBaseline).toEqual([]);
   expect(new Set(catalog.ids).size).toBe(catalog.ids.length);
   expect(new Set(catalog.names).size).toBe(catalog.names.length);

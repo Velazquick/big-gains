@@ -1,0 +1,1674 @@
+{
+  "$schema": "../schema/exercise-extension.schema.json",
+  "releaseId": "ekf-3-curated-catalog-v1",
+  "schemaVersion": 1,
+  "exercises": [
+    {
+      "id": "6b4b0288-3909-4184-ac21-64d4ff6f2c8d",
+      "contentRevision": 1,
+      "canonicalName": "Cable Chest Press",
+      "slug": "cable-chest-press",
+      "legacyIds": [
+        "cable-chest-press"
+      ],
+      "aliases": [
+        "Standing Cable Chest Press"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "cable-chest-press",
+        "day": "Push",
+        "muscle": "Chest",
+        "equipment": "Cable"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "push"
+      ],
+      "movementPatterns": [
+        "horizontal_push"
+      ],
+      "mechanics": "compound",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "cable_machine",
+            "role": "resistance"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "fedb-Cable_Chest_Press",
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "free-exercise-db-unlicense-b0eed061",
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "2735823a-2a0c-453a-97b3-1c1143f73df4",
+      "contentRevision": 1,
+      "canonicalName": "Dumbbell Chest Fly",
+      "slug": "dumbbell-chest-fly",
+      "legacyIds": [
+        "dumbbell-chest-fly"
+      ],
+      "aliases": [
+        "Dumbbell Fly",
+        "Dumbbell Flyes",
+        "Flat Dumbbell Fly"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "dumbbell-chest-fly",
+        "day": "Push",
+        "muscle": "Chest",
+        "equipment": "Dumbbell"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "push"
+      ],
+      "movementPatterns": [
+        "horizontal_push"
+      ],
+      "mechanics": "isolation",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "dumbbell",
+            "role": "resistance"
+          },
+          {
+            "equipmentId": "bench",
+            "role": "support"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "fedb-Dumbbell_Flyes",
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "free-exercise-db-unlicense-b0eed061",
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "7bd126a3-ae15-40c7-9022-c86db7164bbc",
+      "contentRevision": 1,
+      "canonicalName": "Dumbbell Pullover",
+      "slug": "dumbbell-pullover",
+      "legacyIds": [
+        "dumbbell-pullover"
+      ],
+      "aliases": [
+        "Bent-Arm Dumbbell Pullover",
+        "DB Pullover"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "dumbbell-pullover",
+        "day": "Pull",
+        "muscle": "Back / Chest",
+        "equipment": "Dumbbell"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "pull"
+      ],
+      "movementPatterns": [
+        "shoulder_extension"
+      ],
+      "mechanics": "compound",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "dumbbell",
+            "role": "resistance"
+          },
+          {
+            "equipmentId": "bench",
+            "role": "support"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "fedb-Bent-Arm_Dumbbell_Pullover",
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "free-exercise-db-unlicense-b0eed061",
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "c24045d6-7940-4d41-9235-613e9dbbb03e",
+      "contentRevision": 1,
+      "canonicalName": "Dumbbell Floor Press",
+      "slug": "dumbbell-floor-press",
+      "legacyIds": [
+        "dumbbell-floor-press"
+      ],
+      "aliases": [
+        "DB Floor Press"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "dumbbell-floor-press",
+        "day": "Push",
+        "muscle": "Chest / Triceps",
+        "equipment": "Dumbbell"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "push"
+      ],
+      "movementPatterns": [
+        "horizontal_push",
+        "elbow_extension"
+      ],
+      "mechanics": "compound",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "dumbbell",
+            "role": "resistance"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "fedb-Dumbbell_Floor_Press",
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "free-exercise-db-unlicense-b0eed061",
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "7d32114f-b311-4779-ab6c-66a1d853f218",
+      "contentRevision": 1,
+      "canonicalName": "Dip Machine",
+      "slug": "dip-machine",
+      "legacyIds": [
+        "dip-machine"
+      ],
+      "aliases": [
+        "Seated Dip Machine",
+        "Machine Dip",
+        "Triceps Dip Machine"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "dip-machine",
+        "day": "Push",
+        "muscle": "Triceps / Chest",
+        "equipment": "Machine"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "push"
+      ],
+      "movementPatterns": [
+        "elbow_extension",
+        "horizontal_push"
+      ],
+      "mechanics": "compound",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "selectorized_dip_machine",
+            "role": "resistance"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "fedb-Dip_Machine",
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "free-exercise-db-unlicense-b0eed061",
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "7f3b7f8c-5e83-40f4-a292-3e4a520c144a",
+      "contentRevision": 1,
+      "canonicalName": "Machine Biceps Curl",
+      "slug": "machine-biceps-curl",
+      "legacyIds": [
+        "machine-biceps-curl"
+      ],
+      "aliases": [
+        "Biceps Curl Machine",
+        "Machine Bicep Curl"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "machine-biceps-curl",
+        "day": "Pull",
+        "muscle": "Biceps",
+        "equipment": "Machine"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "pull"
+      ],
+      "movementPatterns": [
+        "elbow_flexion"
+      ],
+      "mechanics": "isolation",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "selectorized_curl_machine",
+            "role": "resistance"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "fedb-Machine_Bicep_Curl",
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "free-exercise-db-unlicense-b0eed061",
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "df2db845-a0db-4e72-8a4c-17c8d82fd856",
+      "contentRevision": 1,
+      "canonicalName": "Machine Triceps Extension",
+      "slug": "machine-triceps-extension",
+      "legacyIds": [
+        "machine-triceps-extension"
+      ],
+      "aliases": [
+        "Triceps Extension Machine"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "machine-triceps-extension",
+        "day": "Push",
+        "muscle": "Triceps",
+        "equipment": "Machine"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "push"
+      ],
+      "movementPatterns": [
+        "elbow_extension"
+      ],
+      "mechanics": "isolation",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "selectorized_triceps_machine",
+            "role": "resistance"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "fedb-Machine_Triceps_Extension",
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "free-exercise-db-unlicense-b0eed061",
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "fbfcb0b8-7e32-4149-89a9-01d5222e3dd8",
+      "contentRevision": 1,
+      "canonicalName": "Dumbbell Front Raise",
+      "slug": "dumbbell-front-raise",
+      "legacyIds": [
+        "dumbbell-front-raise"
+      ],
+      "aliases": [
+        "DB Front Raise",
+        "Front Dumbbell Raise"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "dumbbell-front-raise",
+        "day": "Push",
+        "muscle": "Shoulders",
+        "equipment": "Dumbbell"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "push"
+      ],
+      "movementPatterns": [
+        "other"
+      ],
+      "mechanics": "isolation",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "dumbbell",
+            "role": "resistance"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "fedb-Front_Dumbbell_Raise",
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "free-exercise-db-unlicense-b0eed061",
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "c23dead5-dc07-4397-9695-8e46bfc7c5c5",
+      "contentRevision": 1,
+      "canonicalName": "Machine Lateral Raise",
+      "slug": "machine-lateral-raise",
+      "legacyIds": [
+        "machine-lateral-raise"
+      ],
+      "aliases": [
+        "Lateral Raise Machine",
+        "Selectorized Lateral Raise"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "machine-lateral-raise",
+        "day": "Push",
+        "muscle": "Shoulders",
+        "equipment": "Machine"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "push"
+      ],
+      "movementPatterns": [
+        "shoulder_abduction"
+      ],
+      "mechanics": "isolation",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "selectorized_lateral_raise_machine",
+            "role": "resistance"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "356aade0-1c4c-4859-80c3-aaf0d70b65e3",
+      "contentRevision": 1,
+      "canonicalName": "Smith Machine Overhead Press",
+      "slug": "smith-machine-overhead-press",
+      "legacyIds": [
+        "smith-machine-overhead-press"
+      ],
+      "aliases": [
+        "Smith Machine Shoulder Press",
+        "Smith Shoulder Press"
+      ],
+      "familyId": null,
+      "variantOf": "766bfd3e-b8c4-4b8e-aba6-1af3e1431aec",
+      "compatibility": {
+        "legacyId": "smith-machine-overhead-press",
+        "day": "Push",
+        "muscle": "Shoulders",
+        "equipment": "Smith Machine"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "push"
+      ],
+      "movementPatterns": [
+        "vertical_push"
+      ],
+      "mechanics": "compound",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "smith_machine",
+            "role": "resistance"
+          },
+          {
+            "equipmentId": "bench",
+            "role": "support"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "fedb-Smith_Machine_Overhead_Shoulder_Press",
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "free-exercise-db-unlicense-b0eed061",
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "4f5681be-74cb-4cab-b104-9773299f6073",
+      "contentRevision": 1,
+      "canonicalName": "Plate-Loaded High Row",
+      "slug": "plate-loaded-high-row",
+      "legacyIds": [
+        "plate-loaded-high-row"
+      ],
+      "aliases": [
+        "Leverage High Row",
+        "Iso-Lateral High Row",
+        "Hammer Strength High Row"
+      ],
+      "familyId": "fbcd7a13-ac52-4817-9d0a-a6a0ac9d18a0",
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "plate-loaded-high-row",
+        "day": "Pull",
+        "muscle": "Back",
+        "equipment": "Machine"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "pull"
+      ],
+      "movementPatterns": [
+        "horizontal_pull"
+      ],
+      "mechanics": "compound",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "plate_loaded_row_machine",
+            "role": "resistance"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "fedb-Leverage_High_Row",
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "free-exercise-db-unlicense-b0eed061",
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "e6b99d0a-18e6-46a6-aae3-a5e9badd341b",
+      "contentRevision": 1,
+      "canonicalName": "Plate-Loaded Low Row",
+      "slug": "plate-loaded-low-row",
+      "legacyIds": [
+        "plate-loaded-low-row"
+      ],
+      "aliases": [
+        "Leverage Low Row",
+        "Iso-Lateral Low Row",
+        "Hammer Strength Low Row"
+      ],
+      "familyId": "fbcd7a13-ac52-4817-9d0a-a6a0ac9d18a0",
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "plate-loaded-low-row",
+        "day": "Pull",
+        "muscle": "Back",
+        "equipment": "Machine"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "pull"
+      ],
+      "movementPatterns": [
+        "horizontal_pull"
+      ],
+      "mechanics": "compound",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "plate_loaded_row_machine",
+            "role": "resistance"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "7fbd6433-c9f1-4311-8b55-4803aefc9933",
+      "contentRevision": 1,
+      "canonicalName": "Single-Arm Lat Pulldown",
+      "slug": "single-arm-lat-pulldown",
+      "legacyIds": [
+        "single-arm-lat-pulldown"
+      ],
+      "aliases": [
+        "One-Arm Lat Pulldown",
+        "One Arm Lat Pulldown",
+        "Single Arm Cable Pulldown"
+      ],
+      "familyId": "8eb3cd5b-f84d-49d9-99f6-209b88954353",
+      "variantOf": "a1c6ea43-5c0f-4c82-ab3e-c984fcb16306",
+      "compatibility": {
+        "legacyId": "single-arm-lat-pulldown",
+        "day": "Pull",
+        "muscle": "Back",
+        "equipment": "Cable"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "pull"
+      ],
+      "movementPatterns": [
+        "vertical_pull"
+      ],
+      "mechanics": "compound",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "cable_machine",
+            "role": "resistance"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "be95b20e-588f-4b5d-a44c-4df806e79798",
+      "contentRevision": 1,
+      "canonicalName": "Inverted Row",
+      "slug": "inverted-row",
+      "legacyIds": [
+        "inverted-row"
+      ],
+      "aliases": [
+        "Body Row",
+        "Australian Pull-Up"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "inverted-row",
+        "day": "Pull",
+        "muscle": "Back",
+        "equipment": "Bodyweight"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "pull"
+      ],
+      "movementPatterns": [
+        "horizontal_pull"
+      ],
+      "mechanics": "compound",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "rack_or_bar",
+            "role": "support"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "fedb-Inverted_Row",
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "free-exercise-db-unlicense-b0eed061",
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "67e2fc5b-f97b-42b6-b064-af388b135115",
+      "contentRevision": 1,
+      "canonicalName": "Smith Machine Bent-Over Row",
+      "slug": "smith-machine-bent-over-row",
+      "legacyIds": [
+        "smith-machine-bent-over-row"
+      ],
+      "aliases": [
+        "Smith Machine Row",
+        "Smith Row"
+      ],
+      "familyId": null,
+      "variantOf": "e5185176-05a3-4704-97fd-accb0ae5c3e7",
+      "compatibility": {
+        "legacyId": "smith-machine-bent-over-row",
+        "day": "Pull",
+        "muscle": "Back",
+        "equipment": "Smith Machine"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "pull"
+      ],
+      "movementPatterns": [
+        "horizontal_pull"
+      ],
+      "mechanics": "compound",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "smith_machine",
+            "role": "resistance"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "fedb-Smith_Machine_Bent_Over_Row",
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "free-exercise-db-unlicense-b0eed061",
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "e31d21c2-7861-4ac1-b127-b619f7d291f0",
+      "contentRevision": 1,
+      "canonicalName": "Standing Leg Curl",
+      "slug": "standing-leg-curl",
+      "legacyIds": [
+        "standing-leg-curl"
+      ],
+      "aliases": [
+        "Single-Leg Standing Curl",
+        "Standing Hamstring Curl"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "standing-leg-curl",
+        "day": "Legs",
+        "muscle": "Hamstrings",
+        "equipment": "Machine"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "legs"
+      ],
+      "movementPatterns": [
+        "knee_flexion"
+      ],
+      "mechanics": "isolation",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "standing_leg_curl_machine",
+            "role": "resistance"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "fedb-Standing_Leg_Curl",
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "free-exercise-db-unlicense-b0eed061",
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "c4da1857-3f99-4655-87f0-699402e50e03",
+      "contentRevision": 1,
+      "canonicalName": "Single-Leg Leg Extension",
+      "slug": "single-leg-leg-extension",
+      "legacyIds": [
+        "single-leg-leg-extension"
+      ],
+      "aliases": [
+        "Unilateral Leg Extension",
+        "One-Leg Leg Extension"
+      ],
+      "familyId": null,
+      "variantOf": "c22da607-8530-4bee-ac23-65f58bb682fe",
+      "compatibility": {
+        "legacyId": "single-leg-leg-extension",
+        "day": "Legs",
+        "muscle": "Quads",
+        "equipment": "Machine"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "legs"
+      ],
+      "movementPatterns": [
+        "knee_extension"
+      ],
+      "mechanics": "isolation",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "selectorized_leg_extension",
+            "role": "resistance"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "7561911b-4087-47a1-83f5-9fe1def2093b",
+      "contentRevision": 1,
+      "canonicalName": "Single-Leg Seated Leg Curl",
+      "slug": "single-leg-seated-leg-curl",
+      "legacyIds": [
+        "single-leg-seated-leg-curl"
+      ],
+      "aliases": [
+        "Unilateral Seated Leg Curl",
+        "One-Leg Seated Curl"
+      ],
+      "familyId": null,
+      "variantOf": "70427367-59ce-47bf-a86d-f65a7a033543",
+      "compatibility": {
+        "legacyId": "single-leg-seated-leg-curl",
+        "day": "Legs",
+        "muscle": "Hamstrings",
+        "equipment": "Machine"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "legs"
+      ],
+      "movementPatterns": [
+        "knee_flexion"
+      ],
+      "mechanics": "isolation",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "selectorized_seated_leg_curl",
+            "role": "resistance"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "27803211-c8f0-4210-9857-4fc4aeab039d",
+      "contentRevision": 1,
+      "canonicalName": "Glute-Ham Raise",
+      "slug": "glute-ham-raise",
+      "legacyIds": [
+        "glute-ham-raise"
+      ],
+      "aliases": [
+        "GHR",
+        "Glute Ham Developer Raise"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "glute-ham-raise",
+        "day": "Legs",
+        "muscle": "Hamstrings / Glutes",
+        "equipment": "Machine"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "legs"
+      ],
+      "movementPatterns": [
+        "knee_flexion",
+        "hip_extension"
+      ],
+      "mechanics": "compound",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "glute_ham_developer",
+            "role": "support"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "fedb-Glute_Ham_Raise",
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "free-exercise-db-unlicense-b0eed061",
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "292eccd2-d34e-4b91-9e99-b655fee2bc01",
+      "contentRevision": 1,
+      "canonicalName": "Good Morning",
+      "slug": "good-morning",
+      "legacyIds": [
+        "good-morning"
+      ],
+      "aliases": [
+        "Barbell Good Morning"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "good-morning",
+        "day": "Legs",
+        "muscle": "Hamstrings / Glutes",
+        "equipment": "Barbell"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "legs"
+      ],
+      "movementPatterns": [
+        "hinge"
+      ],
+      "mechanics": "compound",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "barbell",
+            "role": "resistance"
+          },
+          {
+            "equipmentId": "rack",
+            "role": "support"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "fedb-Good_Morning",
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "free-exercise-db-unlicense-b0eed061",
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "3b1944c8-b9dc-48a0-85e8-98a41ddf7cef",
+      "contentRevision": 1,
+      "canonicalName": "Sumo Deadlift",
+      "slug": "sumo-deadlift",
+      "legacyIds": [
+        "sumo-deadlift"
+      ],
+      "aliases": [
+        "Wide-Stance Deadlift"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "sumo-deadlift",
+        "day": "Other",
+        "muscle": "Full Body",
+        "equipment": "Barbell"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "full_body"
+      ],
+      "movementPatterns": [
+        "hinge"
+      ],
+      "mechanics": "compound",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "barbell",
+            "role": "resistance"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "fedb-Sumo_Deadlift",
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "free-exercise-db-unlicense-b0eed061",
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "873d7ad1-7c25-41e9-a80c-821bdcd0bc2e",
+      "contentRevision": 1,
+      "canonicalName": "Smith Machine Romanian Deadlift",
+      "slug": "smith-machine-romanian-deadlift",
+      "legacyIds": [
+        "smith-machine-romanian-deadlift"
+      ],
+      "aliases": [
+        "Smith Machine RDL",
+        "Smith RDL"
+      ],
+      "familyId": null,
+      "variantOf": "643ae68e-7243-4357-ac98-6ce1fb9703b7",
+      "compatibility": {
+        "legacyId": "smith-machine-romanian-deadlift",
+        "day": "Legs",
+        "muscle": "Hamstrings / Glutes",
+        "equipment": "Smith Machine"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "legs"
+      ],
+      "movementPatterns": [
+        "hinge"
+      ],
+      "mechanics": "compound",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "smith_machine",
+            "role": "resistance"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "a8b31e87-3f30-4ea8-89ba-db6f9e5a872c",
+      "contentRevision": 1,
+      "canonicalName": "Smith Machine Split Squat",
+      "slug": "smith-machine-split-squat",
+      "legacyIds": [
+        "smith-machine-split-squat"
+      ],
+      "aliases": [
+        "Smith Split Squat"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "smith-machine-split-squat",
+        "day": "Legs",
+        "muscle": "Quads / Glutes",
+        "equipment": "Smith Machine"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "legs"
+      ],
+      "movementPatterns": [
+        "lunge"
+      ],
+      "mechanics": "compound",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "smith_machine",
+            "role": "resistance"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "fedb-Smith_Single-Leg_Split_Squat",
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "free-exercise-db-unlicense-b0eed061",
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "d1c6bd5a-f193-4207-9e03-9a311d0813bc",
+      "contentRevision": 1,
+      "canonicalName": "Smith Machine Hip Thrust",
+      "slug": "smith-machine-hip-thrust",
+      "legacyIds": [
+        "smith-machine-hip-thrust"
+      ],
+      "aliases": [
+        "Smith Hip Thrust"
+      ],
+      "familyId": null,
+      "variantOf": "7492bccf-54b4-430b-a6b9-bb7d567952a1",
+      "compatibility": {
+        "legacyId": "smith-machine-hip-thrust",
+        "day": "Legs",
+        "muscle": "Glutes",
+        "equipment": "Smith Machine"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "legs"
+      ],
+      "movementPatterns": [
+        "hip_extension"
+      ],
+      "mechanics": "compound",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "smith_machine",
+            "role": "resistance"
+          },
+          {
+            "equipmentId": "bench",
+            "role": "support"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "796289cd-eac0-4ec3-b569-4f5731a74eb0",
+      "contentRevision": 1,
+      "canonicalName": "Glute Drive Machine",
+      "slug": "glute-drive-machine",
+      "legacyIds": [
+        "glute-drive-machine"
+      ],
+      "aliases": [
+        "Hip Thrust Machine",
+        "Machine Hip Thrust"
+      ],
+      "familyId": null,
+      "variantOf": "7492bccf-54b4-430b-a6b9-bb7d567952a1",
+      "compatibility": {
+        "legacyId": "glute-drive-machine",
+        "day": "Legs",
+        "muscle": "Glutes",
+        "equipment": "Machine"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "legs"
+      ],
+      "movementPatterns": [
+        "hip_extension"
+      ],
+      "mechanics": "compound",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "glute_drive_machine",
+            "role": "resistance"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "b4eea2ad-81e8-4a93-9bfc-563884204cd4",
+      "contentRevision": 1,
+      "canonicalName": "Machine Glute Kickback",
+      "slug": "machine-glute-kickback",
+      "legacyIds": [
+        "machine-glute-kickback"
+      ],
+      "aliases": [
+        "Glute Kickback Machine",
+        "Machine Hip Extension"
+      ],
+      "familyId": null,
+      "variantOf": "7e0cb04c-b637-46b0-a97b-bbf11fc693e4",
+      "compatibility": {
+        "legacyId": "machine-glute-kickback",
+        "day": "Legs",
+        "muscle": "Glutes",
+        "equipment": "Machine"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "legs"
+      ],
+      "movementPatterns": [
+        "hip_extension"
+      ],
+      "mechanics": "isolation",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "glute_kickback_machine",
+            "role": "resistance"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "c056e322-1298-4fd3-a934-02266e6133b4",
+      "contentRevision": 1,
+      "canonicalName": "Smith Machine Calf Raise",
+      "slug": "smith-machine-calf-raise",
+      "legacyIds": [
+        "smith-machine-calf-raise"
+      ],
+      "aliases": [
+        "Smith Calf Raise"
+      ],
+      "familyId": "10fb6ea4-b91c-40fa-936b-125dd8c4141d",
+      "variantOf": "2a7b9098-26cd-4222-8ade-38d4e49baecc",
+      "compatibility": {
+        "legacyId": "smith-machine-calf-raise",
+        "day": "Legs",
+        "muscle": "Calves",
+        "equipment": "Smith Machine"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "legs"
+      ],
+      "movementPatterns": [
+        "calf_raise"
+      ],
+      "mechanics": "isolation",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "smith_machine",
+            "role": "resistance"
+          },
+          {
+            "equipmentId": "calf_block",
+            "role": "support"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "fedb-Smith_Machine_Calf_Raise",
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "free-exercise-db-unlicense-b0eed061",
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "18b80e62-4a20-4275-b87d-d1a4f4344df4",
+      "contentRevision": 1,
+      "canonicalName": "Cable Wood Chop",
+      "slug": "cable-wood-chop",
+      "legacyIds": [
+        "cable-wood-chop"
+      ],
+      "aliases": [
+        "Standing Cable Wood Chop",
+        "Cable Woodchop"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "cable-wood-chop",
+        "day": "Legs",
+        "muscle": "Core",
+        "equipment": "Cable"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "core"
+      ],
+      "movementPatterns": [
+        "trunk_rotation"
+      ],
+      "mechanics": "compound",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "cable_machine",
+            "role": "resistance"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "fedb-Standing_Cable_Wood_Chop",
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "free-exercise-db-unlicense-b0eed061",
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "9b0f4524-f54d-4b20-88ce-bea81b7707ef",
+      "contentRevision": 1,
+      "canonicalName": "Rotary Torso Machine",
+      "slug": "rotary-torso-machine",
+      "legacyIds": [
+        "rotary-torso-machine"
+      ],
+      "aliases": [
+        "Torso Rotation Machine",
+        "Machine Torso Rotation"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "rotary-torso-machine",
+        "day": "Legs",
+        "muscle": "Core",
+        "equipment": "Machine"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "core"
+      ],
+      "movementPatterns": [
+        "trunk_rotation"
+      ],
+      "mechanics": "isolation",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "rotary_torso_machine",
+            "role": "resistance"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "fa1606ef-97f4-42cc-97e2-c52636755dad",
+      "contentRevision": 1,
+      "canonicalName": "Sled Push",
+      "slug": "sled-push",
+      "legacyIds": [
+        "sled-push"
+      ],
+      "aliases": [
+        "Prowler Push"
+      ],
+      "familyId": "626b4423-b863-4971-9a4c-ea00398218ef",
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "sled-push",
+        "day": "Other",
+        "muscle": "Full Body",
+        "equipment": "Sled"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "full_body"
+      ],
+      "movementPatterns": [
+        "locomotion"
+      ],
+      "mechanics": "mixed",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "weighted_sled",
+            "role": "resistance"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "fedb-Sled_Push",
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "free-exercise-db-unlicense-b0eed061",
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "03b856c5-c1e1-49b5-80a7-c567199909b6",
+      "contentRevision": 1,
+      "canonicalName": "Backward Sled Drag",
+      "slug": "backward-sled-drag",
+      "legacyIds": [
+        "backward-sled-drag"
+      ],
+      "aliases": [
+        "Backward Drag",
+        "Reverse Sled Drag"
+      ],
+      "familyId": "626b4423-b863-4971-9a4c-ea00398218ef",
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "backward-sled-drag",
+        "day": "Other",
+        "muscle": "Quads",
+        "equipment": "Sled"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "legs",
+        "full_body"
+      ],
+      "movementPatterns": [
+        "locomotion"
+      ],
+      "mechanics": "mixed",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "weighted_sled",
+            "role": "resistance"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "fedb-Backward_Drag",
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "free-exercise-db-unlicense-b0eed061",
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "63ce5b42-a77d-4e17-8fde-992e99646d82",
+      "contentRevision": 1,
+      "canonicalName": "Air Bike",
+      "slug": "air-bike",
+      "legacyIds": [
+        "air-bike"
+      ],
+      "aliases": [
+        "Assault Bike",
+        "Fan Bike"
+      ],
+      "familyId": "1c2aed85-b8c5-4b02-a63b-25e055a225ac",
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "air-bike",
+        "day": "Cardio",
+        "muscle": "Cardio",
+        "equipment": "Bike"
+      },
+      "modality": "cardio",
+      "programmingTags": [
+        "cardio",
+        "full_body"
+      ],
+      "movementPatterns": [
+        "cyclic"
+      ],
+      "mechanics": "cyclic",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "air_bike",
+            "role": "resistance"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "fedb-Air_Bike",
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "free-exercise-db-unlicense-b0eed061",
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "38ed2c6d-9ff2-4bb5-9b08-108d9443cac6",
+      "contentRevision": 1,
+      "canonicalName": "Ski Erg",
+      "slug": "ski-erg",
+      "legacyIds": [
+        "ski-erg"
+      ],
+      "aliases": [
+        "SkiErg",
+        "Ski Ergometer"
+      ],
+      "familyId": "1c2aed85-b8c5-4b02-a63b-25e055a225ac",
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "ski-erg",
+        "day": "Cardio",
+        "muscle": "Cardio",
+        "equipment": "Machine"
+      },
+      "modality": "cardio",
+      "programmingTags": [
+        "cardio",
+        "full_body"
+      ],
+      "movementPatterns": [
+        "cyclic"
+      ],
+      "mechanics": "cyclic",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "ski_ergometer",
+            "role": "resistance"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "872759cb-cc58-4fc9-ba84-9eb784d6c542",
+      "contentRevision": 1,
+      "canonicalName": "Battle Rope Waves",
+      "slug": "battle-rope-waves",
+      "legacyIds": [
+        "battle-rope-waves"
+      ],
+      "aliases": [
+        "Battle Ropes",
+        "Rope Waves"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "battle-rope-waves",
+        "day": "Cardio",
+        "muscle": "Full Body",
+        "equipment": "Battle Rope"
+      },
+      "modality": "cardio",
+      "programmingTags": [
+        "cardio",
+        "full_body"
+      ],
+      "movementPatterns": [
+        "other"
+      ],
+      "mechanics": "cyclic",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "battle_rope",
+            "role": "resistance"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "b078a32f-81ee-4455-ac88-e0eb75291840",
+      "contentRevision": 1,
+      "canonicalName": "Dumbbell Wrist Curl",
+      "slug": "dumbbell-wrist-curl",
+      "legacyIds": [
+        "dumbbell-wrist-curl"
+      ],
+      "aliases": [
+        "Palms-Up Dumbbell Wrist Curl",
+        "DB Wrist Curl"
+      ],
+      "familyId": "9506ca82-ba5d-4501-a4ff-a8bec939f6c0",
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "dumbbell-wrist-curl",
+        "day": "Pull",
+        "muscle": "Forearms",
+        "equipment": "Dumbbell"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "pull"
+      ],
+      "movementPatterns": [
+        "other"
+      ],
+      "mechanics": "isolation",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "dumbbell",
+            "role": "resistance"
+          },
+          {
+            "equipmentId": "bench",
+            "role": "support"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "fedb-Palms-Up_Dumbbell_Wrist_Curl_Over_A_Bench",
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "free-exercise-db-unlicense-b0eed061",
+        "big-gains-project-owned-ekf3"
+      ]
+    },
+    {
+      "id": "b5f7b82a-5463-4621-80ad-d869f50c0c86",
+      "contentRevision": 1,
+      "canonicalName": "Dumbbell Reverse Wrist Curl",
+      "slug": "dumbbell-reverse-wrist-curl",
+      "legacyIds": [
+        "dumbbell-reverse-wrist-curl"
+      ],
+      "aliases": [
+        "Palms-Down Dumbbell Wrist Curl",
+        "DB Reverse Wrist Curl"
+      ],
+      "familyId": "9506ca82-ba5d-4501-a4ff-a8bec939f6c0",
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "dumbbell-reverse-wrist-curl",
+        "day": "Pull",
+        "muscle": "Forearms",
+        "equipment": "Dumbbell"
+      },
+      "modality": "resistance",
+      "programmingTags": [
+        "pull"
+      ],
+      "movementPatterns": [
+        "other"
+      ],
+      "mechanics": "isolation",
+      "equipment": {
+        "state": "curated",
+        "assertions": [
+          {
+            "equipmentId": "dumbbell",
+            "role": "resistance"
+          },
+          {
+            "equipmentId": "bench",
+            "role": "support"
+          }
+        ]
+      },
+      "provenanceRefs": [
+        "fedb-Palms-Down_Dumbbell_Wrist_Curl_Over_A_Bench",
+        "big-gains-ekf3-curation-v1"
+      ],
+      "rightsRefs": [
+        "free-exercise-db-unlicense-b0eed061",
+        "big-gains-project-owned-ekf3"
+      ]
+    }
+  ]
+}

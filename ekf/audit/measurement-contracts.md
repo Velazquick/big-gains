@@ -1,9 +1,9 @@
-# EKF-2 Measurement Contract Audit
+# EKF Measurement Contract Audit
 
-Generated deterministically from the curated EKF sources for release `ekf-2-measurement-semantics-v1`. Stored workout values remain entered facts; this table describes runtime interpretation only (EKF-4.2, EKF-4.3, EKF-4.13).
+Generated deterministically from the curated EKF sources for release `ekf-3-curated-catalog-v1`. Stored workout values remain entered facts; this table describes runtime interpretation only (EKF-4.2, EKF-4.3, EKF-4.13).
 
-- Exercises: **119**
-- Explicit contracts: **119**
+- Exercises: **155**
+- Explicit contracts: **155**
 - Unknown/unresolved contracts: **0**
 
 | Legacy ID | Exercise | Tracking | Load basis | Resistance | Reps | Laterality | Card inputs | e1RM | Muscle roles |
@@ -127,3 +127,39 @@ Generated deterministically from the curated EKF sources for release `ekf-2-meas
 | `trap-bar-deadlift` | Trap Bar Deadlift | `load_reps` | `total` | `external` | `bilateral_cycle` | `bilateral` | Total weight + Reps | yes (`combined_external_load`) | Full Body (primary) |
 | `farmer-carry` | Farmer Carry | `load_distance` | `per_hand` | `external` | `not_applicable` | `asymmetric` | Weight per hand + Distance | no | Full Body (primary) |
 | `kettlebell-swing` | Kettlebell Swing | `load_reps` | `total` | `external` | `bilateral_cycle` | `bilateral` | Total weight + Reps | no | Full Body (primary) |
+| `cable-chest-press` | Cable Chest Press | `load_reps` | `total` | `machine_indicated` | `bilateral_cycle` | `bilateral` | Stack weight + Reps | no | Chest (primary), Shoulders (secondary), Triceps (secondary) |
+| `dumbbell-chest-fly` | Dumbbell Chest Fly | `load_reps` | `per_hand` | `external` | `bilateral_cycle` | `independent_bilateral` | Weight per dumbbell + Reps | no | Chest (primary) |
+| `dumbbell-pullover` | Dumbbell Pullover | `load_reps` | `total` | `external` | `bilateral_cycle` | `bilateral` | Dumbbell weight + Reps | no | Back (primary), Chest (secondary) |
+| `dumbbell-floor-press` | Dumbbell Floor Press | `load_reps` | `per_hand` | `external` | `bilateral_cycle` | `independent_bilateral` | Weight per dumbbell + Reps | yes (`entered_load`) | Triceps (primary), Chest (secondary), Shoulders (secondary) |
+| `dip-machine` | Dip Machine | `load_reps` | `total` | `machine_indicated` | `bilateral_cycle` | `bilateral` | Machine weight + Reps | no | Triceps (primary), Chest (secondary), Shoulders (secondary) |
+| `machine-biceps-curl` | Machine Biceps Curl | `load_reps` | `total` | `machine_indicated` | `bilateral_cycle` | `bilateral` | Machine weight + Reps | no | Biceps (primary) |
+| `machine-triceps-extension` | Machine Triceps Extension | `load_reps` | `total` | `machine_indicated` | `bilateral_cycle` | `bilateral` | Machine weight + Reps | no | Triceps (primary) |
+| `dumbbell-front-raise` | Dumbbell Front Raise | `load_reps` | `per_hand` | `external` | `bilateral_cycle` | `independent_bilateral` | Weight per dumbbell + Reps | no | Shoulders (primary) |
+| `machine-lateral-raise` | Machine Lateral Raise | `load_reps` | `total` | `machine_indicated` | `bilateral_cycle` | `independent_bilateral` | Machine weight + Reps | no | Shoulders (primary) |
+| `smith-machine-overhead-press` | Smith Machine Overhead Press | `load_reps` | `total` | `machine_indicated` | `bilateral_cycle` | `bilateral` | Smith machine weight + Reps | no | Shoulders (primary), Triceps (secondary) |
+| `plate-loaded-high-row` | Plate-Loaded High Row | `load_reps` | `per_side` | `machine_indicated` | `bilateral_cycle` | `independent_bilateral` | Weight per side + Reps | no | Back (primary), Biceps (secondary) |
+| `plate-loaded-low-row` | Plate-Loaded Low Row | `load_reps` | `per_side` | `machine_indicated` | `bilateral_cycle` | `independent_bilateral` | Weight per side + Reps | no | Back (primary), Biceps (secondary) |
+| `single-arm-lat-pulldown` | Single-Arm Lat Pulldown | `load_reps` | `total` | `machine_indicated` | `reps_per_side` | `unilateral` | Stack weight + Reps per side | no | Back (primary), Biceps (secondary) |
+| `inverted-row` | Inverted Row | `reps_only` | `not_applicable` | `bodyweight_only` | `bilateral_cycle` | `bilateral` | Reps | no | Back (primary), Biceps (secondary) |
+| `smith-machine-bent-over-row` | Smith Machine Bent-Over Row | `load_reps` | `total` | `machine_indicated` | `bilateral_cycle` | `bilateral` | Smith machine weight + Reps | no | Back (primary), Biceps (secondary) |
+| `standing-leg-curl` | Standing Leg Curl | `load_reps` | `total` | `machine_indicated` | `reps_per_side` | `unilateral` | Machine weight + Reps per side | no | Hamstrings (primary) |
+| `single-leg-leg-extension` | Single-Leg Leg Extension | `load_reps` | `total` | `machine_indicated` | `reps_per_side` | `unilateral` | Machine weight + Reps per side | no | Quads (primary) |
+| `single-leg-seated-leg-curl` | Single-Leg Seated Leg Curl | `load_reps` | `total` | `machine_indicated` | `reps_per_side` | `unilateral` | Machine weight + Reps per side | no | Hamstrings (primary) |
+| `glute-ham-raise` | Glute-Ham Raise | `reps_only` | `not_applicable` | `bodyweight_only` | `bilateral_cycle` | `bilateral` | Reps | no | Hamstrings (primary), Glutes (secondary), Calves (secondary) |
+| `good-morning` | Good Morning | `load_reps` | `total` | `external` | `bilateral_cycle` | `bilateral` | Total weight + Reps | no | Hamstrings (primary), Glutes (secondary) |
+| `sumo-deadlift` | Sumo Deadlift | `load_reps` | `total` | `external` | `bilateral_cycle` | `bilateral` | Total weight + Reps | yes (`combined_external_load`) | Hamstrings (primary), Glutes (primary), Quads (secondary), Back (secondary) |
+| `smith-machine-romanian-deadlift` | Smith Machine Romanian Deadlift | `load_reps` | `total` | `machine_indicated` | `bilateral_cycle` | `bilateral` | Smith machine weight + Reps | no | Hamstrings (primary), Glutes (secondary) |
+| `smith-machine-split-squat` | Smith Machine Split Squat | `load_reps` | `total` | `machine_indicated` | `reps_per_side` | `unilateral` | Smith machine weight + Reps per side | no | Quads (primary), Glutes (secondary), Hamstrings (secondary) |
+| `smith-machine-hip-thrust` | Smith Machine Hip Thrust | `load_reps` | `total` | `machine_indicated` | `bilateral_cycle` | `bilateral` | Smith machine weight + Reps | no | Glutes (primary), Hamstrings (secondary) |
+| `glute-drive-machine` | Glute Drive Machine | `load_reps` | `total` | `machine_indicated` | `bilateral_cycle` | `bilateral` | Machine weight + Reps | no | Glutes (primary), Hamstrings (secondary) |
+| `machine-glute-kickback` | Machine Glute Kickback | `load_reps` | `total` | `machine_indicated` | `reps_per_side` | `unilateral` | Machine weight + Reps per side | no | Glutes (primary), Hamstrings (secondary) |
+| `smith-machine-calf-raise` | Smith Machine Calf Raise | `load_reps` | `total` | `machine_indicated` | `bilateral_cycle` | `bilateral` | Smith machine weight + Reps | no | Calves (primary) |
+| `cable-wood-chop` | Cable Wood Chop | `load_reps` | `total` | `machine_indicated` | `reps_per_side` | `asymmetric` | Stack weight + Reps per side | no | Core (primary), Shoulders (secondary) |
+| `rotary-torso-machine` | Rotary Torso Machine | `load_reps` | `total` | `machine_indicated` | `reps_per_side` | `unilateral` | Machine weight + Reps per side | no | Core (primary) |
+| `sled-push` | Sled Push | `load_distance` | `total` | `machine_indicated` | `not_applicable` | `not_applicable` | Sled load + Distance | no | Full Body (primary) |
+| `backward-sled-drag` | Backward Sled Drag | `load_distance` | `total` | `machine_indicated` | `not_applicable` | `not_applicable` | Sled load + Distance | no | Quads (primary), Glutes (secondary), Hamstrings (secondary) |
+| `air-bike` | Air Bike | `distance_duration` | `not_applicable` | `not_applicable` | `not_applicable` | `not_applicable` | Distance + Duration | no | Cardio (primary) |
+| `ski-erg` | Ski Erg | `distance_duration` | `not_applicable` | `not_applicable` | `not_applicable` | `not_applicable` | Distance + Duration | no | Cardio (primary) |
+| `battle-rope-waves` | Battle Rope Waves | `duration` | `not_applicable` | `not_applicable` | `not_applicable` | `not_applicable` | Duration | no | Full Body (primary) |
+| `dumbbell-wrist-curl` | Dumbbell Wrist Curl | `load_reps` | `per_hand` | `external` | `bilateral_cycle` | `independent_bilateral` | Weight per dumbbell + Reps | no | Forearms (primary) |
+| `dumbbell-reverse-wrist-curl` | Dumbbell Reverse Wrist Curl | `load_reps` | `per_hand` | `external` | `bilateral_cycle` | `independent_bilateral` | Weight per dumbbell + Reps | no | Forearms (primary) |
