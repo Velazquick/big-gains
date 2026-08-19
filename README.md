@@ -15,6 +15,7 @@ Release `v76-history-explorer-detail-polish` completes the first History V2 prod
 ## Project documentation
 
 - [Architecture](ARCHITECTURE.md) — production load order, module boundaries, state and workout lifecycles, profile isolation, backup and sync behavior, offline assets, and CI
+- [Goals v1 specification](GOALS_V1_SPEC.md) — documentation-only exact-exercise 1RM lifecycle, estimated-versus-achieved semantics, conservative next-exposure policy, routine/Train authority, evidence notes, open navigation comparison, and implementation acceptance criteria
 - [Release checklist](RELEASE_CHECKLIST.md) — the required checks for production, storage, backup, and service-worker changes
 - [Browser testing](TESTING.md) — local commands, fixtures, coverage, and known limits
 - [Phase 4 account roadmap](PHASE4_ACCOUNT_ROADMAP.md) — cloud ownership, conflict rules, migration, and friend onboarding
