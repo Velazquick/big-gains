@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "provenance": [
+    {
+      "id": "big-gains-curated-baseline-v64",
+      "kind": "project_baseline",
+      "sourceName": "Big Gains compatibility catalog",
+      "snapshotVersion": "v64",
+      "description": "Direct capture of the project-curated catalog that Big Gains already shipped; no external provenance was historically tracked."
+    }
+  ],
+  "rights": [
+    {
+      "id": "big-gains-project-owned",
+      "kind": "project_owned",
+      "rightsStatus": "approved",
+      "description": "Project-owned compatibility metadata; no third-party content or media is included."
+    }
+  ]
+}

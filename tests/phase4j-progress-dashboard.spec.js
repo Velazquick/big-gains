@@ -120,7 +120,8 @@ test('strength drill-down remains available from the redesigned dashboard', asyn
   await page.locator('#openSelectedProgress').click();
   await expect(page.locator('#progressDialog')).toBeVisible();
   await expect(page.locator('#progressDialogTitle')).toHaveText('Seated Machine Chest Press');
-  await expect(page.locator('#progressDialogContent')).toContainText('Estimated 1RM trend');
+  await expect(page.locator('#progressDialogContent')).toContainText('e1RM unavailable for this measurement contract');
+  await expect(page.locator('#progressDialogContent')).toContainText('indicated workload');
   const shell = await page.locator('#progressDialog .history-dialog-shell').evaluate(element => {
     const styles = getComputedStyle(element);
     return { backgroundImage: styles.backgroundImage, color: styles.color };

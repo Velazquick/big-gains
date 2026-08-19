@@ -126,8 +126,8 @@ test('archive opens the correct polished detail with bodyweight semantics and wo
   await expect(page.locator('#closeHistoryDialog')).toHaveText('← History');
   await expect(page.locator('#historyDialogDate')).toContainText('July 31, 2026');
   await expect(page.locator('.history-summary-grid > div')).toHaveCount(4);
-  await expect(page.locator('.history-summary-grid')).toContainText('Effective volume');
-  await expect(page.locator('.history-summary-grid')).toContainText('3,850 lb');
+  await expect(page.locator('.history-summary-grid')).toContainText('Comparable workload');
+  await expect(page.locator('.history-summary-grid')).toContainText('—');
   await expect(page.locator('.history-summary-grid')).toContainText('3');
   await expect(page.locator('.history-summary-grid')).not.toContainText('PRs');
   await expect(page.locator('.history-pr-callout .pr-badge')).toHaveText('1 PR');

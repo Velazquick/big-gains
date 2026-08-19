@@ -86,6 +86,8 @@
         id: typeof value.id === 'string' && value.id ? value.id : createId(),
         weight: value.weight === '' ? '' : safeNumber(value.weight),
         reps: value.reps === '' ? '' : safeNumber(value.reps),
+        ...(Object.hasOwn(value, 'distance') ? { distance: value.distance === '' ? '' : safeNumber(value.distance) } : {}),
+        ...(Object.hasOwn(value, 'duration') ? { duration: value.duration === '' ? '' : safeNumber(value.duration) } : {}),
         warmup: value.warmup === true,
         completed: value.completed === true
       };

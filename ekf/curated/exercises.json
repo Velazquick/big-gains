@@ -1,0 +1,2321 @@
+{
+  "$schema": "../schema/exercise-identity.schema.json",
+  "release": {
+    "id": "ekf-2-measurement-semantics-v1",
+    "schemaVersion": 1,
+    "sourceBaseline": "big-gains-v64",
+    "description": "Stable EKF identity plus exercise-defined measurement semantics for the existing Big Gains compatibility catalog."
+  },
+  "canonicalDefaults": {
+    "schemaVersion": 1,
+    "status": "active",
+    "modality": "unknown",
+    "programmingTags": [],
+    "movementPatterns": [
+      "unknown"
+    ],
+    "mechanics": "unknown",
+    "muscles": {
+      "state": "unknown",
+      "assertions": []
+    },
+    "equipment": {
+      "state": "unknown",
+      "assertions": []
+    },
+    "laterality": "unknown",
+    "measurement": {
+      "trackingModel": "unknown",
+      "loadSemantics": {
+        "loadBasis": "unknown",
+        "resistanceSemantics": "unknown"
+      },
+      "repSemantics": "unknown",
+      "bodyweightModel": null
+    },
+    "analytics": {
+      "e1rmPermitted": false,
+      "e1rmLoadBasis": null
+    },
+    "provenanceRefs": [
+      "big-gains-curated-baseline-v64"
+    ],
+    "rightsRefs": [
+      "big-gains-project-owned"
+    ]
+  },
+  "exercises": [
+    {
+      "id": "a91d27f9-e4e9-4498-ad48-f0e7db8e8a85",
+      "contentRevision": 1,
+      "canonicalName": "Seated Machine Chest Press",
+      "slug": "seated-machine-chest-press",
+      "legacyIds": [
+        "seated-machine-chest-press"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "seated-machine-chest-press",
+        "day": "Push",
+        "muscle": "Chest",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "d4f7cf94-db5d-43b9-9944-dca188011e72",
+      "contentRevision": 1,
+      "canonicalName": "Seated Iso-Lateral Bench Press",
+      "slug": "seated-iso-lateral-bench-press",
+      "legacyIds": [
+        "seated-iso-lateral-bench-press"
+      ],
+      "aliases": [
+        "Iso-Lateral Bench Press",
+        "Seated Iso Lateral Bench Press",
+        "Iso-Lateral Chest Press",
+        "Seated Iso-Lateral Chest Press"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "seated-iso-lateral-bench-press",
+        "day": "Push",
+        "muscle": "Chest",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "e716514a-8bb7-4836-bc5c-673d257169da",
+      "contentRevision": 1,
+      "canonicalName": "Incline Iso Machine Press",
+      "slug": "incline-iso-machine-press",
+      "legacyIds": [
+        "incline-iso-machine-press"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "incline-iso-machine-press",
+        "day": "Push",
+        "muscle": "Chest",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "46d1003f-98b0-43aa-a13f-7861c326cc66",
+      "contentRevision": 1,
+      "canonicalName": "Smith Machine Incline Press",
+      "slug": "smith-machine-incline-press",
+      "legacyIds": [
+        "smith-machine-incline-press"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "smith-machine-incline-press",
+        "day": "Push",
+        "muscle": "Chest",
+        "equipment": "Smith Machine"
+      }
+    },
+    {
+      "id": "e6815fb8-ab2c-41ee-b8dc-1141af5fee8b",
+      "contentRevision": 1,
+      "canonicalName": "Flat Smith Machine Bench Press",
+      "slug": "flat-smith-machine-bench-press",
+      "legacyIds": [
+        "flat-smith-machine-bench-press"
+      ],
+      "aliases": [
+        "Smith Machine Bench Press",
+        "Smith Bench"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "flat-smith-machine-bench-press",
+        "day": "Push",
+        "muscle": "Chest",
+        "equipment": "Smith Machine"
+      }
+    },
+    {
+      "id": "fe9b24dd-e6db-41d3-9395-596830a0a37a",
+      "contentRevision": 1,
+      "canonicalName": "Barbell Bench Press",
+      "slug": "barbell-bench-press",
+      "legacyIds": [
+        "barbell-bench-press"
+      ],
+      "aliases": [
+        "Bench",
+        "Barbell Bench"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "barbell-bench-press",
+        "day": "Push",
+        "muscle": "Chest",
+        "equipment": "Barbell"
+      }
+    },
+    {
+      "id": "c88a0b76-3cc6-405b-afe9-b4ce5f45e0b5",
+      "contentRevision": 1,
+      "canonicalName": "Decline Barbell Bench Press",
+      "slug": "decline-barbell-bench-press",
+      "legacyIds": [
+        "decline-barbell-bench-press"
+      ],
+      "aliases": [
+        "Decline Bench Press",
+        "Decline Bench"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "decline-barbell-bench-press",
+        "day": "Push",
+        "muscle": "Chest",
+        "equipment": "Barbell"
+      }
+    },
+    {
+      "id": "64a28c27-909f-4f0a-adfa-7a294dcea60c",
+      "contentRevision": 1,
+      "canonicalName": "Dumbbell Bench Press",
+      "slug": "dumbbell-bench-press",
+      "legacyIds": [
+        "dumbbell-bench-press"
+      ],
+      "aliases": [
+        "DB Bench"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "dumbbell-bench-press",
+        "day": "Push",
+        "muscle": "Chest",
+        "equipment": "Dumbbell"
+      }
+    },
+    {
+      "id": "3ee9949f-fabe-4387-8bb9-d14f775e02cf",
+      "contentRevision": 1,
+      "canonicalName": "Incline Dumbbell Press",
+      "slug": "incline-dumbbell-press",
+      "legacyIds": [
+        "incline-dumbbell-press"
+      ],
+      "aliases": [
+        "DB Incline Press",
+        "Incline DB Press"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "incline-dumbbell-press",
+        "day": "Push",
+        "muscle": "Chest",
+        "equipment": "Dumbbell"
+      }
+    },
+    {
+      "id": "dce44595-28a0-4250-ada3-4b8fa7fee916",
+      "contentRevision": 1,
+      "canonicalName": "Decline Dumbbell Press",
+      "slug": "decline-dumbbell-press",
+      "legacyIds": [
+        "decline-dumbbell-press"
+      ],
+      "aliases": [
+        "Decline DB Press"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "decline-dumbbell-press",
+        "day": "Push",
+        "muscle": "Chest",
+        "equipment": "Dumbbell"
+      }
+    },
+    {
+      "id": "d175ba6c-0604-4c3f-99cc-fe6ce885a236",
+      "contentRevision": 1,
+      "canonicalName": "Cable Chest Fly",
+      "slug": "cable-chest-fly",
+      "legacyIds": [
+        "cable-chest-fly"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "cable-chest-fly",
+        "day": "Push",
+        "muscle": "Chest",
+        "equipment": "Cable"
+      }
+    },
+    {
+      "id": "70f2c251-e665-4b86-b44e-75693b62102f",
+      "contentRevision": 1,
+      "canonicalName": "Incline Cable Fly",
+      "slug": "incline-cable-fly",
+      "legacyIds": [
+        "incline-cable-fly"
+      ],
+      "aliases": [
+        "Incline Cable Chest Fly"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "incline-cable-fly",
+        "day": "Push",
+        "muscle": "Chest",
+        "equipment": "Cable"
+      }
+    },
+    {
+      "id": "91e20edc-0f3c-4fcb-b769-cf2011594c45",
+      "contentRevision": 1,
+      "canonicalName": "Seated Pec Deck",
+      "slug": "seated-pec-deck",
+      "legacyIds": [
+        "seated-pec-deck"
+      ],
+      "aliases": [
+        "Pec Fly Machine",
+        "Pec Deck",
+        "Machine Pec Fly"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "seated-pec-deck",
+        "day": "Push",
+        "muscle": "Chest",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "18e13fdf-2b56-4855-bbd6-aa5a9f45a2e6",
+      "contentRevision": 1,
+      "canonicalName": "Push-Up",
+      "slug": "push-up",
+      "legacyIds": [
+        "push-up"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "push-up",
+        "day": "Push",
+        "muscle": "Chest",
+        "equipment": "Bodyweight"
+      }
+    },
+    {
+      "id": "2dd15ca3-4558-4bd7-820a-129c3547a854",
+      "contentRevision": 1,
+      "canonicalName": "Dips",
+      "slug": "dips",
+      "legacyIds": [
+        "dips"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "dips",
+        "day": "Push",
+        "muscle": "Chest / Triceps",
+        "equipment": "Bodyweight"
+      }
+    },
+    {
+      "id": "734aad4e-da45-4b94-b29b-cbb7a40c7f89",
+      "contentRevision": 1,
+      "canonicalName": "Assisted Dip",
+      "slug": "assisted-dip",
+      "legacyIds": [
+        "assisted-dip"
+      ],
+      "aliases": [
+        "Assisted Dips"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "assisted-dip",
+        "day": "Push",
+        "muscle": "Chest / Triceps",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "79b87909-774d-4221-9a13-d507076310ee",
+      "contentRevision": 1,
+      "canonicalName": "Iso Machine Shoulder Press",
+      "slug": "iso-machine-shoulder-press",
+      "legacyIds": [
+        "iso-machine-shoulder-press"
+      ],
+      "aliases": [
+        "Iso Shoulder Press"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "iso-machine-shoulder-press",
+        "day": "Push",
+        "muscle": "Shoulders",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "377b4c23-b7c6-476f-8c75-c555dc1185ef",
+      "contentRevision": 1,
+      "canonicalName": "Dumbbell Shoulder Press",
+      "slug": "dumbbell-shoulder-press",
+      "legacyIds": [
+        "dumbbell-shoulder-press"
+      ],
+      "aliases": [
+        "DB Shoulder Press"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "dumbbell-shoulder-press",
+        "day": "Push",
+        "muscle": "Shoulders",
+        "equipment": "Dumbbell"
+      }
+    },
+    {
+      "id": "766bfd3e-b8c4-4b8e-aba6-1af3e1431aec",
+      "contentRevision": 1,
+      "canonicalName": "Barbell Overhead Press",
+      "slug": "barbell-overhead-press",
+      "legacyIds": [
+        "barbell-overhead-press"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "barbell-overhead-press",
+        "day": "Push",
+        "muscle": "Shoulders",
+        "equipment": "Barbell"
+      }
+    },
+    {
+      "id": "9ec58c9e-130d-4b67-a725-a2839b9b214c",
+      "contentRevision": 1,
+      "canonicalName": "Machine Shoulder Press",
+      "slug": "machine-shoulder-press",
+      "legacyIds": [
+        "machine-shoulder-press"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "machine-shoulder-press",
+        "day": "Push",
+        "muscle": "Shoulders",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "173a117b-9bcc-4d1f-b598-df2e07c803e6",
+      "contentRevision": 1,
+      "canonicalName": "Arnold Press",
+      "slug": "arnold-press",
+      "legacyIds": [
+        "arnold-press"
+      ],
+      "aliases": [
+        "Arnold Shoulder Press"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "arnold-press",
+        "day": "Push",
+        "muscle": "Shoulders",
+        "equipment": "Dumbbell"
+      }
+    },
+    {
+      "id": "f548f685-023f-43e3-a277-cae2cbd1905d",
+      "contentRevision": 1,
+      "canonicalName": "Landmine Press",
+      "slug": "landmine-press",
+      "legacyIds": [
+        "landmine-press"
+      ],
+      "aliases": [
+        "Single-Arm Landmine Press"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "landmine-press",
+        "day": "Push",
+        "muscle": "Shoulders",
+        "equipment": "Barbell"
+      }
+    },
+    {
+      "id": "ca7c7370-08f4-4ed8-afbe-a2dbea2c0ad9",
+      "contentRevision": 1,
+      "canonicalName": "Dumbbell Lateral Raise",
+      "slug": "dumbbell-lateral-raise",
+      "legacyIds": [
+        "dumbbell-lateral-raise"
+      ],
+      "aliases": [
+        "DB Lat Raise",
+        "DB Lateral Raise"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "dumbbell-lateral-raise",
+        "day": "Push",
+        "muscle": "Shoulders",
+        "equipment": "Dumbbell"
+      }
+    },
+    {
+      "id": "c0fd7882-3c9b-4546-8ec5-5da8d64bb3aa",
+      "contentRevision": 1,
+      "canonicalName": "Cable Lateral Raise",
+      "slug": "cable-lateral-raise",
+      "legacyIds": [
+        "cable-lateral-raise"
+      ],
+      "aliases": [
+        "Cable Lat Raise"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "cable-lateral-raise",
+        "day": "Push",
+        "muscle": "Shoulders",
+        "equipment": "Cable"
+      }
+    },
+    {
+      "id": "e75530df-c1e4-487a-a952-f15f6f980cc5",
+      "contentRevision": 1,
+      "canonicalName": "Reverse Pec Deck",
+      "slug": "reverse-pec-deck",
+      "legacyIds": [
+        "reverse-pec-deck"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "reverse-pec-deck",
+        "day": "Pull",
+        "muscle": "Rear Delts",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "071f203f-55ac-4c44-9bf2-c3f98f02cc81",
+      "contentRevision": 1,
+      "canonicalName": "Rear Delt Cable Fly",
+      "slug": "rear-delt-cable-fly",
+      "legacyIds": [
+        "rear-delt-cable-fly"
+      ],
+      "aliases": [
+        "Cable Rear Delt Fly"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "rear-delt-cable-fly",
+        "day": "Pull",
+        "muscle": "Rear Delts",
+        "equipment": "Cable"
+      }
+    },
+    {
+      "id": "7bbbd74b-f955-48b7-a987-e7946a737f51",
+      "contentRevision": 1,
+      "canonicalName": "Face Pull",
+      "slug": "face-pull",
+      "legacyIds": [
+        "face-pull"
+      ],
+      "aliases": [
+        "Face Pulls"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "face-pull",
+        "day": "Pull",
+        "muscle": "Rear Delts",
+        "equipment": "Cable"
+      }
+    },
+    {
+      "id": "5468f6b8-c921-4159-a9cc-bb8228e2e45c",
+      "contentRevision": 1,
+      "canonicalName": "Overhead Triceps Extension",
+      "slug": "overhead-triceps-extension",
+      "legacyIds": [
+        "overhead-triceps-extension"
+      ],
+      "aliases": [
+        "Overhead Tricep Extension"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "overhead-triceps-extension",
+        "day": "Push",
+        "muscle": "Triceps",
+        "equipment": "Cable"
+      }
+    },
+    {
+      "id": "b5c59616-d4b2-4d93-bd9e-1f0e52e537c6",
+      "contentRevision": 1,
+      "canonicalName": "Triceps Pushdown",
+      "slug": "triceps-pushdown",
+      "legacyIds": [
+        "triceps-pushdown"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "triceps-pushdown",
+        "day": "Push",
+        "muscle": "Triceps",
+        "equipment": "Cable"
+      }
+    },
+    {
+      "id": "5e43ab5e-a78d-4fff-8213-d1a37458d219",
+      "contentRevision": 1,
+      "canonicalName": "Rope Pushdown",
+      "slug": "rope-pushdown",
+      "legacyIds": [
+        "rope-pushdown"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "rope-pushdown",
+        "day": "Push",
+        "muscle": "Triceps",
+        "equipment": "Cable"
+      }
+    },
+    {
+      "id": "2ed5f449-e01f-4726-a607-08d03d6be512",
+      "contentRevision": 1,
+      "canonicalName": "Skull Crusher",
+      "slug": "skull-crusher",
+      "legacyIds": [
+        "skull-crusher"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "skull-crusher",
+        "day": "Push",
+        "muscle": "Triceps",
+        "equipment": "EZ Bar"
+      }
+    },
+    {
+      "id": "1f051f8b-9592-4577-a245-db85ca472c76",
+      "contentRevision": 1,
+      "canonicalName": "Close-Grip Bench Press",
+      "slug": "close-grip-bench-press",
+      "legacyIds": [
+        "close-grip-bench-press"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "close-grip-bench-press",
+        "day": "Push",
+        "muscle": "Triceps",
+        "equipment": "Barbell"
+      }
+    },
+    {
+      "id": "0c142a86-6c32-4a9a-b56f-c6a09d97ada9",
+      "contentRevision": 1,
+      "canonicalName": "Single-Arm Cable Extension",
+      "slug": "single-arm-cable-extension",
+      "legacyIds": [
+        "single-arm-cable-extension"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "single-arm-cable-extension",
+        "day": "Push",
+        "muscle": "Triceps",
+        "equipment": "Cable"
+      }
+    },
+    {
+      "id": "1a80259b-e27d-4538-9ceb-e3becfe23d88",
+      "contentRevision": 1,
+      "canonicalName": "Cable Triceps Kickback",
+      "slug": "cable-triceps-kickback",
+      "legacyIds": [
+        "cable-triceps-kickback"
+      ],
+      "aliases": [
+        "Cable Tricep Kickback"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "cable-triceps-kickback",
+        "day": "Push",
+        "muscle": "Triceps",
+        "equipment": "Cable"
+      }
+    },
+    {
+      "id": "eb963de3-f97a-4d26-9f4e-45abe9f79033",
+      "contentRevision": 1,
+      "canonicalName": "Dumbbell Triceps Kickback",
+      "slug": "dumbbell-triceps-kickback",
+      "legacyIds": [
+        "dumbbell-triceps-kickback"
+      ],
+      "aliases": [
+        "DB Tricep Kickback",
+        "Dumbbell Tricep Kickback"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "dumbbell-triceps-kickback",
+        "day": "Push",
+        "muscle": "Triceps",
+        "equipment": "Dumbbell"
+      }
+    },
+    {
+      "id": "a1c6ea43-5c0f-4c82-ab3e-c984fcb16306",
+      "contentRevision": 1,
+      "canonicalName": "Lat Pulldown",
+      "slug": "lat-pulldown",
+      "legacyIds": [
+        "lat-pulldown"
+      ],
+      "aliases": [],
+      "familyId": "8eb3cd5b-f84d-49d9-99f6-209b88954353",
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "lat-pulldown",
+        "day": "Pull",
+        "muscle": "Back",
+        "equipment": "Cable"
+      }
+    },
+    {
+      "id": "bf2be05e-38df-4440-b486-7c310dbca831",
+      "contentRevision": 1,
+      "canonicalName": "Wide-Grip Lat Pulldown",
+      "slug": "wide-grip-lat-pulldown",
+      "legacyIds": [
+        "wide-grip-lat-pulldown"
+      ],
+      "aliases": [
+        "Wide Grip Pulldown"
+      ],
+      "familyId": "8eb3cd5b-f84d-49d9-99f6-209b88954353",
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "wide-grip-lat-pulldown",
+        "day": "Pull",
+        "muscle": "Back",
+        "equipment": "Cable"
+      }
+    },
+    {
+      "id": "967549cb-31a8-480b-8eb0-29e9d5826130",
+      "contentRevision": 1,
+      "canonicalName": "Neutral-Grip Lat Pulldown",
+      "slug": "neutral-grip-lat-pulldown",
+      "legacyIds": [
+        "neutral-grip-lat-pulldown"
+      ],
+      "aliases": [
+        "Neutral Grip Pulldown"
+      ],
+      "familyId": "8eb3cd5b-f84d-49d9-99f6-209b88954353",
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "neutral-grip-lat-pulldown",
+        "day": "Pull",
+        "muscle": "Back",
+        "equipment": "Cable"
+      }
+    },
+    {
+      "id": "3ebe997b-197c-4dfa-b0ac-9f5c678e076c",
+      "contentRevision": 1,
+      "canonicalName": "Iso-Lateral Pulldown Machine",
+      "slug": "iso-lateral-pulldown-machine",
+      "legacyIds": [
+        "iso-lateral-pulldown-machine"
+      ],
+      "aliases": [
+        "Iso Lat Pull Machine",
+        "Iso Lat Pulldown Machine"
+      ],
+      "familyId": "8eb3cd5b-f84d-49d9-99f6-209b88954353",
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "iso-lateral-pulldown-machine",
+        "day": "Pull",
+        "muscle": "Back",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "7794f0cd-2ccd-4dd5-a880-e1a5b60af7b2",
+      "contentRevision": 1,
+      "canonicalName": "Assisted Pull-Up",
+      "slug": "assisted-pull-up",
+      "legacyIds": [
+        "assisted-pull-up"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "assisted-pull-up",
+        "day": "Pull",
+        "muscle": "Back",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "7e036c58-2533-41bc-a323-6900b2869e3b",
+      "contentRevision": 1,
+      "canonicalName": "Pull-Up",
+      "slug": "pull-up",
+      "legacyIds": [
+        "pull-up"
+      ],
+      "aliases": [
+        "Pull ups",
+        "Pullup",
+        "Pullups"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "pull-up",
+        "day": "Pull",
+        "muscle": "Back",
+        "equipment": "Bodyweight"
+      }
+    },
+    {
+      "id": "93735b4f-ef72-42b8-a7fa-fd6f8a452391",
+      "contentRevision": 1,
+      "canonicalName": "Seated Cable Row",
+      "slug": "seated-cable-row",
+      "legacyIds": [
+        "seated-cable-row"
+      ],
+      "aliases": [
+        "Cable Row"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "seated-cable-row",
+        "day": "Pull",
+        "muscle": "Back",
+        "equipment": "Cable"
+      }
+    },
+    {
+      "id": "f07f5f3d-25ad-4bd8-b143-199e8e0e82be",
+      "contentRevision": 1,
+      "canonicalName": "Close-Grip Seated Cable Row",
+      "slug": "close-grip-seated-cable-row",
+      "legacyIds": [
+        "close-grip-seated-cable-row"
+      ],
+      "aliases": [
+        "Close Grip Cable Row"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "close-grip-seated-cable-row",
+        "day": "Pull",
+        "muscle": "Back",
+        "equipment": "Cable"
+      }
+    },
+    {
+      "id": "ea973e61-6d86-422f-bed6-c5c50fbdd08f",
+      "contentRevision": 1,
+      "canonicalName": "One-Arm Cable Row",
+      "slug": "one-arm-cable-row",
+      "legacyIds": [
+        "one-arm-cable-row"
+      ],
+      "aliases": [
+        "Single-Arm Cable Row",
+        "Single Arm Cable Row"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "one-arm-cable-row",
+        "day": "Pull",
+        "muscle": "Back",
+        "equipment": "Cable"
+      }
+    },
+    {
+      "id": "cfa65978-e97e-423a-8ed5-86dac483a849",
+      "contentRevision": 1,
+      "canonicalName": "Chest-Supported Row",
+      "slug": "chest-supported-row",
+      "legacyIds": [
+        "chest-supported-row"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "chest-supported-row",
+        "day": "Pull",
+        "muscle": "Back",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "3bd894ae-6ae2-4cfe-b467-c68fbc60c203",
+      "contentRevision": 1,
+      "canonicalName": "T-Bar Row",
+      "slug": "t-bar-row",
+      "legacyIds": [
+        "t-bar-row"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "t-bar-row",
+        "day": "Pull",
+        "muscle": "Back",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "172a5cf2-78b9-4ac0-b8db-9014387b59cc",
+      "contentRevision": 1,
+      "canonicalName": "Chest-Supported T-Bar Row",
+      "slug": "chest-supported-t-bar-row",
+      "legacyIds": [
+        "chest-supported-t-bar-row"
+      ],
+      "aliases": [
+        "Chest Supported T Bar Row"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "chest-supported-t-bar-row",
+        "day": "Pull",
+        "muscle": "Back",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "e5185176-05a3-4704-97fd-accb0ae5c3e7",
+      "contentRevision": 1,
+      "canonicalName": "Barbell Row",
+      "slug": "barbell-row",
+      "legacyIds": [
+        "barbell-row"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "barbell-row",
+        "day": "Pull",
+        "muscle": "Back",
+        "equipment": "Barbell"
+      }
+    },
+    {
+      "id": "dc063581-f739-43c9-8ba7-a84bbfb0d000",
+      "contentRevision": 1,
+      "canonicalName": "Meadows Row",
+      "slug": "meadows-row",
+      "legacyIds": [
+        "meadows-row"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "meadows-row",
+        "day": "Pull",
+        "muscle": "Back",
+        "equipment": "Barbell"
+      }
+    },
+    {
+      "id": "70f53c09-e92d-4052-96b4-fa50b68cbcc8",
+      "contentRevision": 1,
+      "canonicalName": "One-Arm Dumbbell Row",
+      "slug": "one-arm-dumbbell-row",
+      "legacyIds": [
+        "one-arm-dumbbell-row"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "one-arm-dumbbell-row",
+        "day": "Pull",
+        "muscle": "Back",
+        "equipment": "Dumbbell"
+      }
+    },
+    {
+      "id": "d4e61d83-34ac-46d9-aaf9-a1df27d645e3",
+      "contentRevision": 1,
+      "canonicalName": "Iso-Lateral Row",
+      "slug": "iso-lateral-row",
+      "legacyIds": [
+        "iso-lateral-row"
+      ],
+      "aliases": [
+        "One Arm Row Machine",
+        "One-Arm Row Machine",
+        "Iso Row Machine"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "iso-lateral-row",
+        "day": "Pull",
+        "muscle": "Back",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "a45e32da-1125-40bb-9a68-a0033ec58c7c",
+      "contentRevision": 1,
+      "canonicalName": "Straight-Arm Pulldown",
+      "slug": "straight-arm-pulldown",
+      "legacyIds": [
+        "straight-arm-pulldown"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "straight-arm-pulldown",
+        "day": "Pull",
+        "muscle": "Back",
+        "equipment": "Cable"
+      }
+    },
+    {
+      "id": "b0fffa0f-f436-4f85-8421-fd6ce711b0a8",
+      "contentRevision": 1,
+      "canonicalName": "Machine Pullover",
+      "slug": "machine-pullover",
+      "legacyIds": [
+        "machine-pullover"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "machine-pullover",
+        "day": "Pull",
+        "muscle": "Back",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "a97cc1b8-1d6e-4064-843d-954a7336c2f2",
+      "contentRevision": 1,
+      "canonicalName": "Rack Pull",
+      "slug": "rack-pull",
+      "legacyIds": [
+        "rack-pull"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "rack-pull",
+        "day": "Pull",
+        "muscle": "Back",
+        "equipment": "Barbell"
+      }
+    },
+    {
+      "id": "b140a2c7-4e29-428a-8cf9-86dee4342af1",
+      "contentRevision": 1,
+      "canonicalName": "Dumbbell Shrug",
+      "slug": "dumbbell-shrug",
+      "legacyIds": [
+        "dumbbell-shrug"
+      ],
+      "aliases": [
+        "DB Shrug",
+        "DB Shrugs"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "dumbbell-shrug",
+        "day": "Pull",
+        "muscle": "Traps",
+        "equipment": "Dumbbell"
+      }
+    },
+    {
+      "id": "ad237cb2-0797-412f-aa38-5701b2e71173",
+      "contentRevision": 1,
+      "canonicalName": "Barbell Shrug",
+      "slug": "barbell-shrug",
+      "legacyIds": [
+        "barbell-shrug"
+      ],
+      "aliases": [
+        "Barbell Shrugs"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "barbell-shrug",
+        "day": "Pull",
+        "muscle": "Traps",
+        "equipment": "Barbell"
+      }
+    },
+    {
+      "id": "215a0231-5dd9-4ada-b3d8-bcb3338378f1",
+      "contentRevision": 1,
+      "canonicalName": "Dumbbell Curl",
+      "slug": "dumbbell-curl",
+      "legacyIds": [
+        "dumbbell-curl"
+      ],
+      "aliases": [
+        "DB Curl",
+        "DB Curls"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "dumbbell-curl",
+        "day": "Pull",
+        "muscle": "Biceps",
+        "equipment": "Dumbbell"
+      }
+    },
+    {
+      "id": "4fb9a0d5-2b36-449f-9031-af83687cd4ee",
+      "contentRevision": 1,
+      "canonicalName": "Hammer Curl",
+      "slug": "hammer-curl",
+      "legacyIds": [
+        "hammer-curl"
+      ],
+      "aliases": [
+        "Hammer Curls"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "hammer-curl",
+        "day": "Pull",
+        "muscle": "Biceps",
+        "equipment": "Dumbbell"
+      }
+    },
+    {
+      "id": "352cccc6-3014-4a17-b762-5a32dc9c04b7",
+      "contentRevision": 1,
+      "canonicalName": "Rope Hammer Curl",
+      "slug": "rope-hammer-curl",
+      "legacyIds": [
+        "rope-hammer-curl"
+      ],
+      "aliases": [
+        "Rope Hammer Curls"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "rope-hammer-curl",
+        "day": "Pull",
+        "muscle": "Biceps",
+        "equipment": "Cable"
+      }
+    },
+    {
+      "id": "36b211e8-550a-4a26-b82a-433a2ecf69f5",
+      "contentRevision": 1,
+      "canonicalName": "Incline Dumbbell Curl",
+      "slug": "incline-dumbbell-curl",
+      "legacyIds": [
+        "incline-dumbbell-curl"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "incline-dumbbell-curl",
+        "day": "Pull",
+        "muscle": "Biceps",
+        "equipment": "Dumbbell"
+      }
+    },
+    {
+      "id": "351e261c-2b4a-4412-b91e-c71538a538aa",
+      "contentRevision": 1,
+      "canonicalName": "Preacher Curl",
+      "slug": "preacher-curl",
+      "legacyIds": [
+        "preacher-curl"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "preacher-curl",
+        "day": "Pull",
+        "muscle": "Biceps",
+        "equipment": "EZ Bar"
+      }
+    },
+    {
+      "id": "bcd4bc3b-bed6-49ae-a8c7-a7f870c05718",
+      "contentRevision": 1,
+      "canonicalName": "Machine Preacher Curl",
+      "slug": "machine-preacher-curl",
+      "legacyIds": [
+        "machine-preacher-curl"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "machine-preacher-curl",
+        "day": "Pull",
+        "muscle": "Biceps",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "67f896b2-2e22-467d-b0ab-3e5f2798c8fa",
+      "contentRevision": 1,
+      "canonicalName": "Spider Curl",
+      "slug": "spider-curl",
+      "legacyIds": [
+        "spider-curl"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "spider-curl",
+        "day": "Pull",
+        "muscle": "Biceps",
+        "equipment": "EZ Bar"
+      }
+    },
+    {
+      "id": "91945d91-ffe2-4012-84ba-2cefcfc2075e",
+      "contentRevision": 1,
+      "canonicalName": "Concentration Curl",
+      "slug": "concentration-curl",
+      "legacyIds": [
+        "concentration-curl"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "concentration-curl",
+        "day": "Pull",
+        "muscle": "Biceps",
+        "equipment": "Dumbbell"
+      }
+    },
+    {
+      "id": "75cc0c53-30af-40d1-be18-9cf61eb33462",
+      "contentRevision": 1,
+      "canonicalName": "Reverse Curl",
+      "slug": "reverse-curl",
+      "legacyIds": [
+        "reverse-curl"
+      ],
+      "aliases": [
+        "Reverse EZ-Bar Curl"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "reverse-curl",
+        "day": "Pull",
+        "muscle": "Biceps",
+        "equipment": "EZ Bar"
+      }
+    },
+    {
+      "id": "59df3fa5-dba6-4cc9-acbc-114e5240ed24",
+      "contentRevision": 1,
+      "canonicalName": "Cable Curl",
+      "slug": "cable-curl",
+      "legacyIds": [
+        "cable-curl"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "cable-curl",
+        "day": "Pull",
+        "muscle": "Biceps",
+        "equipment": "Cable"
+      }
+    },
+    {
+      "id": "4dba859c-23e1-46c8-80c2-6b239925c101",
+      "contentRevision": 1,
+      "canonicalName": "Bayesian Cable Curl",
+      "slug": "bayesian-cable-curl",
+      "legacyIds": [
+        "bayesian-cable-curl"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "bayesian-cable-curl",
+        "day": "Pull",
+        "muscle": "Biceps",
+        "equipment": "Cable"
+      }
+    },
+    {
+      "id": "4a5d8127-a5af-478f-8dce-580050bf43dd",
+      "contentRevision": 1,
+      "canonicalName": "EZ-Bar Curl",
+      "slug": "ez-bar-curl",
+      "legacyIds": [
+        "ez-bar-curl"
+      ],
+      "aliases": [
+        "EZ Bar Curl",
+        "EZ Curl"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "ez-bar-curl",
+        "day": "Pull",
+        "muscle": "Biceps",
+        "equipment": "EZ Bar"
+      }
+    },
+    {
+      "id": "4d343bf2-5f7d-49b3-9bb3-0eccd444f452",
+      "contentRevision": 1,
+      "canonicalName": "Back Squat",
+      "slug": "back-squat",
+      "legacyIds": [
+        "back-squat"
+      ],
+      "aliases": [
+        "Squat",
+        "Barbell Squat"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "back-squat",
+        "day": "Legs",
+        "muscle": "Quads / Glutes",
+        "equipment": "Barbell"
+      }
+    },
+    {
+      "id": "2ee09133-0997-4108-9c38-49954b6c3517",
+      "contentRevision": 1,
+      "canonicalName": "Front Squat",
+      "slug": "front-squat",
+      "legacyIds": [
+        "front-squat"
+      ],
+      "aliases": [
+        "Front Barbell Squat"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "front-squat",
+        "day": "Legs",
+        "muscle": "Quads",
+        "equipment": "Barbell"
+      }
+    },
+    {
+      "id": "b5b01d47-aec1-4acb-9706-da7eef25ba1e",
+      "contentRevision": 1,
+      "canonicalName": "Hack Squat",
+      "slug": "hack-squat",
+      "legacyIds": [
+        "hack-squat"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "hack-squat",
+        "day": "Legs",
+        "muscle": "Quads / Glutes",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "f49314d5-c9a0-4273-8f62-81b76a4893c5",
+      "contentRevision": 1,
+      "canonicalName": "Belt Squat",
+      "slug": "belt-squat",
+      "legacyIds": [
+        "belt-squat"
+      ],
+      "aliases": [
+        "Belt Squat Machine"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "belt-squat",
+        "day": "Legs",
+        "muscle": "Quads / Glutes",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "3e9f5981-1d2d-4923-8c7c-fed87d88330d",
+      "contentRevision": 1,
+      "canonicalName": "Pendulum Squat",
+      "slug": "pendulum-squat",
+      "legacyIds": [
+        "pendulum-squat"
+      ],
+      "aliases": [
+        "Pendulum Squat Machine"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "pendulum-squat",
+        "day": "Legs",
+        "muscle": "Quads / Glutes",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "33508e1b-11e9-400e-9b8b-014c4fd88c69",
+      "contentRevision": 1,
+      "canonicalName": "V-Squat Machine",
+      "slug": "v-squat-machine",
+      "legacyIds": [
+        "v-squat-machine"
+      ],
+      "aliases": [
+        "V Squat"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "v-squat-machine",
+        "day": "Legs",
+        "muscle": "Quads / Glutes",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "9b3ee450-429e-419e-8591-6a44d638095e",
+      "contentRevision": 1,
+      "canonicalName": "Leg Press",
+      "slug": "leg-press",
+      "legacyIds": [
+        "leg-press"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "leg-press",
+        "day": "Legs",
+        "muscle": "Quads / Glutes",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "b8bf4e81-3de3-42fb-bed7-f59b00e1910a",
+      "contentRevision": 1,
+      "canonicalName": "Single-Leg Press",
+      "slug": "single-leg-press",
+      "legacyIds": [
+        "single-leg-press"
+      ],
+      "aliases": [
+        "Single Leg Press",
+        "Unilateral Leg Press"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "single-leg-press",
+        "day": "Legs",
+        "muscle": "Quads / Glutes",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "8918f80d-1353-40da-a3e7-24287f7c4e22",
+      "contentRevision": 1,
+      "canonicalName": "Smith Machine Squat",
+      "slug": "smith-machine-squat",
+      "legacyIds": [
+        "smith-machine-squat"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "smith-machine-squat",
+        "day": "Legs",
+        "muscle": "Quads / Glutes",
+        "equipment": "Smith Machine"
+      }
+    },
+    {
+      "id": "9c398b1c-0fb8-4b8a-9c3a-7f5b084e0e73",
+      "contentRevision": 1,
+      "canonicalName": "Goblet Squat",
+      "slug": "goblet-squat",
+      "legacyIds": [
+        "goblet-squat"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "goblet-squat",
+        "day": "Legs",
+        "muscle": "Quads / Glutes",
+        "equipment": "Dumbbell"
+      }
+    },
+    {
+      "id": "a10a78b7-a5b9-4d1b-9762-ebe59cf98cea",
+      "contentRevision": 1,
+      "canonicalName": "Bulgarian Split Squat",
+      "slug": "bulgarian-split-squat",
+      "legacyIds": [
+        "bulgarian-split-squat"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "bulgarian-split-squat",
+        "day": "Legs",
+        "muscle": "Quads / Glutes",
+        "equipment": "Dumbbell"
+      }
+    },
+    {
+      "id": "c57cd1c8-a0dc-4772-a788-0320334d7f41",
+      "contentRevision": 1,
+      "canonicalName": "Walking Lunge",
+      "slug": "walking-lunge",
+      "legacyIds": [
+        "walking-lunge"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "walking-lunge",
+        "day": "Legs",
+        "muscle": "Quads / Glutes",
+        "equipment": "Dumbbell"
+      }
+    },
+    {
+      "id": "136bc82f-5506-4ebd-b9cc-f2e40efcdd7b",
+      "contentRevision": 1,
+      "canonicalName": "Reverse Lunge",
+      "slug": "reverse-lunge",
+      "legacyIds": [
+        "reverse-lunge"
+      ],
+      "aliases": [
+        "Reverse Lunges"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "reverse-lunge",
+        "day": "Legs",
+        "muscle": "Quads / Glutes",
+        "equipment": "Dumbbell"
+      }
+    },
+    {
+      "id": "e47e934a-0e33-4537-a3ae-7c2b48a39d0a",
+      "contentRevision": 1,
+      "canonicalName": "Step-Up",
+      "slug": "step-up",
+      "legacyIds": [
+        "step-up"
+      ],
+      "aliases": [
+        "Step Up"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "step-up",
+        "day": "Legs",
+        "muscle": "Quads / Glutes",
+        "equipment": "Dumbbell"
+      }
+    },
+    {
+      "id": "c22da607-8530-4bee-ac23-65f58bb682fe",
+      "contentRevision": 1,
+      "canonicalName": "Leg Extension",
+      "slug": "leg-extension",
+      "legacyIds": [
+        "leg-extension"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "leg-extension",
+        "day": "Legs",
+        "muscle": "Quads",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "643ae68e-7243-4357-ac98-6ce1fb9703b7",
+      "contentRevision": 1,
+      "canonicalName": "Romanian Deadlift",
+      "slug": "romanian-deadlift",
+      "legacyIds": [
+        "romanian-deadlift"
+      ],
+      "aliases": [
+        "RDL",
+        "Barbell RDL"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "romanian-deadlift",
+        "day": "Legs",
+        "muscle": "Hamstrings / Glutes",
+        "equipment": "Barbell"
+      }
+    },
+    {
+      "id": "f21d9bc1-d697-4aa5-b83a-0bd4b771cd72",
+      "contentRevision": 1,
+      "canonicalName": "Dumbbell Romanian Deadlift",
+      "slug": "dumbbell-romanian-deadlift",
+      "legacyIds": [
+        "dumbbell-romanian-deadlift"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "dumbbell-romanian-deadlift",
+        "day": "Legs",
+        "muscle": "Hamstrings / Glutes",
+        "equipment": "Dumbbell"
+      }
+    },
+    {
+      "id": "70427367-59ce-47bf-a86d-f65a7a033543",
+      "contentRevision": 1,
+      "canonicalName": "Seated Leg Curl",
+      "slug": "seated-leg-curl",
+      "legacyIds": [
+        "seated-leg-curl"
+      ],
+      "aliases": [
+        "Leg Curl"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "seated-leg-curl",
+        "day": "Legs",
+        "muscle": "Hamstrings",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "d45d963e-43ec-42ef-9632-8115d7e066f0",
+      "contentRevision": 1,
+      "canonicalName": "Lying Leg Curl",
+      "slug": "lying-leg-curl",
+      "legacyIds": [
+        "lying-leg-curl"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "lying-leg-curl",
+        "day": "Legs",
+        "muscle": "Hamstrings",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "39a8c106-d9d2-4abd-8805-2b70506a6629",
+      "contentRevision": 1,
+      "canonicalName": "Nordic Hamstring Curl",
+      "slug": "nordic-hamstring-curl",
+      "legacyIds": [
+        "nordic-hamstring-curl"
+      ],
+      "aliases": [
+        "Nordic Curl"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "nordic-hamstring-curl",
+        "day": "Legs",
+        "muscle": "Hamstrings",
+        "equipment": "Bodyweight"
+      }
+    },
+    {
+      "id": "9ad8c213-2aa8-4227-a024-ec84c42965a4",
+      "contentRevision": 1,
+      "canonicalName": "45-Degree Back Extension",
+      "slug": "45-degree-back-extension",
+      "legacyIds": [
+        "45-degree-back-extension"
+      ],
+      "aliases": [
+        "Back Extension",
+        "45 Degree Hyperextension"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "45-degree-back-extension",
+        "day": "Legs",
+        "muscle": "Hamstrings / Glutes",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "7492bccf-54b4-430b-a6b9-bb7d567952a1",
+      "contentRevision": 1,
+      "canonicalName": "Hip Thrust",
+      "slug": "hip-thrust",
+      "legacyIds": [
+        "hip-thrust"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "hip-thrust",
+        "day": "Legs",
+        "muscle": "Glutes",
+        "equipment": "Barbell"
+      }
+    },
+    {
+      "id": "05c8f47e-79e3-4933-bcfc-c62d54b1ad9f",
+      "contentRevision": 1,
+      "canonicalName": "Glute Bridge",
+      "slug": "glute-bridge",
+      "legacyIds": [
+        "glute-bridge"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "glute-bridge",
+        "day": "Legs",
+        "muscle": "Glutes",
+        "equipment": "Bodyweight"
+      }
+    },
+    {
+      "id": "34bca141-b8d2-41ba-8b2b-7ef74e87ac18",
+      "contentRevision": 1,
+      "canonicalName": "Cable Pull-Through",
+      "slug": "cable-pull-through",
+      "legacyIds": [
+        "cable-pull-through"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "cable-pull-through",
+        "day": "Legs",
+        "muscle": "Glutes",
+        "equipment": "Cable"
+      }
+    },
+    {
+      "id": "7e0cb04c-b637-46b0-a97b-bbf11fc693e4",
+      "contentRevision": 1,
+      "canonicalName": "Cable Glute Kickback",
+      "slug": "cable-glute-kickback",
+      "legacyIds": [
+        "cable-glute-kickback"
+      ],
+      "aliases": [
+        "Glute Cable Kickback"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "cable-glute-kickback",
+        "day": "Legs",
+        "muscle": "Glutes",
+        "equipment": "Cable"
+      }
+    },
+    {
+      "id": "2a7b9098-26cd-4222-8ade-38d4e49baecc",
+      "contentRevision": 1,
+      "canonicalName": "Standing Calf Raise",
+      "slug": "standing-calf-raise",
+      "legacyIds": [
+        "standing-calf-raise"
+      ],
+      "aliases": [],
+      "familyId": "10fb6ea4-b91c-40fa-936b-125dd8c4141d",
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "standing-calf-raise",
+        "day": "Legs",
+        "muscle": "Calves",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "7020d1c4-0a27-4fe3-8cbe-f5674946524d",
+      "contentRevision": 1,
+      "canonicalName": "Seated Calf Raise",
+      "slug": "seated-calf-raise",
+      "legacyIds": [
+        "seated-calf-raise"
+      ],
+      "aliases": [],
+      "familyId": "10fb6ea4-b91c-40fa-936b-125dd8c4141d",
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "seated-calf-raise",
+        "day": "Legs",
+        "muscle": "Calves",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "8ee12864-2e5b-46a5-b873-d2a1d2783ef0",
+      "contentRevision": 1,
+      "canonicalName": "Calf Press on Leg Press",
+      "slug": "calf-press-on-leg-press",
+      "legacyIds": [
+        "calf-press-on-leg-press"
+      ],
+      "aliases": [
+        "Calf Raise on Leg Press Machine",
+        "Calf Press",
+        "Leg Press Calf Raise"
+      ],
+      "familyId": "10fb6ea4-b91c-40fa-936b-125dd8c4141d",
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "calf-press-on-leg-press",
+        "day": "Legs",
+        "muscle": "Calves",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "3d7b1e87-3e86-4404-acf1-33a891f0bca6",
+      "contentRevision": 1,
+      "canonicalName": "Hip Abductor",
+      "slug": "hip-abductor",
+      "legacyIds": [
+        "hip-abductor"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "hip-abductor",
+        "day": "Legs",
+        "muscle": "Glutes",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "c94fbefb-1916-4347-91d9-74e40fd58bb3",
+      "contentRevision": 1,
+      "canonicalName": "Hip Adductor",
+      "slug": "hip-adductor",
+      "legacyIds": [
+        "hip-adductor"
+      ],
+      "aliases": [
+        "Adductor Machine"
+      ],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "hip-adductor",
+        "day": "Legs",
+        "muscle": "Adductors",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "2c62dfaf-f5de-4367-92f6-bf167a904151",
+      "contentRevision": 1,
+      "canonicalName": "Cable Crunch",
+      "slug": "cable-crunch",
+      "legacyIds": [
+        "cable-crunch"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "cable-crunch",
+        "day": "Legs",
+        "muscle": "Core",
+        "equipment": "Cable"
+      }
+    },
+    {
+      "id": "689831d2-1b33-4f27-b768-6d07bb760318",
+      "contentRevision": 1,
+      "canonicalName": "Hanging Knee Raise",
+      "slug": "hanging-knee-raise",
+      "legacyIds": [
+        "hanging-knee-raise"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "hanging-knee-raise",
+        "day": "Legs",
+        "muscle": "Core",
+        "equipment": "Bodyweight"
+      }
+    },
+    {
+      "id": "1b3b15e5-e79e-4deb-aeda-e0eefef61f81",
+      "contentRevision": 1,
+      "canonicalName": "Hanging Leg Raise",
+      "slug": "hanging-leg-raise",
+      "legacyIds": [
+        "hanging-leg-raise"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "hanging-leg-raise",
+        "day": "Legs",
+        "muscle": "Core",
+        "equipment": "Bodyweight"
+      }
+    },
+    {
+      "id": "7a45ad83-c913-4cbf-82b0-4fe0d29b467c",
+      "contentRevision": 1,
+      "canonicalName": "Ab Wheel Rollout",
+      "slug": "ab-wheel-rollout",
+      "legacyIds": [
+        "ab-wheel-rollout"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "ab-wheel-rollout",
+        "day": "Legs",
+        "muscle": "Core",
+        "equipment": "Bodyweight"
+      }
+    },
+    {
+      "id": "272e575b-eefb-40a5-9431-871d300a6b14",
+      "contentRevision": 1,
+      "canonicalName": "Plank",
+      "slug": "plank",
+      "legacyIds": [
+        "plank"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "plank",
+        "day": "Legs",
+        "muscle": "Core",
+        "equipment": "Bodyweight"
+      }
+    },
+    {
+      "id": "75cf9baa-8522-4fe9-bbef-68d3a3289e95",
+      "contentRevision": 1,
+      "canonicalName": "Side Plank",
+      "slug": "side-plank",
+      "legacyIds": [
+        "side-plank"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "side-plank",
+        "day": "Legs",
+        "muscle": "Core",
+        "equipment": "Bodyweight"
+      }
+    },
+    {
+      "id": "e03284b2-db53-4794-9ee4-32042ffff4aa",
+      "contentRevision": 1,
+      "canonicalName": "Pallof Press",
+      "slug": "pallof-press",
+      "legacyIds": [
+        "pallof-press"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "pallof-press",
+        "day": "Legs",
+        "muscle": "Core",
+        "equipment": "Cable"
+      }
+    },
+    {
+      "id": "e7e04989-d479-44c9-86bb-066cf794288e",
+      "contentRevision": 1,
+      "canonicalName": "Machine Crunch",
+      "slug": "machine-crunch",
+      "legacyIds": [
+        "machine-crunch"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "machine-crunch",
+        "day": "Legs",
+        "muscle": "Core",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "5a7767bc-3ba6-40fc-a161-7d5bdb05ab21",
+      "contentRevision": 1,
+      "canonicalName": "Russian Twist",
+      "slug": "russian-twist",
+      "legacyIds": [
+        "russian-twist"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "russian-twist",
+        "day": "Legs",
+        "muscle": "Core",
+        "equipment": "Bodyweight"
+      }
+    },
+    {
+      "id": "c0be1d82-bcb9-4271-8a96-245baf0ca741",
+      "contentRevision": 1,
+      "canonicalName": "Dead Bug",
+      "slug": "dead-bug",
+      "legacyIds": [
+        "dead-bug"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "dead-bug",
+        "day": "Legs",
+        "muscle": "Core",
+        "equipment": "Bodyweight"
+      }
+    },
+    {
+      "id": "d4067a6c-8851-4109-9864-0944ab6134bb",
+      "contentRevision": 1,
+      "canonicalName": "Treadmill Run",
+      "slug": "treadmill-run",
+      "legacyIds": [
+        "treadmill-run"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "treadmill-run",
+        "day": "Cardio",
+        "muscle": "Cardio",
+        "equipment": "Treadmill"
+      }
+    },
+    {
+      "id": "ceaaa049-c00e-4d69-b2cb-9f30047a8f50",
+      "contentRevision": 1,
+      "canonicalName": "Outdoor Run",
+      "slug": "outdoor-run",
+      "legacyIds": [
+        "outdoor-run"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "outdoor-run",
+        "day": "Cardio",
+        "muscle": "Cardio",
+        "equipment": "None"
+      }
+    },
+    {
+      "id": "58716db4-c02a-4270-829b-b17dbef6973e",
+      "contentRevision": 1,
+      "canonicalName": "Incline Walk",
+      "slug": "incline-walk",
+      "legacyIds": [
+        "incline-walk"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "incline-walk",
+        "day": "Cardio",
+        "muscle": "Cardio",
+        "equipment": "Treadmill"
+      }
+    },
+    {
+      "id": "3c8fea87-daf1-4cb7-9ae9-c6ac8c3fac11",
+      "contentRevision": 1,
+      "canonicalName": "Stair Climber",
+      "slug": "stair-climber",
+      "legacyIds": [
+        "stair-climber"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "stair-climber",
+        "day": "Cardio",
+        "muscle": "Cardio",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "a55b94d4-c155-4bcd-88fc-1ff90c13be47",
+      "contentRevision": 1,
+      "canonicalName": "Stationary Bike",
+      "slug": "stationary-bike",
+      "legacyIds": [
+        "stationary-bike"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "stationary-bike",
+        "day": "Cardio",
+        "muscle": "Cardio",
+        "equipment": "Bike"
+      }
+    },
+    {
+      "id": "e9a4ad29-ca84-4984-9481-e7a500d670d4",
+      "contentRevision": 1,
+      "canonicalName": "Elliptical",
+      "slug": "elliptical",
+      "legacyIds": [
+        "elliptical"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "elliptical",
+        "day": "Cardio",
+        "muscle": "Cardio",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "1243d9ca-bf59-42f5-bb84-d8fb33d45b5a",
+      "contentRevision": 1,
+      "canonicalName": "Rowing Machine",
+      "slug": "rowing-machine",
+      "legacyIds": [
+        "rowing-machine"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "rowing-machine",
+        "day": "Cardio",
+        "muscle": "Cardio",
+        "equipment": "Machine"
+      }
+    },
+    {
+      "id": "e612230c-2d54-4c24-96be-4d049953b44f",
+      "contentRevision": 1,
+      "canonicalName": "Deadlift",
+      "slug": "deadlift",
+      "legacyIds": [
+        "deadlift"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "deadlift",
+        "day": "Other",
+        "muscle": "Full Body",
+        "equipment": "Barbell"
+      }
+    },
+    {
+      "id": "c7680083-87db-4b47-975f-f676b8d18d29",
+      "contentRevision": 1,
+      "canonicalName": "Trap Bar Deadlift",
+      "slug": "trap-bar-deadlift",
+      "legacyIds": [
+        "trap-bar-deadlift"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "trap-bar-deadlift",
+        "day": "Other",
+        "muscle": "Full Body",
+        "equipment": "Trap Bar"
+      }
+    },
+    {
+      "id": "c4defa6a-864a-416d-8c84-cfc1861b57db",
+      "contentRevision": 1,
+      "canonicalName": "Farmer Carry",
+      "slug": "farmer-carry",
+      "legacyIds": [
+        "farmer-carry"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "farmer-carry",
+        "day": "Other",
+        "muscle": "Full Body",
+        "equipment": "Dumbbell"
+      }
+    },
+    {
+      "id": "14015b5b-b608-4edb-9c18-aa6a932d24a9",
+      "contentRevision": 1,
+      "canonicalName": "Kettlebell Swing",
+      "slug": "kettlebell-swing",
+      "legacyIds": [
+        "kettlebell-swing"
+      ],
+      "aliases": [],
+      "familyId": null,
+      "variantOf": null,
+      "compatibility": {
+        "legacyId": "kettlebell-swing",
+        "day": "Other",
+        "muscle": "Full Body",
+        "equipment": "Kettlebell"
+      }
+    }
+  ]
+}

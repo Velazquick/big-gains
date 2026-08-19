@@ -1,0 +1,16 @@
+{
+  "$schema": "../schema/exercise-family.schema.json",
+  "schemaVersion": 1,
+  "families": [
+    {
+      "id": "8eb3cd5b-f84d-49d9-99f6-209b88954353",
+      "name": "Lat Pulldown",
+      "legacyId": "lat-pulldown"
+    },
+    {
+      "id": "10fb6ea4-b91c-40fa-936b-125dd8c4141d",
+      "name": "Calf Raise",
+      "legacyId": "calf-raise"
+    }
+  ]
+}

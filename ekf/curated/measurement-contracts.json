@@ -1,0 +1,3846 @@
+{
+  "$schema": "../schema/measurement-contract.schema.json",
+  "schemaVersion": 1,
+  "releaseId": "ekf-2-measurement-semantics-v1",
+  "description": "Explicit exercise-defined measurement contracts for the 119-entry Big Gains compatibility catalog.",
+  "contracts": [
+    {
+      "exerciseId": "a91d27f9-e4e9-4498-ad48-f0e7db8e8a85",
+      "legacyId": "seated-machine-chest-press",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Machine weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Chest"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "d4f7cf94-db5d-43b9-9944-dca188011e72",
+      "legacyId": "seated-iso-lateral-bench-press",
+      "contentRevision": 2,
+      "laterality": "independent_bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "per_side",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Weight per side",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Chest"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "e716514a-8bb7-4836-bc5c-673d257169da",
+      "legacyId": "incline-iso-machine-press",
+      "contentRevision": 2,
+      "laterality": "independent_bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "per_side",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Weight per side",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Chest"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "46d1003f-98b0-43aa-a13f-7861c326cc66",
+      "legacyId": "smith-machine-incline-press",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Total weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Chest"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "e6815fb8-ab2c-41ee-b8dc-1141af5fee8b",
+      "legacyId": "flat-smith-machine-bench-press",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Total weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Chest"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "fe9b24dd-e6db-41d3-9395-596830a0a37a",
+      "legacyId": "barbell-bench-press",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Total weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "combined_external_load"
+      },
+      "muscles": {
+        "primary": [
+          "Chest"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "c88a0b76-3cc6-405b-afe9-b4ce5f45e0b5",
+      "legacyId": "decline-barbell-bench-press",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Total weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "combined_external_load"
+      },
+      "muscles": {
+        "primary": [
+          "Chest"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "64a28c27-909f-4f0a-adfa-7a294dcea60c",
+      "legacyId": "dumbbell-bench-press",
+      "contentRevision": 2,
+      "laterality": "independent_bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "per_hand",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Weight per dumbbell",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "entered_load"
+      },
+      "muscles": {
+        "primary": [
+          "Chest"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "3ee9949f-fabe-4387-8bb9-d14f775e02cf",
+      "legacyId": "incline-dumbbell-press",
+      "contentRevision": 2,
+      "laterality": "independent_bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "per_hand",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Weight per dumbbell",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "entered_load"
+      },
+      "muscles": {
+        "primary": [
+          "Chest"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "dce44595-28a0-4250-ada3-4b8fa7fee916",
+      "legacyId": "decline-dumbbell-press",
+      "contentRevision": 2,
+      "laterality": "independent_bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "per_hand",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Weight per dumbbell",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "entered_load"
+      },
+      "muscles": {
+        "primary": [
+          "Chest"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "d175ba6c-0604-4c3f-99cc-fe6ce885a236",
+      "legacyId": "cable-chest-fly",
+      "contentRevision": 2,
+      "laterality": "independent_bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "per_side",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Stack weight per side",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Chest"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "70f2c251-e665-4b86-b44e-75693b62102f",
+      "legacyId": "incline-cable-fly",
+      "contentRevision": 2,
+      "laterality": "independent_bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "per_side",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Stack weight per side",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Chest"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "91e20edc-0f3c-4fcb-b769-cf2011594c45",
+      "legacyId": "seated-pec-deck",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Machine weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Chest"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "18e13fdf-2b56-4855-bbd6-aa5a9f45a2e6",
+      "legacyId": "push-up",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "reps_only",
+        "loadSemantics": {
+          "loadBasis": "not_applicable",
+          "resistanceSemantics": "bodyweight_only"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": "unsupported_fraction",
+        "ui": {
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Chest"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "2dd15ca3-4558-4bd7-820a-129c3547a854",
+      "legacyId": "dips",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "bodyweight_plus_external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": "full_system",
+        "ui": {
+          "loadLabel": "Added weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps",
+          "loadMayBeZero": true
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "effective_system_load"
+      },
+      "muscles": {
+        "primary": [
+          "Chest"
+        ],
+        "secondary": [
+          "Triceps"
+        ],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "734aad4e-da45-4b94-b29b-cbb7a40c7f89",
+      "legacyId": "assisted-dip",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "assistance_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "assistance"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": "full_system",
+        "ui": {
+          "loadLabel": "Assistance",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Chest"
+        ],
+        "secondary": [
+          "Triceps"
+        ],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "79b87909-774d-4221-9a13-d507076310ee",
+      "legacyId": "iso-machine-shoulder-press",
+      "contentRevision": 2,
+      "laterality": "independent_bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "per_side",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Weight per side",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Shoulders"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "377b4c23-b7c6-476f-8c75-c555dc1185ef",
+      "legacyId": "dumbbell-shoulder-press",
+      "contentRevision": 2,
+      "laterality": "independent_bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "per_hand",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Weight per dumbbell",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "entered_load"
+      },
+      "muscles": {
+        "primary": [
+          "Shoulders"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "766bfd3e-b8c4-4b8e-aba6-1af3e1431aec",
+      "legacyId": "barbell-overhead-press",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Total weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "combined_external_load"
+      },
+      "muscles": {
+        "primary": [
+          "Shoulders"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "9ec58c9e-130d-4b67-a725-a2839b9b214c",
+      "legacyId": "machine-shoulder-press",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Machine weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Shoulders"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "173a117b-9bcc-4d1f-b598-df2e07c803e6",
+      "legacyId": "arnold-press",
+      "contentRevision": 2,
+      "laterality": "independent_bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "per_hand",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Weight per dumbbell",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "entered_load"
+      },
+      "muscles": {
+        "primary": [
+          "Shoulders"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "f548f685-023f-43e3-a277-cae2cbd1905d",
+      "legacyId": "landmine-press",
+      "contentRevision": 2,
+      "laterality": "unilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "reps_per_side",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Total weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps per side"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Shoulders"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "ca7c7370-08f4-4ed8-afbe-a2dbea2c0ad9",
+      "legacyId": "dumbbell-lateral-raise",
+      "contentRevision": 2,
+      "laterality": "independent_bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "per_hand",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Weight per dumbbell",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "entered_load"
+      },
+      "muscles": {
+        "primary": [
+          "Shoulders"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "c0fd7882-3c9b-4546-8ec5-5da8d64bb3aa",
+      "legacyId": "cable-lateral-raise",
+      "contentRevision": 2,
+      "laterality": "unilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "reps_per_side",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Stack weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps per side"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Shoulders"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "e75530df-c1e4-487a-a952-f15f6f980cc5",
+      "legacyId": "reverse-pec-deck",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Machine weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Rear Delts"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "071f203f-55ac-4c44-9bf2-c3f98f02cc81",
+      "legacyId": "rear-delt-cable-fly",
+      "contentRevision": 2,
+      "laterality": "independent_bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "per_side",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Stack weight per side",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Rear Delts"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "7bbbd74b-f955-48b7-a987-e7946a737f51",
+      "legacyId": "face-pull",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Stack weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Rear Delts"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "5468f6b8-c921-4159-a9cc-bb8228e2e45c",
+      "legacyId": "overhead-triceps-extension",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Stack weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Triceps"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "b5c59616-d4b2-4d93-bd9e-1f0e52e537c6",
+      "legacyId": "triceps-pushdown",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Stack weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Triceps"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "5e43ab5e-a78d-4fff-8213-d1a37458d219",
+      "legacyId": "rope-pushdown",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Stack weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Triceps"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "2ed5f449-e01f-4726-a607-08d03d6be512",
+      "legacyId": "skull-crusher",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Total weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "combined_external_load"
+      },
+      "muscles": {
+        "primary": [
+          "Triceps"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "1f051f8b-9592-4577-a245-db85ca472c76",
+      "legacyId": "close-grip-bench-press",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Total weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "combined_external_load"
+      },
+      "muscles": {
+        "primary": [
+          "Triceps"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "0c142a86-6c32-4a9a-b56f-c6a09d97ada9",
+      "legacyId": "single-arm-cable-extension",
+      "contentRevision": 2,
+      "laterality": "unilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "reps_per_side",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Stack weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps per side"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Triceps"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "1a80259b-e27d-4538-9ceb-e3becfe23d88",
+      "legacyId": "cable-triceps-kickback",
+      "contentRevision": 2,
+      "laterality": "unilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "reps_per_side",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Stack weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps per side"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Triceps"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "eb963de3-f97a-4d26-9f4e-45abe9f79033",
+      "legacyId": "dumbbell-triceps-kickback",
+      "contentRevision": 2,
+      "laterality": "unilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "per_hand",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "reps_per_side",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Weight per dumbbell",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps per side"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "entered_load"
+      },
+      "muscles": {
+        "primary": [
+          "Triceps"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "a1c6ea43-5c0f-4c82-ab3e-c984fcb16306",
+      "legacyId": "lat-pulldown",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Stack weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Back"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "bf2be05e-38df-4440-b486-7c310dbca831",
+      "legacyId": "wide-grip-lat-pulldown",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Stack weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Back"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "967549cb-31a8-480b-8eb0-29e9d5826130",
+      "legacyId": "neutral-grip-lat-pulldown",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Stack weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Back"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "3ebe997b-197c-4dfa-b0ac-9f5c678e076c",
+      "legacyId": "iso-lateral-pulldown-machine",
+      "contentRevision": 2,
+      "laterality": "independent_bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "per_side",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Weight per side",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Back"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "7794f0cd-2ccd-4dd5-a880-e1a5b60af7b2",
+      "legacyId": "assisted-pull-up",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "assistance_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "assistance"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": "full_system",
+        "ui": {
+          "loadLabel": "Assistance",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Back"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "7e036c58-2533-41bc-a323-6900b2869e3b",
+      "legacyId": "pull-up",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "bodyweight_plus_external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": "full_system",
+        "ui": {
+          "loadLabel": "Added weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps",
+          "loadMayBeZero": true
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "effective_system_load"
+      },
+      "muscles": {
+        "primary": [
+          "Back"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "93735b4f-ef72-42b8-a7fa-fd6f8a452391",
+      "legacyId": "seated-cable-row",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Stack weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Back"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "f07f5f3d-25ad-4bd8-b143-199e8e0e82be",
+      "legacyId": "close-grip-seated-cable-row",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Stack weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Back"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "ea973e61-6d86-422f-bed6-c5c50fbdd08f",
+      "legacyId": "one-arm-cable-row",
+      "contentRevision": 2,
+      "laterality": "unilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "reps_per_side",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Stack weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps per side"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Back"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "cfa65978-e97e-423a-8ed5-86dac483a849",
+      "legacyId": "chest-supported-row",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Machine weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Back"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "3bd894ae-6ae2-4cfe-b467-c68fbc60c203",
+      "legacyId": "t-bar-row",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Machine weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Back"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "172a5cf2-78b9-4ac0-b8db-9014387b59cc",
+      "legacyId": "chest-supported-t-bar-row",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Machine weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Back"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "e5185176-05a3-4704-97fd-accb0ae5c3e7",
+      "legacyId": "barbell-row",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Total weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "combined_external_load"
+      },
+      "muscles": {
+        "primary": [
+          "Back"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "dc063581-f739-43c9-8ba7-a84bbfb0d000",
+      "legacyId": "meadows-row",
+      "contentRevision": 2,
+      "laterality": "unilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "reps_per_side",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Total weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps per side"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Back"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "70f53c09-e92d-4052-96b4-fa50b68cbcc8",
+      "legacyId": "one-arm-dumbbell-row",
+      "contentRevision": 2,
+      "laterality": "unilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "per_hand",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "reps_per_side",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Weight per dumbbell",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps per side"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "entered_load"
+      },
+      "muscles": {
+        "primary": [
+          "Back"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "d4e61d83-34ac-46d9-aaf9-a1df27d645e3",
+      "legacyId": "iso-lateral-row",
+      "contentRevision": 2,
+      "laterality": "unilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "per_side",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "reps_per_side",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Weight per side",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps per side"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Back"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "a45e32da-1125-40bb-9a68-a0033ec58c7c",
+      "legacyId": "straight-arm-pulldown",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Stack weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Back"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "b0fffa0f-f436-4f85-8421-fd6ce711b0a8",
+      "legacyId": "machine-pullover",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Machine weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Back"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "a97cc1b8-1d6e-4064-843d-954a7336c2f2",
+      "legacyId": "rack-pull",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Total weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "combined_external_load"
+      },
+      "muscles": {
+        "primary": [
+          "Back"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "b140a2c7-4e29-428a-8cf9-86dee4342af1",
+      "legacyId": "dumbbell-shrug",
+      "contentRevision": 2,
+      "laterality": "independent_bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "per_hand",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Weight per dumbbell",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "entered_load"
+      },
+      "muscles": {
+        "primary": [
+          "Traps"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "ad237cb2-0797-412f-aa38-5701b2e71173",
+      "legacyId": "barbell-shrug",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Total weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "combined_external_load"
+      },
+      "muscles": {
+        "primary": [
+          "Traps"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "215a0231-5dd9-4ada-b3d8-bcb3338378f1",
+      "legacyId": "dumbbell-curl",
+      "contentRevision": 2,
+      "laterality": "independent_bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "per_hand",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Weight per dumbbell",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "entered_load"
+      },
+      "muscles": {
+        "primary": [
+          "Biceps"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "4fb9a0d5-2b36-449f-9031-af83687cd4ee",
+      "legacyId": "hammer-curl",
+      "contentRevision": 2,
+      "laterality": "independent_bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "per_hand",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Weight per dumbbell",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "entered_load"
+      },
+      "muscles": {
+        "primary": [
+          "Biceps"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "352cccc6-3014-4a17-b762-5a32dc9c04b7",
+      "legacyId": "rope-hammer-curl",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Stack weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Biceps"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "36b211e8-550a-4a26-b82a-433a2ecf69f5",
+      "legacyId": "incline-dumbbell-curl",
+      "contentRevision": 2,
+      "laterality": "independent_bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "per_hand",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Weight per dumbbell",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "entered_load"
+      },
+      "muscles": {
+        "primary": [
+          "Biceps"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "351e261c-2b4a-4412-b91e-c71538a538aa",
+      "legacyId": "preacher-curl",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Total weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "combined_external_load"
+      },
+      "muscles": {
+        "primary": [
+          "Biceps"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "bcd4bc3b-bed6-49ae-a8c7-a7f870c05718",
+      "legacyId": "machine-preacher-curl",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Machine weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Biceps"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "67f896b2-2e22-467d-b0ab-3e5f2798c8fa",
+      "legacyId": "spider-curl",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Total weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "combined_external_load"
+      },
+      "muscles": {
+        "primary": [
+          "Biceps"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "91945d91-ffe2-4012-84ba-2cefcfc2075e",
+      "legacyId": "concentration-curl",
+      "contentRevision": 2,
+      "laterality": "unilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "per_hand",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "reps_per_side",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Weight per dumbbell",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps per side"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "entered_load"
+      },
+      "muscles": {
+        "primary": [
+          "Biceps"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "75cc0c53-30af-40d1-be18-9cf61eb33462",
+      "legacyId": "reverse-curl",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Total weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "combined_external_load"
+      },
+      "muscles": {
+        "primary": [
+          "Biceps"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "59df3fa5-dba6-4cc9-acbc-114e5240ed24",
+      "legacyId": "cable-curl",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Stack weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Biceps"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "4dba859c-23e1-46c8-80c2-6b239925c101",
+      "legacyId": "bayesian-cable-curl",
+      "contentRevision": 2,
+      "laterality": "unilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "reps_per_side",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Stack weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps per side"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Biceps"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "4a5d8127-a5af-478f-8dce-580050bf43dd",
+      "legacyId": "ez-bar-curl",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Total weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "combined_external_load"
+      },
+      "muscles": {
+        "primary": [
+          "Biceps"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "4d343bf2-5f7d-49b3-9bb3-0eccd444f452",
+      "legacyId": "back-squat",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Total weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "combined_external_load"
+      },
+      "muscles": {
+        "primary": [
+          "Quads"
+        ],
+        "secondary": [
+          "Glutes"
+        ],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "2ee09133-0997-4108-9c38-49954b6c3517",
+      "legacyId": "front-squat",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Total weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "combined_external_load"
+      },
+      "muscles": {
+        "primary": [
+          "Quads"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "b5b01d47-aec1-4acb-9706-da7eef25ba1e",
+      "legacyId": "hack-squat",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Machine weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Quads"
+        ],
+        "secondary": [
+          "Glutes"
+        ],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "f49314d5-c9a0-4273-8f62-81b76a4893c5",
+      "legacyId": "belt-squat",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Machine weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Quads"
+        ],
+        "secondary": [
+          "Glutes"
+        ],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "3e9f5981-1d2d-4923-8c7c-fed87d88330d",
+      "legacyId": "pendulum-squat",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Machine weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Quads"
+        ],
+        "secondary": [
+          "Glutes"
+        ],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "33508e1b-11e9-400e-9b8b-014c4fd88c69",
+      "legacyId": "v-squat-machine",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Machine weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Quads"
+        ],
+        "secondary": [
+          "Glutes"
+        ],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "9b3ee450-429e-419e-8591-6a44d638095e",
+      "legacyId": "leg-press",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Machine weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Quads"
+        ],
+        "secondary": [
+          "Glutes"
+        ],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "b8bf4e81-3de3-42fb-bed7-f59b00e1910a",
+      "legacyId": "single-leg-press",
+      "contentRevision": 2,
+      "laterality": "unilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "reps_per_side",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Machine weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps per side"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Quads"
+        ],
+        "secondary": [
+          "Glutes"
+        ],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "8918f80d-1353-40da-a3e7-24287f7c4e22",
+      "legacyId": "smith-machine-squat",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Total weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Quads"
+        ],
+        "secondary": [
+          "Glutes"
+        ],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "9c398b1c-0fb8-4b8a-9c3a-7f5b084e0e73",
+      "legacyId": "goblet-squat",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Total weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "combined_external_load"
+      },
+      "muscles": {
+        "primary": [
+          "Quads"
+        ],
+        "secondary": [
+          "Glutes"
+        ],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "a10a78b7-a5b9-4d1b-9762-ebe59cf98cea",
+      "legacyId": "bulgarian-split-squat",
+      "contentRevision": 2,
+      "laterality": "unilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "per_hand",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "reps_per_side",
+        "bodyweightModel": null,
+        "loadUnitsPerEvent": 2,
+        "ui": {
+          "loadLabel": "Weight per dumbbell",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps per side"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Quads"
+        ],
+        "secondary": [
+          "Glutes"
+        ],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "c57cd1c8-a0dc-4772-a788-0320334d7f41",
+      "legacyId": "walking-lunge",
+      "contentRevision": 2,
+      "laterality": "alternating",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "per_hand",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "alternating_total",
+        "bodyweightModel": null,
+        "loadUnitsPerEvent": 2,
+        "ui": {
+          "loadLabel": "Weight per dumbbell",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Alternating reps total"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Quads"
+        ],
+        "secondary": [
+          "Glutes"
+        ],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "136bc82f-5506-4ebd-b9cc-f2e40efcdd7b",
+      "legacyId": "reverse-lunge",
+      "contentRevision": 2,
+      "laterality": "unilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "per_hand",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "reps_per_side",
+        "bodyweightModel": null,
+        "loadUnitsPerEvent": 2,
+        "ui": {
+          "loadLabel": "Weight per dumbbell",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps per side"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Quads"
+        ],
+        "secondary": [
+          "Glutes"
+        ],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "e47e934a-0e33-4537-a3ae-7c2b48a39d0a",
+      "legacyId": "step-up",
+      "contentRevision": 2,
+      "laterality": "unilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "per_hand",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "reps_per_side",
+        "bodyweightModel": null,
+        "loadUnitsPerEvent": 2,
+        "ui": {
+          "loadLabel": "Weight per dumbbell",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps per side"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Quads"
+        ],
+        "secondary": [
+          "Glutes"
+        ],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "c22da607-8530-4bee-ac23-65f58bb682fe",
+      "legacyId": "leg-extension",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Machine weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Quads"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "643ae68e-7243-4357-ac98-6ce1fb9703b7",
+      "legacyId": "romanian-deadlift",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Total weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "combined_external_load"
+      },
+      "muscles": {
+        "primary": [
+          "Hamstrings"
+        ],
+        "secondary": [
+          "Glutes"
+        ],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "f21d9bc1-d697-4aa5-b83a-0bd4b771cd72",
+      "legacyId": "dumbbell-romanian-deadlift",
+      "contentRevision": 2,
+      "laterality": "independent_bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "per_hand",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Weight per dumbbell",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "entered_load"
+      },
+      "muscles": {
+        "primary": [
+          "Hamstrings"
+        ],
+        "secondary": [
+          "Glutes"
+        ],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "70427367-59ce-47bf-a86d-f65a7a033543",
+      "legacyId": "seated-leg-curl",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Machine weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Hamstrings"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "d45d963e-43ec-42ef-9632-8115d7e066f0",
+      "legacyId": "lying-leg-curl",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Machine weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Hamstrings"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "39a8c106-d9d2-4abd-8805-2b70506a6629",
+      "legacyId": "nordic-hamstring-curl",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "reps_only",
+        "loadSemantics": {
+          "loadBasis": "not_applicable",
+          "resistanceSemantics": "bodyweight_only"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": "unsupported_fraction",
+        "ui": {
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Hamstrings"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "9ad8c213-2aa8-4227-a024-ec84c42965a4",
+      "legacyId": "45-degree-back-extension",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Added weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Hamstrings"
+        ],
+        "secondary": [
+          "Glutes"
+        ],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "7492bccf-54b4-430b-a6b9-bb7d567952a1",
+      "legacyId": "hip-thrust",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Total weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "combined_external_load"
+      },
+      "muscles": {
+        "primary": [
+          "Glutes"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "05c8f47e-79e3-4933-bcfc-c62d54b1ad9f",
+      "legacyId": "glute-bridge",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "reps_only",
+        "loadSemantics": {
+          "loadBasis": "not_applicable",
+          "resistanceSemantics": "bodyweight_only"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": "unsupported_fraction",
+        "ui": {
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Glutes"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "34bca141-b8d2-41ba-8b2b-7ef74e87ac18",
+      "legacyId": "cable-pull-through",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Stack weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Glutes"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "7e0cb04c-b637-46b0-a97b-bbf11fc693e4",
+      "legacyId": "cable-glute-kickback",
+      "contentRevision": 2,
+      "laterality": "unilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "reps_per_side",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Stack weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps per side"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Glutes"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "2a7b9098-26cd-4222-8ade-38d4e49baecc",
+      "legacyId": "standing-calf-raise",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Machine weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Calves"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "7020d1c4-0a27-4fe3-8cbe-f5674946524d",
+      "legacyId": "seated-calf-raise",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Machine weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Calves"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "8ee12864-2e5b-46a5-b873-d2a1d2783ef0",
+      "legacyId": "calf-press-on-leg-press",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Machine weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Calves"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "3d7b1e87-3e86-4404-acf1-33a891f0bca6",
+      "legacyId": "hip-abductor",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Machine weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Glutes"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "c94fbefb-1916-4347-91d9-74e40fd58bb3",
+      "legacyId": "hip-adductor",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Machine weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Adductors"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "2c62dfaf-f5de-4367-92f6-bf167a904151",
+      "legacyId": "cable-crunch",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Stack weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Core"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "689831d2-1b33-4f27-b768-6d07bb760318",
+      "legacyId": "hanging-knee-raise",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "reps_only",
+        "loadSemantics": {
+          "loadBasis": "not_applicable",
+          "resistanceSemantics": "bodyweight_only"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": "unsupported_fraction",
+        "ui": {
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Core"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "1b3b15e5-e79e-4deb-aeda-e0eefef61f81",
+      "legacyId": "hanging-leg-raise",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "reps_only",
+        "loadSemantics": {
+          "loadBasis": "not_applicable",
+          "resistanceSemantics": "bodyweight_only"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": "unsupported_fraction",
+        "ui": {
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Core"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "7a45ad83-c913-4cbf-82b0-4fe0d29b467c",
+      "legacyId": "ab-wheel-rollout",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "reps_only",
+        "loadSemantics": {
+          "loadBasis": "not_applicable",
+          "resistanceSemantics": "bodyweight_only"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": "unsupported_fraction",
+        "ui": {
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Core"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "272e575b-eefb-40a5-9431-871d300a6b14",
+      "legacyId": "plank",
+      "contentRevision": 2,
+      "laterality": "not_applicable",
+      "measurement": {
+        "trackingModel": "duration",
+        "loadSemantics": {
+          "loadBasis": "not_applicable",
+          "resistanceSemantics": "not_applicable"
+        },
+        "repSemantics": "not_applicable",
+        "bodyweightModel": null,
+        "ui": {
+          "durationLabel": "Duration",
+          "durationUnit": "sec",
+          "durationStep": 5
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Core"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "75cf9baa-8522-4fe9-bbef-68d3a3289e95",
+      "legacyId": "side-plank",
+      "contentRevision": 2,
+      "laterality": "unilateral",
+      "measurement": {
+        "trackingModel": "duration",
+        "loadSemantics": {
+          "loadBasis": "not_applicable",
+          "resistanceSemantics": "not_applicable"
+        },
+        "repSemantics": "not_applicable",
+        "bodyweightModel": null,
+        "ui": {
+          "durationLabel": "Duration per side",
+          "durationUnit": "sec",
+          "durationStep": 5
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Core"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "e03284b2-db53-4794-9ee4-32042ffff4aa",
+      "legacyId": "pallof-press",
+      "contentRevision": 2,
+      "laterality": "unilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "reps_per_side",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Stack weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps per side"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Core"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "e7e04989-d479-44c9-86bb-066cf794288e",
+      "legacyId": "machine-crunch",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "machine_indicated"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Machine weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Core"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "5a7767bc-3ba6-40fc-a161-7d5bdb05ab21",
+      "legacyId": "russian-twist",
+      "contentRevision": 2,
+      "laterality": "alternating",
+      "measurement": {
+        "trackingModel": "reps_only",
+        "loadSemantics": {
+          "loadBasis": "not_applicable",
+          "resistanceSemantics": "bodyweight_only"
+        },
+        "repSemantics": "alternating_total",
+        "bodyweightModel": "unsupported_fraction",
+        "ui": {
+          "repsLabel": "Alternating reps total"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Core"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "c0be1d82-bcb9-4271-8a96-245baf0ca741",
+      "legacyId": "dead-bug",
+      "contentRevision": 2,
+      "laterality": "alternating",
+      "measurement": {
+        "trackingModel": "reps_only",
+        "loadSemantics": {
+          "loadBasis": "not_applicable",
+          "resistanceSemantics": "bodyweight_only"
+        },
+        "repSemantics": "alternating_total",
+        "bodyweightModel": "unsupported_fraction",
+        "ui": {
+          "repsLabel": "Alternating reps total"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Core"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "d4067a6c-8851-4109-9864-0944ab6134bb",
+      "legacyId": "treadmill-run",
+      "contentRevision": 2,
+      "laterality": "not_applicable",
+      "measurement": {
+        "trackingModel": "distance_duration",
+        "loadSemantics": {
+          "loadBasis": "not_applicable",
+          "resistanceSemantics": "not_applicable"
+        },
+        "repSemantics": "not_applicable",
+        "bodyweightModel": null,
+        "ui": {
+          "distanceLabel": "Distance",
+          "distanceUnit": "mi",
+          "distanceStep": 0.1,
+          "durationLabel": "Duration",
+          "durationUnit": "sec",
+          "durationStep": 5
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Cardio"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "ceaaa049-c00e-4d69-b2cb-9f30047a8f50",
+      "legacyId": "outdoor-run",
+      "contentRevision": 2,
+      "laterality": "not_applicable",
+      "measurement": {
+        "trackingModel": "distance_duration",
+        "loadSemantics": {
+          "loadBasis": "not_applicable",
+          "resistanceSemantics": "not_applicable"
+        },
+        "repSemantics": "not_applicable",
+        "bodyweightModel": null,
+        "ui": {
+          "distanceLabel": "Distance",
+          "distanceUnit": "mi",
+          "distanceStep": 0.1,
+          "durationLabel": "Duration",
+          "durationUnit": "sec",
+          "durationStep": 5
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Cardio"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "58716db4-c02a-4270-829b-b17dbef6973e",
+      "legacyId": "incline-walk",
+      "contentRevision": 2,
+      "laterality": "not_applicable",
+      "measurement": {
+        "trackingModel": "distance_duration",
+        "loadSemantics": {
+          "loadBasis": "not_applicable",
+          "resistanceSemantics": "not_applicable"
+        },
+        "repSemantics": "not_applicable",
+        "bodyweightModel": null,
+        "ui": {
+          "distanceLabel": "Distance",
+          "distanceUnit": "mi",
+          "distanceStep": 0.1,
+          "durationLabel": "Duration",
+          "durationUnit": "sec",
+          "durationStep": 5
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Cardio"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "3c8fea87-daf1-4cb7-9ae9-c6ac8c3fac11",
+      "legacyId": "stair-climber",
+      "contentRevision": 2,
+      "laterality": "not_applicable",
+      "measurement": {
+        "trackingModel": "duration",
+        "loadSemantics": {
+          "loadBasis": "not_applicable",
+          "resistanceSemantics": "not_applicable"
+        },
+        "repSemantics": "not_applicable",
+        "bodyweightModel": null,
+        "ui": {
+          "durationLabel": "Duration",
+          "durationUnit": "sec",
+          "durationStep": 5
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Cardio"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "a55b94d4-c155-4bcd-88fc-1ff90c13be47",
+      "legacyId": "stationary-bike",
+      "contentRevision": 2,
+      "laterality": "not_applicable",
+      "measurement": {
+        "trackingModel": "distance_duration",
+        "loadSemantics": {
+          "loadBasis": "not_applicable",
+          "resistanceSemantics": "not_applicable"
+        },
+        "repSemantics": "not_applicable",
+        "bodyweightModel": null,
+        "ui": {
+          "distanceLabel": "Distance",
+          "distanceUnit": "mi",
+          "distanceStep": 0.1,
+          "durationLabel": "Duration",
+          "durationUnit": "sec",
+          "durationStep": 5
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Cardio"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "e9a4ad29-ca84-4984-9481-e7a500d670d4",
+      "legacyId": "elliptical",
+      "contentRevision": 2,
+      "laterality": "not_applicable",
+      "measurement": {
+        "trackingModel": "distance_duration",
+        "loadSemantics": {
+          "loadBasis": "not_applicable",
+          "resistanceSemantics": "not_applicable"
+        },
+        "repSemantics": "not_applicable",
+        "bodyweightModel": null,
+        "ui": {
+          "distanceLabel": "Distance",
+          "distanceUnit": "mi",
+          "distanceStep": 0.1,
+          "durationLabel": "Duration",
+          "durationUnit": "sec",
+          "durationStep": 5
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Cardio"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "1243d9ca-bf59-42f5-bb84-d8fb33d45b5a",
+      "legacyId": "rowing-machine",
+      "contentRevision": 2,
+      "laterality": "not_applicable",
+      "measurement": {
+        "trackingModel": "distance_duration",
+        "loadSemantics": {
+          "loadBasis": "not_applicable",
+          "resistanceSemantics": "not_applicable"
+        },
+        "repSemantics": "not_applicable",
+        "bodyweightModel": null,
+        "ui": {
+          "distanceLabel": "Distance",
+          "distanceUnit": "m",
+          "distanceStep": 50,
+          "durationLabel": "Duration",
+          "durationUnit": "sec",
+          "durationStep": 5
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Cardio"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "e612230c-2d54-4c24-96be-4d049953b44f",
+      "legacyId": "deadlift",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Total weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "combined_external_load"
+      },
+      "muscles": {
+        "primary": [
+          "Full Body"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "c7680083-87db-4b47-975f-f676b8d18d29",
+      "legacyId": "trap-bar-deadlift",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Total weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": true,
+        "e1rmLoadBasis": "combined_external_load"
+      },
+      "muscles": {
+        "primary": [
+          "Full Body"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "c4defa6a-864a-416d-8c84-cfc1861b57db",
+      "legacyId": "farmer-carry",
+      "contentRevision": 2,
+      "laterality": "asymmetric",
+      "measurement": {
+        "trackingModel": "load_distance",
+        "loadSemantics": {
+          "loadBasis": "per_hand",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "not_applicable",
+        "bodyweightModel": null,
+        "loadUnitsPerEvent": 2,
+        "ui": {
+          "loadLabel": "Weight per hand",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "distanceLabel": "Distance",
+          "distanceUnit": "ft",
+          "distanceStep": 5
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Full Body"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    },
+    {
+      "exerciseId": "14015b5b-b608-4edb-9c18-aa6a932d24a9",
+      "legacyId": "kettlebell-swing",
+      "contentRevision": 2,
+      "laterality": "bilateral",
+      "measurement": {
+        "trackingModel": "load_reps",
+        "loadSemantics": {
+          "loadBasis": "total",
+          "resistanceSemantics": "external"
+        },
+        "repSemantics": "bilateral_cycle",
+        "bodyweightModel": null,
+        "ui": {
+          "loadLabel": "Total weight",
+          "loadUnit": "lb",
+          "loadStep": 5,
+          "repsLabel": "Reps"
+        }
+      },
+      "analytics": {
+        "e1rmPermitted": false,
+        "e1rmLoadBasis": null
+      },
+      "muscles": {
+        "primary": [
+          "Full Body"
+        ],
+        "secondary": [],
+        "stabilizer": []
+      }
+    }
+  ]
+}

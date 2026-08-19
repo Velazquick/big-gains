@@ -103,7 +103,7 @@ test('retrospective bodyweight work accepts zero added load while weighted work 
 
   const pullUp = page.locator('[data-retro-exercise="0"]');
   await expect(pullUp).toContainText('Log only added load');
-  await expect(pullUp.locator('[data-retro-field="weight"]').nth(1)).toHaveAttribute('aria-label', 'Added load');
+  await expect(pullUp.locator('[data-retro-field="weight"]').nth(1)).toHaveAttribute('aria-label', 'Added weight');
   await pullUp.locator('[data-retro-field="reps"]').nth(1).fill('8');
   await pullUp.locator('[data-retro-field="completed"]').nth(1).check();
   await pullUp.locator('[data-retro-field="weight"]').nth(2).fill('25');
@@ -149,7 +149,7 @@ test('save requires a completed working set and excludes warmups from volume and
   expect(workout.exercises[0].sets).toHaveLength(2);
   expect(workout.exercises[0].sets.filter(set => !set.warmup)).toHaveLength(1);
   await expect(page.locator('#calendarDayWorkouts')).toContainText('1 working sets');
-  await expect(page.locator('#calendarDayWorkouts')).toContainText('600 lb');
+  await expect(page.locator('#calendarDayWorkouts')).toContainText('600 indicated lb');
 });
 
 test('local completion time stays on the selected day near UTC midnight and metadata reuses history detail', async ({ page }) => {
@@ -189,8 +189,8 @@ test('PR evaluation ON updates records while OFF saves normal volume without PR 
   await completeFirstWorkingSet(page, { weight: '200', reps: '10' });
   await page.locator('#saveRetrospectiveWorkout').click();
   let stored = await readStoredJson(page, STORAGE_KEYS.jorge);
-  expect(stored.workouts[0].prs).toBe(1);
-  expect(stored.prs['seated-machine-chest-press']).toMatchObject({ weight: 200, reps: 10 });
+  expect(stored.workouts[0].prs).toBe(0);
+  expect(stored.prs['seated-machine-chest-press']).toBeUndefined();
 
   await openEditor(page, '2026-08-04');
   await page.locator('#retrospectiveEvaluatePrs').uncheck();

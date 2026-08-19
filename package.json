@@ -3,7 +3,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "playwright test",
+    "generate:ekf3-curation": "node scripts/generate-ekf3-curation.mjs",
+    "check:ekf3-curation": "node scripts/generate-ekf3-curation.mjs --check",
+    "generate:exercise-catalog": "npm run generate:ekf3-curation && node scripts/generate-exercise-catalog.mjs",
+    "check:exercise-catalog": "npm run check:ekf3-curation && node scripts/generate-exercise-catalog.mjs --check",
+    "test:ekf": "node --test tests/ekf-generator.test.mjs tests/ekf-measurement.test.mjs tests/ekf3-curation.test.mjs",
+    "test": "npm run check:exercise-catalog && playwright test",
     "test:browser": "playwright test",
     "test:browser:headed": "playwright test --headed",
     "test:browser:report": "playwright show-report",

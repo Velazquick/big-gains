@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "sources": [
+    {
+      "id": "big-gains-source-zero",
+      "name": "Big Gains curated catalog",
+      "kind": "project_curated",
+      "repository": "Velazquick/big-gains",
+      "sourceLineage": "big-gains",
+      "reuseClassification": "directly_reusable_data",
+      "rightsPolicy": "project_owned",
+      "releaseEligibility": "approved"
+    },
+    {
+      "id": "free-exercise-db",
+      "name": "Free Exercise DB",
+      "kind": "external_dataset",
+      "repository": "https://github.com/yuhonas/free-exercise-db",
+      "sourceLineage": "wrkout/exercises.json",
+      "reuseClassification": "directly_reusable_data",
+      "rightsPolicy": "Unlicense",
+      "releaseEligibility": "approved_structured_data_only",
+      "excludedRightsSurface": "images_and_video"
+    },
+    {
+      "id": "wger-exercise-data",
+      "name": "wger exercise data",
+      "kind": "external_dataset",
+      "repository": "https://github.com/wger-project/wger",
+      "sourceLineage": "wger-project/wger",
+      "reuseClassification": "reference_only_by_default",
+      "codeLicense": "AGPL-3.0-or-later",
+      "rightsPolicy": "per_entry_creative_commons",
+      "releaseEligibility": "entry_specific_review_required"
+    }
+  ]
+}

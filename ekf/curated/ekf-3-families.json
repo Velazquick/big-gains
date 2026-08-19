@@ -1,0 +1,26 @@
+{
+  "$schema": "../schema/exercise-family.schema.json",
+  "schemaVersion": 1,
+  "families": [
+    {
+      "id": "fbcd7a13-ac52-4817-9d0a-a6a0ac9d18a0",
+      "name": "Plate-Loaded Row",
+      "legacyId": "plate-loaded-row"
+    },
+    {
+      "id": "626b4423-b863-4971-9a4c-ea00398218ef",
+      "name": "Sled Work",
+      "legacyId": "sled-work"
+    },
+    {
+      "id": "9506ca82-ba5d-4501-a4ff-a8bec939f6c0",
+      "name": "Wrist Curl",
+      "legacyId": "wrist-curl"
+    },
+    {
+      "id": "1c2aed85-b8c5-4b02-a63b-25e055a225ac",
+      "name": "Ergometer",
+      "legacyId": "ergometer"
+    }
+  ]
+}
