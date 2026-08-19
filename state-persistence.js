@@ -204,6 +204,102 @@
         else if ('targetDate' in defaults) goals.targetDate = defaults.targetDate;
         else delete goals.targetDate;
       }
+      if ('strengthGoals' in value) {
+        const statuses = new Set(['active', 'paused', 'completed', 'archived']);
+        const bases = new Set(['entered_load', 'combined_external_load']);
+        goals.strengthGoals = Array.isArray(value.strengthGoals) ? value.strengthGoals.map(goal => {
+          if (!isRecord(goal)
+            || typeof goal.goalId !== 'string' || !goal.goalId
+            || goal.profileId !== profile.id
+            || goal.accountId !== ownerAccount.accountId
+            || typeof goal.exerciseId !== 'string' || !goal.exerciseId
+            || goal.metric !== 'one_rep_max'
+            || !Number.isFinite(Number(goal.targetValue)) || Number(goal.targetValue) <= 0
+            || goal.unit !== 'lb'
+            || !bases.has(goal.targetBasis)
+            || !statuses.has(goal.status)
+            || !validDate(goal.createdAt)
+            || !validDate(goal.updatedAt)) return null;
+          const normalized = {
+            goalId: goal.goalId,
+            accountId: ownerAccount.accountId,
+            profileId: profile.id,
+            exerciseId: goal.exerciseId,
+            ...(typeof goal.legacyExerciseId === 'string' && goal.legacyExerciseId ? { legacyExerciseId: goal.legacyExerciseId } : {}),
+            metric: 'one_rep_max',
+            targetValue: Number(goal.targetValue),
+            unit: 'lb',
+            targetBasis: goal.targetBasis,
+            targetDate: typeof goal.targetDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(goal.targetDate) && validDate(goal.targetDate) ? goal.targetDate : null,
+            label: typeof goal.label === 'string' ? goal.label.trim().slice(0, 80) : '',
+            status: goal.status,
+            guidanceEnabled: goal.status === 'active' && goal.guidanceEnabled === true,
+            policy: {
+              id: goal.policy?.id === 'strength_double_progression_v1' ? goal.policy.id : 'strength_double_progression_v1',
+              version: 1
+            },
+            createdAt: goal.createdAt,
+            updatedAt: goal.updatedAt
+          };
+          ['pausedAt', 'resumedAt', 'completedAt', 'archivedAt'].forEach(field => {
+            if (validDate(goal[field])) normalized[field] = goal[field];
+          });
+          if (goal.attainmentState === 'achieved') normalized.attainmentState = 'achieved';
+          if (isRecord(goal.attainmentEvidence)
+            && typeof goal.attainmentEvidence.workoutId === 'string'
+            && typeof goal.attainmentEvidence.setId === 'string') {
+            normalized.attainmentEvidence = {
+              workoutId: goal.attainmentEvidence.workoutId,
+              setId: goal.attainmentEvidence.setId,
+              ...(validDate(goal.attainmentEvidence.date) ? { date: goal.attainmentEvidence.date } : {}),
+              load: safeNumber(goal.attainmentEvidence.load),
+              reps: 1
+            };
+          }
+          const progression = goal.progressionState;
+          const normalizeDecision = decision => {
+            if (!isRecord(decision)
+              || typeof decision.decisionId !== 'string' || !decision.decisionId
+              || !validDate(decision.issuedAt)
+              || !validDate(decision.evidenceCutoff)
+              || decision.exerciseId !== normalized.exerciseId
+              || !Number.isFinite(Number(decision.enteredLoad)) || Number(decision.enteredLoad) <= 0
+              || decision.unit !== normalized.unit
+              || decision.loadBasis !== normalized.targetBasis
+              || !Number.isInteger(Number(decision.workingSetCount))
+              || Number(decision.workingSetCount) < 1 || Number(decision.workingSetCount) > 12
+              || !Array.isArray(decision.repTargets)
+              || decision.repTargets.length !== Number(decision.workingSetCount)
+              || decision.repTargets.some(rep => !Number.isInteger(Number(rep)) || Number(rep) < 1)) return null;
+            return {
+              decisionId: decision.decisionId,
+              issuedAt: decision.issuedAt,
+              evidenceCutoff: decision.evidenceCutoff,
+              exerciseId: normalized.exerciseId,
+              enteredLoad: Number(decision.enteredLoad),
+              unit: normalized.unit,
+              loadBasis: normalized.targetBasis,
+              workingSetCount: Number(decision.workingSetCount),
+              repTargets: decision.repTargets.map(Number),
+              decisionCode: typeof decision.decisionCode === 'string' ? decision.decisionCode : 'HOLD',
+              reasonCode: typeof decision.reasonCode === 'string' ? decision.reasonCode : 'EVIDENCE_UNAVAILABLE',
+              explanation: typeof decision.explanation === 'string' ? decision.explanation.slice(0, 1000) : '',
+              policy: { id: 'strength_double_progression_v1', version: 1 },
+              selectedExposureIds: Array.isArray(decision.selectedExposureIds) ? decision.selectedExposureIds.filter(id => typeof id === 'string' && id).slice(0, 3) : [],
+              attainmentState: ['in_progress', 'estimated_reached', 'achieved'].includes(decision.attainmentState) ? decision.attainmentState : 'in_progress'
+            };
+          };
+          const currentDecision = normalizeDecision(progression?.current);
+          if (currentDecision) {
+            const trace = Array.isArray(progression.trace) ? progression.trace.map(normalizeDecision).filter(Boolean).slice(0, 8) : [];
+            normalized.progressionState = {
+              current: currentDecision,
+              trace: [currentDecision, ...trace.filter(item => item.decisionId !== currentDecision.decisionId)].slice(0, 8)
+            };
+          }
+          return normalized;
+        }).filter(Boolean) : [];
+      }
       return goals;
     }
 

@@ -1,4 +1,4 @@
-importScripts('./asset-manifest.js?v=v82-ekf3-curated-catalog-config-ab51ee79cd36825d', './service-worker-core.js');
+importScripts('./asset-manifest.js?v=v84-goals-1c-train-guidance-config-ab51ee79cd36825d', './service-worker-core.js');
 
 const runtime = BigGainsServiceWorkerCore.createRuntime({
   manifest: BIG_GAINS_ASSET_MANIFEST,

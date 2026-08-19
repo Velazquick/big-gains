@@ -57,6 +57,13 @@
             <button id="startWorkout" class="primary hero-action" type="button">Start planned workout</button>
           </section>
 
+          <section class="panel today-goals-card" aria-labelledby="todayGoalsHeadline">
+            <button id="todayGoalsOpen" class="today-goals-open" type="button" data-goal-state="empty">
+              <span class="today-goals-copy"><span class="label">Strength goals</span><strong id="todayGoalsHeadline">Set a strength goal</strong><p id="todayGoalsDetail">Choose one exact exercise and define the destination.</p><span id="todayGoalsStatus" class="today-goals-status">No active goals</span></span>
+              <span class="today-goals-arrow" aria-hidden="true">→</span>
+            </button>
+          </section>
+
           <div id="trainingPetHome">
           <section class="training-pet-card" id="trainingPetCard" aria-labelledby="trainingPetState">
             <button class="training-pet" id="trainingPet" type="button" aria-describedby="trainingPetMessage">
@@ -106,6 +113,22 @@
           </div>
           <span id="weeklyWorkouts" class="hidden" aria-hidden="true">0</span>
         </section>
+      </section>
+
+      <section class="view" id="viewGoals">
+        <div class="v2-page-head goals-page-head">
+          <div><span class="label">Goals</span><h2>Where you’re going.</h2><p>Exact strength destinations, tracked separately from today’s workout.</p></div>
+          <div class="goals-page-actions"><span id="goalsActiveCount" class="goals-count">0 active</span><button id="goalsBackToday" class="ghost compact" type="button">Back to Today</button></div>
+        </div>
+        <p id="goalsNotice" class="goals-notice" role="status" aria-live="polite" hidden></p>
+        <section class="panel" aria-labelledby="activeGoalsTitle">
+          <div class="goals-toolbar"><div><span class="label">Active strength goals</span><h2 id="activeGoalsTitle">The destination.</h2><p>Tracking and workout guidance are separate controls.</p></div><button id="createStrengthGoal" class="primary" type="button">Create strength goal</button></div>
+          <div id="activeGoalsList" class="goals-list"></div>
+        </section>
+        <details id="pastGoalsSection" class="panel" hidden>
+          <summary class="past-goals-summary">Past goals</summary>
+          <div id="pastGoalsList" class="goals-list"></div>
+        </details>
       </section>
 
       <section class="view" id="viewTrain">
@@ -231,6 +254,7 @@
   <dialog id="historyDialog" aria-labelledby="historyDialogTitle"><div class="history-dialog-shell"><header class="history-dialog-head"><button id="closeHistoryDialog" class="history-back-button" type="button" aria-label="Close workout detail">Close</button><div class="history-title-block"><span class="label">Completed workout</span><h2 id="historyDialogTitle" tabindex="-1">Workout</h2><p id="historyDialogDate"></p></div></header><div id="historyDialogContent"></div><div id="historyWorkoutActions" class="history-workout-actions"><button id="editCompletedWorkout" class="primary" type="button">Edit workout</button><button id="requestDeleteCompletedWorkout" class="ghost danger" type="button">Delete workout</button></div><section id="deleteWorkoutConfirmation" class="delete-workout-confirmation" aria-labelledby="deleteWorkoutConfirmationTitle" hidden><span class="label">Confirm deletion</span><h3 id="deleteWorkoutConfirmationTitle">Delete this workout?</h3><p id="deleteWorkoutConfirmationText">This removes it from history and analytics on every synced device.</p><p id="deleteWorkoutError" class="retrospective-error" role="alert" aria-live="polite"></p><div><button id="cancelDeleteCompletedWorkout" class="ghost" type="button">Keep workout</button><button id="confirmDeleteCompletedWorkout" class="primary danger" type="button">Delete workout</button></div></section></div></dialog>
   <dialog id="progressDialog" aria-labelledby="progressDialogTitle"><div class="history-dialog-shell"><div class="history-dialog-head"><div><span class="label">Strength record</span><h2 id="progressDialogTitle">Exercise progress</h2><p id="progressDialogMeta"></p></div><button id="closeProgressDialog" class="ghost compact" type="button">Close</button></div><div id="progressDialogContent"></div></div></dialog>
   <dialog id="routineDialog" aria-labelledby="routineEditorTitle"><div class="history-dialog-shell routine-prescription-shell"><div class="history-dialog-head"><div><span class="label">Routine prescription</span><h2 id="routineEditorTitle">Edit routine</h2><p>Set the movement order, working sets, and rep targets for future loads.</p></div><button id="closeRoutineDialog" class="ghost compact" type="button">Close</button></div><div id="routineEditorList" class="routine-editor-list"></div><div class="routine-add"><select id="routineExerciseSelect" aria-label="Exercise to add"></select><button id="addRoutineExercise" class="secondary" type="button">Add exercise</button></div><div class="routine-footer"><button id="resetRoutine" class="ghost" type="button">Restore original</button><div><button id="cancelRoutineDialog" class="ghost" type="button">Cancel</button><button id="saveRoutine" class="primary" type="button">Save routine</button></div></div></div></dialog>
+  <dialog id="goalDialog" aria-labelledby="goalDialogTitle"><div class="goal-dialog-shell"><header class="goal-dialog-head"><div><span class="label">Exact-exercise 1RM</span><h2 id="goalDialogTitle">Create strength goal</h2><p>Guidance starts off. Creating a goal does not change Train.</p></div><button id="closeGoalDialog" class="ghost compact" type="button">Close</button></header><form id="goalForm" class="goal-form"><label><span>Find an eligible exercise</span><input id="goalExerciseSearch" type="search" placeholder="Search bench, squat, deadlift…" autocomplete="off"></label><label><span>Exercise</span><select id="goalExerciseSelect" required></select></label><p id="goalExerciseNoResults" class="goal-no-results" hidden>No eligible exercises match that search.</p><div class="goal-form-grid"><label><span>Target 1RM value</span><input id="goalTargetValue" type="number" min="0.1" step="0.1" inputmode="decimal" placeholder="250" required></label><label><span>Target date <small>(optional)</small></span><input id="goalTargetDate" type="date"></label></div><label><span>Personal label <small>(optional)</small></span><input id="goalLabel" type="text" maxlength="80" placeholder="Two plates, clean and controlled"></label><p class="goal-form-help">Only EKF exercises with compatible external-load 1RM semantics are available.</p><p id="goalFormError" class="goal-form-error" role="alert" aria-live="polite"></p><div class="goal-form-actions"><button id="cancelGoal" class="ghost" type="button">Cancel</button><button id="saveGoal" class="primary" type="submit">Create goal</button></div></form></div></dialog>
   <datalist id="targetRepPresets"><option value="5"></option><option value="6–8"></option><option value="8–10"></option><option value="10–12"></option><option value="12–15"></option><option value="Failure"></option></datalist>
   <dialog id="retrospectiveDialog" class="retrospective-dialog" aria-labelledby="retrospectiveTitle"><div class="retrospective-shell">
     <div class="retrospective-head"><div><span id="retrospectiveLabel" class="label">Log completed workout</span><h2 id="retrospectiveTitle" tabindex="-1">Add workout</h2><p id="retrospectiveDate"></p></div></div>
@@ -247,7 +271,7 @@
     <p id="retrospectiveError" class="retrospective-error" role="alert" aria-live="polite"></p>
   </div></dialog>
 
-  <script src="asset-manifest.js?v=v82-ekf3-curated-catalog-config-ab51ee79cd36825d" data-big-gains-manifest></script>
+  <script src="asset-manifest.js?v=v84-goals-1c-train-guidance-config-ab51ee79cd36825d" data-big-gains-manifest></script>
   <script src="asset-loader.js"></script>
 </body>
 </html>

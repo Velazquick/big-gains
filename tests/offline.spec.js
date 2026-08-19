@@ -2,10 +2,10 @@ import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
 
-const CURRENT_RELEASE = 'v82-ekf3-curated-catalog';
+const CURRENT_RELEASE = 'v84-goals-1c-train-guidance';
 const CURRENT_CONFIG_VERSION = 'config-ab51ee79cd36825d';
 const CURRENT_CACHE = `big-gains-shell-${CURRENT_RELEASE}-${CURRENT_CONFIG_VERSION}`;
-const PREVIOUS_CACHE = 'big-gains-shell-v81-ekf2-measurement-semantics-config-ab51ee79cd36825d';
+const PREVIOUS_CACHE = 'big-gains-shell-v82-ekf3-curated-catalog-config-ab51ee79cd36825d';
 const PREVIOUS_CONFIG_CACHE = `big-gains-shell-${CURRENT_RELEASE}-config-0000000000000000`;
 
 async function waitForServiceWorker(page) {
@@ -43,6 +43,10 @@ test('first install precaches one complete, revision-consistent app shell', asyn
   expect(state.cachedUrls).toContain(new URL(`/routine-engine.js?v=${CURRENT_RELEASE}`, page.url()).href);
   expect(state.cachedUrls).toContain(new URL(`/workout-session-controller.js?v=${CURRENT_RELEASE}`, page.url()).href);
   expect(state.cachedUrls).toContain(new URL(`/timer-controller.js?v=${CURRENT_RELEASE}`, page.url()).href);
+  expect(state.cachedUrls).toContain(new URL(`/goals.js?v=${CURRENT_RELEASE}`, page.url()).href);
+  expect(state.cachedUrls).toContain(new URL(`/goals-progression.js?v=${CURRENT_RELEASE}`, page.url()).href);
+  expect(state.cachedUrls).toContain(new URL(`/goals-train-guidance.js?v=${CURRENT_RELEASE}`, page.url()).href);
+  expect(state.cachedUrls).toContain(new URL(`/goals.css?v=${CURRENT_RELEASE}`, page.url()).href);
   expect(state.cachedUrls).toContain(new URL(`/cloud-config.js?v=${CURRENT_CONFIG_VERSION}`, page.url()).href);
   expect(state.cachedUrls).toContain(new URL(state.manifestAsset, page.url()).href);
   expect(state.cachedUrls).toContain(new URL('/auth-setup.html', page.url()).href);
@@ -245,6 +249,12 @@ test('reloads offline after the service worker is installed', async ({ context, 
   await openApp(page);
   await waitForServiceWorker(page);
   await expect.poll(() => page.evaluate(() => caches.keys())).toContain(CURRENT_CACHE);
+  expect(await page.evaluate(() => bigGainsGoals.createGoal({
+    exerciseId: 'fe9b24dd-e6db-41d3-9395-596830a0a37a',
+    targetValue: 250,
+    targetDate: '',
+    label: 'Offline goal'
+  }).ok)).toBe(true);
 
   await context.setOffline(true);
   try {
@@ -253,6 +263,9 @@ test('reloads offline after the service worker is installed', async ({ context, 
     await expect(page.locator('#greeting')).toContainText('Jorge');
     await expect(page.locator('#sessionTypeSelector')).toBeAttached();
     await expect(page.locator('#quickStartSession')).toBeVisible();
+    await expect(page.locator('#todayGoalsHeadline')).toHaveText('Barbell Bench Press');
+    await page.locator('#todayGoalsOpen').click();
+    await expect(page.locator('#activeGoalsList')).toContainText('Offline goal');
   } finally {
     await context.setOffline(false);
   }

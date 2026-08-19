@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v82-ekf3-curated-catalog';
+  const release = 'v84-goals-1c-train-guidance';
   const cloudConfigVersion = 'config-ab51ee79cd36825d'; // BIG_GAINS_CLOUD_CONFIG_VERSION
   const deploymentVersion = `${release}-${cloudConfigVersion}`;
   const manifestAsset = `./asset-manifest.js?v=${encodeURIComponent(deploymentVersion)}`;
@@ -28,7 +28,8 @@
     './jorge-train-v52.css',
     './progress-dashboard-v56.css',
     './history-explorer-v75.css',
-    './routine-prescription-v58.css'
+    './routine-prescription-v58.css',
+    './goals.css'
   ];
   const scripts = [
     './account-context.js',
@@ -42,6 +43,9 @@
     './exercise-catalog.js',
     './routine-engine.js',
     './analytics.js',
+    './goals-progression.js',
+    './goals.js',
+    './goals-train-guidance.js',
     './workout-session-controller.js',
     './workout-controls.js',
     './notes.js',
