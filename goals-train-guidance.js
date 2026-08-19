@@ -26,6 +26,8 @@
   const list = value => Array.isArray(value) ? value : [];
   const isRecord = value => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
   const finite = value => Number.isFinite(Number(value)) ? Number(value) : null;
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const EVIDENCE_LOOKBACK_DAYS = 42;
   const freeze = value => {
     if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
     Object.values(value).forEach(freeze);
@@ -47,14 +49,24 @@
     return `${Number(goal?.targetValue).toLocaleString('en-US')} ${goal?.unit || 'lb'}${suffix}`;
   }
 
-  function buildEvidence({ workouts, definition, measurement, goal, analytics, analyticsOptions }) {
+  function exactDefinition(catalog, exercise) {
+    if (!exercise || typeof exercise !== 'object') return null;
+    let hasPersistedIdentity = false;
+    for (const value of [exercise.definitionId, exercise.canonicalId, exercise.id]) {
+      if (typeof value !== 'string' || !value) continue;
+      hasPersistedIdentity = true;
+      const canonicalId = catalog.canonicalIdFor(value);
+      if (canonicalId) return catalog.getById(canonicalId);
+    }
+    if (hasPersistedIdentity) return null;
+    const resolved = catalog.resolve(exercise.name);
+    return resolved?.canonicalId ? resolved : null;
+  }
+
+  function buildEvidence({ workouts, definition, measurement, goal, catalog, analytics, analyticsOptions }) {
     return list(workouts).flatMap(workout => {
       if (!workout?.completedAt) return [];
-      const performed = list(workout.exercises).find(exercise => (
-        definition.canonicalId === (exercise?.definitionId || exercise?.canonicalId)
-        || definition.canonicalId === exercise?.id
-        || definition.id === exercise?.id
-      ));
+      const performed = list(workout.exercises).find(exercise => exactDefinition(catalog, exercise)?.canonicalId === definition.canonicalId);
       if (!performed) return [];
       return [{
         exposureId: workout.id,
@@ -83,6 +95,74 @@
     });
   }
 
+  function primaryMuscles(definition) {
+    return new Set(list(definition?.muscleRoles?.primary).map(value => String(value).toLowerCase()).filter(Boolean));
+  }
+
+  function pressingTerms(definition) {
+    return [definition?.name, ...list(definition?.aliases)].join(' ').toLowerCase();
+  }
+
+  function safelyRelatedPressing(goalDefinition, candidate) {
+    if (!goalDefinition || !candidate || candidate.canonicalId === goalDefinition.canonicalId) return false;
+    const goalPrimary = primaryMuscles(goalDefinition);
+    const candidatePrimary = primaryMuscles(candidate);
+    const sharesPrimary = [...goalPrimary].some(muscle => candidatePrimary.has(muscle));
+    const bothPressing = /\b(?:bench|chest press)\b/.test(pressingTerms(goalDefinition))
+      && /\b(?:bench|chest press)\b/.test(pressingTerms(candidate));
+    const goalPatterns = list(goalDefinition.movementPatterns).filter(pattern => pattern && pattern !== 'unknown');
+    const sharedPattern = goalPatterns.some(pattern => list(candidate.movementPatterns).includes(pattern));
+    const variantLink = goalDefinition.variantOf === candidate.canonicalId || candidate.variantOf === goalDefinition.canonicalId
+      || (goalDefinition.variantOf && goalDefinition.variantOf === candidate.variantOf);
+    const sharedTrainingDay = Boolean(goalDefinition.day) && goalDefinition.day === candidate.day;
+    return sharesPrimary && bothPressing && (sharedPattern || variantLink || sharedTrainingDay);
+  }
+
+  function relatedPressingHistory({ workouts, definition, catalog, cutoff }) {
+    const cutoffMs = Date.parse(cutoff);
+    const since = cutoffMs - EVIDENCE_LOOKBACK_DAYS * DAY_MS;
+    return list(workouts).some(workout => {
+      const completedAt = Date.parse(workout?.completedAt);
+      if (!Number.isFinite(completedAt) || completedAt <= since || completedAt > cutoffMs) return false;
+      return list(workout.exercises).some(exercise => safelyRelatedPressing(definition, exactDefinition(catalog, exercise)));
+    });
+  }
+
+  function baselineDiagnostic({ result, workouts, definition, catalog, cutoff }) {
+    if (!['STALE_EVIDENCE', 'ESTABLISH_BASELINE'].includes(result.reasonCode)) return null;
+    const name = definition.name;
+    if (result.reasonCode === 'STALE_EVIDENCE') {
+      return {
+        state: 'exact_stale',
+        chip: 'Baseline stale',
+        title: 'Recent evidence is too old',
+        explanation: `No recent ${name} baseline. Exact exercise history exists, but it is older than the 42-day decision window.`
+      };
+    }
+    if (result.evidence?.exposureCount > 0) {
+      return {
+        state: 'exact_ineligible',
+        chip: 'History excluded',
+        title: `Recent ${name} history is not an eligible baseline`,
+        explanation: `${result.explanation} Big Gains keeps the exact exercise history, but will not use incompatible sets as a progression anchor.`
+      };
+    }
+    if (relatedPressingHistory({ workouts, definition, catalog, cutoff })) {
+      return {
+        state: 'related_only',
+        chip: 'Exact baseline needed',
+        title: 'Related pressing history found',
+        explanation: `No recent exact ${name} baseline was found. Big Gains will not treat related exercise loads as equivalent; log ${name} to establish its own anchor.`
+      };
+    }
+    return {
+      state: 'exact_missing',
+      chip: 'Exact baseline needed',
+      title: `No recent ${name} baseline`,
+      explanation: `Log a completed ${name} exposure with the routine's working-set structure before Big Gains guides this exact exercise.`
+    };
+  }
+
   function normalizePrior(goal) {
     const candidate = goal?.progressionState?.current;
     return isRecord(candidate) ? candidate : null;
@@ -106,7 +186,7 @@
       ));
     }
 
-    function snapshotForResult({ result, goal, definition, measurement, cutoff }) {
+    function snapshotForResult({ result, goal, definition, measurement, cutoff, diagnostic = null }) {
       const recommendation = result.recommendation ? {
         ...result.recommendation,
         repRange: { ...result.recommendation.repRange },
@@ -130,6 +210,7 @@
         routine: result.routine ? { ...result.routine } : null,
         evidence: result.evidence ? { ...result.evidence } : null,
         attainment: result.attainment ? { ...result.attainment } : null,
+        diagnostic: diagnostic ? { ...diagnostic } : null,
         conflict: result.conflict ? { ...result.conflict, safeRecommendation: null } : null,
         display: {
           goal: displayGoalTarget(goal, measurement),
@@ -179,6 +260,7 @@
         reasonCode: snapshot.reasonCode,
         explanation: snapshot.explanation,
         policy: { ...recommendation.policy },
+        repRange: { ...recommendation.repRange },
         selectedExposureIds: [...list(snapshot.evidence?.selectedExposureIds)],
         attainmentState: snapshot.attainment?.status || 'in_progress'
       };
@@ -213,6 +295,7 @@
         definition,
         measurement,
         goal,
+        catalog,
         analytics,
         analyticsOptions
       });
@@ -225,7 +308,8 @@
         evidenceCutoff: cutoff,
         loadability: { increment: measurement?.ui?.loadStep }
       });
-      const snapshot = snapshotForResult({ result, goal, definition, measurement, cutoff });
+      const diagnostic = baselineDiagnostic({ result, workouts: getState().workouts, definition, catalog, cutoff });
+      const snapshot = snapshotForResult({ result, goal, definition, measurement, cutoff, diagnostic });
       exercise.goalGuidance = snapshot;
       if (snapshot.status !== 'available' || !snapshot.recommendation) return exercise;
 
@@ -248,7 +332,8 @@
         && snapshot?.evidence?.priorOutcome == null;
       return {
         ...base,
-        ...(baseline ? { chip: 'Starting point', title: 'Using your recent working load' } : {})
+        ...(baseline ? { chip: 'Starting point', title: 'Using your recent working load' } : {}),
+        ...(snapshot?.diagnostic ? { chip: snapshot.diagnostic.chip, title: snapshot.diagnostic.title } : {})
       };
     }
 
@@ -281,7 +366,7 @@
       }
       return `<section class="goal-train-guidance is-blocked" data-goal-guidance-status="unavailable" data-goal-reason="${escapeHtml(snapshot.reasonCode)}">
         <div class="goal-train-heading"><span>Strength goal · ${escapeHtml(goal)}</span><em>${escapeHtml(copy.chip)}</em></div>
-        <strong>${escapeHtml(copy.title)}</strong><p>${escapeHtml(snapshot.explanation)}</p><small>Your routine values remain available.</small>
+        <strong>${escapeHtml(copy.title)}</strong><p>${escapeHtml(snapshot.diagnostic?.explanation || snapshot.explanation)}</p><small>Your routine values remain available.</small>
       </section>`;
     }
 
@@ -304,7 +389,7 @@
   Object.defineProperty(scope, 'BigGainsGoalsTrainGuidance', {
     configurable: false,
     enumerable: true,
-    value: Object.freeze({ create, reasonPresentation: REASON_PRESENTATION }),
+    value: Object.freeze({ buildEvidence, create, reasonPresentation: REASON_PRESENTATION }),
     writable: false
   });
 })(typeof window === 'object' ? window : globalThis);

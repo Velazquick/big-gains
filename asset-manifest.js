@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v84-goals-1c-train-guidance';
+  const release = 'v85-goals-v1-1-observation-fixes';
   const cloudConfigVersion = 'config-ab51ee79cd36825d'; // BIG_GAINS_CLOUD_CONFIG_VERSION
   const deploymentVersion = `${release}-${cloudConfigVersion}`;
   const manifestAsset = `./asset-manifest.js?v=${encodeURIComponent(deploymentVersion)}`;
