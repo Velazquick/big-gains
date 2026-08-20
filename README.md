@@ -20,6 +20,7 @@ Release `v76-history-explorer-detail-polish` completes the first History V2 prod
 
 ## Project documentation
 
+- [Product IA / Navigation Map v1](PRODUCT_IA_V1.md) — documentation-only target model for Today, Plan, Train, Progress, and Library; current-surface audit; Calendar/History consolidation; Goal–Program connective UX; shared Exercise Picker strategy; mobile navigation constraints; and phased migration
 - [Architecture](ARCHITECTURE.md) — production load order, module boundaries, state and workout lifecycles, profile isolation, backup and sync behavior, offline assets, and CI
 - [Goals v1 specification](GOALS_V1_SPEC.md) — normative exact-exercise 1RM lifecycle, estimated-versus-achieved semantics, conservative next-exposure policy, routine/Train authority, evidence notes, navigation decision, and implementation acceptance criteria
 - [Program Foundation v1](PROGRAM_FOUNDATION_V1.md) — split-agnostic Program/Routine identity, rolling cadence and block review, immutable future-session-only versioning, portable Goals, deterministic analyzer boundary, and Off/Review/future-Auto programming authority
