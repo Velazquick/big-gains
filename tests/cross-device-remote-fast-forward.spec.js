@@ -322,6 +322,47 @@ for (const direction of [
   });
 }
 
+test('a guarded remote fast-forward preserves validated local-only Program capture', async ({ page }) => {
+  await installReceiver(page);
+  const routineVersionId = await page.evaluate(() => {
+    let counter = 0;
+    const result = BigGainsProgramModel.approveRoutine({
+      capture: state.programCapture,
+      accountId: ACCOUNT.accountId,
+      profileId: PROFILE.id,
+      purposeKey: 'anterior',
+      label: 'Anterior',
+      source: { kind: 'reviewed_rebuild', routineType: 'Anterior' },
+      exercises: [{
+        exerciseId: BigGainsExerciseCatalog.resolve('Barbell Bench Press').canonicalId,
+        workingSets: 4,
+        targetReps: '6–8',
+        restSeconds: 180
+      }],
+      catalog: BigGainsExerciseCatalog,
+      createId: () => `local-program-${++counter}`,
+      now: () => '2026-08-11T20:01:00.000Z'
+    });
+    state.programCapture = result.capture;
+    saveState();
+    return result.version.routineVersionId;
+  });
+  const writes = await installAuthenticatedCloud(page, 'Remote advancement with local Program');
+  await page.reload({ waitUntil: 'domcontentloaded' });
+
+  await expect(page.locator('#cloudShadowHeading')).toHaveText('In sync');
+  await expect.poll(() => page.evaluate(storageKeyValue => {
+    const adopted = JSON.parse(localStorage.getItem(storageKeyValue));
+    return adopted?.goals?.primary;
+  }, storageKey).catch(() => null)).toBe('Remote advancement with local Program');
+  await expect.poll(() => page.evaluate(({ storageKeyValue, expectedRoutineVersionId }) => {
+    const adopted = JSON.parse(localStorage.getItem(storageKeyValue));
+    return adopted?.programCapture?.storageMode === 'local_only'
+      && adopted.programCapture.routineVersions.some(version => version.routineVersionId === expectedRoutineVersionId);
+  }, { storageKeyValue: storageKey, expectedRoutineVersionId: routineVersionId }).catch(() => false)).toBe(true);
+  expect(writes).toEqual([]);
+});
+
 test('the rollout flag can keep guarded remote advancement manual on one device', async ({ page }) => {
   await installReceiver(page);
   const writes = await installAuthenticatedCloud(page, {

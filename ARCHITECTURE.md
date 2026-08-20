@@ -11,39 +11,45 @@ Big Gains is a static, local-first progressive web app. `index.html`, CSS, and c
 
 The production script order is:
 
-1. `account-context.js`
-2. `cloud-config.js`
-3. `vendor/supabase.js`
-4. `supabase-client.js`
-5. `reconciliation-control.js`
-6. `cloud-storage.js`
-7. `state-persistence.js`
-8. `profiles.js`
-9. `exercise-catalog.js`
-10. `routine-engine.js`
-11. `analytics.js`
-12. `workout-session-controller.js`
-13. `workout-controls.js`
-14. `notes.js`
-15. `timer-controller.js`
-16. `progress.js`
-17. `retrospective-workout.js`
-18. `cloud-shadow.js`
-19. `managed-profile-recovery.js`
-20. `app.js`
-21. `workout-mode.js`
-22. `v2-shell.js`
-23. `alexa-shell.js`
-24. `training-pet.js`
-25. `design-v21.js`
-26. `session-selector-v26.js`
-27. `sync-gateway.js`
-28. `account-onboarding.js`
-29. `migration-preview.js`
-30. `cloud-sync.js`
-31. `migration-engine.js`
-32. `controlled-migration.js`
-33. `shell-init.js`
+1. `boot-render-gate.js`
+2. `account-context.js`
+3. `cloud-config.js`
+4. `vendor/supabase.js`
+5. `supabase-client.js`
+6. `reconciliation-control.js`
+7. `cloud-storage.js`
+8. `program-model.js`
+9. `state-persistence.js`
+10. `profiles.js`
+11. `exercise-catalog.js`
+12. `routine-engine.js`
+13. `analytics.js`
+14. `goals-progression.js`
+15. `goals.js`
+16. `goals-train-guidance.js`
+17. `workout-session-controller.js`
+18. `workout-controls.js`
+19. `notes.js`
+20. `timer-controller.js`
+21. `progress.js`
+22. `retrospective-workout.js`
+23. `cloud-shadow.js`
+24. `managed-profile-recovery.js`
+25. `app.js`
+26. `program-setup.js`
+27. `workout-mode.js`
+28. `v2-shell.js`
+29. `alexa-shell.js`
+30. `training-pet.js`
+31. `design-v21.js`
+32. `session-selector-v26.js`
+33. `sync-gateway.js`
+34. `account-onboarding.js`
+35. `migration-preview.js`
+36. `cloud-sync.js`
+37. `migration-engine.js`
+38. `controlled-migration.js`
+39. `shell-init.js`
 
 This order is a runtime contract. Persistence and hook APIs exist before `app.js` consumes them. `app.js` loads and renders the current profile before the shell modules initialize. The final script, `shell-init.js`, initializes the shell modules exactly once in this order: Workout Mode, view shell, profile shell, training pet, direction/momentum, session selector, and sync.
 
@@ -59,6 +65,7 @@ This order is a runtime contract. Persistence and hook APIs exist before `app.js
 | `supabase/functions/reconciliation-control` | authenticated Edge Function | Reads only the exact `BIG_GAINS_AUTOMATIC_RECONCILIATION=true` environment value, returns `{ automaticReconciliation, revision: 1 }`, and marks success, preflight, and method-error responses no-store. JWT verification remains enabled and the function has no database or service-role dependency. |
 | `auth-setup.html` / `auth-setup.js` | isolated page (no application global) | Consumes a one-time invite/recovery session, verifies it with `getUser()`, sets a password, then signs out only that browser session. It loads no workout, persistence, sync, recovery, or account modules and never reads training data. |
 | `cloud-storage.js` | `BigGainsCloud` | Explicit account/profile sync operations, memory and durable queue contracts, deterministic idempotency keys, local-first coordinator, acknowledgements, and conflict resolution. It contains no network transport. |
+| `program-model.js` | `BigGainsProgramModel` | Pure Program-1A contracts and transactions: validated local capture normalization, explicit immutable Routine approval/successors, exact Routine-version Program pinning, draft creation, single-active activation, and label-agnostic rolling sequence state. It accepts only Off/Review authority and has no DOM, Train, Goals, history, storage, or cloud access. |
 | `cloud-shadow.js` | `BigGainsCloudShadow` | Read-only local/cloud semantic reconstruction, migrated/production envelope parsing, tombstone winner selection, SHA-256 shadow checksums, and exact parity/drift reporting. |
 | `cloud-sync.js` | `BigGainsCloudSync` | Phase 4F metadata catalog, asynchronous local capture, owned production transport, conditional revisions, durable retry/ACK, post-ACK comparison, guarded remote-fast-forward orchestration, and quiet Auth/shadow controls. |
 | `managed-profile-recovery.js` | `BigGainsManagedProfileRecovery` | Empty/recoverable-device restoration plus the guarded cross-device eligibility and atomic schema-v5 fast-forward boundary. It reuses canonical cloud reconstruction and never performs a general merge. |
@@ -76,6 +83,7 @@ This order is a runtime contract. Persistence and hook APIs exist before `app.js
 | `timer-controller.js` | `BigGainsTimerController.create(...)` and the `workoutTimerController` instance | Rest-timer lifecycle, persisted-deadline reconciliation, stale-callback identity protection, timer DOM and controls, presets, sound/vibration, timer browser lifecycle listeners, and timer-related pet notifications. It reads replaceable state/session objects through live injected ports and persists only through the `app.js` gateway. |
 | `progress.js` | `workoutProgress` | Progress calculations, dialogs, and explicit post-render decoration hooks. It reads state through the context supplied by `app.js` and does not replace app render functions. |
 | `app.js` | `saveState()`, render functions, and thin workout helper adapters | Composition, rendering, and browser lifecycle: it owns the current `state`/`active` bindings, recovery-aware persistence gateway, cloud-capture scheduling, DOM lookup/event adaptation, page/view rendering, routine-editor mutation/UI, completion receipt presentation, profile/import/export lifecycle, and service-worker registration. It instantiates the domain owners and supplies timer, pet, render, analytics, persistence, scheduling, and scrolling ports without implementing workout/session rules. |
+| `program-setup.js` | `BigGainsProgramSetup` | Jorge's contained Program-1A review wizard. It requires an explicit custom/default/rebuilt source choice and per-Routine approval before final Program confirmation, presents optional Goal references without mutating Goals, and persists only through `app.js`'s schema-v5 gateway. It does not select Train sessions. |
 | `workout-mode.js` | `bigGainsWorkoutMode` | Focus-shell entry/exit, session-scoped explicit-exit memory, return-bar timing, Library departure/return, and moving the existing pet between Today and the active-workout header. It never mutates workout state. |
 | Shell modules | `bigGainsViewShell`, `bigGainsProfileShell`, `trainingPet`, `bigGainsDirection`, `sessionSelector`, `BigGainsSync` | Focused UI behavior. Every `initialize()` is guarded and returns `false` after the first call. |
 | `shell-init.js` | `BigGainsShell` | One deterministic initialization pass across all shell modules. |
@@ -125,6 +133,7 @@ The current schema version is 5. A blank profile state contains:
 - `prs`
 - `activeWorkout` and `restTimerEndsAt`
 - `customRoutines`
+- optional `programCapture`, created only after Program review begins and validated as a `big-gains.program-capture.v1` local-only catalog
 - `timerPreferences`, with independent `sound` and `vibration` booleans defaulting to `true`
 
 `notes.js` also initializes and owns the persisted `exercisePreferences` map. Normalization preserves supported extra state properties while validating workouts, active workouts, exercises, sets, weights, PRs, goals, routines, and timer values.
@@ -141,6 +150,20 @@ The current five-destination shell remains unchanged. A contextual strength-goal
 
 The future boundary keeps six responsibilities separate: goal destination, deterministic progression policy, saved routine structure, today's editable Train recommendation, completed workout facts, and derived Progress evidence. Routine membership/set/rep structure remains authoritative for automatic card construction; an enabled and eligible goal may only overlay a compatible recommendation. It may never silently mutate a routine, an active session, or completed history. EKF measurement/e1RM gates, local-first persistence, schema v5, the existing goals preference identity, profile/RLS isolation, and conservative unavailability remain authoritative.
 
+### Program Foundation v1 and Program-1A boundary
+
+The [Program Foundation v1 specification](PROGRAM_FOUNDATION_V1.md) inserts an explicit multi-session organization layer between Goals and Train. Program-1A implements only deliberate review, local capture, immutable Routine versioning, exact Program pinning, draft/activation state, and stable rolling position. Goal remains the portable exact-exercise destination; Program owns a split-agnostic ordered sequence of slots, optional preferred calendar anchors, block/review policy, Goal links, authority state, and pinned immutable Routine versions; Routine owns one reusable ordered exercise/set/rep/rest prescription; Train continues to materialize from the existing saved-routine path; History retains performed facts; and Progress/Insights derive interpretations.
+
+Program and Routine edits are future-session-only. Editing a referenced Routine creates a new Routine version plus a draft Program version that explicitly selects affected slots. Once Train creates an active workout, later Program, Routine, Goal, or engine changes cannot rewrite it. Completed workouts remain valid without future provenance fields and must never be backfilled by guesswork.
+
+Program labels such as Push, Posterior, or Workout A are human metadata, not engine semantics. A deterministic Program Analyzer derives exercise/set exposure, supported EKF taxonomy summaries, prescription distributions, Goal-lift placement, spacing, redundancy, and gaps from exact pinned content. The future Programming Engine consumes those versioned features plus Goals, constraints, completed evidence, and Strength Knowledge outputs to produce `no_change`, `unavailable`, or a topology-agnostic typed proposal.
+
+Programming authority is explicit: `off` grants no apply authority; `review` is the v1 maximum; and `auto` is rejected and reserved for a later trust contract. Program-1A implements no Analyzer, proposal engine, automatic mutation, A/B generation, periodization, deload, substitution, or Train selection. Activation records an effective boundary at the next unmaterialized session and initializes stable rolling position, but execution wiring is intentionally deferred.
+
+`state.programCapture` remains inside the current profile's schema-v5 document and JSON backup. It stores stable Routine/Program identities separately from immutable versions. Routine versions carry exact opaque EKF exercise identities, ordered prescriptions, source provenance, optional capture-only rest seconds, approval time, and predecessor linkage. Program versions carry generic ordered slot labels, exact Routine-version pins, rolling cadence, optional weekday anchors, block review policy, Goal ID references, Off/Review authority, predecessor/effective metadata, and a version note. Activation archives any other active Program for that profile and creates one explicit `sequenceState`; it does not mutate active or completed workouts.
+
+There is no semantically correct Program destination in the existing Supabase schema. `programCapture` is therefore allowed by local migration validation but excluded from the frozen migration/cloud record set, checksums, recovery reconstruction, and outbound queue. A guarded remote training-data fast-forward or explicit same-entity resolution carries forward the already validated local-only capture while replacing cloud-backed records, preventing unrelated Program loss without claiming cloud parity. Cross-device Program sync and fresh-device Program recovery require a later explicit cloud-schema/RLS/migration decision. Existing custom routines, Goals, Train, and cloud rows are unchanged.
+
 All current-profile reads and writes are owned by `state-persistence.js`. `app.js` owns the `saveState()` gateway: it synchronously saves the current state/session, then schedules cloud capture in a microtask. Both `workoutSessionController` and `workoutTimerController` receive that gateway as their `persist` port, so session transactions and timer start/Skip/preset/expiry/preference changes retain the same local-first order. Controller presentation callbacks run only after persistence returns. Pending changes are also saved on `pagehide` and when the document becomes hidden. Render functions and render hooks are storage-free. Separately, notes initialization ensures that `exercisePreferences` exists and performs one startup save.
 
 The storage keys are:
@@ -156,7 +179,7 @@ When Jorge has no current state, the persistence layer imports only valid legacy
 
 The migration preview is visible only when browser-safe Supabase configuration is present and Jorge has an authenticated session. It reads both local profile documents through `bigGainsStatePersistence.readProfileSnapshot(...)`; that API parses an exact copy without normalization, legacy migration, or storage writes. Remote verification uses authenticated `SELECT` queries only. It requires one account owned by the signed-in user, exactly the Jorge and Alexa profiles on that account, and account-scoped zero counts in `workouts`, `routines`, `bodyweight_entries`, `preferences`, `active_sessions`, `sync_metadata`, and `tombstones`.
 
-Source-of-truth migration entities are completed workouts, custom routines, bodyweight entries, goal preferences, timer preferences, per-exercise preferences, and an optional active session (including its rest deadline). Workout/session notes remain embedded in their parent entity. Persisted PR entries are validated but are not migration entities because PRs, progress, volume, calendar groupings, and summaries are derived from source records.
+Source-of-truth migration entities are completed workouts, custom routines, bodyweight entries, goal preferences, timer preferences, per-exercise preferences, and an optional active session (including its rest deadline). Workout/session notes remain embedded in their parent entity. Persisted PR entries are validated but are not migration entities because PRs, progress, volume, calendar groupings, and summaries are derived from source records. Program-1A `programCapture` is also excluded because this interval adds no cloud Program entity.
 
 The checksum contract is `big-gains.migration-preview.v1` with source schema version 5. Canonical serialization recursively sorts object keys, preserves array order, converts CRLF and CR text line endings to LF, and preserves meaningful `null`, `false`, `0`, and empty-string values. Non-finite numbers and non-JSON values are rejected. SHA-256 digests deterministic UTF-8 bytes through the browser Web Crypto API. Every entity checksum includes the contract, source schema version, local profile client id, entity type, and records. Profile checksums derive from their ordered entity counts and checksums; the combined account checksum derives from Jorge then Alexa. The generated preview timestamp and all cloud UUIDs are excluded from checksum inputs.
 
@@ -199,6 +222,8 @@ Source goal records live in the existing profile-bound schema-v5 `state.goals.st
 Current evidence is derived read-only from completed exact-exercise history through `analytics.js` and EKF. It is not copied into a parallel analytics store. Estimated target reach remains distinct from an achieved completed target single; completing a goal retains only the qualifying evidence reference needed by the lifecycle contract. Create/edit/pause/resume/complete/archive and the guidance toggle persist locally before returning control. Guidance defaults off, is forced off by pause/resume/complete/archive as applicable, and has no effect on routines, active workouts, Train inputs, or recommendation behavior in Goals-1A. Progression resolution remains parked for Goals-1B/1C.
 
 ## Asset and service-worker lifecycle
+
+Release `v87-program-1a-canonical-routine-capture` adds `program-model.js`, `program-setup.js`, and `program-setup.css` to the revisioned offline shell while retaining the v86 startup authority gate and the same cloud-config content revision.
 
 `asset-manifest.js` is the single asset inventory. Release `v86-boot-render-profile-isolation` keeps the full personalized shell hidden and inert until the startup authority gate accepts a verified account/profile mapping, the established offline recovery proof, or a safe local-only runtime. The neutral resolver initializes before profile-bound shell modules; a successful authorization performs the first complete render while concealed and reveals it only after that render. Auth and managed-profile transitions re-enter the same gate synchronously without clearing persisted schema-v5 training state. Minimal inline critical styling makes the neutral boot shell the only paintable source markup until revisioned CSS and initialization are ready. `scripts/write-cloud-config.mjs` hashes the exact generated `cloud-config.js` bytes with SHA-256, writes the first 16 hexadecimal characters as `cloudConfigVersion`, and updates the deployment artifact's manifest marker. The manifest applies that deterministic version only to `cloud-config.js`, applies the release version to other production assets, and includes both identifiers in shell/runtime cache names. It also exposes a combined `deploymentVersion`; the generator writes that revisioned manifest URL into both HTML entry points and `service-worker.js`, and the manifest precaches its own matching URL. Identical rollback content therefore returns to the same safe URL, while any generated config change rotates the browser config reference, manifest entry point, worker source, and offline caches without a manual release bump. The manifest rejects duplicate core assets and supplies the same immutable inventory to both page loaders and the service worker. `index.html`, `auth-setup.html`, both loaders, the manifest, service-worker core, web manifest, icon, local chime, and all revisioned CSS and scripts form the precached app shell.
 

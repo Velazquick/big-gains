@@ -45,7 +45,10 @@
   });
   const KNOWN_STATE_KEYS = new Set([
     'version', 'profileId', 'goals', 'workouts', 'weights', 'prs', 'activeWorkout',
-    'restTimerEndsAt', 'customRoutines', 'timerPreferences', 'exercisePreferences'
+    'restTimerEndsAt', 'customRoutines', 'timerPreferences', 'exercisePreferences',
+    // Program-1A is validated by state-persistence and intentionally excluded
+    // from the frozen migration/cloud record set until a cloud schema exists.
+    'programCapture'
   ]);
   const isRecord = value => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
   const validDate = value => (typeof value === 'string' || typeof value === 'number')
