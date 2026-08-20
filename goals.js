@@ -59,6 +59,7 @@
       persist,
       createId,
       escapeHtml,
+      picker,
       now = () => new Date(),
       scheduledExposuresPerWeek = () => null,
       confirmDelete = message => scope.confirm(message),
@@ -408,13 +409,38 @@
     function renderExerciseOptions(term = '', selectedId = '') {
       const select = $('goalExerciseSelect');
       if (!select) return;
-      const normalized = catalog.normalizeTerm(term);
-      const eligible = eligibleExercises(catalog).filter(exercise => !normalized || catalog.matchesSearch(exercise, normalized));
+      const eligible = scope.BigGainsExercisePicker
+        ? scope.BigGainsExercisePicker.filterExercises({ catalog, exercises: eligibleExercises(catalog), term })
+        : eligibleExercises(catalog).filter(exercise => catalog.matchesSearch(exercise, term));
       select.innerHTML = eligible.map(exercise => `<option value="${escapeHtml(exercise.canonicalId)}">${escapeHtml(exercise.name)} — ${escapeHtml(targetLabelFor(exercise))}</option>`).join('');
       if (selectedId && eligible.some(exercise => exercise.canonicalId === selectedId)) select.value = selectedId;
       select.disabled = !eligible.length;
       $('saveGoal').disabled = !eligible.length;
       $('goalExerciseNoResults').hidden = Boolean(eligible.length);
+      renderExerciseChoice();
+    }
+
+    function renderExerciseChoice() {
+      const selected = catalog.getById($('goalExerciseSelect')?.value);
+      const choice = $('goalExerciseChoice');
+      if (choice) choice.textContent = selected ? `${selected.name} — ${targetLabelFor(selected)}` : 'Choose an eligible exercise';
+    }
+
+    function openExercisePicker() {
+      if (!picker) return false;
+      return picker.open({
+        title: 'Choose a strength-goal exercise',
+        prompt: 'Only exact exercises with approved EKF external-load 1RM semantics are available.',
+        currentExerciseId: $('goalExerciseSelect').value,
+        eligibilityPredicate: isEligibleExercise,
+        suggestionLabel: 'Suggested for strength goals',
+        returnFocus: () => $('chooseGoalExercise'),
+        onSelect: canonicalId => {
+          renderExerciseOptions('', canonicalId);
+          $('goalExerciseSelect').value = canonicalId;
+          renderExerciseChoice();
+        }
+      });
     }
 
     function openEditor(goalId = null) {
@@ -432,6 +458,7 @@
         $('goalTargetDate').value = goal.targetDate || '';
         $('goalLabel').value = goal.label || '';
       }
+      renderExerciseChoice();
       const dialog = $('goalDialog');
       if (dialog.showModal) dialog.showModal(); else dialog.setAttribute('open', '');
     }
@@ -500,6 +527,8 @@
       $('closeGoalDialog')?.addEventListener('click', closeEditor);
       $('goalDialog')?.addEventListener('click', event => { if (event.target === $('goalDialog')) closeEditor(); });
       $('goalExerciseSearch')?.addEventListener('input', event => renderExerciseOptions(event.target.value, $('goalExerciseSelect').value));
+      $('goalExerciseSelect')?.addEventListener('change', renderExerciseChoice);
+      $('chooseGoalExercise')?.addEventListener('click', openExercisePicker);
       $('activeGoalsList')?.addEventListener('click', handleAction);
       $('activeGoalsList')?.addEventListener('change', handleGuidance);
       $('pastGoalsList')?.addEventListener('click', handleAction);

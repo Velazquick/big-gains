@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v87-program-1a-canonical-routine-capture';
+  const release = 'v88-exercise-picker-library-ux-v2';
   const cloudConfigVersion = 'config-ab51ee79cd36825d'; // BIG_GAINS_CLOUD_CONFIG_VERSION
   const deploymentVersion = `${release}-${cloudConfigVersion}`;
   const manifestAsset = `./asset-manifest.js?v=${encodeURIComponent(deploymentVersion)}`;
@@ -30,7 +30,8 @@
     './history-explorer-v75.css',
     './routine-prescription-v58.css',
     './goals.css',
-    './program-setup.css'
+    './program-setup.css',
+    './exercise-picker.css'
   ];
   const scripts = [
     './boot-render-gate.js',
@@ -44,6 +45,7 @@
     './state-persistence.js',
     './profiles.js',
     './exercise-catalog.js',
+    './exercise-picker.js',
     './routine-engine.js',
     './analytics.js',
     './goals-progression.js',

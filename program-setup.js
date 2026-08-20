@@ -115,17 +115,6 @@
     routine.notice = 'Changes need explicit approval as a new immutable Routine version.';
   }
 
-  function exerciseOptions(routine, index) {
-    const used = new Set(routine.entries.map((entry, itemIndex) => itemIndex === index ? null : entry.exerciseId));
-    const current = routine.entries[index]?.exerciseId;
-    return [...exerciseCatalog.exercises]
-      .filter(exercise => exercise.canonicalId === current || !used.has(exercise.canonicalId))
-      .sort((left, right) => (left.day === routine.routineType ? -1 : 0) - (right.day === routine.routineType ? -1 : 0)
-        || left.name.localeCompare(right.name))
-      .map(exercise => `<option value="${escapeHtml(exercise.canonicalId)}" ${exercise.canonicalId === current ? 'selected' : ''}>${escapeHtml(exercise.name)} — ${escapeHtml(exercise.equipment)}</option>`)
-      .join('');
-  }
-
   function goalForExercise(exerciseId) {
     return (state.goals?.strengthGoals || []).find(goal => goal.status === 'active'
       && canonicalId(goal.exerciseId) === exerciseId) || null;
@@ -142,14 +131,11 @@
       const goal = goalForExercise(entry.exerciseId);
       return `<article class="program-exercise-row" data-program-exercise="${entryIndex}">
         <header><span class="program-order">${entryIndex + 1}</span><div><strong>${escapeHtml(definition?.name || 'Unknown exercise')}</strong><small>${escapeHtml(definition?.muscle || '')} · EKF ${escapeHtml(entry.exerciseId)}</small>${goal ? `<span class="program-goal-chip">Goal priority reference · ${escapeHtml(String(goal.targetValue))} ${escapeHtml(goal.unit)}</span>` : ''}</div><div class="program-row-actions"><button type="button" data-program-move="up" data-index="${entryIndex}" ${entryIndex === 0 ? 'disabled' : ''} aria-label="Move up">↑</button><button type="button" data-program-move="down" data-index="${entryIndex}" ${entryIndex === routine.entries.length - 1 ? 'disabled' : ''} aria-label="Move down">↓</button><button type="button" data-program-remove="${entryIndex}" aria-label="Remove exercise">×</button></div></header>
-        <div class="program-exercise-fields"><label><span>Exercise</span><select data-program-field="exerciseId" data-index="${entryIndex}">${exerciseOptions(routine, entryIndex)}</select></label><label><span>Working sets</span><input data-program-field="workingSets" data-index="${entryIndex}" type="number" min="1" max="12" step="1" inputmode="numeric" value="${entry.workingSets}"></label><label><span>Rep target / range</span><input data-program-field="targetReps" data-index="${entryIndex}" type="text" maxlength="40" list="targetRepPresets" placeholder="8–10" value="${escapeHtml(entry.targetReps)}"></label><label><span>Rest seconds <small>(capture only)</small></span><input data-program-field="restSeconds" data-index="${entryIndex}" type="number" min="1" max="900" step="5" inputmode="numeric" placeholder="Exercise preference" value="${entry.restSeconds ?? ''}"></label></div>
+        <div class="program-exercise-fields"><label><span>Exercise</span><button type="button" class="exercise-picker-trigger" data-program-replace="${entryIndex}"><span>${escapeHtml(definition?.name || 'Unknown exercise')} — ${escapeHtml(definition?.equipment || '')}</span><small>Replace</small></button></label><label><span>Working sets</span><input data-program-field="workingSets" data-index="${entryIndex}" type="number" min="1" max="12" step="1" inputmode="numeric" value="${entry.workingSets}"></label><label><span>Rep target / range</span><input data-program-field="targetReps" data-index="${entryIndex}" type="text" maxlength="40" list="targetRepPresets" placeholder="8–10" value="${escapeHtml(entry.targetReps)}"></label><label><span>Rest seconds <small>(capture only)</small></span><input data-program-field="restSeconds" data-index="${entryIndex}" type="number" min="1" max="900" step="5" inputmode="numeric" placeholder="Exercise preference" value="${entry.restSeconds ?? ''}"></label></div>
       </article>`;
     }).join('');
     const used = new Set(routine.entries.map(entry => entry.exerciseId));
-    const available = [...exerciseCatalog.exercises]
-      .filter(exercise => !used.has(exercise.canonicalId))
-      .sort((left, right) => (left.day === routine.routineType ? -1 : 0) - (right.day === routine.routineType ? -1 : 0)
-        || left.name.localeCompare(right.name));
+    const available = [...exerciseCatalog.exercises].filter(exercise => !used.has(exercise.canonicalId));
     return `<section class="program-step" aria-labelledby="programStepTitle">
       <div class="program-step-heading"><span class="label">Routine ${index + 1} of 3</span><h2 id="programStepTitle">Review ${escapeHtml(routine.defaultLabel)}</h2><p>${escapeHtml(routine.notice)}</p></div>
       <fieldset class="program-source-choices"><legend>Choose the source deliberately</legend>
@@ -157,7 +143,7 @@
       </fieldset>
       <label class="program-routine-name"><span>Routine name</span><input id="programRoutineName" type="text" maxlength="80" value="${escapeHtml(routine.label)}"></label>
       <div class="program-exercise-list">${rows || '<div class="empty">Add at least one exercise before approval.</div>'}</div>
-      <div class="program-add-exercise"><select id="programAddExercise" aria-label="Exercise to add">${available.map(exercise => `<option value="${escapeHtml(exercise.canonicalId)}">${escapeHtml(exercise.name)} — ${escapeHtml(exercise.equipment)}</option>`).join('')}</select><button type="button" class="secondary" data-program-add ${available.length ? '' : 'disabled'}>Add exercise</button></div>
+      <div class="program-add-exercise"><button type="button" class="secondary wide" data-program-add ${available.length ? '' : 'disabled'}>Choose exercise to add</button></div>
       <p class="program-rest-note">Routine rest is captured as versioned metadata. Train and the timer still use the existing exercise preference → 150-second behavior in Program-1A.</p>
       <button type="button" class="primary wide" data-program-approve-routine>${routine.approvedVersionId ? 'Approved — continue with this version' : `Approve immutable ${escapeHtml(routine.defaultLabel)} version`}</button>
       <p class="program-source-summary">Current source: ${routine.sourceKind ? escapeHtml(sourceLabels[routine.sourceKind]) : 'Not chosen — approval is blocked'}</p>
@@ -334,6 +320,38 @@
     markDirty(routine);
   }
 
+  function openExercisePicker(index = null) {
+    const routine = wizard?.routines[wizard.step];
+    const picker = window.bigGainsExercisePicker;
+    if (!routine || !picker) return false;
+    const excludedExerciseIds = routine.entries
+      .filter((_, itemIndex) => itemIndex !== index)
+      .map(entry => entry.exerciseId);
+    const suggestionIds = exerciseCatalog.exercises
+      .filter(exercise => exercise.day === routine.routineType)
+      .slice()
+      .sort((left, right) => left.name.localeCompare(right.name))
+      .slice(0, 10)
+      .map(exercise => exercise.canonicalId);
+    return picker.open({
+      title: index === null ? `Add exercise to ${routine.label}` : `Replace exercise in ${routine.label}`,
+      prompt: 'Choose the exact canonical EKF exercise. This draft will require approval as a new immutable Routine version.',
+      currentExerciseId: index === null ? null : routine.entries[index]?.exerciseId,
+      excludedExerciseIds,
+      suggestionIds,
+      suggestionLabel: `Suggested for ${routine.defaultLabel}`,
+      returnFocus: () => index === null
+        ? el('programSetupContent')?.querySelector('[data-program-add]')
+        : el('programSetupContent')?.querySelector(`[data-program-replace="${index}"]`),
+      onSelect: canonicalExerciseId => {
+        if (index === null) routine.entries.push({ exerciseId: canonicalExerciseId, workingSets: 3, targetReps: '8–10', restSeconds: null });
+        else if (routine.entries[index]) routine.entries[index].exerciseId = canonicalExerciseId;
+        markDirty(routine);
+        renderDialog();
+      }
+    });
+  }
+
   function onContentInput(event) {
     const target = event.target;
     if (target.id === 'programRoutineName') {
@@ -375,6 +393,7 @@
     const button = event.target.closest('button');
     if (!button) return;
     const routine = wizard.routines[wizard.step];
+    if (button.dataset.programReplace !== undefined) return openExercisePicker(Number(button.dataset.programReplace));
     if (button.dataset.programMove) {
       const index = Number(button.dataset.index);
       const next = button.dataset.programMove === 'up' ? index - 1 : index + 1;
@@ -392,13 +411,7 @@
       return;
     }
     if (button.dataset.programAdd !== undefined) {
-      const exerciseId = el('programAddExercise')?.value;
-      if (routine && exerciseId && !routine.entries.some(entry => entry.exerciseId === exerciseId)) {
-        routine.entries.push({ exerciseId, workingSets: 3, targetReps: '8–10', restSeconds: null });
-        markDirty(routine);
-      }
-      renderDialog();
-      return;
+      return openExercisePicker();
     }
     if (button.dataset.programApproveRoutine !== undefined) return approveCurrentRoutine();
     if (button.dataset.programConfirm !== undefined) return createProgram();

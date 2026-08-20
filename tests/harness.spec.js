@@ -14,6 +14,7 @@ const productionScriptOrder = [
   'state-persistence.js',
   'profiles.js',
   'exercise-catalog.js',
+  'exercise-picker.js',
   'routine-engine.js',
   'analytics.js',
   'goals-progression.js',

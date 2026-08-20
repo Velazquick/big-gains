@@ -57,6 +57,7 @@ test('editor supports editable blank workouts, exercise ordering, and set add/re
   await openCalendar(page);
   await openEditor(page, '2026-08-02');
   await page.locator('#retrospectiveAddExercise').click();
+  await page.locator('.exercise-picker-all [data-exercise-picker-select]').first().click();
   await expect(page.locator('.retrospective-exercise')).toHaveCount(1);
   const firstName = await page.locator('.retrospective-exercise h3').first().textContent();
   await page.locator('[data-retro-add-set="0"]').click();
@@ -64,6 +65,7 @@ test('editor supports editable blank workouts, exercise ordering, and set add/re
   await page.locator('[data-retro-remove-set="4"][data-ei="0"]').click();
   await expect(page.locator('[data-retro-exercise="0"] .retrospective-set')).toHaveCount(4);
   await page.locator('#retrospectiveAddExercise').click();
+  await page.locator('.exercise-picker-all [data-exercise-picker-select]').first().click();
   await expect(page.locator('.retrospective-exercise')).toHaveCount(2);
   const secondName = await page.locator('.retrospective-exercise h3').nth(1).textContent();
   await page.locator('[data-retro-move="up"][data-ei="1"]').click();

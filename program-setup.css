@@ -38,7 +38,7 @@
 .program-row-actions button:disabled { opacity: .35; }
 .program-exercise-fields { display: grid; grid-template-columns: minmax(180px, 2fr) repeat(3, minmax(100px, 1fr)); gap: 10px; margin-top: 14px; }
 .program-goal-chip { width: fit-content; padding: 4px 7px; border-radius: 999px; color: #a8d5b6; background: rgba(168, 213, 182, .1); font-size: 11px; font-weight: 800; }
-.program-add-exercise { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
+.program-add-exercise { display: grid; grid-template-columns: 1fr; gap: 10px; }
 .program-rest-note, .program-source-summary { margin: -4px 0 0; color: #98a2ad; font-size: 13px; line-height: 1.5; }
 .program-slot-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .program-slot-list li { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 13px; border: 1px solid #29313a; border-radius: 13px; background: #11161c; }
