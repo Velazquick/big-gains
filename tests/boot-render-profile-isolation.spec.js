@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 const ORIGIN = 'https://boot-isolation.supabase.co';
 const NOW = '2026-08-19T12:00:00.000Z';
-const RELEASE = 'v86-boot-render-profile-isolation';
+const RELEASE = 'v87-program-1a-canonical-routine-capture';
 const CONFIG_VERSION = 'config-ab51ee79cd36825d';
 
 const identities = Object.freeze({
@@ -355,6 +355,6 @@ test('critical boot styling prevents raw HTML paint and reveal has no timer depe
   expect(indexSource).toContain('data-boot-state="unresolved"');
   expect(indexSource).toContain('data-big-gains-critical-boot');
   expect(gateSource).not.toMatch(/setTimeout|setInterval/);
-  expect(RELEASE).toBe('v86-boot-render-profile-isolation');
+  expect(RELEASE).toBe('v87-program-1a-canonical-routine-capture');
   expect(CONFIG_VERSION).toBe('config-ab51ee79cd36825d');
 });

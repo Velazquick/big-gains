@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v86-boot-render-profile-isolation';
+  const release = 'v87-program-1a-canonical-routine-capture';
   const cloudConfigVersion = 'config-ab51ee79cd36825d'; // BIG_GAINS_CLOUD_CONFIG_VERSION
   const deploymentVersion = `${release}-${cloudConfigVersion}`;
   const manifestAsset = `./asset-manifest.js?v=${encodeURIComponent(deploymentVersion)}`;
@@ -29,7 +29,8 @@
     './progress-dashboard-v56.css',
     './history-explorer-v75.css',
     './routine-prescription-v58.css',
-    './goals.css'
+    './goals.css',
+    './program-setup.css'
   ];
   const scripts = [
     './boot-render-gate.js',
@@ -39,6 +40,7 @@
     './supabase-client.js',
     './reconciliation-control.js',
     './cloud-storage.js',
+    './program-model.js',
     './state-persistence.js',
     './profiles.js',
     './exercise-catalog.js',
@@ -56,6 +58,7 @@
     './cloud-shadow.js',
     './managed-profile-recovery.js',
     './app.js',
+    './program-setup.js',
     './workout-mode.js',
     './v2-shell.js',
     './alexa-shell.js',

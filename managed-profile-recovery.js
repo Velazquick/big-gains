@@ -32,6 +32,22 @@
   const isRecord = value => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
   const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
 
+  function preserveLocalProgramCapture(target, restored) {
+    const snapshot = statePersistence.readProfileSnapshot(target.profileClientId);
+    if (!snapshot.ok || !isRecord(snapshot.value?.programCapture)) return restored;
+    const programCapture = window.BigGainsProgramModel.normalizeCapture(snapshot.value.programCapture, {
+      accountId: target.descriptor.accountId,
+      profileId: target.profileClientId,
+      catalog: window.BigGainsExerciseCatalog
+    });
+    const hasCapture = programCapture.routineVersions.length > 0 || programCapture.programVersions.length > 0;
+    if (!hasCapture) return restored;
+    return Object.freeze({
+      ...restored,
+      state: Object.freeze({ ...clone(restored.state), programCapture })
+    });
+  }
+
   function valuesMatch(left, right) {
     if (left === right) return true;
     if (Array.isArray(left) || Array.isArray(right)) {
@@ -552,7 +568,8 @@
       targets = targetsFor(owner);
       const restoredEntries = await Promise.all(targets.map(async target => [
         target.profileClientId,
-        await shadow.schemaV5FromCloud({ cloud: chosenCloud, profileClientId: target.profileClientId })
+        preserveLocalProgramCapture(target,
+          await shadow.schemaV5FromCloud({ cloud: chosenCloud, profileClientId: target.profileClientId }))
       ]));
       restoredProfiles = Object.fromEntries(restoredEntries);
       comparison = await shadow.compare({
@@ -938,7 +955,8 @@
       targets = targetsFor(owner);
       const restoredEntries = await Promise.all(targets.map(async target => [
         target.profileClientId,
-        await shadow.schemaV5FromCloud({ cloud, profileClientId: target.profileClientId })
+        preserveLocalProgramCapture(target,
+          await shadow.schemaV5FromCloud({ cloud, profileClientId: target.profileClientId }))
       ]));
       restoredProfiles = Object.fromEntries(restoredEntries);
       comparison = await shadow.compare({

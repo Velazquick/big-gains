@@ -57,7 +57,7 @@
     }
   }
 
-  function create({ account, profile, profileConfig, validWorkoutTypes, createId, slug }) {
+  function create({ account, profile, profileConfig, validWorkoutTypes, createId, slug, exerciseCatalog = null }) {
     const ownerAccount = account || accountRegistry.resolve(profile.id);
     if (!ownerAccount) throw new Error(`Unknown account for profile: ${profile.id}`);
     const storageKey = ownerAccount.storageKey;
@@ -331,6 +331,13 @@
         prs: normalizePrs(saved.prs),
         activeWorkout: normalizeActiveWorkout(saved.activeWorkout),
         customRoutines: normalizeCustomRoutines(saved.customRoutines),
+        ...(Object.hasOwn(saved, 'programCapture') ? {
+          programCapture: window.BigGainsProgramModel.normalizeCapture(saved.programCapture, {
+            accountId: ownerAccount.accountId,
+            profileId,
+            catalog: exerciseCatalog
+          })
+        } : {}),
         timerPreferences: normalizeTimerPreferences(saved.timerPreferences),
         restTimerEndsAt: Number.isFinite(saved.restTimerEndsAt) && saved.restTimerEndsAt > 0
           ? saved.restTimerEndsAt

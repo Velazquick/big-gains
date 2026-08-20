@@ -4,9 +4,12 @@
 - Contract version: **1.0.0-draft**
 - Production baseline: `main` at `13f127e7ddd1df3ff9a706dc1e65324f13ebba1a`
 - Release marker: `v86-boot-render-profile-isolation`
-- Runtime status: **Not implemented**
+- Program-1A cache marker: `v87-program-1a-canonical-routine-capture`
+- Runtime status: **Program-1A capture/review implemented locally; Train execution, Analyzer, and Programming Engine deferred**
 
 This document defines the bounded Program layer between Goals and Train. It builds on [ARCHITECTURE.md](ARCHITECTURE.md), [GOALS_V1_SPEC.md](GOALS_V1_SPEC.md), [EXERCISE_KNOWLEDGE_FOUNDATION.md](EXERCISE_KNOWLEDGE_FOUNDATION.md), and [SYNC_SEMANTICS.md](SYNC_SEMANTICS.md). It authorizes no runtime code, storage migration, Supabase change, release, or deployment.
+
+Implementation tracking: PF1-0.4 records the boundary of the original documentation unit. The separately authorized Program-1A interval implements only explicit canonical Routine review/capture and Program version pinning in profile-scoped schema-v5 local state. It adds no Supabase table/RLS/migration, cloud Program representation, Train selection authority, Analyzer, Programming Engine, automatic change, or production deployment. Coded defaults remain non-canonical until explicitly approved in the review surface.
 
 ## 0. Contract language and precedence
 
@@ -491,6 +494,8 @@ Until OQ-PF1-1 is answered, the coded Jorge set is an audit reference only and M
 | Retrospective preload | `retrospective-workout.js` |
 | History interpretation | `analytics.js`, `progress.js`, `app.js` |
 | Ownership/sync authority | `account-context.js`, `cloud-shadow.js`, `SYNC_SEMANTICS.md` |
+| Program-1A local model/review | `program-model.js`, `program-setup.js`, `program-setup.css` |
+| Program-1A normalization/backup | `state-persistence.js` |
 
 ## Appendix B — Documentation-unit validation
 
