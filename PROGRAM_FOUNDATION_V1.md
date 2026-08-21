@@ -10,7 +10,7 @@
 - Plan navigation / History List|Calendar cache marker: `v91-plan-nav-history-list-calendar`
 - Runtime status: **Program-1A capture/review, Program-1B deterministic structural analysis, and primary Plan/Active Program presentation implemented locally; Train execution and Programming Engine deferred**
 
-This document defines the bounded Program layer between Goals and Train. It builds on [ARCHITECTURE.md](ARCHITECTURE.md), [GOALS_V1_SPEC.md](GOALS_V1_SPEC.md), [EXERCISE_KNOWLEDGE_FOUNDATION.md](EXERCISE_KNOWLEDGE_FOUNDATION.md), and [SYNC_SEMANTICS.md](SYNC_SEMANTICS.md). It authorizes no runtime code, storage migration, Supabase change, release, or deployment.
+This document defines the bounded Program layer between Goals and Train. It builds on [ARCHITECTURE.md](ARCHITECTURE.md), [GOALS_V1_SPEC.md](GOALS_V1_SPEC.md), [EXERCISE_KNOWLEDGE_FOUNDATION.md](EXERCISE_KNOWLEDGE_FOUNDATION.md), and [SYNC_SEMANTICS.md](SYNC_SEMANTICS.md). The approved documentation-only [Programming Engine v1 contract](PROGRAMMING_ENGINE_V1.md) specializes the future boundary in Section 8 without changing this Foundation's ownership/version invariants. It authorizes no runtime code, storage migration, Supabase change, release, or deployment.
 
 Implementation tracking: PF1-0.4 records the boundary of the original documentation unit. The separately authorized Program-1A interval implements explicit canonical Routine review/capture and Program version pinning in profile-scoped schema-v5 local state. Program-1B adds a pure recomputed analyzer over an exact Program version, pinned Routine versions, EKF metadata, linked Goals, and optional explicit sequence progress. Release v90 moves setup and Analyzer presentation into a substantive Plan/Active Program experience and adds read-only Today and Goal cross-links. Release v91 promotes Plan into primary navigation and removes the temporary Library shortcut without changing Program data or authority. These intervals add no Supabase table/RLS/migration, cloud Program representation, Train selection authority, Programming Engine, automatic change, or production deployment. Coded defaults remain non-canonical until explicitly approved in the review surface.
 
@@ -346,6 +346,8 @@ Program-1B implementation: `BigGainsProgramAnalyzer.analyze({ programVersion, ro
 **Program Analyzer = deterministic structural facts, not coaching/recommendation.** Program-1B does not classify any exposure as too high, too low, imbalanced, optimal, or otherwise prescriptive; it does not create a proposal or successor version.
 
 ### 8.2 Programming Engine proposals
+
+The documentation-only [Programming Engine v1 contract](PROGRAMMING_ENGINE_V1.md) is the normative specialization of this subsection for the first rules-based proposal unit. Where the Foundation lists broader future operation classes, the PE v1 allowlist is intentionally narrower; parked Foundation operations remain unauthorized.
 
 **PF1-8.1 — Pure proposal API.** The future engine MUST accept immutable profile-scoped inputs and return a proposal. Analysis MUST NOT persist, activate, or mutate Program, Routine, Goal, workout, or history.
 
