@@ -278,6 +278,8 @@ The supplied product screenshots are inspiration only. Big Gains MUST NOT copy t
 
 **IA1-10.4 — Analyzer before computed claims.** Muscle, set, frequency, spacing, Goal-support, and gap summaries MUST wait for deterministic Analyzer definitions and tests.
 
+Implementation tracking: Program-1B now supplies the phase-5 deterministic calculation boundary and a contained read-only Program Setup/active-Program summary. Linked Goal rows open the existing Goal detail card; the analyzer does not add a Plan destination, change the five-destination migration shell, or move lifecycle ownership. Its labels describe exact exposure, set, spacing, taxonomy, prescription, and block facts only. **Program Analyzer = deterministic structural facts, not coaching/recommendation.** Phase 6 navigation/detail expansion, Programming Engine proposals, Program-driven Train, and block-performance Progress remain deferred.
+
 **IA1-10.5 — Plan cutover gate.** The bottom-nav replacement MUST NOT occur before the minimum Plan landing contract above exists. The current Calendar placement remains the safe migration state until that gate is satisfied; cutover SHOULD coincide with an Active Program surface or clear in-progress Program state.
 
 **IA1-10.6 — Train independence.** Program-driven Train MAY ship from a manually approved Program without waiting for automated Programming Engine generation. It MUST retain immutable active-session snapshot behavior.

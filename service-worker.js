@@ -1,4 +1,4 @@
-importScripts('./asset-manifest.js?v=v88-exercise-picker-library-ux-v2-config-ab51ee79cd36825d', './service-worker-core.js');
+importScripts('./asset-manifest.js?v=v89-program-1b-deterministic-analyzer-config-ab51ee79cd36825d', './service-worker-core.js');
 
 const runtime = BigGainsServiceWorkerCore.createRuntime({
   manifest: BIG_GAINS_ASSET_MANIFEST,

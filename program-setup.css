@@ -57,6 +57,36 @@
 .program-complete dl div { padding: 12px; border-radius: 12px; background: #12171d; }
 .program-complete dt { color: #929ca8; font-size: 12px; font-weight: 800; }
 .program-complete dd { margin: 4px 0 0; overflow-wrap: anywhere; }
+.program-analyzer { display: grid; gap: 18px; }
+.program-analyzer[hidden] { display: none; }
+.program-analyzer-heading { align-items: flex-start; gap: 16px; }
+.program-analyzer-heading p { max-width: 62ch; margin: 5px 0 0; color: #98a2ad; line-height: 1.5; }
+.program-analyzer-status { flex: 0 0 auto; padding: 7px 10px; border: 1px solid rgba(168, 213, 182, .35); border-radius: 999px; color: #a8d5b6; font-size: 11px; font-weight: 800; }
+.program-analyzer-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.program-analyzer-section { min-width: 0; padding: 16px; border: 1px solid #29313a; border-radius: 16px; background: #11161c; }
+.program-analyzer-section h3 { margin: 0 0 13px; font-size: 17px; }
+.program-analyzer-section h4 { margin: 15px 0 8px; color: #aeb5bf; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+.program-analyzer-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.program-analyzer-facts div { min-width: 0; padding: 10px; border-radius: 11px; background: #0c1116; }
+.program-analyzer-facts dt { color: #8f9aa6; font-size: 11px; font-weight: 800; }
+.program-analyzer-facts dd { margin: 4px 0 0; overflow-wrap: anywhere; font-weight: 750; }
+.program-analyzer-sequence, .program-analyzer-list { display: grid; gap: 7px; margin: 12px 0 0; padding: 0; list-style: none; }
+.program-analyzer-sequence li { display: grid; grid-template-columns: auto 1fr; gap: 4px 9px; align-items: center; padding: 9px; border-radius: 10px; background: #0c1116; }
+.program-analyzer-sequence li > span { grid-row: 1 / 3; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 7px; color: #f0a36b; background: rgba(240, 163, 107, .12); font-size: 11px; font-weight: 850; }
+.program-analyzer-sequence small { overflow: hidden; color: #7f8a95; text-overflow: ellipsis; }
+.program-analyzer-list li { min-width: 0; padding: 10px; display: grid; gap: 3px; border-radius: 10px; background: #0c1116; }
+.program-analyzer-list li > span { color: #c1c8cf; line-height: 1.35; }
+.program-analyzer-list li > small { overflow-wrap: anywhere; color: #7f8a95; line-height: 1.35; }
+.program-analyzer-goal { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px !important; }
+.program-analyzer-goal > div { min-width: 0; display: grid; gap: 3px; }
+.program-analyzer-goal[data-program-goal-state="not_represented"] { border: 1px solid rgba(240, 163, 107, .35); }
+.program-analyzer-context { margin: 12px 0 0; padding: 10px; display: grid; gap: 3px; border-radius: 10px; color: #919ca8; background: #0c1116; line-height: 1.4; }
+.program-analyzer-context strong { color: #cbd1d7; }
+.program-analyzer-prescriptions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.program-analyzer-empty { margin: 0; color: #89949f; line-height: 1.45; }
+.program-analyzer-error { padding: 16px; border: 1px solid rgba(255, 156, 150, .35); border-radius: 14px; background: rgba(255, 156, 150, .06); }
+.program-analyzer-error p { color: #bca6a4; }
+.goal-card.is-program-linked { outline: 2px solid #f0a36b; outline-offset: 3px; }
 @media (max-width: 700px) {
   .program-setup-dialog { width: 100%; max-height: 100dvh; border-radius: 0; }
   .program-setup-shell { max-height: 100dvh; padding: 18px 14px calc(22px + env(safe-area-inset-bottom)); }
@@ -65,9 +95,14 @@
   .program-exercise-fields label:first-child { grid-column: 1 / -1; }
   .program-slot-list li { grid-template-columns: auto 1fr; }
   .program-slot-list em { grid-column: 2; }
+  .program-analyzer-heading { display: grid; }
+  .program-analyzer-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 420px) {
   .program-exercise-fields, .program-config-grid { grid-template-columns: 1fr; }
   .program-exercise-fields label:first-child { grid-column: auto; }
   .program-add-exercise { grid-template-columns: 1fr; }
+  .program-analyzer-facts, .program-analyzer-prescriptions { grid-template-columns: 1fr; }
+  .program-analyzer-goal { grid-template-columns: 1fr; }
+  .program-analyzer-goal button { width: 100%; }
 }
