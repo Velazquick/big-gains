@@ -159,9 +159,12 @@ test('mobile review flow never treats defaults as canonical and creates exact re
   await page.evaluate(() => window.bigGainsViewShell.showView('library', { workout: false }));
   await expect(page.locator('#programSetupPanel')).toBeVisible();
   await page.locator('#openProgramSetup').click();
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'plan');
+  await expect(page.locator('#programSetupDialog')).not.toBeVisible();
+  await page.locator('[data-plan-setup]').first().click();
   await expect(page.locator('#programSetupDialog')).toBeVisible();
   await expect(page.locator('input[name="programRoutineSource"]:checked')).toHaveCount(0);
-  await expect(page.locator('#programSetupContent')).toContainText('Coded defaults are shown only as a review candidate');
+  await expect(page.locator('#programSetupContent')).toContainText('built-in routine is shown only as a starting candidate');
   expect((await readStoredJson(page, STORAGE_KEYS.jorge)).programCapture?.routineVersions || []).toHaveLength(0);
 
   await page.locator('[data-program-approve-routine]').click();
@@ -169,19 +172,26 @@ test('mobile review flow never treats defaults as canonical and creates exact re
   expect((await readStoredJson(page, STORAGE_KEYS.jorge)).programCapture?.routineVersions || []).toHaveLength(0);
 
   for (const label of ['Push', 'Pull', 'Legs/Core']) {
-    await page.getByLabel('Coded default reference').check();
+    await page.getByLabel('Built-in starting routine').check();
     await page.locator('[data-program-approve-routine]').click();
-    await expect(page.locator('#programSetupContent')).toContainText('immutable canonical Routine version');
+    await expect(page.locator('#programSetupContent')).toContainText('approved future Routine version');
     await page.locator('#programSetupNext').click();
-    if (label === 'Legs/Core') await expect(page.locator('#programStepTitle')).toHaveText('Pin the rolling six-slot sequence');
+    if (label === 'Legs/Core') await expect(page.locator('#programStepTitle')).toHaveText('Review the rolling sequence');
   }
 
-  await expect(page.locator('#programAuthority option')).toHaveCount(2);
-  await expect(page.locator('#programAuthority option')).toHaveText(['Off', 'Review only']);
+  await page.locator('#programSetupNext').click();
+  await expect(page.locator('#programStepTitle')).toHaveText('Connect destinations to this route');
+  await page.locator('#programSetupNext').click();
+  await expect(page.locator('#programStepTitle')).toHaveText('Choose when to pause and review');
   await page.locator('#programBoundaryValue').fill('3');
-  await page.locator('#programAuthority').selectOption('review');
+  await page.locator('#programSetupNext').click();
+  await expect(page.locator('input[name="programAuthorityChoice"]')).toHaveCount(2);
+  await expect(page.getByText('Automatic authority is not available.')).toBeVisible();
+  await page.locator('input[name="programAuthorityChoice"][value="review"]').check();
+  await page.locator('#programSetupNext').click();
+  await expect(page.locator('#programStepTitle')).toHaveText('Create the next Program version');
   await page.locator('[data-program-confirm]').click();
-  await expect(page.locator('#programSetupContent')).toContainText('Canonical capture saved');
+  await expect(page.locator('#programSetupContent')).toContainText('Your training route is saved');
 
   const stored = await readStoredJson(page, STORAGE_KEYS.jorge);
   expect(stored.version).toBe(5);
@@ -267,6 +277,7 @@ test('Program capture survives schema-v5 backup/reload offline while cloud shado
   await Promise.all([page.waitForNavigation(), page.locator('#profileSelect').selectOption('alexa')]);
   await expect(page.locator('html')).toHaveAttribute('data-profile', 'alexa');
   await expect(page.locator('#programSetupPanel')).toBeHidden();
+  await expect(page.locator('#todayPlanCard')).toBeHidden();
   const alexa = await readStoredJson(page, STORAGE_KEYS.alexa);
   expect(alexa.programCapture?.routineVersions || []).toHaveLength(0);
 });

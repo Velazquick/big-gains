@@ -362,6 +362,7 @@
         ${goal.label ? `<p class="goal-label">${escapeHtml(goal.label)}</p>` : ''}
         <div class="goal-card-meta"><span>1RM target</span>${date}</div>
         <div class="goal-evidence">${evidenceMarkup(goal)}</div>
+        ${scope.BigGainsProgramSetup?.goalSupportMarkup?.(goal) || ''}
         ${guidance}
         ${goal.guidanceEnabled ? '<p class="goal-guidance-note">Guidance applies only when Train can build a safe exact-exercise target. Routines and completed history stay unchanged.</p>' : ''}
         ${trajectoryMarkup(goal, exercise, evidence)}
@@ -489,6 +490,8 @@
     }
 
     function handleAction(event) {
+      const viewProgram = event.target.closest('[data-goal-view-program]');
+      if (viewProgram) return scope.BigGainsProgramSetup?.openProgramDetail?.({ returnView: 'goals' });
       const button = event.target.closest('[data-goal-action]');
       if (!button) return;
       const { goalAction: action, goalId } = button.dataset;
@@ -520,7 +523,11 @@
       if (initialized) return false;
       initialized = true;
       $('todayGoalsOpen')?.addEventListener('click', () => scope.bigGainsViewShell?.showView('goals', { workout: false }));
-      $('goalsBackToday')?.addEventListener('click', () => scope.bigGainsViewShell?.showView('today', { workout: false }));
+      $('goalsOpenPlan')?.addEventListener('click', () => scope.BigGainsProgramSetup?.openPlan?.());
+      $('goalsBackToday')?.addEventListener('click', () => {
+        if (scope.BigGainsProgramSetup?.returnFromGoal?.()) return;
+        scope.bigGainsViewShell?.showView('today', { workout: false });
+      });
       $('createStrengthGoal')?.addEventListener('click', () => openEditor());
       $('goalForm')?.addEventListener('submit', handleFormSubmit);
       $('cancelGoal')?.addEventListener('click', closeEditor);

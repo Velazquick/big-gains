@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v89-program-1b-deterministic-analyzer';
+  const release = 'v90-program-setup-ux-v2-plan-bridge';
   const cloudConfigVersion = 'config-ab51ee79cd36825d'; // BIG_GAINS_CLOUD_CONFIG_VERSION
   const deploymentVersion = `${release}-${cloudConfigVersion}`;
   const manifestAsset = `./asset-manifest.js?v=${encodeURIComponent(deploymentVersion)}`;

@@ -4,7 +4,7 @@
   const views = [...document.querySelectorAll('.view')];
   const navButtons = [...document.querySelectorAll('.bottom-nav [data-view]')];
   const activePanel = document.getElementById('activePanel');
-  const validViews = new Set(['today', 'goals', 'train', 'calendar', 'progress', 'library']);
+  const validViews = new Set(['today', 'plan', 'goals', 'train', 'calendar', 'progress', 'library']);
   let initialized = false;
 
   function showView(name, options = {}) {
