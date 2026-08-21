@@ -12,6 +12,8 @@ async function openLibrary(page) {
 async function openProgram(page) {
   await openLibrary(page);
   await page.locator('#openProgramSetup').click();
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'plan');
+  await page.locator('[data-plan-setup]').first().click();
   await expect(page.locator('#programSetupDialog')).toBeVisible();
 }
 
@@ -30,7 +32,7 @@ test('Program Setup replaces the implicit Arnold Press first option with exact c
   await page.setViewportSize({ width: 390, height: 844 });
   await openApp(page);
   await openProgram(page);
-  await page.getByLabel('Reviewed rebuild / approved canonical').check();
+  await page.getByLabel('Build or revise this session').check();
 
   const initialCount = await page.locator('[data-program-exercise]').count();
   await expect(page.locator('#programAddExercise')).toHaveCount(0);
@@ -60,7 +62,7 @@ test('Program Setup replaces the implicit Arnold Press first option with exact c
   await choosePickerResult(page, 'Cable Chest Press', 'Cable Chest Press');
   await expect(page.locator('[data-program-exercise] header strong').last()).toHaveText('Cable Chest Press');
   await expect(page.locator('#programSetupNext')).toBeDisabled();
-  await expect(page.locator('[data-program-approve-routine]')).toContainText('Approve immutable');
+  await expect(page.locator('[data-program-approve-routine]')).toContainText('Approve Push for future Program slots');
   expect((await readStoredJson(page, STORAGE_KEYS.jorge)).programCapture.routineVersions).toEqual(approved.programCapture.routineVersions);
 });
 

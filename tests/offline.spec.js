@@ -2,10 +2,10 @@ import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
 
-const CURRENT_RELEASE = 'v89-program-1b-deterministic-analyzer';
+const CURRENT_RELEASE = 'v90-program-setup-ux-v2-plan-bridge';
 const CURRENT_CONFIG_VERSION = 'config-ab51ee79cd36825d';
 const CURRENT_CACHE = `big-gains-shell-${CURRENT_RELEASE}-${CURRENT_CONFIG_VERSION}`;
-const PREVIOUS_CACHE = 'big-gains-shell-v87-program-1a-canonical-routine-capture-config-ab51ee79cd36825d';
+const PREVIOUS_CACHE = 'big-gains-shell-v89-program-1b-deterministic-analyzer-config-ab51ee79cd36825d';
 const PREVIOUS_CONFIG_CACHE = `big-gains-shell-${CURRENT_RELEASE}-config-0000000000000000`;
 
 async function waitForServiceWorker(page) {

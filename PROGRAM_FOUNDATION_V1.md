@@ -6,11 +6,12 @@
 - Release marker: `v86-boot-render-profile-isolation`
 - Program-1A cache marker: `v87-program-1a-canonical-routine-capture`
 - Program-1B cache marker: `v89-program-1b-deterministic-analyzer`
-- Runtime status: **Program-1A capture/review and Program-1B deterministic structural analysis implemented locally; Train execution and Programming Engine deferred**
+- Program Setup UX v2 / Plan bridge cache marker: `v90-program-setup-ux-v2-plan-bridge`
+- Runtime status: **Program-1A capture/review, Program-1B deterministic structural analysis, and the contextual Plan/Active Program presentation implemented locally; Train execution and Programming Engine deferred**
 
 This document defines the bounded Program layer between Goals and Train. It builds on [ARCHITECTURE.md](ARCHITECTURE.md), [GOALS_V1_SPEC.md](GOALS_V1_SPEC.md), [EXERCISE_KNOWLEDGE_FOUNDATION.md](EXERCISE_KNOWLEDGE_FOUNDATION.md), and [SYNC_SEMANTICS.md](SYNC_SEMANTICS.md). It authorizes no runtime code, storage migration, Supabase change, release, or deployment.
 
-Implementation tracking: PF1-0.4 records the boundary of the original documentation unit. The separately authorized Program-1A interval implements explicit canonical Routine review/capture and Program version pinning in profile-scoped schema-v5 local state. Program-1B adds a pure recomputed analyzer and read-only structural-facts surface over an exact Program version, pinned Routine versions, EKF metadata, linked Goals, and optional explicit sequence progress. Neither interval adds a Supabase table/RLS/migration, cloud Program representation, Train selection authority, Programming Engine, automatic change, or production deployment. Coded defaults remain non-canonical until explicitly approved in the review surface.
+Implementation tracking: PF1-0.4 records the boundary of the original documentation unit. The separately authorized Program-1A interval implements explicit canonical Routine review/capture and Program version pinning in profile-scoped schema-v5 local state. Program-1B adds a pure recomputed analyzer over an exact Program version, pinned Routine versions, EKF metadata, linked Goals, and optional explicit sequence progress. Release v90 moves setup and Analyzer presentation into a contextual Plan/Active Program experience, adds read-only Today and Goal cross-links, and keeps a labeled Library shortcut. These intervals add no Supabase table/RLS/migration, cloud Program representation, Train selection authority, Programming Engine, automatic change, or production deployment. Coded defaults remain non-canonical until explicitly approved in the review surface.
 
 ## 0. Contract language and precedence
 
@@ -436,6 +437,8 @@ Apply is a separate user-authorized transaction, not an analysis side effect.
 **PF1-9.7 — Sequence and anchors.** A rolling Program surface MUST distinguish authoritative next sequence position from preferred weekday placement so a missed day does not appear to skip or invalidate a session.
 
 **PF1-9.8 — Block review.** The surface SHOULD show the active block boundary, progress toward it using the declared boundary kind, and the pending/completed review state without implying that review automatically changes the Program.
+
+Implementation tracking: v90 implements PF1-9.1–PF1-9.3 and PF1-9.6–PF1-9.8 as presentation over existing Program-1A/1B data. The Active Program detail shows version/status, a rolling sequence with preferred weekday language, approved Routine drill-down, linked Goals, block boundary, authority, version note/effective boundary, analysis highlights, and the full Analyzer. Version history/proposal diffs in PF1-9.4 remain deferred because no Programming Engine proposal or accepted successor history UI exists yet.
 
 ## 10. Safety, non-scope, and acceptance boundary
 
