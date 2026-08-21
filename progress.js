@@ -3,6 +3,8 @@ window.workoutProgress = (() => {
   let initialized = false;
   let selectedWindowDays = 7;
   let selectedMuscle = null;
+  let selectedHistoryView = 'list';
+  let historyTrigger = null;
 
   const MUSCLE_GROUPS = Object.freeze([
     { key: 'Chest', label: 'Chest', sources: ['Chest'] },
@@ -23,8 +25,11 @@ window.workoutProgress = (() => {
     button: document.getElementById('openSelectedProgress'),
     preview: document.getElementById('progressPreview'),
     history: document.getElementById('history'),
+    overview: document.getElementById('progressOverviewSurface'),
     archive: document.getElementById('historyArchiveDialog'),
     archiveList: document.getElementById('historyArchiveList'),
+    listPanel: document.getElementById('historyListPanel'),
+    calendarPanel: document.getElementById('historyCalendarPanel'),
     dialog: document.getElementById('progressDialog')
   });
 
@@ -318,7 +323,7 @@ window.workoutProgress = (() => {
     history.innerHTML = `${workouts.map(workout => {
       const summary = context.analytics.workoutSummary(workout, analyticsOptions());
       return `<button type="button" class="history-item progress-history-card" data-history-id="${context.escapeHtml(workout.id)}"><div class="progress-history-main"><div class="history-card-title"><strong>${context.escapeHtml(context.workoutLabel(workout.type))}</strong>${summary.prCount ? `<span class="pr-badge">${summary.prCount} PR${summary.prCount === 1 ? '' : 's'}</span>` : ''}</div><small>${formatArchiveDate(workout.completedAt)} · ${formatDuration(summary.durationSeconds)} · ${summary.workingSetCount} working set${summary.workingSetCount === 1 ? '' : 's'}</small>${workout.entryMethod === 'retrospective' ? '<span class="entered-later">Entered later</span>' : ''}</div><div class="history-meta"><strong>${formatVolume(summary.workingSetVolume,summary.workingSetVolumeKind)}</strong><small>${workloadLabel(summary.workingSetVolumeKind)}</small><span class="history-card-arrow" aria-hidden="true">→</span></div></button>`;
-    }).join('')}<div class="progress-history-footer"><div><strong>Keep the full timeline close.</strong><span>Browse every completed session by month.</span></div><button type="button" class="ghost compact" data-open-history-archive>View history</button></div>`;
+    }).join('')}<div class="progress-history-footer"><div><strong>Keep the full timeline close.</strong><span>Browse every completed session in List or Calendar.</span></div><button type="button" class="ghost compact" data-open-history-archive>Open History</button></div>`;
   }
 
   function groupedHistory() {
@@ -342,7 +347,7 @@ window.workoutProgress = (() => {
       : 'Your completed sessions will collect here.';
     if (!workouts.length) {
       archiveList.className = 'history-archive-list empty';
-      archiveList.innerHTML = '<div class="history-archive-empty"><strong>No completed workouts yet.</strong><span>Finish a session or log one from Calendar to begin your archive.</span></div>';
+      archiveList.innerHTML = '<div class="history-archive-empty"><strong>No completed workouts yet.</strong><span>Finish a session or use History Calendar to log completed work.</span></div>';
       return;
     }
     archiveList.className = 'history-archive-list';
@@ -353,21 +358,65 @@ window.workoutProgress = (() => {
     }).join('')}</div></section>`).join('');
   }
 
-  function openHistoryArchive() {
-    const { archive } = elements();
-    if (!archive) return;
-    renderHistoryArchive();
-    if (archive.showModal && !archive.open) archive.showModal();
-    else archive.setAttribute('open', '');
-    const shell = archive.querySelector('.history-archive-shell');
-    if (shell) shell.scrollTop = 0;
-    document.getElementById('historyArchiveTitle')?.focus({ preventScroll: true });
+  function setHistoryView(view = 'list', { focus = false } = {}) {
+    const next = view === 'calendar' ? 'calendar' : 'list';
+    const { archive, listPanel, calendarPanel } = elements();
+    selectedHistoryView = next;
+    document.querySelectorAll('[data-history-view]').forEach(button => {
+      const selected = button.dataset.historyView === next;
+      button.setAttribute('aria-selected', String(selected));
+      button.tabIndex = selected ? 0 : -1;
+      button.classList.toggle('active', selected);
+    });
+    if (listPanel) listPanel.hidden = next !== 'list';
+    if (calendarPanel) calendarPanel.hidden = next !== 'calendar';
+    if (archive?.hidden === false && document.body.dataset.view === 'progress') document.body.dataset.route = `history-${next}`;
+    if (focus) document.querySelector(`[data-history-view="${next}"]`)?.focus();
+    return next;
   }
 
-  function closeHistoryArchive() {
-    const { archive } = elements();
-    if (archive?.close && archive.open) archive.close();
-    else archive?.removeAttribute('open');
+  function openHistoryArchive(view = 'list') {
+    const { archive, overview } = elements();
+    if (!archive) return false;
+    if (archive.hidden) historyTrigger = document.activeElement;
+    renderHistoryArchive();
+    setHistoryView(view);
+    if (overview) overview.hidden = true;
+    archive.hidden = false;
+    document.body.dataset.route = `history-${selectedHistoryView}`;
+    jumpToTop();
+    document.getElementById('historyArchiveTitle')?.focus({ preventScroll: true });
+    jumpToTop();
+    return true;
+  }
+
+  function closeHistoryArchive({ restoreFocus = true } = {}) {
+    const { archive, overview } = elements();
+    if (!archive || archive.hidden) return false;
+    archive.hidden = true;
+    if (overview) overview.hidden = false;
+    if (document.body.dataset.view === 'progress') document.body.dataset.route = 'progress';
+    jumpToTop();
+    if (restoreFocus) historyTrigger?.focus?.({ preventScroll: true });
+    historyTrigger = null;
+    return true;
+  }
+
+  function currentHistoryView() {
+    return elements().archive?.hidden === false ? selectedHistoryView : null;
+  }
+
+  function jumpToTop() {
+    const root = document.documentElement;
+    const previousBehavior = root.style.scrollBehavior;
+    root.style.scrollBehavior = 'auto';
+    root.scrollTop = 0;
+    document.body.scrollTop = 0;
+    requestAnimationFrame(() => {
+      root.scrollTop = 0;
+      document.body.scrollTop = 0;
+      root.style.scrollBehavior = previousBehavior;
+    });
   }
 
   function closeProgress() {
@@ -467,13 +516,19 @@ window.workoutProgress = (() => {
 
     const openArchive = event.target.closest('[data-open-history-archive]');
     if (openArchive) {
-      openHistoryArchive();
+      openHistoryArchive('list');
+      return;
+    }
+
+    const historyView = event.target.closest('[data-history-view]');
+    if (historyView) {
+      setHistoryView(historyView.dataset.historyView);
       return;
     }
 
     const archiveWorkout = event.target.closest('#historyArchiveList [data-history-id]');
     if (archiveWorkout) {
-      context.openHistory(archiveWorkout.dataset.historyId);
+      context.openHistory(archiveWorkout.dataset.historyId, 'list');
       return;
     }
 
@@ -491,6 +546,13 @@ window.workoutProgress = (() => {
   }
 
   function handleProgressKeydown(event) {
+    const historyTab = event.target.closest?.('[data-history-view]');
+    if (historyTab && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+      event.preventDefault();
+      const next = ['ArrowLeft', 'Home'].includes(event.key) ? 'list' : 'calendar';
+      setHistoryView(next, { focus: true });
+      return;
+    }
     const muscle = event.target.closest?.('[data-muscle-key]');
     if (!muscle || !['Enter', ' '].includes(event.key)) return;
     event.preventDefault();
@@ -515,7 +577,11 @@ window.workoutProgress = (() => {
     document.getElementById('closeProgressDialog')?.addEventListener('click', closeProgress);
     dialog.addEventListener('click', event => { if (event.target === dialog) closeProgress(); });
     document.getElementById('closeHistoryArchive')?.addEventListener('click', closeHistoryArchive);
-    archive.addEventListener('click', event => { if (event.target === archive) closeHistoryArchive(); });
+    document.addEventListener('keydown', event => {
+      if (event.key !== 'Escape' || archive.hidden || document.querySelector('dialog[open]')) return;
+      event.preventDefault();
+      closeHistoryArchive();
+    });
     document.getElementById('cancelRoutineDialog')?.addEventListener('click', () => context.closeRoutineEditor());
     initialized = true;
   }
@@ -531,7 +597,10 @@ window.workoutProgress = (() => {
   function afterFullRender({ activeWorkout }) {
     renderProgressDashboard();
     renderCompactHistory();
-    if (elements().archive?.open) renderHistoryArchive();
+    if (elements().archive?.hidden === false) {
+      renderHistoryArchive();
+      setHistoryView(selectedHistoryView);
+    }
     decorateLibrary();
     decorateActive(activeWorkout);
   }
@@ -540,6 +609,9 @@ window.workoutProgress = (() => {
     afterActiveRender,
     afterFullRender,
     afterLibraryRender,
-    initialize
+    currentHistoryView,
+    initialize,
+    openHistory: openHistoryArchive,
+    showOverview: () => closeHistoryArchive({ restoreFocus: false })
   };
 })();

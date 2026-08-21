@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
+import { openHistoryCalendar } from './helpers/history.js';
 
 const SZW_CLIENT_ID = 'independent-09034233fa064233b85018aec182764d';
 const AUTH_USER_ID = '94000000-0000-0000-0000-000000000001';
@@ -306,7 +307,7 @@ test('retrospective history and analytics accept SZW types and zero-load Pull-Up
   await page.clock.setFixedTime(new Date('2026-08-14T12:00:00.000Z'));
   await installIndependentRuntime(page);
   await openApp(page);
-  await page.locator('.bottom-nav [data-view="calendar"]').click();
+  await openHistoryCalendar(page);
   await page.locator('#logRetrospectiveWorkout').click();
 
   await expect(page.locator('#retrospectiveWorkoutType option')).toHaveText([

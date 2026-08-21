@@ -9,16 +9,17 @@ test.beforeEach(async ({ page }) => {
   await openApp(page);
 });
 
-test('Plan empty state is understandable, reachable from Today, and keeps five existing persistent destinations', async ({ page }) => {
+test('Plan empty state is understandable and opens from its promoted primary destination', async ({ page }) => {
   await expect(page.locator('.bottom-nav button')).toHaveCount(5);
-  await expect(page.locator('.bottom-nav button')).toHaveText(['Today', 'Train', 'Calendar', 'Progress', 'Library']);
+  await expect(page.locator('.bottom-nav button')).toHaveText(['Today', 'Plan', 'Train', 'Progress', 'Library']);
+  await expect(page.locator('.bottom-nav [data-view="calendar"]')).toHaveCount(0);
   await expect(page.locator('#todayPlanCard')).toBeVisible();
-  await page.locator('[data-today-plan]').click();
+  await page.locator('.bottom-nav [data-view="plan"]').click();
   await expect(page.locator('body')).toHaveAttribute('data-view', 'plan');
+  await expect(page.locator('.bottom-nav [data-view="plan"]')).toHaveAttribute('aria-current', 'page');
   await expect(page.locator('#planOverview')).toContainText('No active Goals');
   await expect(page.locator('#planOverview')).toContainText('No Program yet');
   await expect(page.locator('#planOverview')).toContainText('Program connects approved sessions into a rolling route');
-  await expect(page.locator('.bottom-nav [data-view="plan"]')).toHaveCount(0);
   await page.locator('#planBackToday').click();
   await expect(page.locator('body')).toHaveAttribute('data-view', 'today');
 });
@@ -93,10 +94,11 @@ test('Today, Goal, Program, and Analyzer traverse canonical Plan surfaces withou
   expect(after.workouts).toEqual(before.workouts);
 });
 
-test('Library remains a shortcut, setup uses plain-language staged review, shared picker, and trap-free Back behavior', async ({ page }) => {
+test('Library stays building blocks while Plan owns setup, staged review, shared picker, and trap-free Back behavior', async ({ page }) => {
   await page.evaluate(() => bigGainsViewShell.showView('library', { workout: false }));
-  await expect(page.locator('#programSetupPanel')).toContainText('Plan shortcut');
-  await page.locator('#openProgramSetup').click();
+  await expect(page.locator('#programSetupPanel')).toHaveCount(0);
+  await expect(page.locator('#workoutPanel')).toContainText('Workout builder');
+  await page.locator('.bottom-nav [data-view="plan"]').click();
   await expect(page.locator('body')).toHaveAttribute('data-view', 'plan');
   await expect(page.locator('#programSetupDialog')).toBeHidden();
   await page.locator('[data-plan-setup]').first().click();

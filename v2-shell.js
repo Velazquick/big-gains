@@ -4,22 +4,36 @@
   const views = [...document.querySelectorAll('.view')];
   const navButtons = [...document.querySelectorAll('.bottom-nav [data-view]')];
   const activePanel = document.getElementById('activePanel');
-  const validViews = new Set(['today', 'plan', 'goals', 'train', 'calendar', 'progress', 'library']);
+  const validViews = new Set(['today', 'plan', 'goals', 'train', 'history', 'calendar', 'progress', 'library']);
   let initialized = false;
 
   function showView(name, options = {}) {
-    const target = document.getElementById(`view${name[0].toUpperCase()}${name.slice(1)}`);
+    const historyView = options.historyView || (name === 'calendar' ? 'calendar' : name === 'history' ? 'list' : null);
+    const viewName = historyView ? 'progress' : name;
+    const target = document.getElementById(`view${viewName[0].toUpperCase()}${viewName.slice(1)}`);
     if (!target) return;
     views.forEach(view => view.classList.toggle('is-active', view === target));
-    navButtons.forEach(button => button.classList.toggle('active', button.dataset.view === name));
-    document.body.dataset.view = name;
-    document.body.classList.toggle('workout-focus', name === 'train' && activePanel && !activePanel.classList.contains('hidden'));
-    if (name === 'train' && options.workout !== false && activePanel && !activePanel.classList.contains('hidden')) {
+    const ownerView = viewName === 'goals' ? 'plan' : viewName;
+    navButtons.forEach(button => {
+      const active = button.dataset.view === ownerView;
+      button.classList.toggle('active', active);
+      if (active) button.setAttribute('aria-current', 'page');
+      else button.removeAttribute('aria-current');
+    });
+    document.body.dataset.view = viewName;
+    document.body.dataset.route = historyView ? `history-${historyView}` : viewName;
+    document.body.classList.toggle('workout-focus', viewName === 'train' && activePanel && !activePanel.classList.contains('hidden'));
+    if (viewName === 'train' && options.workout !== false && activePanel && !activePanel.classList.contains('hidden')) {
       window.bigGainsWorkoutMode?.enter({ showView: false });
-    } else if (name !== 'train' && document.body.classList.contains('workout-mode')) {
+    } else if (viewName !== 'train' && document.body.classList.contains('workout-mode')) {
       window.bigGainsWorkoutMode?.suspend();
     }
-    try { sessionStorage.setItem('big-gains-view', name); } catch {}
+    if (viewName === 'progress') {
+      if (historyView) window.workoutProgress?.openHistory(historyView);
+      else window.workoutProgress?.showOverview();
+    }
+    const savedView = historyView === 'calendar' ? 'calendar' : historyView === 'list' ? 'history' : viewName;
+    try { sessionStorage.setItem('big-gains-view', savedView); } catch {}
     if (options.scroll !== false) window.scrollTo({ top: 0, behavior: options.instant ? 'auto' : 'smooth' });
   }
 

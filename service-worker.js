@@ -1,4 +1,4 @@
-importScripts('./asset-manifest.js?v=v90-program-setup-ux-v2-plan-bridge-config-ab51ee79cd36825d', './service-worker-core.js');
+importScripts('./asset-manifest.js?v=v91-plan-nav-history-list-calendar-config-ab51ee79cd36825d', './service-worker-core.js');
 
 const runtime = BigGainsServiceWorkerCore.createRuntime({
   manifest: BIG_GAINS_ASSET_MANIFEST,

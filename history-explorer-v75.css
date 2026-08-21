@@ -269,3 +269,89 @@ html[data-profile="alexa"] .history-card-metrics { color: #5d3d50; }
   .progress-history-card,
   .history-card-arrow { transition: none; }
 }
+
+/* v91: History is a nested Progress surface, not a modal archive. */
+#historyArchiveDialog.history-surface {
+  position: static;
+  inset: auto;
+  width: 100%;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  overflow: visible;
+  border-radius: 0;
+  background: transparent;
+}
+#historyArchiveDialog.history-surface[hidden] { display: none; }
+#historyArchiveDialog.history-surface .history-archive-shell {
+  width: min(100%, 900px);
+  height: auto;
+  max-height: none;
+  overflow: visible;
+  margin: 0 auto;
+  border-radius: 24px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .38);
+}
+#historyArchiveDialog.history-surface .history-archive-head {
+  position: static;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+}
+.history-surface-title { min-width: 0; }
+.history-view-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(76px, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--history-line);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, .035);
+}
+.history-view-switch button {
+  min-width: 76px;
+  min-height: 44px;
+  padding: .65rem .8rem;
+  border-radius: 11px;
+  color: var(--history-muted);
+  font-weight: 850;
+}
+.history-view-switch button.active,
+.history-view-switch button[aria-selected="true"] {
+  background: color-mix(in srgb, var(--accent) 12%, var(--history-surface-raised));
+  color: var(--accent);
+}
+.history-view-switch button:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 2px;
+}
+.history-calendar-panel { padding: 1.25rem 1.55rem 1.55rem; }
+.history-calendar-panel .calendar-panel,
+.history-calendar-panel .calendar-day-panel { background: rgba(17, 23, 30, .76); }
+html[data-profile="alexa"] .history-view-switch { background: #fff8fb; }
+html[data-profile="alexa"] .history-calendar-panel .calendar-panel,
+html[data-profile="alexa"] .history-calendar-panel .calendar-day-panel { background: #fffefd; }
+
+@media (max-width: 700px) {
+  #historyArchiveDialog.history-surface {
+    inset: auto;
+    width: 100%;
+    height: auto;
+    max-height: none;
+    margin: 0;
+    border-radius: 0;
+  }
+  #historyArchiveDialog.history-surface .history-archive-shell {
+    height: auto;
+    max-height: none;
+    border-radius: 22px;
+    border-bottom: 1px solid var(--history-line);
+  }
+  #historyArchiveDialog.history-surface .history-archive-head {
+    grid-template-columns: auto minmax(0, 1fr);
+    padding: 1rem;
+  }
+  #historyArchiveDialog.history-surface .history-view-switch { grid-column: 1 / -1; width: 100%; }
+  .history-calendar-panel { padding: 1rem; }
+}

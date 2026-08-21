@@ -820,9 +820,7 @@
 
   function render() {
     const panel = el('programSetupPanel');
-    if (!panel) return false;
     const supported = PROFILE.id === 'jorge' && ROUTINES.every(config => routineEngine.hasRoutine(config.routineType));
-    panel.hidden = !supported;
     renderPlanOverview();
     renderTodayPlan();
     if (!supported) return false;
@@ -830,12 +828,6 @@
     const activeVersion = stored.programVersions.find(version => version.programVersionId === stored.activeProgramVersionId) || null;
     const latestProgram = stored.programs.find(program => program.purposeKey === 'canonical-program');
     const latestVersion = latestProgram ? stored.programVersions.find(version => version.programVersionId === latestProgram.latestVersionId) : null;
-    el('programSetupHeadline').textContent = activeVersion?.name || latestVersion?.name || 'Open Program setup in Plan';
-    el('programSetupDetail').textContent = activeVersion
-      ? `Active Program v${activeVersion.versionNumber} · view the route, Goals, and analysis in Plan`
-      : latestVersion ? `Draft Program v${latestVersion.versionNumber} · continue review in Plan`
-        : 'Build and approve sessions, then review the whole rolling cycle.';
-    el('programSetupStatus').textContent = `Shortcut · ${stored.routineVersions.length} approved Routine version${stored.routineVersions.length === 1 ? '' : 's'} · local-only`;
     const analyzedVersion = activeVersion || latestVersion;
     const analyzedProgram = analyzedVersion ? stored.programs.find(program => program.programId === analyzedVersion.programId) || latestProgram : null;
     const analyzerWasVisible = !el('programAnalyzerPanel')?.hidden;

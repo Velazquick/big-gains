@@ -2,7 +2,9 @@
 
 The Playwright harness serves the static PWA from `index.html` without rewriting it, so production scripts execute in their declared order.
 
-The current baseline is 431 passing Chromium tests across 51 files with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
+The current baseline is 443 passing Chromium tests across 54 files with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
+
+V91 coverage in `tests/history-plan-nav-migration.spec.js` freezes the five persistent destinations as Today, Plan, Train, Progress, and Library; verifies that Calendar is absent from persistent navigation; and keeps Plan's v90 landing as the promoted destination. It verifies Progress-owned History defaults to List, exposes the same workout through List and Calendar, returns detail to its originating view, safely resolves legacy History/Calendar deep links, preserves keyboard switching, remains profile- and schema-v5-safe, leaves active Train state untouched, and works from the installed offline shell. Existing History edit/delete, Calendar browsing, Today/Goals/Program links, Program Setup/Analyzer, Progress, Exercise Picker, EKF/catalog, storage/profile-isolation, and service-worker suites remain the compatibility contract.
 
 V88 coverage in `tests/exercise-picker.spec.js` freezes exact canonical add/replace behavior, Program approval invalidation, duplicate exclusion, labeled suggestions, true A–Z ordering, trusted-alias search, composable muscle/equipment filters, EKF measurement labels, current-profile Recent isolation, strict strength-Goal eligibility, focus/Escape/Back behavior, offline catalog use, and the existing retrospective save authority. Existing Program-1A, Goal, Routine, Library, Train, History/Progress, profile/storage, catalog/EKF, harness, and offline suites remain the compatibility contract.
 
@@ -28,7 +30,7 @@ npm test
 npx playwright test --workers=1
 ```
 
-Both modes must pass all 431 browser tests with no expected failures. In command-limited environments, use deterministic shards that together cover the complete collection for both normal and `--workers=1` runs.
+Both modes must pass all 443 browser tests with no expected failures. In command-limited environments, use deterministic shards that together cover the complete collection for both normal and `--workers=1` runs.
 
 V69 coverage in `tests/timer-reliability-visibility.spec.js` and `tests/workout-mode.spec.js` verifies that an inactive rest has no visible timer, Skip hides immediately, READY hides after its existing three-second feedback window, and the next qualifying set starts a fresh visible countdown. It also freezes the visually hidden but accessible sound-toggle status, the bottom Add Exercise action's existing Library/session-controller flow, and its separate 44px-or-larger mobile touch target. Existing timer characterization, workout/session ownership, mobile presentation, retrospective, profile isolation, local-first cloud failure, and offline suites remain the compatibility contract.
 

@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { activeWorkout, blankState, completedWorkout, installLocalStorageFixture, STORAGE_KEYS } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
+import { openHistoryCalendar } from './helpers/history.js';
 
 test.use({ timezoneId: 'America/New_York' });
 
@@ -20,7 +21,7 @@ async function seedCalendar(page, { active = null, alexa = false } = {}) {
 
 test('calendar navigates months, marks today, handles empty days, and remembers selection on reload', async ({ page }) => {
   await seedCalendar(page); await openApp(page);
-  await page.locator('.bottom-nav [data-view="calendar"]').click();
+  await openHistoryCalendar(page);
   await expect(page.locator('#calendarMonthHeading')).toContainText('August 2026');
   await expect(page.locator('.calendar-date[aria-current="date"]')).toHaveCount(1);
   await page.locator('[data-calendar-date="2026-08-04"]').click();
@@ -28,14 +29,14 @@ test('calendar navigates months, marks today, handles empty days, and remembers 
   await page.locator('[data-calendar-date="2026-08-06"]').click();
   await expect(page.locator('#calendarDayWorkouts')).toHaveText('No training logged');
   await page.reload();
-  await page.locator('.bottom-nav [data-view="calendar"]').click();
+  await openHistoryCalendar(page);
   await expect(page.locator('[data-calendar-date="2026-08-06"]')).toHaveAttribute('aria-selected', 'true');
   await page.locator('#calendarPrevious').click(); await expect(page.locator('#calendarMonthHeading')).toContainText('July 2026');
   await page.locator('#calendarToday').click(); await expect(page.locator('#calendarMonthHeading')).toContainText('August 2026');
 });
 
 test('selected-day summaries are accurate and reuse history detail', async ({ page }) => {
-  await seedCalendar(page); await openApp(page); await page.locator('.bottom-nav [data-view="calendar"]').click();
+  await seedCalendar(page); await openApp(page); await openHistoryCalendar(page);
   await page.locator('[data-calendar-date="2026-08-04"]').click();
   const lateWorkout = page.locator('#calendarDayWorkouts [data-history-id="late-workout"]');
   await expect(lateWorkout).toContainText('30:00');
@@ -49,16 +50,16 @@ test('selected-day summaries are accurate and reuse history detail', async ({ pa
 test('active workout return bar survives calendar navigation and profiles remain isolated', async ({ page }) => {
   await seedCalendar(page, { active: activeWorkout() }); await openApp(page);
   await page.locator('#exitWorkoutMode').click();
-  await page.locator('.bottom-nav [data-view="calendar"]').click();
+  await openHistoryCalendar(page);
   await expect(page.locator('#workoutReturnBar')).toBeVisible();
   await page.locator('#profileSelect').selectOption('alexa');
-  await page.locator('.bottom-nav [data-view="calendar"]').click();
+  await openHistoryCalendar(page);
   await expect(page.locator('#calendarDayWorkouts')).toHaveText('No training logged');
 });
 
 test('calendar remains available from the offline app shell', async ({ page, context }) => {
   await installLocalStorageFixture(page, 'completedWorkouts'); await openApp(page);
   await page.evaluate(() => navigator.serviceWorker.ready); await context.setOffline(true); await page.reload();
-  await page.locator('.bottom-nav [data-view="calendar"]').click();
+  await openHistoryCalendar(page);
   await expect(page.locator('#trainingCalendar')).toBeVisible();
 });
