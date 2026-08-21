@@ -2,10 +2,10 @@ import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
 
-const CURRENT_RELEASE = 'v87-program-1a-canonical-routine-capture';
+const CURRENT_RELEASE = 'v88-exercise-picker-library-ux-v2';
 const CURRENT_CONFIG_VERSION = 'config-ab51ee79cd36825d';
 const CURRENT_CACHE = `big-gains-shell-${CURRENT_RELEASE}-${CURRENT_CONFIG_VERSION}`;
-const PREVIOUS_CACHE = 'big-gains-shell-v82-ekf3-curated-catalog-config-ab51ee79cd36825d';
+const PREVIOUS_CACHE = 'big-gains-shell-v87-program-1a-canonical-routine-capture-config-ab51ee79cd36825d';
 const PREVIOUS_CONFIG_CACHE = `big-gains-shell-${CURRENT_RELEASE}-config-0000000000000000`;
 
 async function waitForServiceWorker(page) {
@@ -40,6 +40,8 @@ test('first install precaches one complete, revision-consistent app shell', asyn
   expect(state.cacheNames).toContain(CURRENT_CACHE);
   expect(state.cachedUrls).toEqual(state.expectedUrls);
   expect(state.cachedUrls).toContain(new URL(`/exercise-catalog.js?v=${CURRENT_RELEASE}`, page.url()).href);
+  expect(state.cachedUrls).toContain(new URL(`/exercise-picker.js?v=${CURRENT_RELEASE}`, page.url()).href);
+  expect(state.cachedUrls).toContain(new URL(`/exercise-picker.css?v=${CURRENT_RELEASE}`, page.url()).href);
   expect(state.cachedUrls).toContain(new URL(`/routine-engine.js?v=${CURRENT_RELEASE}`, page.url()).href);
   expect(state.cachedUrls).toContain(new URL(`/workout-session-controller.js?v=${CURRENT_RELEASE}`, page.url()).href);
   expect(state.cachedUrls).toContain(new URL(`/timer-controller.js?v=${CURRENT_RELEASE}`, page.url()).href);

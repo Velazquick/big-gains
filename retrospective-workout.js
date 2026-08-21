@@ -8,6 +8,7 @@
   function create(context) {
     let draft = null;
     let saving = false;
+    let compatibilityAddId = null;
 
     function selectedDateKey() {
       return draft?.dateKey || context.getSelectedDateKey();
@@ -124,6 +125,43 @@
         .sort((left, right) => left.name.localeCompare(right.name));
     }
 
+    function applyDefinition(exercise, definition) {
+      if (!exercise || !definition) return false;
+      exercise.definitionId = definition.id;
+      exercise.name = definition.name;
+      exercise.muscle = definition.muscle;
+      exercise.equipment = definition.equipment;
+      delete exercise.targetReps;
+      delete exercise.targetWorkingSets;
+      return true;
+    }
+
+    function openExercisePicker(exerciseIndex = null) {
+      if (!context.picker || !draft) return false;
+      const current = exerciseIndex === null ? null : definitionFor(draft.exercises[exerciseIndex]);
+      const allowed = exerciseIndex === null ? exerciseOptions() : exerciseDefinitionOptions(draft.exercises[exerciseIndex], exerciseIndex);
+      const allowedIds = new Set(allowed.map(exercise => exercise.canonicalId));
+      const suggested = allowed.filter(exercise => exercise.day === draft.type).slice(0, 10).map(exercise => exercise.canonicalId);
+      return context.picker.open({
+        title: exerciseIndex === null ? 'Add exercise to completed workout' : 'Replace completed-workout exercise',
+        prompt: 'This keeps the existing completed-history edit boundary and changes nothing until the workout is saved.',
+        currentExerciseId: current?.canonicalId,
+        eligibilityPredicate: exercise => allowedIds.has(exercise.canonicalId),
+        suggestionIds: suggested,
+        suggestionLabel: `Suggested for ${context.workoutLabel(draft.type)}`,
+        returnFocus: () => exerciseIndex === null
+          ? $('retrospectiveAddExercise')
+          : document.querySelector(`[data-retro-choose="${exerciseIndex}"]`),
+        onSelect: canonicalId => {
+          const definition = context.exercises.find(exercise => exercise.canonicalId === canonicalId);
+          if (!definition) return;
+          if (exerciseIndex === null) draft.exercises.push(createExercise(definition, draft.type));
+          else applyDefinition(draft.exercises[exerciseIndex], definition);
+          render();
+        }
+      });
+    }
+
     function setLabel(exercise, set) {
       if (set.warmup) return 'Warm-up';
       return `Working set ${exercise.sets.filter(item => !item.warmup).indexOf(set) + 1}`;
@@ -148,7 +186,7 @@
         <button type="button" class="ghost compact" data-retro-remove-set="${setIndex}" data-ei="${exerciseIndex}" aria-label="Remove ${context.escapeHtml(setLabel(exercise, set))}">Remove</button>
       </div>`).join('');
       const currentDefinition = definitionFor(exercise);
-      const definitionEditor = draft.mode === 'edit' ? `<label class="retrospective-exercise-choice"><span>Exercise</span><select data-retro-exercise-definition="${exerciseIndex}" aria-label="Exercise">${exerciseDefinitionOptions(exercise, exerciseIndex).map(definition => `<option value="${definition.id}" ${definition.id === currentDefinition?.id ? 'selected' : ''}>${context.escapeHtml(definition.name)} — ${context.escapeHtml(definition.equipment)}</option>`).join('')}</select></label>` : '';
+      const definitionEditor = draft.mode === 'edit' ? `<label class="retrospective-exercise-choice"><span>Exercise</span><button type="button" class="exercise-picker-trigger" data-retro-choose="${exerciseIndex}"><span>${context.escapeHtml(currentDefinition?.name || exercise.name)} — ${context.escapeHtml(currentDefinition?.equipment || exercise.equipment)}</span><small>Replace</small></button><select class="exercise-picker-compat" data-retro-exercise-definition="${exerciseIndex}" aria-hidden="true" tabindex="-1">${exerciseDefinitionOptions(exercise, exerciseIndex).map(definition => `<option value="${definition.id}" ${definition.id === currentDefinition?.id ? 'selected' : ''}>${context.escapeHtml(definition.name)} — ${context.escapeHtml(definition.equipment)}</option>`).join('')}</select></label>` : '';
       return `<article class="active-exercise retrospective-exercise" data-retro-exercise="${exerciseIndex}">
         <div class="exercise-head"><div><span class="exercise-muscle">${context.escapeHtml(exercise.muscle)}</span><h3>${context.escapeHtml(exercise.name)}</h3><p>${context.escapeHtml(exercise.equipment)} · ${context.escapeHtml(inputFields.map(field => field.label).join(' + '))}${bodyweight ? ' · Log only added load' : ''}${exercise.targetReps ? ` · Target ${context.escapeHtml(exercise.targetReps)}` : ''}</p></div>
         <div class="exercise-head-actions"><div class="exercise-order"><button type="button" data-retro-move="up" data-ei="${exerciseIndex}" ${exerciseIndex === 0 ? 'disabled' : ''} aria-label="Move ${context.escapeHtml(exercise.name)} up">↑</button><button type="button" data-retro-move="down" data-ei="${exerciseIndex}" ${exerciseIndex === draft.exercises.length - 1 ? 'disabled' : ''} aria-label="Move ${context.escapeHtml(exercise.name)} down">↓</button></div><button type="button" class="remove-exercise" data-retro-remove-exercise="${exerciseIndex}" aria-label="Remove ${context.escapeHtml(exercise.name)}">✕</button></div></div>
@@ -369,8 +407,11 @@
       $('retrospectiveWorkoutType').addEventListener('change', event => { draft.type = event.target.value; render(); });
       $('retrospectiveLoadRoutine').addEventListener('click', () => loadRoutine());
       $('retrospectiveBlankWorkout').addEventListener('click', blankWorkout);
+      $('retrospectiveExerciseSelect').addEventListener('change', event => { compatibilityAddId = event.target.value; });
       $('retrospectiveAddExercise').addEventListener('click', () => {
-        const definition = context.exercises.find(exercise => exercise.id === $('retrospectiveExerciseSelect').value);
+        if (!compatibilityAddId) return openExercisePicker();
+        const definition = context.exercises.find(exercise => exercise.id === compatibilityAddId);
+        compatibilityAddId = null;
         if (definition) { draft.exercises.push(createExercise(definition, draft.type)); render(); }
       });
       $('retrospectiveCompletionTime').addEventListener('input', event => { if (draft) draft.completionTime = event.target.value; });
@@ -382,12 +423,7 @@
         const exercise = draft.exercises[Number(event.target.dataset.retroExerciseDefinition)];
         const definition = context.exercises.find(item => item.id === event.target.value);
         if (!exercise || !definition) return;
-        exercise.definitionId = definition.id;
-        exercise.name = definition.name;
-        exercise.muscle = definition.muscle;
-        exercise.equipment = definition.equipment;
-        delete exercise.targetReps;
-        delete exercise.targetWorkingSets;
+        applyDefinition(exercise, definition);
         render();
       });
       $('retrospectiveExercises').addEventListener('input', event => {
@@ -406,6 +442,7 @@
         if (!draft) return;
         const button = event.target.closest('button');
         if (!button) return;
+        if (button.dataset.retroChoose !== undefined) return openExercisePicker(Number(button.dataset.retroChoose));
         const exerciseIndex = Number(button.dataset.ei ?? button.dataset.retroAddSet ?? button.dataset.retroRemoveExercise);
         if (button.dataset.retroMove) {
           const target = button.dataset.retroMove === 'up' ? exerciseIndex - 1 : exerciseIndex + 1;

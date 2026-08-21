@@ -41,10 +41,6 @@
       setTimeout(() => showView('train'), 0);
     });
 
-    document.getElementById('addSelectedExercise')?.addEventListener('click', () => {
-      setTimeout(() => showView('train'), 0);
-    });
-
     document.getElementById('finishWorkout')?.addEventListener('click', () => {
       setTimeout(() => {
         const completion = document.getElementById('workoutCompletion');

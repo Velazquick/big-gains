@@ -148,6 +148,8 @@ The proposed boundary separates `estimated_reached` (eligible fresh e1RM evidenc
 
 The current five-destination shell remains unchanged. A contextual strength-goal summary card on Today opens the standalone Goals hub; no sixth persistent bottom-navigation destination is added. The view-shell boundary can promote Goals into primary navigation later without changing the goal model. Goals remains destination-first (`Where am I going?`) while Progress remains evidence-first (`How am I doing?`).
 
+The documentation-only [Product IA / Navigation Map v1](PRODUCT_IA_V1.md) defines the target product model without changing this released shell: `Today / Plan / Train / Progress / Library`, with Goals and Program connected under Plan and completed-workout Calendar consolidated into Progress/History. Conceptual destination and persistent-tab placement remain separate during migration. Goal, Program, Routine version, Workout/History, and derived Progress ownership remain unchanged.
+
 The future boundary keeps six responsibilities separate: goal destination, deterministic progression policy, saved routine structure, today's editable Train recommendation, completed workout facts, and derived Progress evidence. Routine membership/set/rep structure remains authoritative for automatic card construction; an enabled and eligible goal may only overlay a compatible recommendation. It may never silently mutate a routine, an active session, or completed history. EKF measurement/e1RM gates, local-first persistence, schema v5, the existing goals preference identity, profile/RLS isolation, and conservative unavailability remain authoritative.
 
 ### Program Foundation v1 and Program-1A boundary

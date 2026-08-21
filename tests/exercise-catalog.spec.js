@@ -341,14 +341,17 @@ test('Jorge stays day-filtered while Alexa retains the full managed library', as
   await openApp(page);
   await page.locator('.bottom-nav [data-view="library"]').click();
 
-  const jorgeIds = await page.locator('#exerciseLibrary [data-add]').evaluateAll(buttons => buttons.map(button => button.dataset.add));
-  expect(jorgeIds.filter(id => V64_CANONICAL_IDS.includes(id))).toEqual(JORGE_PUSH_IDS);
+  const jorgeRows = await page.locator('#exerciseLibrary .exercise-card').evaluateAll(cards => cards.map(card => ({ id: card.querySelector('[data-add]').dataset.add, name: card.querySelector('h3').textContent })));
+  const jorgeIds = jorgeRows.map(row => row.id);
+  expect(new Set(jorgeIds.filter(id => V64_CANONICAL_IDS.includes(id)))).toEqual(new Set(JORGE_PUSH_IDS));
+  expect(jorgeRows.map(row => row.name)).toEqual(jorgeRows.map(row => row.name).sort((left, right) => left.localeCompare(right, 'en', { numeric: true, sensitivity: 'base' })));
   expect(jorgeIds).toEqual(expect.arrayContaining(['cable-chest-press', 'dip-machine', 'machine-lateral-raise']));
 
   await Promise.all([page.waitForNavigation(), page.locator('#profileSelect').selectOption('alexa')]);
   await page.locator('.bottom-nav [data-view="library"]').click();
-  const alexaIds = await page.locator('#exerciseLibrary [data-add]').evaluateAll(buttons => buttons.map(button => button.dataset.add));
-  expect(alexaIds).toEqual(ALL_CANONICAL_IDS);
+  const alexaRows = await page.locator('#exerciseLibrary .exercise-card').evaluateAll(cards => cards.map(card => ({ id: card.querySelector('[data-add]').dataset.add, name: card.querySelector('h3').textContent })));
+  expect(new Set(alexaRows.map(row => row.id))).toEqual(new Set(ALL_CANONICAL_IDS));
+  expect(alexaRows.map(row => row.name)).toEqual(alexaRows.map(row => row.name).sort((left, right) => left.localeCompare(right, 'en', { numeric: true, sensitivity: 'base' })));
 });
 
 test('SZW retains the full library and every six-day routine entry resolves canonically', async ({ page }) => {
@@ -361,12 +364,14 @@ test('SZW retains the full library and every six-day routine entry resolves cano
     const catalog = window.BigGainsExerciseCatalog;
     return {
       ids: [...document.querySelectorAll('#exerciseLibrary [data-add]')].map(button => button.dataset.add),
+      names: [...document.querySelectorAll('#exerciseLibrary h3')].map(heading => heading.textContent),
       routineIds: Object.fromEntries(PROFILE.libraryRoutineTypes.map(type => [type, routineFor(type)])),
       unresolved: PROFILE.libraryRoutineTypes.flatMap(type => routineFor(type)).filter(id => !catalog.getById(id))
     };
   });
 
-  expect(result.ids).toEqual(ALL_CANONICAL_IDS);
+  expect(new Set(result.ids)).toEqual(new Set(ALL_CANONICAL_IDS));
+  expect(result.names).toEqual(result.names.slice().sort((left, right) => left.localeCompare(right, 'en', { numeric: true, sensitivity: 'base' })));
   expect(Object.keys(result.routineIds)).toEqual(['SzwPush1', 'SzwPull1', 'SzwLegs1', 'SzwPush2', 'SzwPull2', 'SzwLegs2']);
   expect(result.unresolved).toEqual([]);
 });
