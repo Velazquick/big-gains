@@ -227,6 +227,10 @@
             <span><span class="label">Program setup · review only</span><strong id="programSetupHeadline">Capture your canonical Program v1</strong><p id="programSetupDetail">Review Push, Pull, and Legs/Core before anything becomes canonical.</p><small id="programSetupStatus">Local-only</small></span><span aria-hidden="true">→</span>
           </button>
         </section>
+        <section class="panel program-analyzer" id="programAnalyzerPanel" aria-labelledby="programAnalyzerTitle" hidden>
+          <div class="section-heading program-analyzer-heading"><div><span class="label">Program Analyzer · structural facts</span><h2 id="programAnalyzerTitle">What this Program contains</h2><p>Deterministic analysis of the exact pinned Routine versions. No coaching or automatic changes.</p></div><span id="programAnalyzerStatus" class="program-analyzer-status">Recomputed locally</span></div>
+          <div id="programAnalyzerContent"></div>
+        </section>
         <section class="panel workout-builder" id="workoutPanel">
           <div class="section-heading"><div><span class="label">Workout builder</span><h2>Choose your workout</h2></div></div>
           <div class="day-tabs" id="dayTabs" role="tablist"><button data-day="Push" type="button">Push</button><button data-day="Pull" type="button">Pull</button><button data-day="Legs" type="button">Legs</button><button data-day="Core" type="button">Core</button><button data-day="FullBody" type="button">Full Body</button><button data-day="Cardio" type="button">Conditioning</button><button data-day="Other" type="button">Other</button></div>
@@ -298,7 +302,7 @@
   </div></dialog>
 
   <dialog id="exercisePickerDialog" class="exercise-picker-dialog" aria-labelledby="exercisePickerTitle" aria-describedby="exercisePickerPrompt"><div class="exercise-picker-shell"><header class="exercise-picker-head"><div><span class="label">Exercise Library</span><h2 id="exercisePickerTitle">Choose an exercise</h2><p id="exercisePickerPrompt">Search the local exercise catalog.</p></div><button id="closeExercisePicker" class="ghost compact" type="button" aria-label="Cancel exercise selection">Cancel</button></header><div class="exercise-picker-controls"><label class="exercise-picker-search"><span>Search exercises</span><input id="exercisePickerSearch" type="search" placeholder="Name, alias, muscle, or equipment" autocomplete="off" enterkeyhint="search"></label><div class="exercise-picker-filter-row"><label class="exercise-picker-filter"><span>Muscle</span><select id="exercisePickerMuscle" aria-label="Filter exercises by muscle"></select></label><label class="exercise-picker-filter"><span>Equipment</span><select id="exercisePickerEquipment" aria-label="Filter exercises by equipment"></select></label><button id="exercisePickerClearFilters" class="ghost compact" type="button" hidden>Clear</button></div></div><div id="exercisePickerResults" class="exercise-picker-results" aria-live="polite"></div></div></dialog>
-  <script src="asset-manifest.js?v=v88-exercise-picker-library-ux-v2-config-ab51ee79cd36825d" data-big-gains-manifest></script>
+  <script src="asset-manifest.js?v=v89-program-1b-deterministic-analyzer-config-ab51ee79cd36825d" data-big-gains-manifest></script>
   <script src="asset-loader.js"></script>
 </body>
 </html>

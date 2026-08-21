@@ -436,6 +436,83 @@
     wizard = null;
   }
 
+  const countLabel = (count, singular, plural = `${singular}s`) => `${count} ${count === 1 ? singular : plural}`;
+  const weekdayLabel = weekday => WEEKDAYS[weekday] || 'Unknown day';
+  const repLabel = target => target.kind === 'unavailable' ? 'Rep target unavailable'
+    : target.min === target.max ? `${target.min} reps` : `${target.min}–${target.max} reps`;
+  const restLabel = target => target.restSeconds == null ? 'Rest unavailable' : `${target.restSeconds} sec rest`;
+  const spacingLabel = distances => !Array.isArray(distances) || !distances.length
+    ? 'Not repeated in this cycle'
+    : distances.every(distance => distance === distances[0])
+      ? `${distances[0]} ${distances[0] === 1 ? 'session' : 'sessions'} apart`
+      : `${distances.join(' / ')} sessions apart`;
+
+  function analyzerList(items, emptyCopy, markup) {
+    return items.length ? `<ul class="program-analyzer-list">${items.map(markup).join('')}</ul>` : `<p class="program-analyzer-empty">${escapeHtml(emptyCopy)}</p>`;
+  }
+
+  function renderAnalyzer(stored, programVersion, programRecord) {
+    const panel = el('programAnalyzerPanel');
+    const content = el('programAnalyzerContent');
+    if (!panel || !content) return;
+    if (!programVersion || !window.BigGainsProgramAnalyzer) {
+      panel.hidden = true;
+      content.innerHTML = '';
+      return;
+    }
+    const analysis = window.BigGainsProgramAnalyzer.analyze({
+      programVersion,
+      routineVersions: stored.routineVersions,
+      catalog: exerciseCatalog,
+      goals: state.goals?.strengthGoals || [],
+      options: {
+        programStatus: programRecord?.status || 'draft',
+        sequenceState: stored.sequenceState
+      }
+    });
+    panel.hidden = false;
+    el('programAnalyzerStatus').textContent = `Program v${programVersion.versionNumber} · recomputed locally`;
+    if (analysis.status !== 'available') {
+      content.innerHTML = `<div class="program-analyzer-error"><strong>Analysis unavailable</strong><p>The Program structure did not pass deterministic validation.</p>${analyzerList(analysis.errors, 'No error details are available.', item => `<li><code>${escapeHtml(item.code)}</code><small>${escapeHtml(item.path)}</small></li>`)}</div>`;
+      return;
+    }
+    const topology = analysis.topology;
+    const calendarCopy = topology.preferredCalendar.availability === 'reliable'
+      ? topology.preferredCalendar.anchors.map(anchor => `${anchor.position} · ${weekdayLabel(anchor.weekday)}`).join(' · ')
+      : topology.preferredCalendar.availability === 'unavailable' ? 'No preferred calendar anchors' : 'Preferred anchors are partial or unavailable';
+    const goalMarkup = item => `<li class="program-analyzer-goal" data-program-goal-state="${escapeHtml(item.representation)}"><div><strong>${escapeHtml(item.name || 'Linked Goal unavailable')}</strong><span>${item.representation === 'represented' ? `${countLabel(item.exposuresPerCycle, 'exposure')} / cycle · ${countLabel(item.workingSetsPerCycle, 'working set')}` : item.representation === 'not_represented' ? 'Not represented in this Program' : item.representation === 'inactive_goal' ? 'Goal is not active' : 'Goal reference unavailable'}</span>${item.representation === 'represented' ? `<small>${escapeHtml(spacingLabel(item.slotDistances))}</small>` : ''}</div>${item.lifecycle !== 'unavailable' ? `<button type="button" class="ghost compact" data-program-open-goal="${escapeHtml(item.goalId)}">Open Goal</button>` : ''}</li>`;
+    const repTargets = analysis.prescriptionSummary.repTargets.map(target => `<li><strong>${escapeHtml(repLabel(target))}</strong><span>${countLabel(target.exposures, 'exposure')} · ${countLabel(target.workingSets, 'working set')}</span></li>`).join('');
+    const restTargets = analysis.prescriptionSummary.restSeconds.map(target => `<li><strong>${escapeHtml(restLabel(target))}</strong><span>${countLabel(target.exposures, 'exposure')} · ${countLabel(target.workingSets, 'working set')}</span></li>`).join('');
+    const progress = analysis.blockContext.progress;
+    const boundary = analysis.blockContext.definition;
+    const boundaryLabel = boundary.boundaryKind === 'completed_cycles' ? `${boundary.boundaryValue} completed cycles`
+      : boundary.boundaryKind === 'weeks' ? `${boundary.boundaryValue} weeks` : `Review on ${boundary.boundaryValue}`;
+    content.innerHTML = `<div class="program-analyzer-grid">
+      <section class="program-analyzer-section" aria-labelledby="programAnalyzerStructure"><h3 id="programAnalyzerStructure">Program structure</h3><dl class="program-analyzer-facts"><div><dt>Cycle</dt><dd>${countLabel(topology.totalSlotsPerCycle, 'slot')}</dd></div><div><dt>Pinned routines</dt><dd>${topology.uniqueRoutineVersionsUsed} unique</dd></div><div><dt>Cadence</dt><dd>Rolling after each completed session</dd></div></dl><ol class="program-analyzer-sequence">${topology.rollingSequence.map(slot => `<li><span>${slot.position}</span><strong>${escapeHtml(slot.label)}</strong><small>Routine ${escapeHtml(slot.routineVersionId)}</small></li>`).join('')}</ol><p class="program-analyzer-context"><strong>Preferred calendar</strong><span>${escapeHtml(calendarCopy)}</span></p></section>
+      <section class="program-analyzer-section" aria-labelledby="programAnalyzerExercises"><h3 id="programAnalyzerExercises">Exercise exposure</h3>${analyzerList(analysis.exerciseExposure, 'No exercises are represented.', item => `<li><strong>${escapeHtml(item.name)}</strong><span>${countLabel(item.exposuresPerCycle, 'exposure')} / cycle · ${countLabel(item.workingSetsPerCycle, 'working set')}</span><small>Slots ${item.slots.map(slot => slot.position).join(', ')} · ${escapeHtml(item.repTargets.map(repLabel).join(' · '))}</small></li>`)}</section>
+      <section class="program-analyzer-section" aria-labelledby="programAnalyzerGoals"><h3 id="programAnalyzerGoals">Goal support</h3>${analyzerList(analysis.goalExposure, 'No active linked Goals for this Program version.', goalMarkup)}</section>
+      <section class="program-analyzer-section" aria-labelledby="programAnalyzerMuscles"><h3 id="programAnalyzerMuscles">Muscle exposure</h3><h4>Primary role sets</h4>${analyzerList(analysis.muscleExposure.primary, 'Primary taxonomy unavailable.', item => `<li><strong>${escapeHtml(item.name)}</strong><span>${countLabel(item.workingSets, 'primary set')} / cycle</span><small>${item.slotsExposed} of ${topology.totalSlotsPerCycle} slots · ${escapeHtml(item.contributingExercises.map(exercise => exercise.name).join(', '))}</small></li>`)}<h4>Secondary role sets</h4>${analyzerList(analysis.muscleExposure.secondary, 'No secondary roles are captured.', item => `<li><strong>${escapeHtml(item.name)}</strong><span>${countLabel(item.workingSets, 'secondary set')} / cycle</span><small>${item.slotsExposed} of ${topology.totalSlotsPerCycle} slots · ${escapeHtml(item.contributingExercises.map(exercise => exercise.name).join(', '))}</small></li>`)}${analysis.muscleExposure.unknown.length ? `<p class="program-analyzer-context"><strong>Unknown muscle taxonomy</strong><span>${escapeHtml(analysis.muscleExposure.unknown.map(item => item.name).join(', '))}</span></p>` : ''}<h4>Movement patterns</h4>${analyzerList(analysis.movementExposure, 'Movement taxonomy unavailable.', item => `<li><strong>${escapeHtml(item.name === 'unknown' ? 'Unknown pattern' : item.name)}</strong><span>${countLabel(item.workingSets, 'set')} / cycle</span><small>${escapeHtml(item.contributingExercises.map(exercise => exercise.name).join(', '))}</small></li>`)}</section>
+      <section class="program-analyzer-section" aria-labelledby="programAnalyzerPrescription"><h3 id="programAnalyzerPrescription">Rep / prescription summary</h3><p class="program-analyzer-context"><strong>Raw normalized targets</strong><span>No physiological categories are inferred.</span></p><div class="program-analyzer-prescriptions"><div><h4>Rep targets</h4><ul class="program-analyzer-list">${repTargets}</ul></div><div><h4>Rest prescriptions</h4><ul class="program-analyzer-list">${restTargets}</ul></div></div></section>
+      <section class="program-analyzer-section" aria-labelledby="programAnalyzerSpacing"><h3 id="programAnalyzerSpacing">Session spacing</h3>${analyzerList(analysis.sessionSpacing, 'No exercise spacing is available.', item => `<li><strong>${escapeHtml(item.name)} spacing</strong><span>${escapeHtml(spacingLabel(item.slotDistances))}</span><small>Rolling positions ${item.slotPositions.join(', ')}${item.nominalCalendarDayGaps ? ` · nominal day gaps ${item.nominalCalendarDayGaps.join(', ')}` : ''}</small></li>`)}</section>
+      <section class="program-analyzer-section" aria-labelledby="programAnalyzerBlock"><h3 id="programAnalyzerBlock">Block context</h3><dl class="program-analyzer-facts"><div><dt>Review boundary</dt><dd>${escapeHtml(boundaryLabel)}</dd></div><div><dt>Starts on</dt><dd>${escapeHtml(analysis.blockContext.versionStart.startsOn)}</dd></div><div><dt>Program state</dt><dd>${escapeHtml(analysis.blockContext.programStatus)}</dd></div>${progress.availability === 'available' ? `<div><dt>Completed cycles</dt><dd>${progress.completedCycles}</dd></div><div><dt>Next slot</dt><dd>${progress.nextSlotPosition} of ${topology.totalSlotsPerCycle}</dd></div><div><dt>Slots remaining</dt><dd>${progress.remainingSlotsInCurrentCycle} this cycle</dd></div>` : '<div><dt>Current progress</dt><dd>Explicit sequence progress unavailable</dd></div>'}</dl></section>
+    </div>`;
+  }
+
+  function openGoalReference(goalId) {
+    if (!goalId || !window.bigGainsViewShell?.showView) return false;
+    window.bigGainsViewShell.showView('goals', { workout: false });
+    requestAnimationFrame(() => {
+      const card = document.querySelector(`.goal-card[data-goal-id="${CSS.escape(goalId)}"]`);
+      if (!card) return;
+      card.classList.add('is-program-linked');
+      card.setAttribute('tabindex', '-1');
+      card.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      card.focus({ preventScroll: true });
+      window.setTimeout(() => card.classList.remove('is-program-linked'), 1800);
+    });
+    return true;
+  }
+
   function render() {
     const panel = el('programSetupPanel');
     if (!panel) return false;
@@ -452,6 +529,9 @@
       : latestVersion ? `Draft Program v${latestVersion.versionNumber} · review or activate when ready`
         : 'Review Push, Pull, and Legs/Core before anything becomes canonical.';
     el('programSetupStatus').textContent = `${stored.routineVersions.length} Routine version${stored.routineVersions.length === 1 ? '' : 's'} · local-only`;
+    const analyzedVersion = activeVersion || latestVersion;
+    const analyzedProgram = analyzedVersion ? stored.programs.find(program => program.programId === analyzedVersion.programId) || latestProgram : null;
+    renderAnalyzer(stored, analyzedVersion, analyzedProgram);
     return true;
   }
 
@@ -475,10 +555,15 @@
     el('programSetupContent')?.addEventListener('input', onContentInput);
     el('programSetupContent')?.addEventListener('change', onContentChange);
     el('programSetupContent')?.addEventListener('click', onContentClick);
+    el('programAnalyzerPanel')?.addEventListener('click', event => {
+      const button = event.target.closest('[data-program-open-goal]');
+      if (button) openGoalReference(button.dataset.programOpenGoal);
+    });
     el('programSetupDialog')?.addEventListener('click', event => {
       if (event.target === el('programSetupDialog')) close();
     });
     document.addEventListener('big-gains-boot-authorized', render);
+    document.addEventListener('big-gains-goals-changed', render);
     if (!window.BigGainsBootGate || window.BigGainsBootGate.canRender()) render();
     return true;
   }

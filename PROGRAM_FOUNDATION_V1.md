@@ -5,11 +5,12 @@
 - Production baseline: `main` at `13f127e7ddd1df3ff9a706dc1e65324f13ebba1a`
 - Release marker: `v86-boot-render-profile-isolation`
 - Program-1A cache marker: `v87-program-1a-canonical-routine-capture`
-- Runtime status: **Program-1A capture/review implemented locally; Train execution, Analyzer, and Programming Engine deferred**
+- Program-1B cache marker: `v89-program-1b-deterministic-analyzer`
+- Runtime status: **Program-1A capture/review and Program-1B deterministic structural analysis implemented locally; Train execution and Programming Engine deferred**
 
 This document defines the bounded Program layer between Goals and Train. It builds on [ARCHITECTURE.md](ARCHITECTURE.md), [GOALS_V1_SPEC.md](GOALS_V1_SPEC.md), [EXERCISE_KNOWLEDGE_FOUNDATION.md](EXERCISE_KNOWLEDGE_FOUNDATION.md), and [SYNC_SEMANTICS.md](SYNC_SEMANTICS.md). It authorizes no runtime code, storage migration, Supabase change, release, or deployment.
 
-Implementation tracking: PF1-0.4 records the boundary of the original documentation unit. The separately authorized Program-1A interval implements only explicit canonical Routine review/capture and Program version pinning in profile-scoped schema-v5 local state. It adds no Supabase table/RLS/migration, cloud Program representation, Train selection authority, Analyzer, Programming Engine, automatic change, or production deployment. Coded defaults remain non-canonical until explicitly approved in the review surface.
+Implementation tracking: PF1-0.4 records the boundary of the original documentation unit. The separately authorized Program-1A interval implements explicit canonical Routine review/capture and Program version pinning in profile-scoped schema-v5 local state. Program-1B adds a pure recomputed analyzer and read-only structural-facts surface over an exact Program version, pinned Routine versions, EKF metadata, linked Goals, and optional explicit sequence progress. Neither interval adds a Supabase table/RLS/migration, cloud Program representation, Train selection authority, Programming Engine, automatic change, or production deployment. Coded defaults remain non-canonical until explicitly approved in the review surface.
 
 ## 0. Contract language and precedence
 
@@ -322,7 +323,7 @@ This is a conceptual domain contract, not approval of a storage shape or migrati
 
 ### 8.1 Deterministic Program Analyzer
 
-**PF1-8.10 — Analyzer inputs.** The future Program Analyzer MUST consume an exact Program version, all pinned Routine versions, canonical EKF exercise identities and available taxonomies, cadence data, and relevant Goal exercise identities. It MUST NOT infer Program meaning from slot or Routine labels.
+**PF1-8.10 — Analyzer inputs.** The Program Analyzer MUST consume an exact Program version, all pinned Routine versions, canonical EKF exercise identities and available taxonomies, cadence data, and relevant Goal exercise identities. It MUST NOT infer Program meaning from slot or Routine labels.
 
 **PF1-8.11 — Deterministic calculation.** Analyzer output MUST be reproducible structural calculation, not LLM inference. Identical versioned inputs and analyzer version MUST produce identical derived features.
 
@@ -337,6 +338,10 @@ This is a conceptual domain contract, not approval of a storage shape or migrati
 **PF1-8.16 — Redundancy and gaps.** The analyzer SHOULD identify duplicate/redundant exercise exposure and gaps in priority-lift placement using canonical exercise identity and declared taxonomy, not label heuristics.
 
 **PF1-8.17 — Analysis boundary.** Analyzer output is derived, versioned, non-authoritative input to the Programming Engine. It MUST NOT persist a Program change, mutate a Routine, reinterpret History, or claim that a structural feature is a personalized recommendation.
+
+Program-1B implementation: `BigGainsProgramAnalyzer.analyze({ programVersion, routineVersions, catalog, goals?, options? })` returns the immutable `big-gains.program-analysis.v1` result contract. It validates scope, exact version pins, canonical EKF identity, slot order, cadence, prescriptions, anchors, and supported Program metadata before returning any metrics. Available results separate topology, exact exercise exposure, linked-Goal representation, primary/secondary/unknown muscle roles, movement patterns including an unknown bucket, raw normalized rep/rest distributions, rolling and nominal-calendar spacing, factual volume topology, and block context. Malformed structural inputs return typed errors with all metric groups unavailable. The result is recomputed from local source state and is never persisted as Program authority.
+
+**Program Analyzer = deterministic structural facts, not coaching/recommendation.** Program-1B does not classify any exposure as too high, too low, imbalanced, optimal, or otherwise prescriptive; it does not create a proposal or successor version.
 
 ### 8.2 Programming Engine proposals
 
