@@ -1,13 +1,13 @@
 # Programming Engine v1 contract
 
-- Status: **Approved documentation-only normative contract**
+- Status: **Approved normative contract; PE-1A runtime slice implemented for release review**
 - Contract version: **`big-gains.programming-engine.v1` / `1.0.0`**
 - Production baseline: `main` at `a3a8d2cd224af891bd5a2a54c74f3c7facfea5ad`
-- Release marker: `v91-plan-nav-history-list-calendar`
-- Runtime status: **Not implemented**
+- Release marker: `v92-pe-1a-volume-neutral-exposure-redistribution` (**implementation candidate; not deployed**)
+- Runtime status: **PE-1A pure proposal generation and Plan review display implemented; proposal application deferred**
 - Maximum authority: **Review**
 
-This contract defines the first deterministic Big Gains Programming Engine boundary. It builds on [Program Foundation v1](PROGRAM_FOUNDATION_V1.md), [Product IA v1](PRODUCT_IA_V1.md), [Goals v1](GOALS_V1_SPEC.md), the [Exercise Knowledge Foundation](EXERCISE_KNOWLEDGE_FOUNDATION.md), and the production architecture in [ARCHITECTURE.md](ARCHITECTURE.md). It authorizes documentation only. It does not authorize runtime code, persistence, schema, Supabase, synchronization, production-data, release, or deployment changes.
+This contract defines the first deterministic Big Gains Programming Engine boundary. It builds on [Program Foundation v1](PROGRAM_FOUNDATION_V1.md), [Product IA v1](PRODUCT_IA_V1.md), [Goals v1](GOALS_V1_SPEC.md), the [Exercise Knowledge Foundation](EXERCISE_KNOWLEDGE_FOUNDATION.md), and the production architecture in [ARCHITECTURE.md](ARCHITECTURE.md). The original publication unit authorized documentation only. The separately authorized PE-1A implementation interval adds pure runtime evaluation and proposal display without persistence, schema, Supabase, synchronization, production-data, release, or deployment changes.
 
 The core rule is:
 
@@ -561,13 +561,17 @@ Result at approval: `unavailable`/application rejection with `STALE_BASE`. No su
 
 **PE1-14.7 — Existing behavior frozen.** Goals progression, Program Analyzer math, Train materialization, routine editing, History tools, Progress calculations, e1RM formula, profile isolation, backup, and cloud behavior remain unchanged.
 
-## 15. Remaining implementation decisions
+## 15. PE-1A implementation decisions and remaining boundary
 
-The stall constants, auxiliary A/B authority, full v1 allowlist, narrower PE-1A scope, block-continuation behavior, change caps, Review ceiling, and exact-Goal `4–6` scoping rule are approved and are no longer open questions. The remaining consequential PE-1A decisions are:
+The stall constants, auxiliary A/B authority, full v1 allowlist, narrower PE-1A scope, block-continuation behavior, change caps, Review ceiling, exact-Goal `4–6` scoping rule, and the following allocation rules are approved and implemented in the immutable `pe-1a-volume-neutral-exposure-redistribution.v1.0.0` capability package:
 
-1. **OQ-PE1-7 — Deterministic set allocation.** Select the immutable allocation rule that divides an unchanged integer total of exact-exercise cycle working sets across the new exact occurrences, including stable occurrence ordering and ties. PE1-8.38 makes this a prerequisite rather than allowing an implementation guess.
-2. **OQ-PE1-8 — Uneven total handling.** Decide the deterministic remainder rule when total cycle sets cannot be divided evenly. The rule must preserve the integer total and per-set prescription semantics; until approved, those cases are unavailable under PE1-8.39.
-3. **OQ-PE1-9 — Exposure reduction activation.** Decide whether the first observed PE-1A capability package should enable `-1` exposure and define its independent evidence trigger. PE1-8.40 defaults the first experiment to the approved `+1` stalled-exercise path, so this question does not block that initial slice.
+1. **OQ-PE1-7 resolved — Deterministic set allocation.** For `S` total cycle sets and `E` post-change exposures, `base = floor(S / E)` and `remainder = S mod E`. Allocation follows authoritative rolling Program position.
+2. **OQ-PE1-8 resolved — Uneven total handling.** The earliest `remainder` positions receive `base + 1`; all later positions receive `base`. This is a deterministic tie-breaker only. `6 → 3+3`, `7 → 4+3`, `5 → 3+2`, and `8 → 4+4`. Any result below the existing Routine minimum is `unavailable`.
+3. **OQ-PE1-9 remains parked — Exposure reduction.** PE-1A enables only `+1`. A `-1` request is typed `unavailable`; no reduction trigger exists.
+
+`BigGainsProgrammingEngine.evaluate({ programVersion, routineVersions, programAnalysis, goals, performanceEvidence, goalProgressionEvidence, catalog, options? })` is pure, deterministic, DOM-free, network-free, and persistence-free. It returns a deeply immutable `no_change | proposal | unavailable` result with policy/capability versions, deterministic digest/ID, exact version pins, Goal/exercise scope, reason trace, evidence references, stall/cycle/post-adjustment gate detail, stale guard, allocation, typed operations, successor diff payload, approval boundary, and downstream explanation payload. `checkStaleBase(...)` provides the same exact Program/Routine/Goal guard for a later application transaction.
+
+Plan renders the result on the canonical Program surface. Eligible synthetic evidence can show the complete proposal and `Approve / Reject / Later`; Approve is disabled with explicit PE-1B follow-up because the current Program model does not expose an atomic multi-Routine/Program successor transaction. Reject and Later are view-local only and persist no facts. Current production History lacks reliable Program-origin version/slot/completed-cycle metadata because Program-driven Train remains deferred, so real historical evidence fails closed with `BLOCK_PROVENANCE_UNAVAILABLE`; weekday and session labels are never used to guess cycle membership.
 
 ## 16. Research notes and sources (informative)
 

@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v91-plan-nav-history-list-calendar';
+  const release = 'v92-pe-1a-volume-neutral-exposure-redistribution';
   const cloudConfigVersion = 'config-ab51ee79cd36825d'; // BIG_GAINS_CLOUD_CONFIG_VERSION
   const deploymentVersion = `${release}-${cloudConfigVersion}`;
   const manifestAsset = `./asset-manifest.js?v=${encodeURIComponent(deploymentVersion)}`;
@@ -46,6 +46,8 @@
     './profiles.js',
     './exercise-catalog.js',
     './program-analyzer.js',
+    './programming-engine.js',
+    './programming-review.js',
     './exercise-picker.js',
     './routine-engine.js',
     './analytics.js',

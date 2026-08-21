@@ -612,6 +612,16 @@
     if (!detail || !content || !context.programVersion) return false;
     const version = context.programVersion;
     const analysis = analyzeContext(context);
+    const programmingReview = window.BigGainsProgrammingReview?.evaluateCurrent({
+      programVersion: version,
+      routineVersions: context.stored.routineVersions,
+      programAnalysis: analysis,
+      goals: state.goals?.strengthGoals || [],
+      workouts: state.workouts || [],
+      catalog: exerciseCatalog,
+      programStatus: context.programRecord?.status || context.status
+    }) || null;
+    const programmingReviewSection = window.BigGainsProgrammingReview?.markup(programmingReview, escapeHtml) || '';
     const linkedGoals = activeGoals().filter(goal => version.priorityGoalIds.includes(goal.goalId));
     const sequence = version.slots.map((slot, index) => {
       const routine = context.stored.routineVersions.find(item => item.routineVersionId === slot.routineVersionId);
@@ -626,6 +636,7 @@
     el('planProgramEyebrow').textContent = context.status === 'active' ? 'Active Program' : 'Draft Program';
     el('planProgramSubtitle').textContent = `Version ${version.versionNumber} · ${context.status === 'active' ? 'Active' : 'Draft'} · rolling cycle`;
     content.innerHTML = `<section class="panel plan-program-hero"><div class="plan-program-identity"><div><span class="plan-status ${context.status === 'active' ? 'is-active' : ''}">${context.status === 'active' ? 'Active Program' : 'Draft Program'}</span><h3>${escapeHtml(version.name)}</h3><p>Version ${version.versionNumber} · ${version.slots.length} rolling sessions · Authority ${version.programmingAuthority === 'review' ? 'Review' : 'Off'}</p></div><div class="plan-action-row"><button type="button" class="secondary" data-plan-setup>Review or create successor</button><button type="button" class="primary" data-plan-analysis>View full analysis</button></div></div>${analysisHighlights(analysis)}</section>
+      ${programmingReviewSection}
       <section class="panel plan-detail-section"><div class="plan-card-head"><div><span class="label">Rolling cycle</span><h3>Session route</h3><p>Open a session to inspect its pinned, immutable Routine prescription.</p></div></div><ol class="plan-cycle-list">${sequence}</ol></section>
       <section class="panel plan-detail-section"><div class="plan-card-head"><div><span class="label">Linked Goals</span><h3>Priority destinations</h3></div></div><div class="plan-goal-list">${goals}</div></section>
       <section class="plan-detail-grid"><article class="panel plan-detail-section"><span class="label">Block review</span><h3>${escapeHtml(boundarySummary({ boundaryKind: version.blockReviewPolicy.boundaryKind, boundaryValue: version.blockReviewPolicy.boundaryValue }))}</h3><p>This boundary prompts review only. No automatic change occurs.</p></article><article class="panel plan-detail-section"><span class="label">Authority</span><h3>${version.programmingAuthority === 'review' ? 'Review' : 'Off'}</h3><p>${version.programmingAuthority === 'review' ? 'Future proposals would still require approval.' : 'No programming proposals are authorized.'}</p></article></section>
@@ -801,6 +812,12 @@
   function handlePlanClick(event) {
     const button = event.target.closest('button');
     if (!button) return;
+    if (button.dataset.programmingDisposition) {
+      return window.BigGainsProgrammingReview?.recordDisposition(
+        button.closest('[data-programming-review-status]'),
+        button.dataset.programmingDisposition
+      );
+    }
     if (button.dataset.planSetup !== undefined) return open();
     if (button.dataset.planProgram !== undefined) return openProgramDetail({ returnView: 'plan' });
     if (button.dataset.planAnalysis !== undefined) return openProgramAnalyzer(el('planProgramDetail')?.hidden ? 'plan' : detailReturnView);
@@ -884,6 +901,19 @@
 
   window.BigGainsProgramSetup = Object.freeze({
     analyzeCurrent: () => analyzeContext(currentProgramContext()),
+    evaluateProgrammingCurrent: () => {
+      const context = currentProgramContext();
+      if (!context.programVersion) return null;
+      return window.BigGainsProgrammingReview?.evaluateCurrent({
+        programVersion: context.programVersion,
+        routineVersions: context.stored.routineVersions,
+        programAnalysis: analyzeContext(context),
+        goals: state.goals?.strengthGoals || [],
+        workouts: state.workouts || [],
+        catalog: exerciseCatalog,
+        programStatus: context.programRecord?.status || context.status
+      }) || null;
+    },
     close,
     goalSupportMarkup,
     initialize,
