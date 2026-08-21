@@ -157,8 +157,8 @@ test('mobile review flow never treats defaults as canonical and creates exact re
   await openApp(page);
   const protectedBefore = await readStoredJson(page, STORAGE_KEYS.jorge);
   await page.evaluate(() => window.bigGainsViewShell.showView('library', { workout: false }));
-  await expect(page.locator('#programSetupPanel')).toBeVisible();
-  await page.locator('#openProgramSetup').click();
+  await expect(page.locator('#programSetupPanel')).toHaveCount(0);
+  await page.locator('.bottom-nav [data-view="plan"]').click();
   await expect(page.locator('body')).toHaveAttribute('data-view', 'plan');
   await expect(page.locator('#programSetupDialog')).not.toBeVisible();
   await page.locator('[data-plan-setup]').first().click();
@@ -276,7 +276,7 @@ test('Program capture survives schema-v5 backup/reload offline while cloud shado
 
   await Promise.all([page.waitForNavigation(), page.locator('#profileSelect').selectOption('alexa')]);
   await expect(page.locator('html')).toHaveAttribute('data-profile', 'alexa');
-  await expect(page.locator('#programSetupPanel')).toBeHidden();
+  await expect(page.locator('#programSetupPanel')).toHaveCount(0);
   await expect(page.locator('#todayPlanCard')).toBeHidden();
   const alexa = await readStoredJson(page, STORAGE_KEYS.alexa);
   expect(alexa.programCapture?.routineVersions || []).toHaveLength(0);

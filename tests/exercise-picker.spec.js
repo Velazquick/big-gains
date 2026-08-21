@@ -11,7 +11,7 @@ async function openLibrary(page) {
 
 async function openProgram(page) {
   await openLibrary(page);
-  await page.locator('#openProgramSetup').click();
+  await page.locator('.bottom-nav [data-view="plan"]').click();
   await expect(page.locator('body')).toHaveAttribute('data-view', 'plan');
   await page.locator('[data-plan-setup]').first().click();
   await expect(page.locator('#programSetupDialog')).toBeVisible();

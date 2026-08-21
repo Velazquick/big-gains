@@ -215,38 +215,48 @@
       </section>
 
       <section class="view" id="viewProgress">
-        <div class="v2-page-head"><div><span class="label">Progress</span><h2>The evidence.</h2><p>Strength, consistency, bodyweight, and the sessions behind them.</p></div></div>
-        <section class="panel progress-panel" id="progressPanel">
-          <div class="section-heading"><div><span class="label">Momentum</span><h2>Exercise progress</h2></div></div>
-          <div class="progress-picker"><label class="search-box"><span>Logged movement</span><select id="progressExerciseSelect" aria-label="Choose exercise progress"></select></label><button id="openSelectedProgress" class="primary" type="button">View progress</button></div>
-          <div id="progressPreview" class="progress-preview empty">Finish a workout and your movement trends will begin here.</div>
+        <div id="progressOverviewSurface">
+          <div class="v2-page-head"><div><span class="label">Progress</span><h2>The evidence.</h2><p>Strength, consistency, bodyweight, and the sessions behind them.</p></div></div>
+          <section class="panel progress-panel" id="progressPanel">
+            <div class="section-heading"><div><span class="label">Momentum</span><h2>Exercise progress</h2></div></div>
+            <div class="progress-picker"><label class="search-box"><span>Logged movement</span><select id="progressExerciseSelect" aria-label="Choose exercise progress"></select></label><button id="openSelectedProgress" class="primary" type="button">View progress</button></div>
+            <div id="progressPreview" class="progress-preview empty">Finish a workout and your movement trends will begin here.</div>
+          </section>
+          <section class="two-column">
+            <article class="panel" id="historyPanel"><div class="section-heading"><div><span class="label">History</span><h2>Your completed training.</h2></div><button class="ghost compact" type="button" data-open-history-archive>Open History</button></div><div id="history" class="history-list empty">Your completed workouts will appear here.</div></article>
+            <article class="panel"><div class="section-heading"><div><span class="label">Body</span><h2>Weight check-in</h2></div></div><form id="weightForm" class="weight-form"><input id="bodyweight" type="number" min="0" step="0.1" inputmode="decimal" placeholder="222.0" required /><button class="secondary" type="submit">Save</button></form><div id="weightHistory" class="mini-list empty">No weigh-ins yet.</div></article>
+          </section>
+        </div>
+        <section id="historyArchiveDialog" class="history-surface" aria-labelledby="historyArchiveTitle" hidden>
+          <div class="history-archive-shell">
+            <header class="history-archive-head">
+              <button id="closeHistoryArchive" class="history-back-button" type="button" aria-label="Back to Progress">← Progress</button>
+              <div class="history-surface-title"><span class="label">Progress · factual record</span><h2 id="historyArchiveTitle" tabindex="-1">History</h2><p id="historyArchiveCount">Your completed sessions, newest first.</p></div>
+              <div class="history-view-switch" role="tablist" aria-label="History view">
+                <button id="historyListTab" type="button" role="tab" data-history-view="list" aria-selected="true" aria-controls="historyListPanel">List</button>
+                <button id="historyCalendarTab" type="button" role="tab" data-history-view="calendar" aria-selected="false" aria-controls="historyCalendarPanel" tabindex="-1">Calendar</button>
+              </div>
+            </header>
+            <section id="historyListPanel" class="history-view-panel" role="tabpanel" aria-labelledby="historyListTab">
+              <div id="historyArchiveList" class="history-archive-list"></div>
+            </section>
+            <section id="historyCalendarPanel" class="history-view-panel history-calendar-panel" role="tabpanel" aria-labelledby="historyCalendarTab" hidden>
+              <section class="panel calendar-panel" aria-labelledby="calendarMonthHeading">
+                <div class="calendar-toolbar"><button id="calendarPrevious" class="ghost compact" type="button" aria-label="Previous month">←</button><h3 id="calendarMonthHeading" aria-live="polite"></h3><button id="calendarNext" class="ghost compact" type="button" aria-label="Next month">→</button></div>
+                <button id="calendarToday" class="secondary compact" type="button">Current month</button>
+                <div class="calendar-weekdays" aria-hidden="true"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
+                <div id="trainingCalendar" class="training-calendar" role="grid" aria-labelledby="calendarMonthHeading"></div>
+              </section>
+              <section class="panel calendar-day-panel" aria-labelledby="calendarDayHeading"><div class="section-heading"><div><span class="label">Selected day</span><h2 id="calendarDayHeading">Today</h2></div><button id="logRetrospectiveWorkout" class="secondary compact" type="button">+ Log workout</button></div><div id="calendarDayWorkouts"></div></section>
+            </section>
+          </div>
         </section>
-        <section class="two-column">
-          <article class="panel" id="historyPanel"><div class="section-heading"><div><span class="label">Recent training</span><h2>Your latest sessions.</h2></div><button class="ghost compact" type="button" data-open-history-archive>View history</button></div><div id="history" class="history-list empty">Your completed workouts will appear here.</div></article>
-          <article class="panel"><div class="section-heading"><div><span class="label">Body</span><h2>Weight check-in</h2></div></div><form id="weightForm" class="weight-form"><input id="bodyweight" type="number" min="0" step="0.1" inputmode="decimal" placeholder="222.0" required /><button class="secondary" type="submit">Save</button></form><div id="weightHistory" class="mini-list empty">No weigh-ins yet.</div></article>
-        </section>
-      </section>
-
-      <section class="view" id="viewCalendar">
-        <div class="v2-page-head"><div><span class="label">Calendar</span><h2>Training, by day.</h2><p>A quiet record of the work already done.</p></div></div>
-        <section class="panel calendar-panel" aria-labelledby="calendarMonthHeading">
-          <div class="calendar-toolbar"><button id="calendarPrevious" class="ghost compact" type="button" aria-label="Previous month">←</button><h3 id="calendarMonthHeading" aria-live="polite"></h3><button id="calendarNext" class="ghost compact" type="button" aria-label="Next month">→</button></div>
-          <button id="calendarToday" class="secondary compact" type="button">Current month</button>
-          <div class="calendar-weekdays" aria-hidden="true"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
-          <div id="trainingCalendar" class="training-calendar" role="grid" aria-labelledby="calendarMonthHeading"></div>
-        </section>
-        <section class="panel calendar-day-panel" aria-labelledby="calendarDayHeading"><div class="section-heading"><div><span class="label">Selected day</span><h2 id="calendarDayHeading">Today</h2></div><button id="logRetrospectiveWorkout" class="secondary compact" type="button">+ Log workout</button></div><div id="calendarDayWorkouts"></div></section>
       </section>
 
       <section class="view" id="viewLibrary">
         <div class="v2-page-head"><div><span class="label">Library</span><h2>Build the work.</h2><p>Choose routines, edit your lineup, or find a movement.</p></div></div>
         <section class="panel garden-panel" id="gardenPanel" data-profile-only="alexa" hidden></section>
         <section class="panel weekly-plan" data-profile-only="alexa" hidden><div class="section-heading"><div><span class="label">Weekly rhythm</span><h2>A plan with room to breathe.</h2></div></div><div class="week-plan-grid"><div><strong>Mon</strong><span>Pilates + Pull</span></div><div><strong>Tue</strong><span>Legs + low-impact class</span></div><div><strong>Wed</strong><span>Rest</span></div><div><strong>Thu</strong><span>Pilates + cardio + accessories</span></div><div><strong>Fri</strong><span>Optional / rest</span></div><div><strong>Sat</strong><span>Full Body</span></div><div><strong>Sun</strong><span>Rest</span></div></div></section>
-        <section class="panel program-setup-card" id="programSetupPanel" aria-labelledby="programSetupHeadline" hidden>
-          <button id="openProgramSetup" class="program-setup-open" type="button">
-            <span><span class="label">Plan shortcut</span><strong id="programSetupHeadline">Open your Program in Plan</strong><p id="programSetupDetail">Review your current route or continue setup in its planning home.</p><small id="programSetupStatus">Program data remains local-only</small></span><span aria-hidden="true">→</span>
-          </button>
-        </section>
         <section class="panel workout-builder" id="workoutPanel">
           <div class="section-heading"><div><span class="label">Workout builder</span><h2>Choose your workout</h2></div></div>
           <div class="day-tabs" id="dayTabs" role="tablist"><button data-day="Push" type="button">Push</button><button data-day="Pull" type="button">Pull</button><button data-day="Legs" type="button">Legs</button><button data-day="Core" type="button">Core</button><button data-day="FullBody" type="button">Full Body</button><button data-day="Cardio" type="button">Conditioning</button><button data-day="Other" type="button">Other</button></div>
@@ -287,15 +297,14 @@
     </aside>
 
     <nav class="bottom-nav" aria-label="Primary navigation">
-      <button class="active" data-view="today" type="button">Today</button>
+      <button class="active" data-view="today" type="button" aria-current="page">Today</button>
+      <button data-view="plan" type="button">Plan</button>
       <button data-view="train" type="button">Train</button>
-      <button data-view="calendar" type="button">Calendar</button>
       <button data-view="progress" type="button">Progress</button>
       <button data-view="library" type="button">Library</button>
     </nav>
   </div>
 
-  <dialog id="historyArchiveDialog" aria-labelledby="historyArchiveTitle"><div class="history-archive-shell"><header class="history-archive-head"><div><span class="label">Training archive</span><h2 id="historyArchiveTitle" tabindex="-1">Workout history</h2><p id="historyArchiveCount">Your completed sessions, newest first.</p></div><button id="closeHistoryArchive" class="history-icon-button" type="button" aria-label="Close workout history">×</button></header><div id="historyArchiveList" class="history-archive-list"></div></div></dialog>
   <dialog id="historyDialog" aria-labelledby="historyDialogTitle"><div class="history-dialog-shell"><header class="history-dialog-head"><button id="closeHistoryDialog" class="history-back-button" type="button" aria-label="Close workout detail">Close</button><div class="history-title-block"><span class="label">Completed workout</span><h2 id="historyDialogTitle" tabindex="-1">Workout</h2><p id="historyDialogDate"></p></div></header><div id="historyDialogContent"></div><div id="historyWorkoutActions" class="history-workout-actions"><button id="editCompletedWorkout" class="primary" type="button">Edit workout</button><button id="requestDeleteCompletedWorkout" class="ghost danger" type="button">Delete workout</button></div><section id="deleteWorkoutConfirmation" class="delete-workout-confirmation" aria-labelledby="deleteWorkoutConfirmationTitle" hidden><span class="label">Confirm deletion</span><h3 id="deleteWorkoutConfirmationTitle">Delete this workout?</h3><p id="deleteWorkoutConfirmationText">This removes it from history and analytics on every synced device.</p><p id="deleteWorkoutError" class="retrospective-error" role="alert" aria-live="polite"></p><div><button id="cancelDeleteCompletedWorkout" class="ghost" type="button">Keep workout</button><button id="confirmDeleteCompletedWorkout" class="primary danger" type="button">Delete workout</button></div></section></div></dialog>
   <dialog id="progressDialog" aria-labelledby="progressDialogTitle"><div class="history-dialog-shell"><div class="history-dialog-head"><div><span class="label">Strength record</span><h2 id="progressDialogTitle">Exercise progress</h2><p id="progressDialogMeta"></p></div><button id="closeProgressDialog" class="ghost compact" type="button">Close</button></div><div id="progressDialogContent"></div></div></dialog>
   <dialog id="routineDialog" aria-labelledby="routineEditorTitle"><div class="history-dialog-shell routine-prescription-shell"><div class="history-dialog-head"><div><span class="label">Routine prescription</span><h2 id="routineEditorTitle">Edit routine</h2><p>Set the movement order, working sets, and rep targets for future loads.</p></div><button id="closeRoutineDialog" class="ghost compact" type="button">Close</button></div><div id="routineEditorList" class="routine-editor-list"></div><div class="routine-add"><select id="routineExerciseSelect" class="exercise-picker-compat" aria-hidden="true" tabindex="-1"></select><button id="addRoutineExercise" class="secondary wide" type="button">Choose exercise to add</button></div><div class="routine-footer"><button id="resetRoutine" class="ghost" type="button">Restore original</button><div><button id="cancelRoutineDialog" class="ghost" type="button">Cancel</button><button id="saveRoutine" class="primary" type="button">Save routine</button></div></div></div></dialog>
@@ -318,7 +327,7 @@
   </div></dialog>
 
   <dialog id="exercisePickerDialog" class="exercise-picker-dialog" aria-labelledby="exercisePickerTitle" aria-describedby="exercisePickerPrompt"><div class="exercise-picker-shell"><header class="exercise-picker-head"><div><span class="label">Exercise Library</span><h2 id="exercisePickerTitle">Choose an exercise</h2><p id="exercisePickerPrompt">Search the local exercise catalog.</p></div><button id="closeExercisePicker" class="ghost compact" type="button" aria-label="Cancel exercise selection">Cancel</button></header><div class="exercise-picker-controls"><label class="exercise-picker-search"><span>Search exercises</span><input id="exercisePickerSearch" type="search" placeholder="Name, alias, muscle, or equipment" autocomplete="off" enterkeyhint="search"></label><div class="exercise-picker-filter-row"><label class="exercise-picker-filter"><span>Muscle</span><select id="exercisePickerMuscle" aria-label="Filter exercises by muscle"></select></label><label class="exercise-picker-filter"><span>Equipment</span><select id="exercisePickerEquipment" aria-label="Filter exercises by equipment"></select></label><button id="exercisePickerClearFilters" class="ghost compact" type="button" hidden>Clear</button></div></div><div id="exercisePickerResults" class="exercise-picker-results" aria-live="polite"></div></div></dialog>
-  <script src="asset-manifest.js?v=v90-program-setup-ux-v2-plan-bridge-config-ab51ee79cd36825d" data-big-gains-manifest></script>
+  <script src="asset-manifest.js?v=v91-plan-nav-history-list-calendar-config-ab51ee79cd36825d" data-big-gains-manifest></script>
   <script src="asset-loader.js"></script>
 </body>
 </html>

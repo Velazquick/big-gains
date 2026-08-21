@@ -24,11 +24,11 @@ main{display:block}
 #viewLibrary .workout-builder{margin-top:0}
 #viewLibrary .data-panel{margin-top:16px}
 .bottom-nav{height:calc(var(--nav-h) + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);display:grid;grid-template-columns:repeat(5,1fr);gap:4px;background:rgba(9,11,15,.92);backdrop-filter:blur(20px);border-top:1px solid var(--line)}
-.bottom-nav button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-radius:14px;font-size:.68rem;color:var(--muted)}
+.bottom-nav button{position:relative;display:flex;min-width:44px;min-height:44px;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-radius:14px;font-size:.68rem;color:var(--muted)}
 .bottom-nav button::before{font-size:1.16rem;line-height:1}
 .bottom-nav button[data-view="today"]::before{content:'●'}
+.bottom-nav button[data-view="plan"]::before{content:'◇'}
 .bottom-nav button[data-view="train"]::before{content:'↑'}
-.bottom-nav button[data-view="calendar"]::before{content:'□'}
 .bottom-nav button[data-view="progress"]::before{content:'↗'}
 .bottom-nav button[data-view="library"]::before{content:'▦'}
 .bottom-nav button.active{color:var(--accent);background:rgba(216,255,62,.08)}

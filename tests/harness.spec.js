@@ -205,7 +205,8 @@ test('progress exposes explicit hooks without replacing app globals', async ({ p
   await openApp(page);
 
   expect(await page.evaluate(() => Object.keys(window.workoutProgress))).toEqual([
-    'afterActiveRender', 'afterFullRender', 'afterLibraryRender', 'initialize'
+    'afterActiveRender', 'afterFullRender', 'afterLibraryRender', 'currentHistoryView',
+    'initialize', 'openHistory', 'showOverview'
   ]);
 
   const progressSource = await (await request.get('/progress.js')).text();

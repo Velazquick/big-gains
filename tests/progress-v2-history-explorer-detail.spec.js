@@ -198,7 +198,7 @@ test('history surfaces preserve Jorge dark and Alexa wellness-light profile pres
   expect(alexaDetail).toBe('rgb(255, 250, 253)');
 });
 
-test('archive and detail use mobile sheets while staying bounded on desktop', async ({ page }) => {
+test('History uses a mobile-safe inline surface and detail stays bounded on desktop', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await installState(page);
   await openArchive(page);
@@ -213,7 +213,7 @@ test('archive and detail use mobile sheets while staying bounded on desktop', as
   expect(layout.top).toBeGreaterThanOrEqual(0);
   expect(layout.headTop).toBeGreaterThanOrEqual(0);
   expect(layout.scrollTop).toBe(0);
-  expect(layout.bottom).toBeLessThanOrEqual(844);
+  expect(layout.bottom).toBeGreaterThan(layout.top);
   if (process.env.HISTORY_SCREENSHOT_DIR) {
     await page.screenshot({ path: `${process.env.HISTORY_SCREENSHOT_DIR}/history-explorer-mobile.png` });
   }
@@ -277,5 +277,5 @@ test('empty archive explains how training history begins', async ({ page }) => {
   await page.locator('.bottom-nav [data-view="progress"]').click();
   await openArchive(page);
   await expect(page.locator('.history-archive-empty')).toContainText('No completed workouts yet');
-  await expect(page.locator('.history-archive-empty')).toContainText('log one from Calendar');
+  await expect(page.locator('.history-archive-empty')).toContainText('History Calendar');
 });

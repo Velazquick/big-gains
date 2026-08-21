@@ -278,9 +278,9 @@ The supplied product screenshots are inspiration only. Big Gains MUST NOT copy t
 
 **IA1-10.4 — Analyzer before computed claims.** Muscle, set, frequency, spacing, Goal-support, and gap summaries MUST wait for deterministic Analyzer definitions and tests.
 
-Implementation tracking: Program-1B supplies the phase-5 deterministic calculation boundary. Release `v90-program-setup-ux-v2-plan-bridge` implements phase 3 and the contained phase-6 base detail: a contextual Plan landing, Goals/Program peer summaries, Today context, Goal ↔ Program links, rolling-session and pinned-Routine drill-down, block/authority/version facts, and Analyzer reuse. Program Setup is canonical in Plan; Library retains a labeled shortcut. **Program Analyzer = deterministic structural facts, not coaching/recommendation.** The persistent shell remains `Today / Train / Calendar / Progress / Library`, so Calendar migration, Programming Engine proposals, Program-driven Train, and block-performance Progress remain deferred.
+Implementation tracking: Program-1B supplies the phase-5 deterministic calculation boundary. Release `v90-program-setup-ux-v2-plan-bridge` implemented phase 3 and the contained phase-6 base detail: a substantive Plan landing, Goals/Program peer summaries, Today context, Goal ↔ Program links, rolling-session and pinned-Routine drill-down, block/authority/version facts, and Analyzer reuse. Release `v91-plan-nav-history-list-calendar` completes the approved navigation migration: the persistent shell is `Today / Plan / Train / Progress / Library`; Progress-owned History defaults to List and exposes Calendar over the same completed-workout source and detail/edit/delete path; legacy Calendar/History routes remain safe; and the temporary Library Plan shortcut is removed. **Program Analyzer = deterministic structural facts, not coaching/recommendation.** Programming Engine proposals, Program-driven Train, and block-performance Progress remain deferred.
 
-The minimum Plan promotion gate in IA1-3.3 is now satisfied: Plan shows active Goals, current or draft Program state, traversable links, and useful setup/review actions. Plan is product-substantive enough for a later Calendar-replacement interval, but that nav migration still requires the History `List | Calendar` continuity in IA1-4.6 and is intentionally not part of v90.
+The minimum Plan promotion gate in IA1-3.3 was satisfied by v90. V91 applies the gated cutover together with the History `List | Calendar` continuity required by IA1-4.6; no intermediate release removes Calendar before its replacement exists.
 
 **IA1-10.5 — Plan cutover gate.** The bottom-nav replacement MUST NOT occur before the minimum Plan landing contract above exists. The current Calendar placement remains the safe migration state until that gate is satisfied; cutover SHOULD coincide with an Active Program surface or clear in-progress Program state.
 
@@ -322,7 +322,7 @@ The minimum Plan promotion gate in IA1-3.3 is now satisfied: Plan shows active G
 
 ## 13. Locked product decisions
 
-1. **Plan promotion:** Plan will replace Calendar only after the minimum landing gate in the target navigation contract is met. Until then, the current Calendar tab is the safe migration state.
+1. **Plan promotion:** Fulfilled in v91 after the v90 minimum landing gate: Plan replaces Calendar in the five-item persistent shell, and Calendar remains available only as a History view under Progress.
 2. **History view:** Progress remains the evidence destination; entering History opens List by default and exposes `List | Calendar`. Remembering the user's last view is a future presentation enhancement.
 3. **Program ownership:** Plan owns active, actively edited/reviewed draft, and archived/inactive personal Program state. Library owns reusable Program templates and reusable saved building blocks.
 4. **Connective tissue:** Goal, Program, Today, Progress, History/Workout detail, and Library build/review routes must expose the normative links in Sections 5, 7, and 12 while retaining separate domain models and factual ownership.

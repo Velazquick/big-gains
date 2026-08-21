@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { activeWorkout, blankState, installLocalStorageFixture, readStoredJson, STORAGE_KEYS } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
+import { openHistoryCalendar } from './helpers/history.js';
 
 test.use({ timezoneId: 'America/New_York' });
 
@@ -10,7 +11,7 @@ async function openCalendar(page, fixture = 'blankJorge') {
   await installLocalStorageFixture(page, fixture);
   await page.clock.setFixedTime(FIXED_NOW);
   await openApp(page);
-  await page.locator('.bottom-nav [data-view="calendar"]').click();
+  await openHistoryCalendar(page);
 }
 
 async function selectDate(page, dateKey) {
@@ -239,7 +240,7 @@ test('cancel and reload discard only the draft while an active workout and retur
   await openApp(page);
   await page.locator('#exitWorkoutMode').click();
   const petState = await page.locator('body').getAttribute('data-workout-pet-state');
-  await page.locator('.bottom-nav [data-view="calendar"]').click();
+  await openHistoryCalendar(page);
   await openEditor(page, '2026-08-03');
   await completeFirstWorkingSet(page);
   await page.locator('#cancelRetrospectiveWorkout').click();
@@ -270,7 +271,7 @@ test('account isolation and backup normalization preserve optional retrospective
   await Promise.all([page.waitForNavigation(), page.locator('#profileSelect').selectOption('alexa')]);
   expect((await readStoredJson(page, STORAGE_KEYS.alexa)).workouts).toHaveLength(0);
   expect((await readStoredJson(page, STORAGE_KEYS.jorge)).workouts).toEqual(jorge.workouts);
-  await page.locator('.bottom-nav [data-view="calendar"]').click();
+  await openHistoryCalendar(page);
   await openEditor(page, '2026-08-05');
   await expect(page.locator('#retrospectiveWorkoutType')).toHaveValue('Other');
   await expect(page.locator('.retrospective-exercise')).toHaveCount(0);
@@ -301,7 +302,7 @@ test('retrospective logging and save work from the offline v44 app shell', async
   await context.setOffline(true);
   try {
     await page.reload({ waitUntil: 'domcontentloaded' });
-    await page.locator('.bottom-nav [data-view="calendar"]').click();
+    await openHistoryCalendar(page);
     await openEditor(page, '2026-08-03');
     await completeFirstWorkingSet(page);
     await page.locator('#saveRetrospectiveWorkout').click();
