@@ -197,6 +197,7 @@ test('focus, Escape, keyboard selection, and browser Back work without a nested 
 test('Library reuses search/filter/result metadata and the picker remains local while offline', async ({ page, context }) => {
   await openApp(page);
   await openLibrary(page);
+  await page.locator('#dayTabs [data-day="Push"]').click();
   await page.locator('#viewLibrary details').evaluate(details => { details.open = true; });
   const initialNames = await page.locator('#exerciseLibrary h3').allTextContents();
   expect(initialNames).toEqual(initialNames.slice().sort((left, right) => left.localeCompare(right, 'en', { numeric: true, sensitivity: 'base' })));
