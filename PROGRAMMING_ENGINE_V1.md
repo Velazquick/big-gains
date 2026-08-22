@@ -1,13 +1,13 @@
 # Programming Engine v1 contract
 
-- Status: **Approved normative contract; PE-1A runtime slice implemented for release review**
+- Status: **Approved normative contract; PE-1A engine and PE-1B provenance bridge implemented for release review**
 - Contract version: **`big-gains.programming-engine.v1` / `1.0.0`**
 - Production baseline: `main` at `a3a8d2cd224af891bd5a2a54c74f3c7facfea5ad`
-- Release marker: `v92-pe-1a-volume-neutral-exposure-redistribution` (**implementation candidate; not deployed**)
-- Runtime status: **PE-1A pure proposal generation and Plan review display implemented; proposal application deferred**
+- Release marker: `v93-pe-1b-program-origin-provenance` (**implementation candidate; not deployed**)
+- Runtime status: **PE-1A proposal generation/display and PE-1B explicit Program-origin evidence mapping implemented; proposal application deferred to PE-1C**
 - Maximum authority: **Review**
 
-This contract defines the first deterministic Big Gains Programming Engine boundary. It builds on [Program Foundation v1](PROGRAM_FOUNDATION_V1.md), [Product IA v1](PRODUCT_IA_V1.md), [Goals v1](GOALS_V1_SPEC.md), the [Exercise Knowledge Foundation](EXERCISE_KNOWLEDGE_FOUNDATION.md), and the production architecture in [ARCHITECTURE.md](ARCHITECTURE.md). The original publication unit authorized documentation only. The separately authorized PE-1A implementation interval adds pure runtime evaluation and proposal display without persistence, schema, Supabase, synchronization, production-data, release, or deployment changes.
+This contract defines the first deterministic Big Gains Programming Engine boundary. It builds on [Program Foundation v1](PROGRAM_FOUNDATION_V1.md), [Product IA v1](PRODUCT_IA_V1.md), [Goals v1](GOALS_V1_SPEC.md), the [Exercise Knowledge Foundation](EXERCISE_KNOWLEDGE_FOUNDATION.md), and the production architecture in [ARCHITECTURE.md](ARCHITECTURE.md). The original publication unit authorized documentation only. The separately authorized PE-1A interval adds pure runtime evaluation and proposal display. PE-1B adds an explicit Program-to-Train entry and immutable workout provenance under schema v5 without a Supabase migration, History backfill, proposal application, release, or deployment.
 
 The core rule is:
 
@@ -86,6 +86,10 @@ Each input layer is independently attributable and versioned. The engine MUST fa
 **PE1-2.10 — Comparable evidence.** Program-level evidence MUST preserve the Goals v1 identity, basis, unit, working-set, and eligibility gates. Another exercise, warm-up, incomplete set, incompatible basis, inferred label match, or current-session set is not comparable evidence.
 
 **PE1-2.11 — Provenance gate.** Block/cycle performance MAY be used only when deterministically mapped through recorded compatible Program/Routine/slot provenance. Legacy workout names or weekdays MUST NOT be used to guess provenance.
+
+**PE1-2.17 — PE-1B provenance shape.** A proven Program-derived active or completed workout records `big-gains.program-origin.v1` with exact account/profile, Program and Program-version, Routine and Routine-version, slot identity, zero-based slot index, one-based monotonic cycle number, and materialization timestamp. The origin contains no mutable analysis or completed-cycle flag.
+
+**PE1-2.18 — Completed-cycle derivation.** A cycle is proven complete only when completed History contains compatible explicit origins for every pinned slot of that exact Program version and cycle number. Materialization, calendar time, weekday anchors, labels, partial cycles, deleted records, wrong-version records, and legacy workouts do not prove completion.
 
 **PE1-2.12 — Constraint layer.** Constraints MAY include available training frequency or rolling cadence, explicit preferred Program structure, and reliably represented equipment availability. Each constraint MUST identify source, value, version/time, and whether it is hard or preferred.
 
@@ -571,7 +575,9 @@ The stall constants, auxiliary A/B authority, full v1 allowlist, narrower PE-1A 
 
 `BigGainsProgrammingEngine.evaluate({ programVersion, routineVersions, programAnalysis, goals, performanceEvidence, goalProgressionEvidence, catalog, options? })` is pure, deterministic, DOM-free, network-free, and persistence-free. It returns a deeply immutable `no_change | proposal | unavailable` result with policy/capability versions, deterministic digest/ID, exact version pins, Goal/exercise scope, reason trace, evidence references, stall/cycle/post-adjustment gate detail, stale guard, allocation, typed operations, successor diff payload, approval boundary, and downstream explanation payload. `checkStaleBase(...)` provides the same exact Program/Routine/Goal guard for a later application transaction.
 
-Plan renders the result on the canonical Program surface. Eligible synthetic evidence can show the complete proposal and `Approve / Reject / Later`; Approve is disabled with explicit PE-1B follow-up because the current Program model does not expose an atomic multi-Routine/Program successor transaction. Reject and Later are view-local only and persist no facts. Current production History lacks reliable Program-origin version/slot/completed-cycle metadata because Program-driven Train remains deferred, so real historical evidence fails closed with `BLOCK_PROVENANCE_UNAVAILABLE`; weekday and session labels are never used to guess cycle membership.
+Plan renders the result on the canonical Program surface. Eligible evidence can show the complete proposal and `Approve / Reject / Later`; Approve remains disabled with explicit PE-1C follow-up because the current Program model does not expose an atomic multi-Routine/Program successor transaction. Reject and Later are view-local only and persist no facts.
+
+PE-1B adds one explicit `Start next Program session` path from Today/Plan. It materializes the exact pinned Routine, snapshots `programOrigin`, and commits rolling advancement only with successful workout completion. `slotIndex` is zero-based; `cycleNumber` is one-based. Repeated starts/resume do not advance, missed weekdays do not skip, and wrap increments `completedCycles` once. Completion copies origin unchanged. The evidence adapter derives completed-cycle proof from the full compatible origin-bearing History sequence. Existing manual and retrospective workouts remain valid but have no origin; no label, weekday, exercise list, or legacy record is provenance-backfilled. Real proposals remain unavailable until enough newly proven evidence exists.
 
 ## 16. Research notes and sources (informative)
 

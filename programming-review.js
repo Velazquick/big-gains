@@ -5,7 +5,6 @@
   const isRecord = value => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
   const text = value => typeof value === 'string' ? value.trim() : '';
   const validDate = value => Number.isFinite(Date.parse(value));
-  const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
 
   function exactPerformedExercise(workout, exerciseId, catalog) {
     return list(workout?.exercises).find(exercise => {
@@ -70,17 +69,23 @@
       const performed = exactPerformedExercise(workout, goal.exerciseId, catalog);
       return performed ? [{ workout, performed }] : [];
     });
-    const provenanced = exactWorkouts.filter(({ workout }) => {
-      const origin = workout.programOrigin;
-      return isRecord(origin)
-        && origin.programVersionId === programVersion.programVersionId
-        && text(origin.routineVersionId)
-        && text(origin.slotId)
-        && Number.isInteger(Number(origin.cycleNumber))
-        && Number(origin.cycleNumber) > 0
-        && origin.cycleCompleted === true;
+    const originApi = scope.BigGainsProgramOrigin;
+    const completedCycles = originApi?.completedCycleNumbers({
+      workouts,
+      programVersion,
+      accountId: goal.accountId,
+      profileId: goal.profileId
+    }) || [];
+    const provenanced = exactWorkouts.flatMap(({ workout, performed }) => {
+      const origin = originApi?.normalize(workout.programOrigin, { accountId: goal.accountId, profileId: goal.profileId });
+      const slot = origin && programVersion.slots?.[origin.slotIndex];
+      if (!origin || origin.programId !== programVersion.programId
+        || origin.programVersionId !== programVersion.programVersionId
+        || slot?.slotId !== origin.slotId || slot?.routineId !== origin.routineId
+        || slot?.routineVersionId !== origin.routineVersionId) return [];
+      return [{ workout, performed, origin }];
     });
-    const exposures = provenanced.map(({ workout, performed }) => {
+    const exposures = provenanced.map(({ workout, performed, origin }) => {
       const decision = decisionForExposure(decisions, workout.id);
       const workingSets = list(performed.sets).filter(set => set.warmup !== true);
       const completed = workingSets.length > 0 && workingSets.every(set => set.completed === true);
@@ -94,7 +99,7 @@
         comparable: Boolean(completed && decision),
         exclusionReasonCode: completed ? 'GOALS_COMPARABILITY_UNPROVEN' : 'INCOMPLETE_WORKING_SETS',
         progressionReasonCode: decision?.reasonCode || null,
-        programProvenance: clone(workout.programOrigin)
+        programProvenance: originApi.toPerformanceProvenance(origin, completedCycles)
       };
     });
     const adjustments = decisions.filter(decision => decision.reasonCode === 'ADJUST_REPEATED_MISS' && validDate(decision.issuedAt))
@@ -102,7 +107,7 @@
     const opportunities = adjustments.flatMap(adjustment => exposures
       .filter(exposure => exposure.comparable && Date.parse(exposure.completedAt) > Date.parse(adjustment.issuedAt))
       .map(exposure => ({ exposureId: exposure.exposureId, adjustmentEventId: adjustment.eventId })));
-    const hasAnyExplicitProgramOrigin = exactWorkouts.some(({ workout }) => isRecord(workout.programOrigin));
+    const provenanceInsufficient = exactWorkouts.length > provenanced.length && provenanced.length < 4;
     return {
       programVersion,
       routineVersions,
@@ -110,8 +115,8 @@
       goals,
       performanceEvidence: {
         contract: 'big-gains.program-performance-evidence.v1',
-        availability: exactWorkouts.length && !hasAnyExplicitProgramOrigin ? 'unavailable' : 'available',
-        reasonCode: exactWorkouts.length && !hasAnyExplicitProgramOrigin ? 'BLOCK_PROVENANCE_UNAVAILABLE' : null,
+        availability: provenanceInsufficient ? 'unavailable' : 'available',
+        reasonCode: provenanceInsufficient ? 'BLOCK_PROVENANCE_UNAVAILABLE' : null,
         programVersionId: programVersion.programVersionId,
         evidenceCutoff: cutoff,
         exposures
@@ -159,8 +164,8 @@
         <div class="programming-review-diff"><article><span>Before</span><strong>${escape(result.beforeExposureCount)} exposure</strong><small>${escape(result.totalCycleWorkingSetsBefore)} total cycle sets</small></article><span aria-hidden="true">→</span><article><span>After</span><strong>${escape(result.afterExposureCount)} exposures</strong><small>${escape(result.totalCycleWorkingSetsAfter)} total cycle sets · ${escape(allocation)}</small></article></div>
         ${variant}
         <details><summary>Evidence and exact review trace</summary><ul class="programming-review-evidence">${evidence}</ul><p>${escape(result.expectedConservativeEffect)}</p><p class="plan-muted">Base Program ${escape(result.baseProgramVersionId)} · Future unmaterialized sessions only</p></details>
-        <div class="programming-review-actions"><button type="button" class="primary" data-programming-disposition="approve" disabled title="Application wiring follows in PE-1B">Approve</button><button type="button" class="secondary" data-programming-disposition="reject">Reject</button><button type="button" class="ghost" data-programming-disposition="later">Later</button></div>
-        <p class="programming-review-parked">Approve is parked: atomic successor-version application and stale-base wiring follow in PE-1B.</p>
+        <div class="programming-review-actions"><button type="button" class="primary" data-programming-disposition="approve" disabled title="Application wiring follows in PE-1C">Approve</button><button type="button" class="secondary" data-programming-disposition="reject">Reject</button><button type="button" class="ghost" data-programming-disposition="later">Later</button></div>
+        <p class="programming-review-parked">Approve is parked: atomic successor-version application and stale-base wiring follow in PE-1C.</p>
         <p class="programming-review-disposition" data-programming-disposition-status hidden></p>
       </section>`;
     }

@@ -62,6 +62,10 @@
     if (!ownerAccount) throw new Error(`Unknown account for profile: ${profile.id}`);
     const storageKey = ownerAccount.storageKey;
     const workoutTypes = new Set(validWorkoutTypes);
+    const normalizeProgramOrigin = value => window.BigGainsProgramOrigin?.normalize(value, {
+      accountId: ownerAccount.accountId,
+      profileId: profile.id
+    }) || null;
 
     function blankState(profileId = profile.id) {
       const owner = profileConfig[profileId] || profile;
@@ -120,6 +124,9 @@
       };
       if (value.entryMethod === 'retrospective') workout.entryMethod = 'retrospective';
       else delete workout.entryMethod;
+      const programOrigin = normalizeProgramOrigin(value.programOrigin);
+      if (programOrigin) workout.programOrigin = programOrigin;
+      else delete workout.programOrigin;
       return workout;
     }
 
@@ -128,13 +135,17 @@
         || typeof value.type !== 'string'
         || !workoutTypes.has(value.type)
         || !validDate(value.startedAt)) return null;
-      return {
+      const workout = {
         ...value,
         id: typeof value.id === 'string' && value.id ? value.id : createId(),
         type: value.type,
         startedAt: value.startedAt,
         exercises: Array.isArray(value.exercises) ? value.exercises.map(normalizeExercise).filter(Boolean) : []
       };
+      const programOrigin = normalizeProgramOrigin(value.programOrigin);
+      if (programOrigin) workout.programOrigin = programOrigin;
+      else delete workout.programOrigin;
+      return workout;
     }
 
     function normalizeWeights(value) {

@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v92-pe-1a-volume-neutral-exposure-redistribution';
+  const release = 'v93-pe-1b-program-origin-provenance';
   const cloudConfigVersion = 'config-ab51ee79cd36825d'; // BIG_GAINS_CLOUD_CONFIG_VERSION
   const deploymentVersion = `${release}-${cloudConfigVersion}`;
   const manifestAsset = `./asset-manifest.js?v=${encodeURIComponent(deploymentVersion)}`;
@@ -42,6 +42,7 @@
     './reconciliation-control.js',
     './cloud-storage.js',
     './program-model.js',
+    './program-origin.js',
     './state-persistence.js',
     './profiles.js',
     './exercise-catalog.js',

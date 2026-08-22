@@ -21,7 +21,7 @@ test('Today uses the shared saved-routine start semantics', async ({ page }) => 
   await openApp(page);
 
   expect(await page.evaluate(() => Object.keys(window.workoutSessionController))).toEqual([
-    'start', 'resume', 'replace', 'loadRoutine', 'repairEmpty', 'addExercise',
+    'start', 'startProgram', 'resume', 'replace', 'loadRoutine', 'repairEmpty', 'addExercise',
     'focusExercise', 'moveExercise', 'toggleExercise', 'removeExercise', 'addSet',
     'updateSet', 'adjustSet', 'toggleSetCompleted', 'complete', 'discard'
   ]);

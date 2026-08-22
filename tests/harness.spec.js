@@ -11,6 +11,7 @@ const productionScriptOrder = [
   'reconciliation-control.js',
   'cloud-storage.js',
   'program-model.js',
+  'program-origin.js',
   'state-persistence.js',
   'profiles.js',
   'exercise-catalog.js',

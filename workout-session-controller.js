@@ -172,6 +172,7 @@
     acknowledgeTimerReady = () => {},
     startRestTimer = () => {},
     scheduleAfterCompletion = callback => callback(),
+    advanceProgramSequence = () => null,
     onCompletionAdvanced = () => {},
     onCompleted = () => {},
     onDiscarded = () => {}
@@ -201,9 +202,15 @@
       }) || exercise;
     }
 
-    function begin(day) {
+    function begin(day, programOrigin = null) {
       setSelectedDay(day);
-      const next = { id: createId(), type: day, startedAt: new Date(now()).toISOString(), exercises: [] };
+      const next = {
+        id: createId(),
+        type: day,
+        startedAt: new Date(now()).toISOString(),
+        exercises: [],
+        ...(programOrigin ? { programOrigin } : {})
+      };
       setActiveWorkout(next);
       return next;
     }
@@ -251,6 +258,30 @@
       persistActiveMutation();
       renderActiveSession(scroll);
       return getActiveWorkout();
+    }
+
+    function startProgram(materialization, { scroll = true } = {}) {
+      if (getActiveWorkout()) return resume(scroll);
+      const routineVersion = materialization?.routineVersion;
+      const programOrigin = materialization?.programOrigin;
+      const day = routineVersion?.source?.routineType;
+      const prescriptions = Array.isArray(routineVersion?.exercises) ? routineVersion.exercises : [];
+      const definitions = prescriptions.map(prescription => exerciseCatalog.getById(prescription.exerciseId));
+      if (!programOrigin || typeof day !== 'string' || !day || !prescriptions.length
+        || definitions.some(definition => !definition)) {
+        throw new Error('A Program session requires one complete pinned Routine materialization.');
+      }
+      const current = begin(day, programOrigin);
+      definitions.forEach((definition, index) => {
+        current.exercises.push(makeExercise(definition, prescriptions[index], {
+          source: 'program_routine',
+          day,
+          programOrigin
+        }));
+      });
+      persistActiveMutation();
+      renderActiveSession(scroll);
+      return current;
     }
 
     function resume(scroll = true, { enterMode = true } = {}) {
@@ -412,13 +443,20 @@
       const durationSeconds = Math.floor((now() - new Date(current.startedAt)) / 1000);
       const workout = { ...current, completedAt, durationSeconds, exercises: completed };
       const state = getState();
+      const previous = {
+        workouts: state.workouts,
+        prs: state.prs,
+        programCapture: state.programCapture,
+        restTimerEndsAt: state.restTimerEndsAt
+      };
+      const nextPrs = { ...state.prs };
       let newPRs = 0;
       completed.forEach(exercise => exercise.sets.filter(set => !set.warmup).forEach(set => {
         const interpreted = typeof metricsForSet === 'function' ? metricsForSet(exercise, set) : null;
         const score = interpreted ? interpreted.estimated1RM : estimate1RM(Number(set.weight), Number(set.reps));
         if (score === null) return;
-        if (score > ((state.prs[exercise.id] && state.prs[exercise.id].estimated1RM) || 0)) {
-          state.prs[exercise.id] = {
+        if (score > ((nextPrs[exercise.id] && nextPrs[exercise.id].estimated1RM) || 0)) {
+          nextPrs[exercise.id] = {
             exercise: exercise.name,
             estimated1RM: score,
             weight: Number(set.weight),
@@ -430,9 +468,24 @@
         }
       }));
       workout.prs = newPRs;
-      state.workouts.unshift(workout);
-      clearRuntime();
-      persist();
+      let sequenceResult = null;
+      try {
+        sequenceResult = advanceProgramSequence({ activeWorkout: current, completedWorkout: workout, completedAt });
+        state.workouts = [workout, ...state.workouts];
+        state.prs = nextPrs;
+        if (sequenceResult?.capture) state.programCapture = sequenceResult.capture;
+        clearRuntime();
+        persist();
+      } catch (error) {
+        state.workouts = previous.workouts;
+        state.prs = previous.prs;
+        state.programCapture = previous.programCapture;
+        state.restTimerEndsAt = previous.restTimerEndsAt;
+        setActiveWorkout(current);
+        renderHero();
+        renderActiveMutation();
+        return false;
+      }
       onCompleted({ workout, newPRs });
       return true;
     }
@@ -447,6 +500,7 @@
 
     return Object.freeze({
       start,
+      startProgram,
       resume,
       replace,
       loadRoutine,

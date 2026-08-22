@@ -167,6 +167,7 @@ test('local completion time stays on the selected day near UTC midnight and meta
 
   const workout = (await readStoredJson(page, STORAGE_KEYS.jorge)).workouts[0];
   expect(workout).toMatchObject({ entryMethod: 'retrospective', durationSeconds: 3000, note: 'Imported from paper notes' });
+  expect(workout).not.toHaveProperty('programOrigin');
   expect(workout.exercises[0].note).toBe('Retrospective exercise note');
   expect(workout.exercises[0].definitionId).toBe('lat-pulldown');
   expect(workout.exercises[0].id).not.toBe(workout.exercises[0].definitionId);

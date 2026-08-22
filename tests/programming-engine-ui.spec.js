@@ -65,35 +65,49 @@ async function createEligibleProgrammingReview(page) {
       now
     });
     const dates = ['2026-08-01T12:00:00.000Z', '2026-08-08T12:00:00.000Z', '2026-08-15T12:00:00.000Z', '2026-08-22T12:00:00.000Z'];
-    state.workouts = dates.map((completedAt, index) => ({
-      id: `pe-exposure-${index + 1}`,
-      type: `Arbitrary ${index + 1}`,
-      startedAt: completedAt,
-      completedAt,
-      durationSeconds: 1800,
-      prs: 0,
-      programOrigin: {
-        programVersionId: draft.version.programVersionId,
-        routineVersionId: source.version.routineVersionId,
-        slotId: draft.version.slots[0].slotId,
-        cycleNumber: index + 1,
-        cycleCompleted: true
-      },
-      exercises: [{
-        id: bench.canonicalId,
-        definitionId: bench.canonicalId,
-        name: bench.name,
-        muscle: 'Chest',
-        equipment: 'Barbell',
-        collapsed: true,
-        sets: Array.from({ length: 6 }, (_, setIndex) => ({
-          id: `pe-set-${index + 1}-${setIndex + 1}`,
-          weight: 200,
-          reps: 4,
-          warmup: false,
-          completed: true
-        }))
-      }]
+    const routineById = new Map([source.version, destination.version, other.version]
+      .map(version => [version.routineVersionId, version]));
+    state.workouts = dates.flatMap((cycleCompletedAt, cycleIndex) => draft.version.slots.map((slot, slotIndex) => {
+      const completedAt = new Date(Date.parse(cycleCompletedAt) + slotIndex * 60_000).toISOString();
+      const routine = routineById.get(slot.routineVersionId);
+      const definition = BigGainsExerciseCatalog.getById(routine.exercises[0].exerciseId);
+      const isExposure = slotIndex === 0;
+      return {
+        id: isExposure ? `pe-exposure-${cycleIndex + 1}` : `pe-cycle-${cycleIndex + 1}-slot-${slotIndex + 1}`,
+        type: routine.source.routineType,
+        startedAt: completedAt,
+        completedAt,
+        durationSeconds: 1800,
+        prs: 0,
+        programOrigin: {
+          contract: BigGainsProgramOrigin.contract,
+          accountId: ACCOUNT.accountId,
+          profileId: PROFILE.id,
+          programId: draft.version.programId,
+          programVersionId: draft.version.programVersionId,
+          routineId: routine.routineId,
+          routineVersionId: routine.routineVersionId,
+          slotId: slot.slotId,
+          slotIndex,
+          cycleNumber: cycleIndex + 1,
+          materializedAt: completedAt
+        },
+        exercises: [{
+          id: definition.canonicalId,
+          definitionId: definition.canonicalId,
+          name: definition.name,
+          muscle: definition.muscle,
+          equipment: definition.equipment,
+          collapsed: true,
+          sets: Array.from({ length: isExposure ? 6 : 1 }, (_, setIndex) => ({
+            id: `pe-set-${cycleIndex + 1}-${slotIndex + 1}-${setIndex + 1}`,
+            weight: 200,
+            reps: 4,
+            warmup: false,
+            completed: true
+          }))
+        }]
+      };
     }));
     const decision = (id, issuedAt, selectedExposureIds, reasonCode = 'HOLD_PARTIAL') => ({
       decisionId: id,
@@ -147,7 +161,7 @@ test('Plan displays an eligible PE-1A proposal without applying or persisting it
   await expect(card).toContainText('3 sets in position 1 + 3 sets in position 2');
   await expect(card).toContainText('Auxiliary Routine variant required');
   await expect(card.getByRole('button', { name: 'Approve' })).toBeDisabled();
-  await expect(card).toContainText('application and stale-base wiring follow in PE-1B');
+  await expect(card).toContainText('application and stale-base wiring follow in PE-1C');
   await card.getByRole('button', { name: 'Later' }).click();
   await expect(card.locator('[data-programming-disposition-status]')).toContainText('Saved for later in this view only');
   const after = await readStoredJson(page, STORAGE_KEYS.jorge);

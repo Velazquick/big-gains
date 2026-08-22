@@ -5,10 +5,13 @@ import test from 'node:test';
 await import('../exercise-catalog.js');
 await import('../program-analyzer.js');
 await import('../programming-engine.js');
+await import('../program-origin.js');
+await import('../programming-review.js');
 
 const catalog = globalThis.BigGainsExerciseCatalog;
 const analyzer = globalThis.BigGainsProgramAnalyzer;
 const engine = globalThis.BigGainsProgrammingEngine;
+const review = globalThis.BigGainsProgrammingReview;
 const bench = catalog.resolve('Barbell Bench Press');
 const row = catalog.resolve('Barbell Row');
 const squat = catalog.resolve('Back Squat');
@@ -164,6 +167,72 @@ function input(options = {}) {
   };
 }
 
+function productionHistoryInput({ withoutOrigin = false, wrongProgramVersion = false, omitFinalSlot = false } = {}) {
+  const base = fixture();
+  const goal = { ...base.goal };
+  const dates = ['2026-08-01T12:00:00.000Z', '2026-08-08T12:00:00.000Z', '2026-08-15T12:00:00.000Z', '2026-08-22T12:00:00.000Z'];
+  const byRoutine = new Map(base.routineVersions.map(version => [version.routineVersionId, version]));
+  const workouts = dates.flatMap((baseDate, cycleIndex) => base.programVersion.slots
+    .filter((_, slotIndex) => !(omitFinalSlot && cycleIndex === 0 && slotIndex === base.programVersion.slots.length - 1))
+    .map((slot, slotIndex) => {
+      const routineVersion = byRoutine.get(slot.routineVersionId);
+      const prescription = routineVersion.exercises[0];
+      const definition = catalog.getById(prescription.exerciseId);
+      const completedAt = new Date(Date.parse(baseDate) + slotIndex * 60_000).toISOString();
+      const origin = {
+        contract: 'big-gains.program-origin.v1',
+        ...scope,
+        programId: base.programVersion.programId,
+        programVersionId: wrongProgramVersion ? 'program-version-other' : base.programVersion.programVersionId,
+        routineId: routineVersion.routineId,
+        routineVersionId: routineVersion.routineVersionId,
+        slotId: slot.slotId,
+        slotIndex,
+        cycleNumber: cycleIndex + 1,
+        materializedAt: completedAt
+      };
+      return {
+        id: slotIndex === 0 ? `history-exposure-${cycleIndex + 1}` : `history-cycle-${cycleIndex + 1}-slot-${slotIndex + 1}`,
+        type: routineVersion.source.routineType,
+        startedAt: completedAt,
+        completedAt,
+        durationSeconds: 1800,
+        prs: 0,
+        ...(!withoutOrigin ? { programOrigin: origin } : {}),
+        exercises: [{
+          id: definition.canonicalId,
+          definitionId: definition.canonicalId,
+          name: definition.name,
+          sets: Array.from({ length: prescription.workingSets }, (_, setIndex) => ({
+            id: `history-set-${cycleIndex + 1}-${slotIndex + 1}-${setIndex + 1}`,
+            weight: 200,
+            reps: 4,
+            warmup: false,
+            completed: true
+          }))
+        }]
+      };
+    }));
+  const decision = (decisionId, issuedAt, selectedExposureIds, reasonCode = 'HOLD_PARTIAL') => ({
+    decisionId, issuedAt, reasonCode, selectedExposureIds
+  });
+  const decisions = [
+    decision('history-decision-4', '2026-08-22T13:00:00.000Z', ['history-exposure-4']),
+    decision('history-decision-3', '2026-08-15T13:00:00.000Z', ['history-exposure-3']),
+    decision('history-adjustment', '2026-08-09T12:00:00.000Z', ['history-exposure-2'], 'ADJUST_REPEATED_MISS'),
+    decision('history-decision-2', '2026-08-08T13:00:00.000Z', ['history-exposure-2']),
+    decision('history-decision-1', '2026-08-01T13:00:00.000Z', ['history-exposure-1'])
+  ];
+  goal.progressionState = { current: decisions[0], trace: decisions };
+  return review.buildInput({
+    ...base,
+    goals: [goal],
+    workouts,
+    catalog,
+    programStatus: 'active'
+  });
+}
+
 test('A healthy Bench progression at two exposures per cycle returns no_change', () => {
   const candidate = input({ benchExposures: 2, sets: 6, exposures: exposures({ reasons: ['HOLD_PARTIAL', 'HOLD_PARTIAL', 'HOLD_PARTIAL', 'ADD_REPS'] }) });
   const result = engine.evaluate(candidate);
@@ -309,6 +378,30 @@ test('missing explicit Program-origin cycle metadata fails closed', () => {
   const result = engine.evaluate(candidate);
   assert.equal(result.status, 'unavailable');
   assert.equal(result.primaryReasonCode, 'BLOCK_PROVENANCE_UNAVAILABLE');
+});
+
+test('the production evidence adapter proves four stalls across explicitly completed cycles', () => {
+  const candidate = productionHistoryInput();
+  assert.equal(candidate.performanceEvidence.availability, 'available');
+  assert.equal(candidate.performanceEvidence.exposures.length, 4);
+  assert.equal(candidate.performanceEvidence.exposures.every(exposure => exposure.programProvenance.cycleCompleted), true);
+  const result = engine.evaluate(candidate);
+  assert.equal(result.status, 'proposal');
+  assert.deepEqual(result.experimentalTrace.completedCycleNumbers, [1, 2, 3, 4]);
+});
+
+test('the production adapter never backfills legacy or cross-version History provenance', () => {
+  const legacy = engine.evaluate(productionHistoryInput({ withoutOrigin: true }));
+  const wrongVersion = engine.evaluate(productionHistoryInput({ wrongProgramVersion: true }));
+  assert.equal(legacy.primaryReasonCode, 'BLOCK_PROVENANCE_UNAVAILABLE');
+  assert.equal(wrongVersion.primaryReasonCode, 'BLOCK_PROVENANCE_UNAVAILABLE');
+});
+
+test('a cycle missing one completed pinned slot is not marked complete', () => {
+  const candidate = productionHistoryInput({ omitFinalSlot: true });
+  const first = candidate.performanceEvidence.exposures.find(exposure => exposure.programProvenance.cycleNumber === 1);
+  assert.equal(first.programProvenance.cycleCompleted, false);
+  assert.equal(engine.evaluate(candidate).primaryReasonCode, 'BLOCK_PROVENANCE_UNAVAILABLE');
 });
 
 test('stale-base checker verifies complete pins and Goal identity', () => {
