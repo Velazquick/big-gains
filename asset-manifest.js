@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v91-plan-nav-history-list-calendar';
+  const release = 'v93-pe-1b-program-origin-provenance';
   const cloudConfigVersion = 'config-ab51ee79cd36825d'; // BIG_GAINS_CLOUD_CONFIG_VERSION
   const deploymentVersion = `${release}-${cloudConfigVersion}`;
   const manifestAsset = `./asset-manifest.js?v=${encodeURIComponent(deploymentVersion)}`;
@@ -42,10 +42,13 @@
     './reconciliation-control.js',
     './cloud-storage.js',
     './program-model.js',
+    './program-origin.js',
     './state-persistence.js',
     './profiles.js',
     './exercise-catalog.js',
     './program-analyzer.js',
+    './programming-engine.js',
+    './programming-review.js',
     './exercise-picker.js',
     './routine-engine.js',
     './analytics.js',

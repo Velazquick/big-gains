@@ -8,11 +8,13 @@
 - Program-1B cache marker: `v89-program-1b-deterministic-analyzer`
 - Program Setup UX v2 / Plan bridge cache marker: `v90-program-setup-ux-v2-plan-bridge`
 - Plan navigation / History List|Calendar cache marker: `v91-plan-nav-history-list-calendar`
-- Runtime status: **Program-1A capture/review, Program-1B deterministic structural analysis, and primary Plan/Active Program presentation implemented locally; Train execution and Programming Engine deferred**
+- PE-1A proposal/review cache marker: `v92-pe-1a-volume-neutral-exposure-redistribution` (implementation candidate; not deployed)
+- PE-1B Program-origin cache marker: `v93-pe-1b-program-origin-provenance` (implementation candidate; not deployed)
+- Runtime status: **Program capture/analysis, Plan presentation, PE-1A proposal review, and a minimal PE-1B Program-derived Train entry with explicit provenance implemented locally; successor application deferred to PE-1C**
 
-This document defines the bounded Program layer between Goals and Train. It builds on [ARCHITECTURE.md](ARCHITECTURE.md), [GOALS_V1_SPEC.md](GOALS_V1_SPEC.md), [EXERCISE_KNOWLEDGE_FOUNDATION.md](EXERCISE_KNOWLEDGE_FOUNDATION.md), and [SYNC_SEMANTICS.md](SYNC_SEMANTICS.md). It authorizes no runtime code, storage migration, Supabase change, release, or deployment.
+This document defines the bounded Program layer between Goals and Train. It builds on [ARCHITECTURE.md](ARCHITECTURE.md), [GOALS_V1_SPEC.md](GOALS_V1_SPEC.md), [EXERCISE_KNOWLEDGE_FOUNDATION.md](EXERCISE_KNOWLEDGE_FOUNDATION.md), and [SYNC_SEMANTICS.md](SYNC_SEMANTICS.md). The approved documentation-only [Programming Engine v1 contract](PROGRAMMING_ENGINE_V1.md) specializes the future boundary in Section 8 without changing this Foundation's ownership/version invariants. It authorizes no runtime code, storage migration, Supabase change, release, or deployment.
 
-Implementation tracking: PF1-0.4 records the boundary of the original documentation unit. The separately authorized Program-1A interval implements explicit canonical Routine review/capture and Program version pinning in profile-scoped schema-v5 local state. Program-1B adds a pure recomputed analyzer over an exact Program version, pinned Routine versions, EKF metadata, linked Goals, and optional explicit sequence progress. Release v90 moves setup and Analyzer presentation into a substantive Plan/Active Program experience and adds read-only Today and Goal cross-links. Release v91 promotes Plan into primary navigation and removes the temporary Library shortcut without changing Program data or authority. These intervals add no Supabase table/RLS/migration, cloud Program representation, Train selection authority, Programming Engine, automatic change, or production deployment. Coded defaults remain non-canonical until explicitly approved in the review surface.
+Implementation tracking: PF1-0.4 records the boundary of the original documentation unit. The separately authorized Program-1A interval implements explicit canonical Routine review/capture and Program version pinning in profile-scoped schema-v5 local state. Program-1B adds a pure recomputed analyzer over an exact Program version, pinned Routine versions, EKF metadata, linked Goals, and optional explicit sequence progress. Release v90 moves setup and Analyzer presentation into a substantive Plan/Active Program experience and adds read-only Today and Goal cross-links. Release v91 promotes Plan into primary navigation. Candidate v92 adds the pure PE-1A proposal and review display. Candidate v93 adds only the explicit next-Program-session materialization path and immutable workout origin required for deterministic cycle evidence. It does not remove manual Train entry or add proposal application, a schema bump, Supabase table/RLS/migration, cloud Program entity, History rewrite, automatic change, or deployment.
 
 ## 0. Contract language and precedence
 
@@ -60,17 +62,19 @@ Intended flow:
 
 **PF1-2.2 — Editor fact.** `app.js` edits one named routine type in place inside profile-scoped schema-v5 `customRoutines`. Save affects later routine loads; reset deletes the override and reveals the coded default.
 
-**PF1-2.3 — Train materialization fact.** `workout-session-controller.js` creates a fresh active-workout ID, routine type, start time, ordered exercise snapshots, generated set IDs, prior-performance seed values, and routine prescription metadata. Loading into an existing session appends only missing exercises.
+**PF1-2.3 — Train materialization fact.** `workout-session-controller.js` creates a fresh active-workout ID, routine type, start time, ordered exercise snapshots, generated set IDs, prior-performance seed values, and routine prescription metadata. The PE-1B candidate also exposes a contained explicit Program entry that copies one exact pinned Routine version and its origin; existing manual/saved-routine entry remains unchanged.
 
-**PF1-2.4 — Active/completed isolation fact.** The active workout is persisted independently. Completion copies only completed sets into a completed workout, saves it in `state.workouts`, clears the active session, and retains no live Routine pointer.
+**PF1-2.4 — Active/completed isolation fact.** The active workout is persisted independently. Completion copies only completed sets into a completed workout, saves it in `state.workouts`, clears the active session, and retains no live Routine pointer. When `programOrigin` exists, completion copies that immutable snapshot exactly.
 
 **PF1-2.5 — Goals fact.** Goals guidance reads exact completed evidence and current routine/session structure. It may prefill a compatible card or offer an explicit one-session override, but does not edit the saved Routine; its deterministic policy stops at today and the next comparable exposure.
 
-**PF1-2.6 — History/Progress fact.** Calendar and History primarily retain `workout.type` plus the performed exercise/set snapshot. Progress derives summaries from completed workouts and owns neither Routine nor Program structure.
+**PF1-2.6 — History/Progress fact.** Calendar and History retain performed workout facts. A Program-derived workout may additionally retain validated `programOrigin`; legacy, manual, and retrospective workouts remain valid without it. Progress derives summaries and owns neither Routine nor Program structure.
 
 **PF1-2.7 — Persistence/scoping fact.** Routines, Goals, exercise preferences, active sessions, and completed workouts are profile-scoped schema-v5 source data. Cloud rows remain scoped by immutable account/profile identity; no Program entity currently exists locally or in Supabase.
 
 **PF1-2.8 — Planning gap.** `PROFILE.weekPlan` maps weekdays directly to Routine type strings. It has no stable Program/cycle-slot/Routine-version identity, effective-date boundary, missed-session semantics, block identity, change history, or workout-to-plan provenance.
+
+PE-1B does not reinterpret that weekday path. Only the explicit active-Program action creates Program provenance; weekday/manual/saved-routine and retrospective paths never infer it.
 
 ## 3. Jorge reference-program audit
 
@@ -273,6 +277,14 @@ This is a conceptual domain contract, not approval of a storage shape or migrati
 
 **PF1-5.11 — Rest snapshot.** Train MUST snapshot the resolved rest target into the created active session/exercise. Later Routine edits, exercise-preference edits, Program changes, or default changes MUST NOT silently change that active target mid-session; an explicit active-session user override remains local to that session unless separately saved as a preference or successor prescription.
 
+**PF1-5.13 — Program-origin snapshot.** Program-derived materialization MUST record one namespaced `big-gains.program-origin.v1` object containing exact account/profile, Program/Program-version, Routine/Routine-version, slot ID, zero-based slot index, one-based cycle number, and materialization time. It MUST contain no mutable analysis values or natural-language identity.
+
+**PF1-5.14 — Completion advancement.** Materialization reserves and snapshots the current `nextSlotIndex` without advancing it. Successful completion advances exactly once under `advanceOn: completed_session`; failed save, discard, resume, reload, repeated start, elapsed weekdays, and preferred calendar anchors do not advance it.
+
+**PF1-5.15 — Completed-cycle proof.** A completed cycle is derived only when completed compatible origin-bearing History covers every pinned slot of the exact Program version for one cycle number. A merely materialized, abandoned, partial, deleted, legacy, or cross-version sequence does not prove a cycle.
+
+**PF1-5.16 — No provenance backfill.** Existing or retrospectively created workouts without explicit Program origin MUST remain unproven. History editing preserves an existing origin and MUST NOT fabricate or relink it from labels, weekdays, exercise lists, or naming conventions.
+
 **PF1-5.12 — Rest implementation boundary.** PF1-5.10 and PF1-5.11 define ownership for later implementation only. Foundation MUST NOT alter the current timer, preference, active-session, or persistence behavior.
 
 ## 6. Lifecycle and change semantics
@@ -346,6 +358,8 @@ Program-1B implementation: `BigGainsProgramAnalyzer.analyze({ programVersion, ro
 **Program Analyzer = deterministic structural facts, not coaching/recommendation.** Program-1B does not classify any exposure as too high, too low, imbalanced, optimal, or otherwise prescriptive; it does not create a proposal or successor version.
 
 ### 8.2 Programming Engine proposals
+
+The documentation-only [Programming Engine v1 contract](PROGRAMMING_ENGINE_V1.md) is the normative specialization of this subsection for the first rules-based proposal unit. Where the Foundation lists broader future operation classes, the PE v1 allowlist is intentionally narrower; parked Foundation operations remain unauthorized.
 
 **PF1-8.1 — Pure proposal API.** The future engine MUST accept immutable profile-scoped inputs and return a proposal. Analysis MUST NOT persist, activate, or mutate Program, Routine, Goal, workout, or history.
 
