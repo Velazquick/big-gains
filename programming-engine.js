@@ -172,7 +172,7 @@
       staleBaseGuard: staleGuard(envelope, input, goal),
       proposalType: proposal ? PROPOSAL_TYPE : null,
       operations: proposal ? proposal.operations : [],
-      approval: proposal ? { userApprovalRequired: true, authorityCeiling: 'review', applicationAvailable: false }
+      approval: proposal ? { userApprovalRequired: true, authorityCeiling: 'review', applicationAvailable: true }
         : { userApprovalRequired: false, authorityCeiling: 'review', applicationAvailable: false },
       explanation,
       noChangeRule,
@@ -708,7 +708,7 @@
         ],
         caveats: [
           'Earlier-position remainder allocation is a deterministic tie-breaker, not a physiological claim.',
-          'Approval is required; application wiring follows in PE-1B.',
+          'Approval is required; PE-1C applies this exact typed diff atomically for future sessions only.',
           'Active workouts and completed History remain untouched.'
         ],
         reasonCodeReferences: reasonCodes

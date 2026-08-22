@@ -1,4 +1,4 @@
-importScripts('./asset-manifest.js?v=v93-pe-1b-program-origin-provenance-config-ab51ee79cd36825d', './service-worker-core.js');
+importScripts('./asset-manifest.js?v=v94-pe-1c-atomic-proposal-application-config-ab51ee79cd36825d', './service-worker-core.js');
 
 const runtime = BigGainsServiceWorkerCore.createRuntime({
   manifest: BIG_GAINS_ASSET_MANIFEST,

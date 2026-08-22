@@ -2,10 +2,10 @@ import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
 
-const CURRENT_RELEASE = 'v93-pe-1b-program-origin-provenance';
+const CURRENT_RELEASE = 'v94-pe-1c-atomic-proposal-application';
 const CURRENT_CONFIG_VERSION = 'config-ab51ee79cd36825d';
 const CURRENT_CACHE = `big-gains-shell-${CURRENT_RELEASE}-${CURRENT_CONFIG_VERSION}`;
-const PREVIOUS_CACHE = 'big-gains-shell-v92-pe-1a-volume-neutral-exposure-redistribution-config-ab51ee79cd36825d';
+const PREVIOUS_CACHE = 'big-gains-shell-v93-pe-1b-program-origin-provenance-config-ab51ee79cd36825d';
 const PREVIOUS_CONFIG_CACHE = `big-gains-shell-${CURRENT_RELEASE}-config-0000000000000000`;
 
 async function waitForServiceWorker(page) {
@@ -45,6 +45,7 @@ test('first install precaches one complete, revision-consistent app shell', asyn
   expect(state.cachedUrls).toContain(new URL(`/routine-engine.js?v=${CURRENT_RELEASE}`, page.url()).href);
   expect(state.cachedUrls).toContain(new URL(`/workout-session-controller.js?v=${CURRENT_RELEASE}`, page.url()).href);
   expect(state.cachedUrls).toContain(new URL(`/program-origin.js?v=${CURRENT_RELEASE}`, page.url()).href);
+  expect(state.cachedUrls).toContain(new URL(`/programming-application.js?v=${CURRENT_RELEASE}`, page.url()).href);
   expect(state.cachedUrls).toContain(new URL(`/timer-controller.js?v=${CURRENT_RELEASE}`, page.url()).href);
   expect(state.cachedUrls).toContain(new URL(`/goals.js?v=${CURRENT_RELEASE}`, page.url()).href);
   expect(state.cachedUrls).toContain(new URL(`/goals-progression.js?v=${CURRENT_RELEASE}`, page.url()).href);

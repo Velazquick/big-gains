@@ -15,6 +15,7 @@
   let dialogRenderFrame = null;
   let detailReturnView = 'plan';
   let pendingGoalReturn = null;
+  let programmingApplicationRunning = false;
 
   const el = id => document.getElementById(id);
   const canonicalId = value => exerciseCatalog.canonicalIdFor(value);
@@ -521,8 +522,12 @@
       ? `${distances[0]} ${distances[0] === 1 ? 'session' : 'sessions'} apart`
       : `${distances.join(' / ')} sessions apart`;
 
-  function currentProgramContext() {
-    const stored = capture();
+  function programContextFor(sourceState = state) {
+    const stored = model.normalizeCapture(sourceState?.programCapture, {
+      accountId: ACCOUNT.accountId,
+      profileId: PROFILE.id,
+      catalog: exerciseCatalog
+    });
     const activeVersion = stored.programVersions.find(version => version.programVersionId === stored.activeProgramVersionId) || null;
     const activeProgram = activeVersion ? stored.programs.find(program => program.programId === activeVersion.programId) || null : null;
     const latestProgram = activeProgram
@@ -539,6 +544,10 @@
       programVersion: activeVersion || latestVersion,
       status: activeVersion ? 'active' : latestVersion ? 'draft' : 'empty'
     };
+  }
+
+  function currentProgramContext() {
+    return programContextFor(state);
   }
 
   function startNextProgramSession() {
@@ -565,18 +574,32 @@
     }
   }
 
-  function analyzeContext(context = currentProgramContext()) {
+  function analyzeContext(context = currentProgramContext(), sourceState = state) {
     if (!context.programVersion || !window.BigGainsProgramAnalyzer) return null;
     return window.BigGainsProgramAnalyzer.analyze({
       programVersion: context.programVersion,
       routineVersions: context.stored.routineVersions,
       catalog: exerciseCatalog,
-      goals: state.goals?.strengthGoals || [],
+      goals: sourceState.goals?.strengthGoals || [],
       options: {
         programStatus: context.programRecord?.status || context.status,
         sequenceState: context.stored.sequenceState
       }
     });
+  }
+
+  function evaluateProgrammingSnapshot(sourceState = state) {
+    const context = programContextFor(sourceState);
+    if (!context.programVersion) return null;
+    return window.BigGainsProgrammingReview?.evaluateCurrent({
+      programVersion: context.programVersion,
+      routineVersions: context.stored.routineVersions,
+      programAnalysis: analyzeContext(context, sourceState),
+      goals: sourceState.goals?.strengthGoals || [],
+      workouts: sourceState.workouts || [],
+      catalog: exerciseCatalog,
+      programStatus: context.programRecord?.status || context.status
+    }) || null;
   }
 
   function goalName(goal) {
@@ -645,7 +668,14 @@
       catalog: exerciseCatalog,
       programStatus: context.programRecord?.status || context.status
     }) || null;
-    const programmingReviewSection = window.BigGainsProgrammingReview?.markup(programmingReview, escapeHtml) || '';
+    const programmingReviewSection = window.BigGainsProgrammingReview?.markup(programmingReview, escapeHtml, {
+      programCapture: context.stored,
+      goals: state.goals,
+      activeWorkout: active
+    }) || '';
+    const latestApplicationTrace = context.stored.applicationTraces
+      .filter(trace => trace.newProgramVersionId === version.programVersionId).at(-1) || null;
+    const applicationTraceSection = latestApplicationTrace ? `<section class="panel programming-review programming-review-applied" data-programming-application-trace="${escapeHtml(latestApplicationTrace.applicationId)}"><div class="plan-card-head"><div><span class="label">Programming review · approved</span><h3>Successor active for future sessions</h3><p>The approved evidence-backed redistribution is retained with this immutable Program version.</p></div><span class="plan-status is-active">Applied</span></div><div class="programming-review-diff"><article><span>Before</span><strong>${latestApplicationTrace.beforeExposureCount} exposure</strong><small>${latestApplicationTrace.totalCycleWorkingSetsBefore} total cycle sets</small></article><span aria-hidden="true">→</span><article><span>After</span><strong>${latestApplicationTrace.afterExposureCount} exposures</strong><small>${latestApplicationTrace.totalCycleWorkingSetsAfter} total cycle sets · ${latestApplicationTrace.allocation.join(' + ')}</small></article></div><details><summary>Application trace</summary><p class="plan-muted">Proposal ${escapeHtml(latestApplicationTrace.proposalId)} · ${escapeHtml(latestApplicationTrace.reasonCodes.join(' · '))}</p><p class="plan-muted">Base ${escapeHtml(latestApplicationTrace.baseProgramVersionId)} → successor ${escapeHtml(latestApplicationTrace.newProgramVersionId)} · next unmaterialized session</p></details></section>` : '';
     const linkedGoals = activeGoals().filter(goal => version.priorityGoalIds.includes(goal.goalId));
     const sequence = version.slots.map((slot, index) => {
       const routine = context.stored.routineVersions.find(item => item.routineVersionId === slot.routineVersionId);
@@ -660,7 +690,7 @@
     el('planProgramEyebrow').textContent = context.status === 'active' ? 'Active Program' : 'Draft Program';
     el('planProgramSubtitle').textContent = `Version ${version.versionNumber} · ${context.status === 'active' ? 'Active' : 'Draft'} · rolling cycle`;
     content.innerHTML = `<section class="panel plan-program-hero"><div class="plan-program-identity"><div><span class="plan-status ${context.status === 'active' ? 'is-active' : ''}">${context.status === 'active' ? 'Active Program' : 'Draft Program'}</span><h3>${escapeHtml(version.name)}</h3><p>Version ${version.versionNumber} · ${version.slots.length} rolling sessions · Authority ${version.programmingAuthority === 'review' ? 'Review' : 'Off'}</p></div><div class="plan-action-row">${context.status === 'active' ? `<button type="button" class="primary" data-start-program-session>${active ? 'Resume workout' : 'Start next Program session'}</button>` : ''}<button type="button" class="secondary" data-plan-setup>Review or create successor</button><button type="button" class="primary" data-plan-analysis>View full analysis</button></div></div>${analysisHighlights(analysis)}</section>
-      ${programmingReviewSection}
+      ${applicationTraceSection || programmingReviewSection}
       <section class="panel plan-detail-section"><div class="plan-card-head"><div><span class="label">Rolling cycle</span><h3>Session route</h3><p>Open a session to inspect its pinned, immutable Routine prescription.</p></div></div><ol class="plan-cycle-list">${sequence}</ol></section>
       <section class="panel plan-detail-section"><div class="plan-card-head"><div><span class="label">Linked Goals</span><h3>Priority destinations</h3></div></div><div class="plan-goal-list">${goals}</div></section>
       <section class="plan-detail-grid"><article class="panel plan-detail-section"><span class="label">Block review</span><h3>${escapeHtml(boundarySummary({ boundaryKind: version.blockReviewPolicy.boundaryKind, boundaryValue: version.blockReviewPolicy.boundaryValue }))}</h3><p>This boundary prompts review only. No automatic change occurs.</p></article><article class="panel plan-detail-section"><span class="label">Authority</span><h3>${version.programmingAuthority === 'review' ? 'Review' : 'Off'}</h3><p>${version.programmingAuthority === 'review' ? 'Future proposals would still require approval.' : 'No programming proposals are authorized.'}</p></article></section>
@@ -833,10 +863,57 @@
     return `<section class="goal-program-support"><span class="label">Supported by Program</span><strong>${escapeHtml(context.programVersion.name)} · v${context.programVersion.versionNumber}</strong><p>${escapeHtml(linkedGoalFacts(analysis, goal.goalId))}</p><button type="button" class="ghost compact" data-goal-view-program="${escapeHtml(context.programVersion.programId)}">View Program</button></section>`;
   }
 
+  function applyProgrammingProposal(container) {
+    if (programmingApplicationRunning || !container) return null;
+    const proposal = evaluateProgrammingSnapshot(state);
+    if (!proposal || proposal.proposalId !== container.dataset.proposalId) {
+      const stale = { status: 'stale', reasonCode: 'STALE_BASE' };
+      window.BigGainsProgrammingReview?.showApplicationResult(container, stale);
+      return stale;
+    }
+    if (container.dataset.programmingApprovalConfirmed !== 'true') {
+      window.BigGainsProgrammingReview?.beginApproval(container);
+      return { status: 'confirmation_required' };
+    }
+    programmingApplicationRunning = true;
+    container.querySelectorAll('[data-programming-disposition]').forEach(button => { button.disabled = true; });
+    const result = window.BigGainsProgrammingEngineApplication?.apply({
+      proposal,
+      currentProgramCapture: state.programCapture,
+      goals: state.goals,
+      activeWorkout: active,
+      accountId: ACCOUNT.accountId,
+      profileId: PROFILE.id,
+      now: new Date().toISOString(),
+      ports: {
+        readState: () => statePersistenceApi.load(),
+        snapshotRaw: () => bigGainsStatePersistence.readRawOwnedState(statePersistenceApi.storageKey),
+        commitState: nextState => statePersistenceApi.save(nextState, nextState.activeWorkout),
+        restoreRaw: raw => raw === null
+          ? bigGainsStatePersistence.removeRawOwnedState(statePersistenceApi.storageKey)
+          : bigGainsStatePersistence.writeRawOwnedState(statePersistenceApi.storageKey, raw),
+        recomputeProposal: authoritativeState => evaluateProgrammingSnapshot(authoritativeState)
+      }
+    }) || { status: 'failed', reasonCode: 'APPLICATION_UNAVAILABLE' };
+    programmingApplicationRunning = false;
+    if (result.status === 'applied') {
+      state = statePersistenceApi.load();
+      active = state.activeWorkout || null;
+      renderAll();
+      openProgramDetail({ returnView: detailReturnView });
+      return result;
+    }
+    window.BigGainsProgrammingReview?.showApplicationResult(container, result);
+    return result;
+  }
+
   function handlePlanClick(event) {
     const button = event.target.closest('button');
     if (!button) return;
     if (button.dataset.programmingDisposition) {
+      if (button.dataset.programmingDisposition === 'approve') {
+        return applyProgrammingProposal(button.closest('[data-programming-review-status]'));
+      }
       return window.BigGainsProgrammingReview?.recordDisposition(
         button.closest('[data-programming-review-status]'),
         button.dataset.programmingDisposition
@@ -926,19 +1003,7 @@
 
   window.BigGainsProgramSetup = Object.freeze({
     analyzeCurrent: () => analyzeContext(currentProgramContext()),
-    evaluateProgrammingCurrent: () => {
-      const context = currentProgramContext();
-      if (!context.programVersion) return null;
-      return window.BigGainsProgrammingReview?.evaluateCurrent({
-        programVersion: context.programVersion,
-        routineVersions: context.stored.routineVersions,
-        programAnalysis: analyzeContext(context),
-        goals: state.goals?.strengthGoals || [],
-        workouts: state.workouts || [],
-        catalog: exerciseCatalog,
-        programStatus: context.programRecord?.status || context.status
-      }) || null;
-    },
+    evaluateProgrammingCurrent: () => evaluateProgrammingSnapshot(state),
     close,
     goalSupportMarkup,
     initialize,

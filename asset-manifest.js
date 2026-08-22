@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v93-pe-1b-program-origin-provenance';
+  const release = 'v94-pe-1c-atomic-proposal-application';
   const cloudConfigVersion = 'config-ab51ee79cd36825d'; // BIG_GAINS_CLOUD_CONFIG_VERSION
   const deploymentVersion = `${release}-${cloudConfigVersion}`;
   const manifestAsset = `./asset-manifest.js?v=${encodeURIComponent(deploymentVersion)}`;
@@ -48,6 +48,7 @@
     './exercise-catalog.js',
     './program-analyzer.js',
     './programming-engine.js',
+    './programming-application.js',
     './programming-review.js',
     './exercise-picker.js',
     './routine-engine.js',

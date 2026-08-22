@@ -21,23 +21,23 @@ async function createEligibleProgrammingReview(page) {
     const createId = () => `pe-ui-${++counter}`;
     const now = () => '2026-07-01T12:00:00.000Z';
     const owner = { accountId: ACCOUNT.accountId, profileId: PROFILE.id };
-    const approve = (capture, purposeKey, label, definition, workingSets) => BigGainsProgramModel.approveRoutine({
+    const approve = (capture, purposeKey, label, definition, workingSets, routineType) => BigGainsProgramModel.approveRoutine({
       capture,
       ...owner,
       purposeKey,
       label,
-      source: { kind: 'reviewed_rebuild', routineType: label },
+      source: { kind: 'reviewed_rebuild', routineType },
       exercises: [{ exerciseId: definition.canonicalId, workingSets, targetReps: '4–6', restSeconds: 180 }],
       catalog: BigGainsExerciseCatalog,
       createId,
       now
     });
     let capture = BigGainsProgramModel.blankCapture();
-    const source = approve(capture, 'pe-source', 'Strength One', bench, 6);
+    const source = approve(capture, 'pe-source', 'Strength One', bench, 6, 'Push');
     capture = source.capture;
-    const destination = approve(capture, 'pe-destination', 'Strength Two', squat, 4);
+    const destination = approve(capture, 'pe-destination', 'Strength Two', squat, 4, 'Legs');
     capture = destination.capture;
-    const other = approve(capture, 'pe-other', 'Strength Three', row, 3);
+    const other = approve(capture, 'pe-other', 'Strength Three', row, 3, 'Pull');
     capture = other.capture;
     const slots = [source.version, destination.version, other.version, destination.version].map((version, index) => ({
       label: `Route ${index + 1}`,
@@ -149,7 +149,7 @@ async function createEligibleProgrammingReview(page) {
   });
 }
 
-test('Plan displays an eligible PE-1A proposal without applying or persisting it', async ({ page }) => {
+test('Plan displays an eligible PE-1A proposal and Later remains view-local', async ({ page }) => {
   await createEligibleProgrammingReview(page);
   const before = await readStoredJson(page, STORAGE_KEYS.jorge);
   const card = page.locator('[data-programming-review-status="proposal"]');
@@ -160,12 +160,98 @@ test('Plan displays an eligible PE-1A proposal without applying or persisting it
   await expect(card).toContainText('6 total cycle sets');
   await expect(card).toContainText('3 sets in position 1 + 3 sets in position 2');
   await expect(card).toContainText('Auxiliary Routine variant required');
-  await expect(card.getByRole('button', { name: 'Approve' })).toBeDisabled();
-  await expect(card).toContainText('application and stale-base wiring follow in PE-1C');
+  await expect(card.getByRole('button', { name: 'Approve' })).toBeEnabled();
   await card.getByRole('button', { name: 'Later' }).click();
   await expect(card.locator('[data-programming-disposition-status]')).toContainText('Saved for later in this view only');
   const after = await readStoredJson(page, STORAGE_KEYS.jorge);
   expect(after).toEqual(before);
+});
+
+test('Approve confirms and atomically activates one successor with a persisted trace', async ({ page }) => {
+  const base = await createEligibleProgrammingReview(page);
+  const before = await readStoredJson(page, STORAGE_KEYS.jorge);
+  const card = page.locator('[data-programming-review-status="proposal"]');
+  await card.getByRole('button', { name: 'Approve' }).click();
+  await expect(card).toContainText('Confirm the exact before/after diff above');
+  await card.getByRole('button', { name: 'Confirm approval' }).click();
+  const applied = page.locator('[data-programming-application-trace]');
+  await expect(applied).toBeVisible();
+  await expect(applied).toContainText('Successor active for future sessions');
+  await expect(applied).toContainText('3 + 3');
+  const after = await readStoredJson(page, STORAGE_KEYS.jorge);
+  expect(after.workouts).toEqual(before.workouts);
+  expect(after.activeWorkout).toEqual(before.activeWorkout);
+  expect(after.programCapture.programVersions).toHaveLength(2);
+  expect(after.programCapture.routineVersions).toHaveLength(5);
+  expect(after.programCapture.applicationTraces).toHaveLength(1);
+  expect(after.programCapture.programVersions[0].programVersionId).toBe(base.programVersionId);
+  expect(after.programCapture.activeProgramVersionId).toBe(after.programCapture.programVersions[1].programVersionId);
+  expect(after.programCapture.applicationTraces[0]).toMatchObject({
+    proposalId: expect.any(String),
+    baseProgramVersionId: base.programVersionId,
+    newProgramVersionId: after.programCapture.activeProgramVersionId,
+    beforeExposureCount: 1,
+    afterExposureCount: 2,
+    totalCycleWorkingSetsBefore: 6,
+    totalCycleWorkingSetsAfter: 6,
+    allocation: [3, 3],
+    disposition: 'approved'
+  });
+});
+
+test('approval preserves an active predecessor session and advances the successor only when it completes', async ({ page }) => {
+  const base = await createEligibleProgrammingReview(page);
+  const frozen = await page.evaluate(() => {
+    const session = BigGainsProgramSetup.startNextProgramSession();
+    if (!session?.programOrigin) throw new Error('Program session did not materialize.');
+    BigGainsProgramSetup.openProgramDetail();
+    return structuredClone(session);
+  });
+  const card = page.locator('[data-programming-review-status="proposal"]');
+  await card.getByRole('button', { name: 'Approve' }).click();
+  await card.getByRole('button', { name: 'Confirm approval' }).click();
+  const afterApproval = await readStoredJson(page, STORAGE_KEYS.jorge);
+  expect(afterApproval.activeWorkout).toEqual(frozen);
+  expect(afterApproval.programCapture.sequenceState.nextSlotIndex).toBe(0);
+  expect(afterApproval.programCapture.sequenceState.completedCycles).toBe(0);
+  const successorId = afterApproval.programCapture.activeProgramVersionId;
+  expect(successorId).not.toBe(base.programVersionId);
+
+  await page.evaluate(() => {
+    const exercise = active.exercises[0];
+    const set = exercise.sets.find(candidate => !candidate.warmup);
+    set.weight = 200;
+    set.reps = 5;
+    set.completed = true;
+    saveState();
+    if (!workoutSessionController.complete()) throw new Error('Frozen Program session did not complete.');
+  });
+  const completed = await readStoredJson(page, STORAGE_KEYS.jorge);
+  expect(completed.activeWorkout).toBeNull();
+  expect(completed.programCapture.activeProgramVersionId).toBe(successorId);
+  expect(completed.programCapture.sequenceState).toMatchObject({
+    programVersionId: successorId,
+    nextSlotIndex: 1,
+    completedCycles: 0
+  });
+  expect(completed.workouts[0].programOrigin.programVersionId).toBe(base.programVersionId);
+});
+
+test('a stale proposal cannot be approved and leaves local state unchanged', async ({ page }) => {
+  await createEligibleProgrammingReview(page);
+  const before = await readStoredJson(page, STORAGE_KEYS.jorge);
+  const card = page.locator('[data-programming-review-status="proposal"]');
+  await card.getByRole('button', { name: 'Approve' }).click();
+  await page.evaluate(() => {
+    state.goals.strengthGoals[0].status = 'paused';
+    saveState();
+  });
+  await card.getByRole('button', { name: 'Confirm approval' }).click();
+  await expect(card).toContainText('Program or evidence changed');
+  const after = await readStoredJson(page, STORAGE_KEYS.jorge);
+  expect(after.programCapture).toEqual(before.programCapture);
+  expect(after.workouts).toEqual(before.workouts);
+  expect(after.activeWorkout).toEqual(before.activeWorkout);
 });
 
 test('production-shaped exact History without Program origin is unavailable rather than cycle-guessed', async ({ page }) => {
