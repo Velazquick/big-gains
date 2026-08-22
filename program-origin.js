@@ -95,17 +95,19 @@
     });
   }
 
-  function advanceCaptureForCompletion({ capture, programOrigin, accountId, profileId, catalog = null, completedAt = new Date().toISOString() }) {
+  function advanceCaptureForCompletion({ capture, programOrigin, workoutId = null, accountId, profileId, catalog = null, completedAt = new Date().toISOString() }) {
     const model = scope.BigGainsProgramModel;
     if (!model?.normalizeCapture || !model?.advanceSequence) throw new Error('Program model is unavailable.');
     const stored = model.normalizeCapture(capture, { accountId, profileId, catalog });
     const origin = normalize(programOrigin, { accountId, profileId });
     if (!origin) return freeze({ capture: stored, advanced: false, reasonCode: 'NO_PROGRAM_ORIGIN' });
     const programVersion = stored.programVersions.find(version => version.programVersionId === stored.activeProgramVersionId);
+    const originProgramVersion = stored.programVersions.find(version => version.programVersionId === origin.programVersionId);
     const sequence = stored.sequenceState;
     const slot = programVersion?.slots?.[origin.slotIndex];
+    const originSlot = originProgramVersion?.slots?.[origin.slotIndex];
     const currentCycle = Number(sequence?.completedCycles) + 1;
-    const matches = programVersion
+    const matchesCurrent = programVersion
       && programVersion.programId === origin.programId
       && programVersion.programVersionId === origin.programVersionId
       && sequence?.programId === origin.programId
@@ -115,12 +117,33 @@
       && slot?.slotId === origin.slotId
       && slot?.routineId === origin.routineId
       && slot?.routineVersionId === origin.routineVersionId;
+    const matchesFrozenPredecessor = programVersion
+      && originProgramVersion
+      && programVersion.programId === origin.programId
+      && programVersion.predecessorProgramVersionId === origin.programVersionId
+      && programVersion.effectiveBoundary?.activeWorkoutIdAtAcceptance === workoutId
+      && Boolean(workoutId)
+      && sequence?.programId === programVersion.programId
+      && sequence?.programVersionId === programVersion.programVersionId
+      && Number(sequence?.nextSlotIndex) === origin.slotIndex
+      && currentCycle === origin.cycleNumber
+      && slot?.slotId === origin.slotId
+      && originSlot?.slotId === origin.slotId
+      && originSlot?.routineId === origin.routineId
+      && originSlot?.routineVersionId === origin.routineVersionId;
+    const matches = matchesCurrent || matchesFrozenPredecessor;
     if (!matches) return freeze({ capture: stored, advanced: false, reasonCode: 'SEQUENCE_STATE_NO_LONGER_MATCHES_ORIGIN' });
     const next = {
       ...stored,
       sequenceState: model.advanceSequence(sequence, programVersion, () => new Date(completedAt).toISOString())
     };
-    return freeze({ capture: next, advanced: true, reasonCode: 'SEQUENCE_ADVANCED_ON_COMPLETION' });
+    return freeze({
+      capture: next,
+      advanced: true,
+      reasonCode: matchesFrozenPredecessor
+        ? 'SEQUENCE_ADVANCED_ON_FROZEN_PREDECESSOR_COMPLETION'
+        : 'SEQUENCE_ADVANCED_ON_COMPLETION'
+    });
   }
 
   function matchesProgramSlot(origin, programVersion) {

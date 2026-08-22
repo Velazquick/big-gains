@@ -181,7 +181,7 @@ const workoutSessionController=BigGainsWorkoutSessionController.create({
   acknowledgeTimerReady:()=>timerController.acknowledgeReady(),
   startRestTimer:exerciseIndex=>timerController.start(exerciseIndex),
   scheduleAfterCompletion:callback=>requestAnimationFrame(callback),
-  advanceProgramSequence:({activeWorkout,completedAt})=>activeWorkout?.programOrigin?BigGainsProgramOrigin.advanceCaptureForCompletion({capture:state.programCapture,programOrigin:activeWorkout.programOrigin,accountId:ACCOUNT.accountId,profileId:PROFILE.id,catalog:exerciseCatalog,completedAt}):null,
+  advanceProgramSequence:({activeWorkout,completedAt})=>activeWorkout?.programOrigin?BigGainsProgramOrigin.advanceCaptureForCompletion({capture:state.programCapture,programOrigin:activeWorkout.programOrigin,workoutId:activeWorkout.id,accountId:ACCOUNT.accountId,profileId:PROFILE.id,catalog:exerciseCatalog,completedAt}):null,
   onCompletionAdvanced:({nextIndex})=>{if(nextIndex>=0&&!matchMedia('(prefers-reduced-motion: reduce)').matches)requestAnimationFrame(()=>document.querySelectorAll('#activeExercises .active-exercise')[nextIndex]?.scrollIntoView({behavior:'smooth',block:'nearest'}));},
   onCompleted:({workout,newPRs})=>{$('heroNote').textContent=`Workout saved${newPRs?` · ${newPRs} new PR${newPRs===1?'':'s'}`:''}.`;renderAll();renderCompletion(workout);},
   onDiscarded:()=>{renderHero();renderLibrary();$('workoutPanel').scrollIntoView({behavior:'smooth'});}

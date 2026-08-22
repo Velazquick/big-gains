@@ -150,10 +150,25 @@
     return engine.evaluate(buildInput(context));
   }
 
-  function markup(result, escapeHtml = value => String(value)) {
+  function applicationEligibility(result, context = {}) {
+    if (result?.status !== 'proposal' || result.approval?.applicationAvailable !== true) {
+      return { eligible: false, reasonCode: 'PROPOSAL_NOT_APPLICABLE' };
+    }
+    return scope.BigGainsProgrammingEngineApplication?.preliminarilyEligible({
+      proposal: result,
+      currentProgramCapture: context.programCapture,
+      goals: context.goals,
+      activeWorkout: context.activeWorkout,
+      accountId: result.profileScope?.accountId,
+      profileId: result.profileScope?.profileId
+    }) || { eligible: false, reasonCode: 'APPLICATION_UNAVAILABLE' };
+  }
+
+  function markup(result, escapeHtml = value => String(value), context = {}) {
     if (!result) return '';
     const escape = value => escapeHtml(value == null ? '' : String(value));
     if (result.status === 'proposal') {
+      const eligibility = applicationEligibility(result, context);
       const allocation = result.perExposureSetAllocation.map(item => `${item.workingSets} sets in position ${item.programPosition}`).join(' + ');
       const evidence = list(result.evidence?.facts).map(fact => `<li><strong>${escape(fact.value)} / ${escape(fact.required)}</strong><span>${escape(fact.name)}</span></li>`).join('');
       const variant = result.auxiliaryRoutineVariantRequired
@@ -164,9 +179,8 @@
         <div class="programming-review-diff"><article><span>Before</span><strong>${escape(result.beforeExposureCount)} exposure</strong><small>${escape(result.totalCycleWorkingSetsBefore)} total cycle sets</small></article><span aria-hidden="true">→</span><article><span>After</span><strong>${escape(result.afterExposureCount)} exposures</strong><small>${escape(result.totalCycleWorkingSetsAfter)} total cycle sets · ${escape(allocation)}</small></article></div>
         ${variant}
         <details><summary>Evidence and exact review trace</summary><ul class="programming-review-evidence">${evidence}</ul><p>${escape(result.expectedConservativeEffect)}</p><p class="plan-muted">Base Program ${escape(result.baseProgramVersionId)} · Future unmaterialized sessions only</p></details>
-        <div class="programming-review-actions"><button type="button" class="primary" data-programming-disposition="approve" disabled title="Application wiring follows in PE-1C">Approve</button><button type="button" class="secondary" data-programming-disposition="reject">Reject</button><button type="button" class="ghost" data-programming-disposition="later">Later</button></div>
-        <p class="programming-review-parked">Approve is parked: atomic successor-version application and stale-base wiring follow in PE-1C.</p>
-        <p class="programming-review-disposition" data-programming-disposition-status hidden></p>
+        <div class="programming-review-actions"><button type="button" class="primary" data-programming-disposition="approve" ${eligibility.eligible ? '' : 'disabled'}>Approve</button><button type="button" class="secondary" data-programming-disposition="reject">Reject</button><button type="button" class="ghost" data-programming-disposition="later">Later</button></div>
+        <p class="programming-review-disposition" data-programming-disposition-status ${eligibility.eligible ? 'hidden' : ''}>${eligibility.eligible ? '' : 'This proposal is no longer fresh enough to approve. Recompute from the current Program.'}</p>
       </section>`;
     }
     if (result.status === 'no_change') {
@@ -188,6 +202,36 @@
     return true;
   }
 
-  const api = Object.freeze({ buildInput, evaluateCurrent, markup, recordDisposition });
+  function beginApproval(container) {
+    if (!container || container.dataset.programmingApprovalConfirmed === 'true') return false;
+    const button = container.querySelector('[data-programming-disposition="approve"]');
+    const status = container.querySelector('[data-programming-disposition-status]');
+    if (!button || button.disabled || !status) return false;
+    container.dataset.programmingApprovalConfirmed = 'true';
+    button.textContent = 'Confirm approval';
+    status.hidden = false;
+    status.textContent = 'Confirm the exact before/after diff above. The successor applies only to future unmaterialized Program sessions.';
+    return true;
+  }
+
+  function showApplicationResult(container, result) {
+    const status = container?.querySelector('[data-programming-disposition-status]');
+    if (!container || !status || !result) return false;
+    status.hidden = false;
+    if (result.status === 'applied') {
+      status.textContent = result.idempotent
+        ? 'This proposal was already approved. The existing successor remains active.'
+        : 'Approved. The successor Program is active for future unmaterialized sessions; the evidence and reason trace was retained.';
+      container.dataset.programmingDisposition = 'approved';
+    } else if (result.status === 'stale') {
+      status.textContent = 'The Program or evidence changed. Nothing was changed; recompute the proposal from the current Program.';
+    } else {
+      status.textContent = 'Approval could not be saved. Nothing was changed, and a safe retry is possible.';
+    }
+    container.querySelectorAll('[data-programming-disposition]').forEach(button => { button.disabled = true; });
+    return true;
+  }
+
+  const api = Object.freeze({ applicationEligibility, beginApproval, buildInput, evaluateCurrent, markup, recordDisposition, showApplicationResult });
   Object.defineProperty(scope, 'BigGainsProgrammingReview', { configurable: false, enumerable: true, value: api, writable: false });
 })(typeof window === 'object' ? window : globalThis);

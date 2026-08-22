@@ -25,36 +25,37 @@ The production script order is:
 12. `exercise-catalog.js`
 13. `program-analyzer.js`
 14. `programming-engine.js`
-15. `programming-review.js`
-16. `exercise-picker.js`
-17. `routine-engine.js`
-18. `analytics.js`
-19. `goals-progression.js`
-20. `goals.js`
-21. `goals-train-guidance.js`
-22. `workout-session-controller.js`
-23. `workout-controls.js`
-24. `notes.js`
-25. `timer-controller.js`
-26. `progress.js`
-27. `retrospective-workout.js`
-28. `cloud-shadow.js`
-29. `managed-profile-recovery.js`
-30. `app.js`
-31. `program-setup.js`
-32. `workout-mode.js`
-33. `v2-shell.js`
-34. `alexa-shell.js`
-35. `training-pet.js`
-36. `design-v21.js`
-37. `session-selector-v26.js`
-38. `sync-gateway.js`
-39. `account-onboarding.js`
-40. `migration-preview.js`
-41. `cloud-sync.js`
-42. `migration-engine.js`
-43. `controlled-migration.js`
-44. `shell-init.js`
+15. `programming-application.js`
+16. `programming-review.js`
+17. `exercise-picker.js`
+18. `routine-engine.js`
+19. `analytics.js`
+20. `goals-progression.js`
+21. `goals.js`
+22. `goals-train-guidance.js`
+23. `workout-session-controller.js`
+24. `workout-controls.js`
+25. `notes.js`
+26. `timer-controller.js`
+27. `progress.js`
+28. `retrospective-workout.js`
+29. `cloud-shadow.js`
+30. `managed-profile-recovery.js`
+31. `app.js`
+32. `program-setup.js`
+33. `workout-mode.js`
+34. `v2-shell.js`
+35. `alexa-shell.js`
+36. `training-pet.js`
+37. `design-v21.js`
+38. `session-selector-v26.js`
+39. `sync-gateway.js`
+40. `account-onboarding.js`
+41. `migration-preview.js`
+42. `cloud-sync.js`
+43. `migration-engine.js`
+44. `controlled-migration.js`
+45. `shell-init.js`
 
 This order is a runtime contract. Persistence and hook APIs exist before `app.js` consumes them. `app.js` loads and renders the current profile before the shell modules initialize. The final script, `shell-init.js`, initializes the shell modules exactly once in this order: Workout Mode, view shell, profile shell, training pet, direction/momentum, session selector, and sync.
 
@@ -71,7 +72,8 @@ This order is a runtime contract. Persistence and hook APIs exist before `app.js
 | `auth-setup.html` / `auth-setup.js` | isolated page (no application global) | Consumes a one-time invite/recovery session, verifies it with `getUser()`, sets a password, then signs out only that browser session. It loads no workout, persistence, sync, recovery, or account modules and never reads training data. |
 | `cloud-storage.js` | `BigGainsCloud` | Explicit account/profile sync operations, memory and durable queue contracts, deterministic idempotency keys, local-first coordinator, acknowledgements, and conflict resolution. It contains no network transport. |
 | `program-model.js` | `BigGainsProgramModel` | Pure Program-1A contracts and transactions: validated local capture normalization, explicit immutable Routine approval/successors, exact Routine-version Program pinning, draft creation, single-active activation, and label-agnostic rolling sequence state. It accepts only Off/Review authority and has no DOM, Train, Goals, history, storage, or cloud access. |
-| `program-origin.js` | `BigGainsProgramOrigin` | Pure PE-1B Program-origin validation, immutable next-slot materialization, completion-only rolling-sequence advancement, completed-cycle proof, and PE evidence projection. It owns no DOM, persistence, cloud, or network behavior. |
+| `program-origin.js` | `BigGainsProgramOrigin` | Pure PE-1B Program-origin validation, immutable next-slot materialization, completion-only rolling-sequence advancement (including one exact frozen predecessor session across a PE-1C successor boundary), completed-cycle proof, and PE evidence projection. It owns no DOM, persistence, cloud, or network behavior. |
+| `programming-application.js` | `BigGainsProgrammingEngineApplication` | PE-1C pure stale validation/successor planning plus an explicit persistence-port transaction. It constructs the exact approved PE-1A diff in memory, carries rolling sequence across the future boundary, writes one schema-v5 profile document, verifies readback, restores the exact raw snapshot on failure, and returns structured applied/stale/unavailable/failed results. |
 | `cloud-shadow.js` | `BigGainsCloudShadow` | Read-only local/cloud semantic reconstruction, migrated/production envelope parsing, tombstone winner selection, SHA-256 shadow checksums, and exact parity/drift reporting. |
 | `cloud-sync.js` | `BigGainsCloudSync` | Phase 4F metadata catalog, asynchronous local capture, owned production transport, conditional revisions, durable retry/ACK, post-ACK comparison, guarded remote-fast-forward orchestration, and quiet Auth/shadow controls. |
 | `managed-profile-recovery.js` | `BigGainsManagedProfileRecovery` | Empty/recoverable-device restoration plus the guarded cross-device eligibility and atomic schema-v5 fast-forward boundary. It reuses canonical cloud reconstruction and never performs a general merge. |
@@ -164,15 +166,15 @@ The [Program Foundation v1 specification](PROGRAM_FOUNDATION_V1.md) inserts an e
 
 Program and Routine edits are future-session-only. Editing a referenced Routine creates a new Routine version plus a draft Program version that explicitly selects affected slots. Once Train creates an active workout, later Program, Routine, Goal, or engine changes cannot rewrite it. Completed workouts remain valid without future provenance fields and must never be backfilled by guesswork.
 
-Program labels such as Push, Posterior, or Workout A are human metadata, not engine semantics. `program-analyzer.js` exposes the pure `BigGainsProgramAnalyzer.analyze({ programVersion, routineVersions, catalog, goals?, options? })` API. Its deep-frozen `big-gains.program-analysis.v1` result is either `available` with independent topology, exercise, Goal, muscle-role, movement, prescription, spacing, volume-topology, and block-context groups, or `unavailable` with structured validation errors and null metric groups. It derives those facts from exact pinned content, keeps primary/secondary roles and unknown taxonomy separate, uses only raw deterministic rep targets, and distinguishes authoritative rolling slot distance from optional nominal preferred-calendar day gaps. `programming-engine.js` now consumes those facts through the pure, deep-frozen `BigGainsProgrammingEngine.evaluate(...)` PE-1A boundary and produces `no_change`, `unavailable`, or one topology-agnostic volume-neutral exposure proposal. `programming-review.js` adapts only explicit Program-origin/Goals evidence and renders the result in Plan; neither module owns persistence, network, DOM mutation of planning facts, or application authority.
+Program labels such as Push, Posterior, or Workout A are human metadata, not engine semantics. `program-analyzer.js` exposes the pure `BigGainsProgramAnalyzer.analyze({ programVersion, routineVersions, catalog, goals?, options? })` API. Its deep-frozen `big-gains.program-analysis.v1` result is either `available` with independent topology, exercise, Goal, muscle-role, movement, prescription, spacing, volume-topology, and block-context groups, or `unavailable` with structured validation errors and null metric groups. It derives those facts from exact pinned content, keeps primary/secondary roles and unknown taxonomy separate, uses only raw deterministic rep targets, and distinguishes authoritative rolling slot distance from optional nominal preferred-calendar day gaps. `programming-engine.js` consumes those facts through the pure, deep-frozen `BigGainsProgrammingEngine.evaluate(...)` PE-1A boundary and produces `no_change`, `unavailable`, or one topology-agnostic volume-neutral exposure proposal. `programming-review.js` adapts only explicit Program-origin/Goals evidence and renders the result in Plan. PE-1C keeps application separate in `programming-application.js`: planning is pure, and persistence occurs only through the explicit whole-profile local transaction ports supplied after user confirmation.
 
-Programming authority is explicit: `off` grants no apply authority; `review` is the v1 maximum; and `auto` is rejected and reserved for a later trust contract. Off and Review produce identical Program-1B structural analysis. PE-1B adds explicit next-slot execution but no proposal application, automatic mutation, periodization, deload, substitution, or broad Train-selection replacement. Activation records an effective boundary at the next unmaterialized session and initializes stable rolling position.
+Programming authority is explicit: `off` grants no apply authority; `review` is the v1 maximum; and `auto` is rejected and reserved for a later trust contract. Off and Review produce identical Program-1B structural analysis. PE-1B adds explicit next-slot execution. PE-1C permits only explicit user application of the supported PE-1A diff; it adds no automatic mutation, periodization, deload, substitution, or broad Train-selection replacement. Activation records an effective boundary at the next unmaterialized session and preserves stable rolling position.
 
 Program Analyzer = deterministic structural facts, not coaching/recommendation. `program-setup.js` recomputes the result in memory from the selected local Program version, profile-owned Routine versions, the static EKF catalog, linked Goal references, and matching explicit `sequenceState`. It persists no analysis cache, recommendation, proposal, or derived authority. Plan highlights, Active Program detail, Goal support summaries, and the full Analyzer consume that one recomputed result; no parallel facts calculation exists. Schema v5 and Supabase stay unchanged; optional Program origin now round-trips through existing active/completed workout cloud shadows.
 
-The approved [Programming Engine v1 contract](PROGRAMMING_ENGINE_V1.md) fixes the decision boundary. PE-1A implements its first narrow runtime slice: volume-neutral `+1` exposure redistribution for one exact linked Goal exercise, plus only the Routine variant necessary to express it, after four comparable stalled exposures spanning at least two completed Program cycles and two post-adjustment opportunities. Balanced integer allocation assigns any remainder to the earliest authoritative rolling position. PE-1B supplies explicit Program/Routine/slot/cycle workout origin and derives full-cycle completion from History. The immutable proposal still cannot be applied: Plan disables Approve until the PE-1C atomic successor transaction exists. Legacy and insufficient newly proven evidence return `BLOCK_PROVENANCE_UNAVAILABLE`; weekday/session labels are never treated as provenance.
+The approved [Programming Engine v1 contract](PROGRAMMING_ENGINE_V1.md) fixes the decision boundary. PE-1A implements its first narrow runtime slice: volume-neutral `+1` exposure redistribution for one exact linked Goal exercise, plus only the Routine variant necessary to express it, after four comparable stalled exposures spanning at least two completed Program cycles and two post-adjustment opportunities. Balanced integer allocation assigns any remainder to the earliest authoritative rolling position. PE-1B supplies explicit Program/Routine/slot/cycle workout origin and derives full-cycle completion from History. PE-1C applies only that immutable typed diff after exact freshness validation, creates predecessor-linked Routine/Program successors, preserves the active rolling position at approval, carries one exact frozen predecessor completion into the successor without repeat or skip, and stores an idempotent local application trace. Legacy and insufficient newly proven evidence return `BLOCK_PROVENANCE_UNAVAILABLE`; weekday/session labels are never treated as provenance.
 
-`state.programCapture` remains inside the current profile's schema-v5 document and JSON backup. It stores stable Routine/Program identities separately from immutable versions. Routine versions carry exact opaque EKF exercise identities, ordered prescriptions, source provenance, optional capture-only rest seconds, approval time, and predecessor linkage. Program versions carry generic ordered slot labels, exact Routine-version pins, rolling cadence, optional weekday anchors, block review policy, Goal ID references, Off/Review authority, predecessor/effective metadata, and a version note. Activation archives any other active Program for that profile and creates one explicit `sequenceState`; it does not mutate active or completed workouts.
+`state.programCapture` remains inside the current profile's schema-v5 document and JSON backup. It stores stable Routine/Program identities separately from immutable versions. Routine versions carry exact opaque EKF exercise identities, ordered prescriptions, source provenance, optional capture-only rest seconds, approval time, and predecessor linkage. Program versions carry generic ordered slot labels, exact Routine-version pins, rolling cadence, optional weekday anchors, block review policy, Goal ID references, Off/Review authority, predecessor/effective metadata, and a version note. PE-1C adds local deterministic `applicationTraces` to this same capture. Activation archives any other active Program for that profile and creates one explicit `sequenceState`; neither activation nor proposal application mutates active or completed workouts.
 
 There is no semantically correct Program destination in the existing Supabase schema. `programCapture` is therefore allowed by local migration validation but excluded from the frozen migration/cloud record set, checksums, recovery reconstruction, and outbound queue. A guarded remote training-data fast-forward or explicit same-entity resolution carries forward the already validated local-only capture while replacing cloud-backed records, preventing unrelated Program loss without claiming cloud parity. Cross-device Program sync and fresh-device Program recovery require a later explicit cloud-schema/RLS/migration decision. Existing custom routines, Goals, Train, and cloud rows are unchanged.
 

@@ -286,7 +286,7 @@ for (const [label, total, allocation] of [['E', 6, [3, 3]], ['F', 7, [4, 3]], ['
     assert.deepEqual(result.perExposureSetAllocation.map(item => item.workingSets), allocation);
     assert.equal(result.approval.userApprovalRequired, true);
     assert.equal(result.approval.authorityCeiling, 'review');
-    assert.equal(result.approval.applicationAvailable, false);
+    assert.equal(result.approval.applicationAvailable, true);
   });
 }
 

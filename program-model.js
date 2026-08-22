@@ -7,6 +7,7 @@
   const PROGRAM_STATUSES = Object.freeze(['draft', 'active', 'completed', 'archived']);
   const AUTHORITIES = Object.freeze(['off', 'review']);
   const BOUNDARY_KINDS = Object.freeze(['completed_cycles', 'weeks', 'date']);
+  const APPLICATION_TRACE_CONTRACT = 'big-gains.programming-application-trace.v1';
   const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
   const isRecord = value => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
   const validDate = value => (typeof value === 'string' || typeof value === 'number')
@@ -27,6 +28,7 @@
       routineVersions: [],
       programs: [],
       programVersions: [],
+      applicationTraces: [],
       activeProgramVersionId: null,
       sequenceState: null
     };
@@ -203,6 +205,69 @@
     };
   }
 
+  function normalizeApplicationTrace(value, accountId, profileId) {
+    if (!isRecord(value) || value.contract !== APPLICATION_TRACE_CONTRACT
+      || !scopeMatches(value, accountId, profileId) || value.disposition !== 'approved'
+      || !validDate(value.appliedAt)) return null;
+    const applicationId = idString(value.applicationId);
+    const proposalId = idString(value.proposalId);
+    const inputDigest = idString(value.inputDigest);
+    const goalId = idString(value.goalId);
+    const exerciseId = idString(value.exerciseId);
+    const baseProgramVersionId = idString(value.baseProgramVersionId);
+    const newProgramVersionId = idString(value.newProgramVersionId);
+    const boundary = value.futureEffectiveBoundary;
+    const allocation = Array.isArray(value.allocation)
+      ? value.allocation.map(Number).filter(number => Number.isInteger(number) && number > 0)
+      : [];
+    const transitions = (Array.isArray(value.routineVersionTransitions) ? value.routineVersionTransitions : [])
+      .map(item => isRecord(item) ? {
+        baseRoutineVersionId: idString(item.baseRoutineVersionId),
+        newRoutineVersionId: idString(item.newRoutineVersionId),
+        routineId: idString(item.routineId)
+      } : null)
+      .filter(item => item?.baseRoutineVersionId && item.newRoutineVersionId && item.routineId);
+    if (!applicationId || !proposalId || !inputDigest || !goalId || !exerciseId
+      || !baseProgramVersionId || !newProgramVersionId || !allocation.length || !transitions.length
+      || !isRecord(boundary) || boundary.kind !== 'next_unmaterialized_session'
+      || !Number.isInteger(Number(boundary.baseNextSlotIndex)) || Number(boundary.baseNextSlotIndex) < 0
+      || !Number.isInteger(Number(boundary.successorNextSlotIndex)) || Number(boundary.successorNextSlotIndex) < 0
+      || !Number.isInteger(Number(boundary.completedCycles)) || Number(boundary.completedCycles) < 0) return null;
+    return {
+      contract: APPLICATION_TRACE_CONTRACT,
+      applicationId,
+      proposalId,
+      inputDigest,
+      accountId,
+      profileId,
+      goalId,
+      exerciseId,
+      baseProgramVersionId,
+      newProgramVersionId,
+      routineVersionTransitions: transitions,
+      beforeExposureCount: Number(value.beforeExposureCount),
+      afterExposureCount: Number(value.afterExposureCount),
+      totalCycleWorkingSetsBefore: Number(value.totalCycleWorkingSetsBefore),
+      totalCycleWorkingSetsAfter: Number(value.totalCycleWorkingSetsAfter),
+      allocation,
+      reasonCodes: Array.isArray(value.reasonCodes) ? value.reasonCodes.map(idString).filter(Boolean) : [],
+      operations: Array.isArray(value.operations) ? clone(value.operations) : [],
+      contractVersion: idString(value.contractVersion),
+      enginePolicyVersion: idString(value.enginePolicyVersion),
+      capabilityVersion: idString(value.capabilityVersion),
+      appliedAt: new Date(value.appliedAt).toISOString(),
+      disposition: 'approved',
+      futureEffectiveBoundary: {
+        kind: 'next_unmaterialized_session',
+        activeWorkoutIdAtAcceptance: idString(boundary.activeWorkoutIdAtAcceptance) || null,
+        baseNextSlotIndex: Number(boundary.baseNextSlotIndex),
+        successorNextSlotIndex: Number(boundary.successorNextSlotIndex),
+        completedCycles: Number(boundary.completedCycles),
+        activeProgramOriginCompletionPending: boundary.activeProgramOriginCompletionPending === true
+      }
+    };
+  }
+
   function normalizeCapture(value, { accountId, profileId, catalog = null } = {}) {
     const empty = blankCapture();
     if (!accountId || !profileId || !isRecord(value) || value.contract !== CONTRACT) return empty;
@@ -236,6 +301,9 @@
     if (!foundActive) activeProgramVersionId = null;
     const activeVersion = programVersions.find(version => version.programVersionId === activeProgramVersionId);
     const rawSequence = value.sequenceState;
+    const applicationTraces = (Array.isArray(value.applicationTraces) ? value.applicationTraces : [])
+      .map(entry => normalizeApplicationTrace(entry, accountId, profileId)).filter(Boolean)
+      .filter((entry, index, all) => all.findIndex(candidate => candidate.applicationId === entry.applicationId) === index);
     const sequenceState = activeVersion && isRecord(rawSequence)
       && rawSequence.programId === activeVersion.programId
       && rawSequence.programVersionId === activeVersion.programVersionId
@@ -259,7 +327,7 @@
         completedCycles: 0,
         updatedAt: activeVersion.createdAt
       } : null;
-    return { ...empty, routines, routineVersions, programs, programVersions, activeProgramVersionId, sequenceState };
+    return { ...empty, routines, routineVersions, programs, programVersions, applicationTraces, activeProgramVersionId, sequenceState };
   }
 
   function sameRoutineContent(left, right) {
@@ -418,6 +486,7 @@
     programStatuses: PROGRAM_STATUSES,
     authorities: AUTHORITIES,
     boundaryKinds: BOUNDARY_KINDS,
+    applicationTraceContract: APPLICATION_TRACE_CONTRACT,
     blankCapture,
     parseRepTarget,
     normalizeCapture,

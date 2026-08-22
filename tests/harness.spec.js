@@ -17,6 +17,7 @@ const productionScriptOrder = [
   'exercise-catalog.js',
   'program-analyzer.js',
   'programming-engine.js',
+  'programming-application.js',
   'programming-review.js',
   'exercise-picker.js',
   'routine-engine.js',
