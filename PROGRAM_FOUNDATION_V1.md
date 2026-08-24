@@ -324,7 +324,7 @@ This is a conceptual domain contract, not approval of a storage shape or migrati
 
 **PF1-7.4 — Program owns organization.** Program and pinned Routine versions decide where priority work appears and how sessions are structured, subject to user acceptance.
 
-**PF1-7.5 — Current progression remains.** Until a later contract changes authority, the implemented Goals next-exposure policy resolves today's local step against current session/Routine structure.
+**PF1-7.5 — Current progression remains.** The implemented `BigGainsGoalsProgression` policy continues to resolve today's local step against current session/Routine structure. Under the canonical [Programming bounded-domain doctrine](ARCHITECTURE.md#programming-bounded-domain), that implementation is conceptually the Exposure Progression Policy; Goal supplies intent and guidance authorization but does not own prescription logic. This is adopt-on-touch naming, not a runtime change.
 
 **PF1-7.6 — Conflict fails closed.** If Goal guidance and pinned Routine conflict, existing routine/Train behavior remains authoritative. Foundation MUST NOT silently edit either source.
 

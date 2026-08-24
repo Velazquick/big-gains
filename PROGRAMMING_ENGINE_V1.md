@@ -47,7 +47,7 @@ The engine is not an LLM decision-maker. A natural-language layer may explain a 
 
 **PE1-1.5 — Engine supplies judgments.** Programming Engine consumes valid facts and applies explicit policy. Normative coaching thresholds and proposal decisions MUST remain outside Program Analyzer.
 
-**PE1-1.6 — Goals progression stays local.** Goals v1 next-exposure progression owns load/rep recommendations inside the current Routine structure. Programming Engine owns only higher-horizon, versioned Program/Routine route-change proposals.
+**PE1-1.6 — Timescale separation.** Exposure Progression Policy (currently implemented as `BigGainsGoalsProgression`) owns load/rep recommendations inside the current Routine structure. Structural Adaptation Policy (currently implemented as `BigGainsProgrammingEngine`) owns only higher-horizon, versioned Program/Routine route-change proposals. Goal supplies intent and guidance authorization; the [Programming bounded-domain doctrine](ARCHITECTURE.md#programming-bounded-domain) owns both adaptive decision timescales conceptually. Runtime names are adopted on touch.
 
 **PE1-1.7 — Train executes snapshots.** Train owns the editable active-workout snapshot. A proposal or accepted successor MUST NOT rewrite an already-created active workout.
 

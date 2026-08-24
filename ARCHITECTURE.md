@@ -97,6 +97,82 @@ This order is a runtime contract. Persistence and hook APIs exist before `app.js
 | `shell-init.js` | `BigGainsShell` | One deterministic initialization pass across all shell modules. |
 | `service-worker-core.js` | `BigGainsServiceWorkerCore` | Testable cache and fetch runtime used by `service-worker.js`. |
 
+### Programming bounded domain
+
+This doctrine clarifies ownership across the accepted [Goals v1](GOALS_V1_SPEC.md), [Program Foundation v1](PROGRAM_FOUNDATION_V1.md), [Programming Engine v1](PROGRAMMING_ENGINE_V1.md), [Exercise Knowledge Foundation](EXERCISE_KNOWLEDGE_FOUNDATION.md), and [synchronization](SYNC_SEMANTICS.md) contracts. It does not migrate code, rename runtime symbols, expand intelligence, or change schema v5, local-first behavior, Supabase, History, or production behavior.
+
+**PD-0.1 — Normative terms.** **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** are normative. `PD-*` IDs are stable citations.
+
+**PD-0.2 — Single prescription boundary.** All adaptive training-prescription decisions belong to the bounded `Programming` domain. Product domains may supply intent, structure, evidence, execution, or presentation, but MUST NOT independently implement competing prescription logic.
+
+**PD-1.1 — Product/domain roles.** The product roles remain separate:
+
+| Role | Owns |
+| --- | --- |
+| Goal | Intent, destination, target, optional static deadline, lifecycle, and success criteria |
+| Program | Current prescribed structure and immutable, versioned lineage |
+| Train | Execution through an editable workout snapshot |
+| History | Recorded performed facts and evidence |
+| Progress | Reproducible interpretation and presentation of evidence |
+| Program Analyzer | Directly derivable structural and evidence facts only |
+
+**PD-1.2 — Programming responsibilities.** One `Programming` domain contains these conceptual responsibilities:
+
+| Responsibility | Scope and timescale |
+| --- | --- |
+| Exposure Progression Policy | Fast/local, exposure-to-exposure load and repetition recommendations within existing prescribed structure |
+| Structural Adaptation Policy | Slower/supervisory, versioned Program/Routine structure proposals over accumulated evidence |
+| Trajectory Outlook | Predictive, read-only relationship between available evidence and a static Goal target/deadline |
+| Proposal Application Service | Validation and atomic application of an already-authorized structural proposal |
+| Programming Decision Trace | Policy evaluation, evidence-deficit, disposition, and eventual outcome observability |
+
+**PD-2.1 — Goal boundary.** Goal owns intent, target, optional static deadline, lifecycle, and success criteria. Goal MUST NOT compute next-exposure load/reps and MUST NOT mutate Program or Routine structure.
+
+**PD-2.2 — Program boundary.** Program owns prescribed structure and immutable, versioned lineage. Program MUST NOT adapt itself or reinterpret completed History.
+
+**PD-2.3 — Analyzer boundary.** Program Analyzer establishes facts only. It MUST NOT recommend, prescribe, infer hidden physiological state, mutate anything, or act as a state estimator. It aggregates directly derivable structural/evidence facts only. Any future latent-state estimator MUST be separately named, have zero prescription authority, and define explicit uncertainty and evidence contracts.
+
+**PD-2.4 — Exposure boundary.** Exposure Progression Policy MAY recommend only next-exposure load/reps within existing prescribed structure. It MUST NOT alter Program topology, Routine membership, slot structure, or higher-order scheduling structure.
+
+**PD-2.5 — Structural boundary.** Structural Adaptation Policy MAY propose only versioned Program/Routine structural changes. It MUST NOT compute individual next-exposure or set loads/reps.
+
+**PD-2.6 — Trajectory boundary.** Trajectory Outlook has zero prescription authority. It MUST NOT alter load, reps, Program topology, target, deadline, or training schedule.
+
+**PD-2.7 — Knowledge boundary.** Knowledge, EKF, and any future Strength Knowledge component supply definitions, constraints, priors, or evidence. They have zero mutation authority and MUST NOT independently change prescription.
+
+**PD-2.8 — Application boundary.** Proposal Application Service has zero decision authority. It validates and atomically applies an already-authorized structural proposal and MUST NOT invent, broaden, or reinterpret that proposal.
+
+**PD-2.9 — History boundary.** History records what happened. It MUST NOT infer user intent, compliance, or Program provenance, and MUST NOT rewrite completed facts. Existing explicit user-directed History edit/delete tools remain the sole fact-correction authority; no policy, analysis, presentation, or application layer gains that authority.
+
+**PD-2.10 — Progress boundary.** Progress interprets and presents evidence. It MUST NOT mutate prescription authority or History facts.
+
+**PD-2.11 — User final authority.** The user holds final prescription authority at every timescale. Big Gains MAY recommend, explain, or propose, but MUST NOT reinterpret a deliberate user deviation as an error to be corrected. The actual outcome enters History as evidence.
+
+**PD-2.12 — No manufactured compliance.** Policy, presentation, and application layers MUST NOT manufacture compliance evidence from a recommendation the user did not actually execute.
+
+**PD-3.1 — Control-analogy guard.** The feedback/control-system analogy applies only to authority boundaries, feedback flow, and timescale separation. It does not imply that human strength adaptation is a tractable control process, does not license quantitative physiological modeling, and MUST NOT be used to infer latent states such as fatigue, readiness, recovery, or adaptation rate without separately validated evidence and a separately named component with zero prescription authority.
+
+**PD-4.1 — Trajectory deadline constraint.** A deadline is static Goal metadata/context. It does not drive progression or Program changes. Suggested loads/reps are driven by actual training evidence through Exposure Progression Policy.
+
+**PD-4.2 — Trajectory language constraint.** Trajectory labels describe the relationship between available evidence and the target/deadline; they do not characterize the user. Vocabulary-level labels MAY include `estimated reached`, `comfortably plausible`, `plausible`, `aggressive`, and `insufficient evidence`.
+
+**PD-4.3 — Trajectory uncertainty constraint.** Trajectory Outlook MUST fail to `insufficient evidence` aggressively rather than emit weakly supported precision. It MUST NOT render implied micro-schedules such as “you need X by Thursday,” “you are 2.3 weeks behind,” or equivalent pressure-inducing prescriptions.
+
+**PD-4.4 — Trajectory non-design.** These are safety constraints on an unbuilt responsibility. They do not define or authorize a state machine, threshold, formula, evidence-eligibility rule, forecast method, UI, or implementation.
+
+**PD-5.1 — Decision-trace observability.** Programming Decision Trace SHOULD eventually record `proposal`, `no_change`, and `unavailable` evaluations with a stable reason, evidence digest, user disposition (`approve`, `reject`, or `later` where applicable), and eventual outcome linkage. An `unavailable` trace SHOULD expose counterfactual gate deficits such as required versus observed comparable exposures, completed cycles, and post-adjustment opportunities. This observability does not authorize threshold tuning or expanded intelligence, and it MUST NOT rewrite History.
+
+**PD-6.1 — Adopt-on-touch naming.** The conceptual naming map is documentation-only:
+
+| Current runtime name | Target conceptual name |
+| --- | --- |
+| `BigGainsGoalsProgression` | Exposure Progression Policy |
+| `BigGainsProgrammingEngine` | Structural Adaptation Policy |
+| `BigGainsProgrammingEngineApplication` | Proposal Application Service |
+| `BigGainsProgramAnalyzer` | Program Analyzer |
+
+Code adopts these names only when otherwise touched under a separately authorized interval. Historical PE-1A/1B/1C names, release markers, and documents remain valid archaeology; this slice authorizes no rename or refactor.
+
 ### `app.js` composition boundary
 
 The current `app.js` responsibilities classify as follows:
@@ -150,7 +226,7 @@ The current schema version is 5. A blank profile state contains:
 
 ### Goals v1 design boundary
 
-The [Goals v1 specification](GOALS_V1_SPEC.md) defines an exercise-scoped strength-goal and progression-policy boundary. Goals-1A implements the destination model, lifecycle, standalone hub, Today entry, and profile-scoped persistence through the existing schema-v5 `goals` preference and singleton cloud-shadow identity. Guidance remains authorization-only in 1A and has no Train effect.
+The [Goals v1 specification](GOALS_V1_SPEC.md) defines the accepted legacy combined contract for an exercise-scoped strength Goal and the current next-exposure policy. Under the canonical Programming bounded-domain doctrine above, Goal owns intent while the current `BigGainsGoalsProgression` implementation is conceptually the Exposure Progression Policy. Goals-1A implements the destination model, lifecycle, standalone hub, Today entry, and profile-scoped persistence through the existing schema-v5 `goals` preference and singleton cloud-shadow identity. Guidance remains authorization-only in 1A and has no Train effect.
 
 The proposed boundary separates `estimated_reached` (eligible fresh e1RM evidence at/above target) from `achieved` (an eligible completed single at/above target for the exact exercise). It uses recent observed comparable work before e1RM-derived calibration, preserves the routine's working-set count, defaults generic strength work to a versioned `4–6` rep heuristic, and limits deterministic double progression to today and the next comparable exposure. A future Programming/Strength Planning layer may own longer-horizon blocks, phases, intensity objectives, or deload strategy only through a separate versioned authority boundary.
 
