@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v94-pe-1c-atomic-proposal-application';
+  const release = 'v95-mobile-startup-interactivity';
   const cloudConfigVersion = 'config-ab51ee79cd36825d'; // BIG_GAINS_CLOUD_CONFIG_VERSION
   const deploymentVersion = `${release}-${cloudConfigVersion}`;
   const manifestAsset = `./asset-manifest.js?v=${encodeURIComponent(deploymentVersion)}`;
@@ -35,6 +35,7 @@
   ];
   const scripts = [
     './boot-render-gate.js',
+    './runtime-interactivity-gate.js',
     './account-context.js',
     './cloud-config.js',
     './vendor/supabase.js',
@@ -80,11 +81,26 @@
     './controlled-migration.js',
     './shell-init.js'
   ];
+  const optionalScriptPaths = new Set([
+    './reconciliation-control.js',
+    './cloud-storage.js',
+    './cloud-shadow.js',
+    './alexa-shell.js',
+    './training-pet.js',
+    './design-v21.js',
+    './sync-gateway.js',
+    './migration-preview.js',
+    './cloud-sync.js',
+    './migration-engine.js',
+    './controlled-migration.js'
+  ]);
   const revision = path => `${path}?v=${encodeURIComponent(
     path === './cloud-config.js' ? cloudConfigVersion : release
   )}`;
   const revisionedStyles = styles.map(revision);
   const revisionedScripts = scripts.map(revision);
+  const requiredScripts = scripts.filter(path => !optionalScriptPaths.has(path)).map(revision);
+  const optionalScripts = scripts.filter(path => optionalScriptPaths.has(path)).map(revision);
   const authSetupStyles = ['./auth-setup.css'].map(revision);
   const authSetupScripts = ['./cloud-config.js', './vendor/supabase.js', './auth-setup.js'].map(revision);
   const coreAssets = [
@@ -119,6 +135,8 @@
     legacyCacheNames: Object.freeze([...legacyCacheNames]),
     styles: Object.freeze(revisionedStyles),
     scripts: Object.freeze(revisionedScripts),
+    requiredScripts: Object.freeze(requiredScripts),
+    optionalScripts: Object.freeze(optionalScripts),
     authSetupStyles: Object.freeze(authSetupStyles),
     authSetupScripts: Object.freeze(authSetupScripts),
     coreAssets: Object.freeze(coreAssets)

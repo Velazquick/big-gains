@@ -4,6 +4,7 @@ import { openApp } from './helpers/app.js';
 
 const productionScriptOrder = [
   'boot-render-gate.js',
+  'runtime-interactivity-gate.js',
   'account-context.js',
   'cloud-config.js',
   'supabase.js',
