@@ -1,0 +1,105 @@
+name: Deploy static site to Pages
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out tested commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Write browser-safe deployment configuration
+        if: ${{ vars.SUPABASE_URL != '' && vars.SUPABASE_PUBLISHABLE_KEY != '' }}
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+          BIG_GAINS_AUTOMATIC_RECONCILIATION: ${{ vars.BIG_GAINS_AUTOMATIC_RECONCILIATION }}
+        run: node scripts/write-cloud-config.mjs
+
+      - name: Validate static site
+        shell: bash
+        run: |
+          test -f index.html
+          test -f asset-manifest.js
+          test -f app.js
+          test -f retrospective-workout.js
+          test -f retrospective-workout.css
+          test -f service-worker.js
+          test -f service-worker-core.js
+          test -f cloud-sync.js
+          test -f reconciliation-control.js
+          test -f vendor/supabase.js
+          test -f migration-preview.js
+          test -f migration-preview.css
+          node --input-type=module <<'NODE'
+          await import('./asset-manifest.js');
+
+          const manifest = globalThis.BIG_GAINS_ASSET_MANIFEST;
+          if (!manifest || typeof manifest.release !== 'string' || !manifest.release.trim()) {
+            throw new Error('asset-manifest.js must declare a non-empty release.');
+          }
+          if (!/^config-[a-f0-9]{16}$/.test(manifest.cloudConfigVersion)) {
+            throw new Error('asset-manifest.js must declare a generated cloud-config version.');
+          }
+
+          const expectedCloudConfig = `./cloud-config.js?v=${manifest.cloudConfigVersion}`;
+          if (!manifest.scripts.includes(expectedCloudConfig)
+              || !manifest.authSetupScripts.includes(expectedCloudConfig)) {
+            throw new Error('Cloud config references must use the generated config version.');
+          }
+          if (manifest.cloudConfigVersion === manifest.release
+              || !manifest.cacheName.endsWith(`-${manifest.cloudConfigVersion}`)
+              || !manifest.runtimeCacheName.endsWith(`-${manifest.cloudConfigVersion}`)) {
+            throw new Error('Cloud config version must rotate the deployment cache names independently.');
+          }
+          const expectedManifestAsset = `./asset-manifest.js?v=${encodeURIComponent(manifest.deploymentVersion)}`;
+          if (manifest.manifestAsset !== expectedManifestAsset
+              || !manifest.coreAssets.includes(expectedManifestAsset)) {
+            throw new Error('The generated deployment manifest reference must be precached.');
+          }
+
+          const requiredAssets = [
+            ['./reconciliation-control.js', manifest.scripts],
+            ['./migration-preview.js', manifest.scripts],
+            ['./migration-preview.css', manifest.styles]
+          ];
+          for (const [asset, collection] of requiredAssets) {
+            const isListed = collection.some(entry => entry.split('?')[0] === asset);
+            const isCoreAsset = manifest.coreAssets.some(entry => entry.split('?')[0] === asset);
+            if (!isListed || !isCoreAsset) {
+              throw new Error(`asset-manifest.js must include ${asset}.`);
+            }
+          }
+          NODE
+          grep -Fq "logRetrospectiveWorkout" index.html
+          grep -Fq "./service-worker.js" app.js
+          grep -Fq "importScripts('./asset-manifest.js?v=" service-worker.js
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload static site artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: .
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
