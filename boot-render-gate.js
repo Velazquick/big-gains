@@ -8,19 +8,29 @@
   let state = 'unresolved';
   let reason = 'startup';
   let epoch = 0;
+  let authorizing = false;
 
   function personalizedRoots() {
     return [...document.querySelectorAll(ROOT_SELECTOR)];
   }
 
-  function conceal(nextReason = reason) {
-    reason = nextReason;
+  function syncVisibility() {
+    const visible = state === 'verified'
+      && !authorizing
+      && window.BigGainsRuntimeGate?.canInteract?.() === true;
     root.dataset.bootState = state;
     personalizedRoots().forEach(element => {
-      element.inert = true;
-      element.setAttribute('aria-hidden', 'true');
+      element.inert = !visible;
+      if (visible) element.removeAttribute('aria-hidden');
+      else element.setAttribute('aria-hidden', 'true');
     });
-    if (shell) shell.hidden = false;
+    if (shell) shell.hidden = visible;
+    return visible;
+  }
+
+  function conceal(nextReason = reason) {
+    reason = nextReason;
+    syncVisibility();
   }
 
   function beginTransition(nextReason = 'identity-transition') {
@@ -34,21 +44,26 @@
   }
 
   function authorize(nextReason = 'identity-resolved') {
-    if (state === 'verified' && root.dataset.bootState === 'verified') return false;
+    if (state === 'verified' && root.dataset.bootState === 'verified') {
+      syncVisibility();
+      return false;
+    }
     epoch += 1;
     state = 'verified';
     reason = nextReason;
+    root.dataset.bootState = state;
     // Render while the personalized roots are still concealed. The DOM becomes
-    // visible only after every authorized render listener has completed.
-    document.dispatchEvent(new CustomEvent('big-gains-boot-authorized', {
-      detail: Object.freeze({ reason })
-    }));
-    personalizedRoots().forEach(element => {
-      element.inert = false;
-      element.removeAttribute('aria-hidden');
-    });
-    root.dataset.bootState = 'verified';
-    if (shell) shell.hidden = true;
+    // visible only after every authorized render listener and the separate
+    // runtime composition boundary have both completed.
+    authorizing = true;
+    try {
+      document.dispatchEvent(new CustomEvent('big-gains-boot-authorized', {
+        detail: Object.freeze({ reason })
+      }));
+    } finally {
+      authorizing = false;
+      syncVisibility();
+    }
     return true;
   }
 
@@ -77,6 +92,7 @@
     recover,
     restore,
     canRender,
+    refreshVisibility: syncVisibility,
     status: () => Object.freeze({ state, reason, epoch })
   });
 

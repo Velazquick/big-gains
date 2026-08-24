@@ -321,5 +321,6 @@ notesApi.initialize({state,saveState});
 progressApi.initialize({getState:()=>state,getAnalyticsOptions:analyticsOptions,exercises:CATALOG_EXERCISES,analytics:analyticsApi,fmtDate,escapeHtml,workoutLabel:completionWorkoutLabel,openHistory,closeHistory,closeRoutineEditor});
 retrospectiveApi.initialize();
 document.addEventListener('big-gains-boot-authorized',renderAll);
+window.BigGainsAppRuntime=Object.freeze({initialized:true,profileId:PROFILE.id});
 if(!window.BigGainsSupabase?.configured)window.BigGainsBootGate?.authorize('local-config-unavailable');
 else renderAll();
