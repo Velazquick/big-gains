@@ -30,6 +30,7 @@ Release `v76-history-explorer-detail-polish` completes the first History V2 prod
 
 ## Project documentation
 
+- [Performance Records v1](PERFORMANCE_RECORDS_V1.md) — normative PR umbrella, preserved e1RM records, limited exact-exercise indicated-load records, event/state/count attribution, History recomputation, and Programming evidence boundaries
 - [Product IA / Navigation Map v1](PRODUCT_IA_V1.md) — implemented five-destination model for Today, Plan, Train, Progress, and Library; Calendar/History consolidation; Goal–Program connective UX; shared Exercise Picker strategy; mobile navigation constraints; and remaining phased work
 - [Architecture](ARCHITECTURE.md) — production load order, module boundaries, state and workout lifecycles, profile isolation, backup and sync behavior, offline assets, and CI
 - [Goals v1 specification](GOALS_V1_SPEC.md) — normative exact-exercise 1RM lifecycle, estimated-versus-achieved semantics, conservative next-exposure policy, routine/Train authority, evidence notes, navigation decision, and implementation acceptance criteria

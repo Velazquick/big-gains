@@ -233,7 +233,7 @@ Failure of any condition produces unavailable, not zero.
 
 **EKF-6.6 — Bodyweight-plus-external.** A bodyweight-plus-external e1RM is eligible only for a curated `full_system` exercise, with known `bodyweightAtPerformance`, `e1rmLoadBasis: effective_system_load`, and all EKF-6.3 gates satisfied. The result MUST be labeled a modeled system-load estimate. Missing bodyweight makes it unavailable.
 
-**EKF-6.7 — PR identity.** A logical PR comparison key MUST include canonical identity and the relevant measurement/load basis. Results with different semantic basis, equipment-comparison scope, formula version, or unit MUST NOT compete as one PR. A schema-v5 compatibility projection MAY retain a permanent legacy slug key when it maps unambiguously, but MUST NOT rewrite historical PR keys merely to adopt the richer logical key.
+**EKF-6.7 — e1RM Record identity.** For the e1RM record type defined by [Performance Records v1](PERFORMANCE_RECORDS_V1.md), a logical comparison key MUST include canonical identity and the relevant measurement/load basis. Results with different semantic basis, equipment-comparison scope, formula version, or unit MUST NOT compete as one e1RM Record. A schema-v5 compatibility projection MAY retain a permanent legacy slug key when it maps unambiguously, but MUST NOT rewrite historical PR keys merely to adopt the richer logical key.
 
 **EKF-6.8 — Deferred personalization.** RIR/%1RM individualization, velocity models, STMr-style or other personalized fitting, and learned response models are outside EKF-0 and v1 formula implementation. They belong to later Strength Knowledge work with independent evidence and validation.
 
