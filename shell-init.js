@@ -50,7 +50,7 @@
     const plannedType = typeof todaysWorkout === 'function' ? todaysWorkout() : null;
     const fallbackType = typeof selectedDay !== 'undefined' ? selectedDay : null;
     const workoutType = button.id === 'startWorkout'
-      ? (plannedType && plannedType !== 'Rest' ? plannedType : fallbackType)
+      ? (plannedType && plannedType !== 'Rest' ? plannedType : null)
       : (previewType || fallbackType || (plannedType !== 'Rest' ? plannedType : null));
 
     if (!workoutType || workoutType === 'Rest' || typeof startWorkout !== 'function') {
