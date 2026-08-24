@@ -160,7 +160,7 @@ Goal
 
 **IA1-5.7 — Missing-link honesty.** If a Goal is not supported by the active Program, the UI MUST say so without implying an error or silently editing the Program. The action may be `Review Program support` only when a real review flow exists.
 
-**IA1-5.8 — No duplicate authority.** Goal guidance authorization remains Goal-owned for exact next-exposure guidance; Program programming authority remains Program-owned for structural proposals. A combined card may summarize both but MUST link to the one canonical control for each.
+**IA1-5.8 — No duplicate authority.** Goal owns guidance authorization metadata; Program owns its Off/Review authorization state. Adaptive next-exposure and structural decisions remain inside the [Programming bounded domain](ARCHITECTURE.md#programming-bounded-domain). A combined card may summarize these controls and decisions but MUST link to the one canonical control for each.
 
 **IA1-5.9 — Provenance boundary.** Program/Goal links shown on completed History or block analytics MUST come from explicit compatible provenance. The UI MUST NOT infer a past Program version solely from a workout label or weekday.
 

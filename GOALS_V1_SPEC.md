@@ -19,6 +19,8 @@ This document defines the first bounded strength-goal contract for Big Gains. It
 
 **G1-0.5 — Documentation-only boundary.** This unit MUST change documentation only. Schema v5, local storage, active/completed workout payloads, the cloud queue, Supabase tables/RLS, the 155-exercise EKF-3 catalog, service-worker assets, runtime behavior, and production deployment MUST remain unchanged.
 
+**G1-0.6 — Programming-domain ownership clarification.** The canonical [Programming bounded-domain doctrine](ARCHITECTURE.md#programming-bounded-domain) separates Goal intent from adaptive prescription. References in this contract to “Goals progression,” “goal policy,” or Goals computing/recommending a next exposure describe the accepted legacy contract and current `BigGainsGoalsProgression` implementation; conceptually that decision logic is the Programming domain's Exposure Progression Policy. Goal itself owns intent, target, optional deadline, lifecycle, success criteria, and guidance authorization, not prescription logic. The name is adopted on touch; this clarification does not change runtime behavior.
+
 ## 1. Scope and non-scope
 
 **G1-1.1 — Strength-first scope.** Goals v1 defines exercise-scoped maximal-strength destinations and a small deterministic policy that can recommend a future weight-and-repetition target. It is not a generic goals platform.
