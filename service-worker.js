@@ -1,4 +1,4 @@
-importScripts('./asset-manifest.js?v=v94-pe-1c-atomic-proposal-application-config-ab51ee79cd36825d', './service-worker-core.js');
+importScripts('./asset-manifest.js?v=v95-mobile-workout-start-hotfix-config-ab51ee79cd36825d', './service-worker-core.js');
 
 const runtime = BigGainsServiceWorkerCore.createRuntime({
   manifest: BIG_GAINS_ASSET_MANIFEST,
