@@ -6,6 +6,8 @@
 - Local profile schema: **5**
 - Audit date: 2026-08-24
 
+RC-2 signup, first-run, first-success, and full recovery behavior is governed by the [RC-2 self-serve onboarding and recovery contract](RC2_SELF_SERVE_ONBOARDING_RECOVERY.md). That contract records the newer `b5ffd908952b875e79c24c9b36525a88b092a5d6` documentation baseline without rewriting this plan's 2026-08-24 audit snapshot.
+
 This plan supersedes calendar-driven external-test targets. Big Gains reaches release candidate when it is the product the owner intends to hand to people and the gates below are proved. It is not a promise of zero bugs.
 
 ## 1. RC product standard
