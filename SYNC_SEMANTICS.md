@@ -20,7 +20,7 @@ This contract supersedes the synchronization semantics described narratively in 
 
 ## 2. Entities and tables under contract
 
-**SS-2.1 — Source tables.** The synchronized semantic source-table set is exactly `workouts`, `routines`, `bodyweight_entries`, `preferences`, and `active_sessions`. `tombstones` records deletion winners for those source tables. `sync_metadata` MAY hold migration or operational journal metadata but MUST NOT be treated as a training entity or change signal under this contract.
+**SS-2.1 — Source tables.** The current runtime synchronized semantic source-table set is exactly `workouts`, `routines`, `bodyweight_entries`, `preferences`, and `active_sessions`. `tombstones` records deletion winners for those source tables. `sync_metadata` MAY hold migration or operational journal metadata but MUST NOT be treated as a training entity or change signal under this contract. The normative [Program portability synchronization v1 contract](PROGRAM_PORTABILITY_SYNC_V1.md) defines a future first-class Program-domain extension; it does not join the active source set until a separately reviewed runtime/schema/RLS implementation ships.
 
 **SS-2.2 — Ownership.** Every cloud source row and tombstone MUST remain scoped by immutable `account_id` and `profile_id` values whose relationship is verified by the existing account/profile mapping and RLS boundary. A client-supplied profile identifier MUST NOT grant access.
 
