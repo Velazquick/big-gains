@@ -1,13 +1,15 @@
 # Big Gains Program portability synchronization v1
 
-- Status: **Normative target contract; documentation only**
+- Status: **Normative target contract; Slice 1 schema and dormant Slice 2A serializer implemented**
 - Contract version: **`big-gains.program-portability-envelope.v1` / 1**
-- Repository baseline: `origin/main` at `f0b192f22b09373f4098802df60e7f4c3beea3b7`
+- Repository baseline: `origin/main` at `f941ac81ed3dc30ad09d186d154b3fe2c56efaa3`
 - Runtime marker: `v95-mobile-startup-interactivity`
 - Local profile schema: **5**
 - Date: 2026-08-25
 
 The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHOULD**, **SHOULD NOT**, **MAY**, and **OPTIONAL** are normative when capitalized.
+
+Implementation tracking: Slice 1 adds the dormant local migration/RLS destination without applying it to the hosted project. Slice 2A adds the pure, runtime-unattached `BigGainsProgramDomainEnvelope` projection, validation, canonicalization, and fingerprint boundary. It changes no schema-v5 profile shape, runtime asset manifest, queue, transport, recovery, Auth, hosted data, release marker, or deployment.
 
 ## 0. Authority and boundary
 
@@ -63,6 +65,10 @@ The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHOULD**, **SHOULD NOT**, 
 
 **PPS1-2.8 - Empty domain.** A profile with no Program is valid. After cutover it is represented by a verified revision-1 empty Program-domain envelope, not by invented Programs/Routines and not by ambiguous row absence.
 
+**PPS1-2.9 - Component partition.** The canonical non-empty payload partitions immutable stable-identity fields plus immutable Routine/Program versions under `definitions`; Routine current heads plus Program lifecycle/latest/active heads and the aggregate active pointer under `heads`; and current rolling position, cycle count, update time, and transition identity under `sequence`. Catalog arrays are ordered by stable identity for serialization, while ordered Routine prescriptions and Program slots retain their semantic order. Contract/version, fixed logical client ID, verified scope, component revisions, and the member manifest wrap those components and enter the aggregate fingerprint, not immutable member fingerprints.
+
+**PPS1-2.10 - Existing-capture transition baseline.** A first revision-1 projection of an existing valid schema-v5 sequence MAY carry `lastTransition: null` because the pre-portability capture did not retain transition identity and publication MUST NOT invent History. Any sequence revision after that baseline MUST carry the complete deterministic `lastTransition` required by PPS1-6.1. This compatibility rule does not authorize a null transition for a new portable mutation or change schema-v5 persistence.
+
 ## 3. Cloud representation
 
 **PPS1-3.1 - Selected architecture.** V1 MUST use one first-class, versioned Program-domain envelope row per profile in a new semantic source table named `program_domains`. Its stable logical client ID is `program-domain`. Preference JSON and custom-routine rows MUST NOT carry this envelope.
@@ -79,11 +85,13 @@ The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHOULD**, **SHOULD NOT**, 
 
 **PPS1-3.7 - Current local compatibility.** Publication MUST accept a validated `big-gains.program-capture.v1` source with `storageMode: local_only`, preserve every semantic ID and value, and project it into the envelope without treating `storageMode` as semantic data. Publication status MUST be tracked separately. A later runtime MAY add a backwards-compatible portable marker, but MUST NOT rewrite identities or require local schema 6 merely to publish.
 
+**PPS1-3.8 - Exact serializer empty.** The canonical serializer payload for a verified no-Program profile is exactly `{}`. Its aggregate fingerprint is still scope-specific: the fingerprint input deterministically supplies the supported contract/version, verified account/profile scope, fixed `program-domain` client ID, three zero component revisions, and an empty member manifest outside the stored payload. Component fingerprints remain the canonical hashes of empty definitions, empty heads, and null sequence. A transport adapter MUST NOT wrap or rewrite the stored `{}` payload.
+
 ## 4. Revision and conflict model
 
 **PPS1-4.1 - Aggregate revision.** The envelope is one logical sync entity `(account_id, profile_id, program_domains, program-domain)`. It begins at revision 1 and each semantic mutation creates exactly the next positive aggregate revision from the accepted winner.
 
-**PPS1-4.2 - Component revisions.** The payload carries monotonic non-negative `definitionsRevision`, `headsRevision`, and `sequenceRevision` values. A component revision increments only when that component changes. The aggregate revision increments when any component changes. Component fingerprints prove which semantic boundary changed; they do not replace aggregate compare-and-swap.
+**PPS1-4.2 - Component revisions.** The non-empty canonical payload carries monotonic non-negative definitions, heads, and sequence revision values, mirrored exactly by the `program_domains` row columns. The exact empty payload carries no fields and uses three zero row revisions under PPS1-3.8. A component revision increments only when that component changes. The aggregate revision increments when any component changes. Component fingerprints prove which semantic boundary changed; they do not replace aggregate compare-and-swap.
 
 **PPS1-4.3 - No downgrade or blind overwrite.** A lower remote aggregate or component revision MUST NOT be adopted. A write MUST name the exact accepted aggregate revision, timestamp, fingerprint, and component bases. Blind upsert and last-write-wins are forbidden.
 
