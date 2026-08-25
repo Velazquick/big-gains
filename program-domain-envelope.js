@@ -119,6 +119,14 @@
     if (new Set(values).size !== values.length) fail(reasonCode);
   }
 
+  function validateStableIdentityOrder(values, selector) {
+    for (let index = 1; index < values.length; index += 1) {
+      if (compareText(selector(values[index - 1]), selector(values[index])) > 0) {
+        fail(ERROR_CODES.NONCANONICAL_VALUE);
+      }
+    }
+  }
+
   function validateScope(scopeValue, expected = {}) {
     exactKeys(scopeValue, ['accountId', 'profileId'], ERROR_CODES.PROFILE_SCOPE_MISMATCH);
     if (!nonempty(scopeValue.accountId) || !nonempty(scopeValue.profileId)) fail(ERROR_CODES.PROFILE_SCOPE_MISMATCH);
@@ -272,9 +280,13 @@
 
   function validateTransitionPosition(value, { allowNullVersion = false } = {}) {
     exactKeys(value, ['programVersionId', 'nextSlotIndex', 'completedCycles']);
-    if ((allowNullVersion ? value.programVersionId !== null && !nonempty(value.programVersionId) : !nonempty(value.programVersionId))
-      || (value.nextSlotIndex !== null && !safeNonnegativeInteger(value.nextSlotIndex))
-      || (value.completedCycles !== null && !safeNonnegativeInteger(value.completedCycles))) {
+    if (allowNullVersion && value.programVersionId === null) {
+      if (value.nextSlotIndex !== null || value.completedCycles !== null) fail(ERROR_CODES.INVALID_SEQUENCE);
+      return;
+    }
+    if (!nonempty(value.programVersionId)
+      || !safeNonnegativeInteger(value.nextSlotIndex)
+      || !safeNonnegativeInteger(value.completedCycles)) {
       fail(ERROR_CODES.INVALID_SEQUENCE);
     }
   }
@@ -328,6 +340,10 @@
     unique(definitions.programVersions.map(value => value.programVersionId));
     unique(definitions.routineVersions.map(value => `${value.routineId}\u0000${value.versionNumber}`));
     unique(definitions.programVersions.map(value => `${value.programId}\u0000${value.versionNumber}`));
+    validateStableIdentityOrder(definitions.routines, value => value.routineId);
+    validateStableIdentityOrder(definitions.routineVersions, value => value.routineVersionId);
+    validateStableIdentityOrder(definitions.programs, value => value.programId);
+    validateStableIdentityOrder(definitions.programVersions, value => value.programVersionId);
 
     const routineIds = new Set(definitions.routines.map(value => value.routineId));
     const routineVersions = new Map(definitions.routineVersions.map(value => [value.routineVersionId, value]));
@@ -415,6 +431,8 @@
     });
     unique(heads.routines.map(value => value.routineId));
     unique(heads.programs.map(value => value.programId));
+    validateStableIdentityOrder(heads.routines, value => value.routineId);
+    validateStableIdentityOrder(heads.programs, value => value.programId);
     if (heads.routines.length !== graph.routineIds.size || heads.programs.length !== graph.programIds.size
       || heads.routines.some(value => !graph.routineIds.has(value.routineId))
       || heads.programs.some(value => !graph.programIds.has(value.programId))) fail(ERROR_CODES.INVALID_POINTER);
@@ -466,6 +484,27 @@
     } else validateTransition(sequence.lastTransition, sequence, graph.programVersions);
   }
 
+  function prevalidateSequenceNumerics(envelope) {
+    if (!isPlainRecord(envelope) || !isPlainRecord(envelope.sequence)) return;
+    const sequence = envelope.sequence;
+    if (!safeNonnegativeInteger(sequence.nextSlotIndex)
+      || !safeNonnegativeInteger(sequence.completedCycles)) fail(ERROR_CODES.INVALID_SEQUENCE);
+    const transition = sequence.lastTransition;
+    if (!isPlainRecord(transition)) return;
+    for (const [name, position] of [['before', transition.before], ['after', transition.after]]) {
+      if (!isPlainRecord(position)) continue;
+      const activationBaseline = name === 'before'
+        && transition.kind === 'activation'
+        && position.programVersionId === null;
+      if (activationBaseline) {
+        if (position.nextSlotIndex !== null || position.completedCycles !== null) {
+          fail(ERROR_CODES.INVALID_SEQUENCE);
+        }
+      } else if (!safeNonnegativeInteger(position.nextSlotIndex)
+        || !safeNonnegativeInteger(position.completedCycles)) fail(ERROR_CODES.INVALID_SEQUENCE);
+    }
+  }
+
   function expectedManifestShape(value) {
     exactKeys(value, MANIFEST_KEYS, ERROR_CODES.MANIFEST_MISMATCH);
     if (!MANIFEST_KEYS.every(key => Array.isArray(value[key]))) fail(ERROR_CODES.MANIFEST_MISMATCH);
@@ -495,6 +534,10 @@
 
   async function validateManifest(manifest, definitions) {
     expectedManifestShape(manifest);
+    validateStableIdentityOrder(manifest.routines, value => value?.routineId);
+    validateStableIdentityOrder(manifest.routineVersions, value => value?.routineVersionId);
+    validateStableIdentityOrder(manifest.programs, value => value?.programId);
+    validateStableIdentityOrder(manifest.programVersions, value => value?.programVersionId);
     const expected = await createManifest(definitions);
     if (canonicalize(manifest) !== canonicalize(expected)) fail(ERROR_CODES.MANIFEST_MISMATCH);
   }
@@ -504,6 +547,7 @@
   }
 
   async function validateOrThrow(envelope, options = {}) {
+    prevalidateSequenceNumerics(envelope);
     assertCanonicalValue(envelope);
     if (!isPlainRecord(envelope)) fail(ERROR_CODES.MALFORMED_PAYLOAD);
     if (Object.keys(envelope).length === 0) {

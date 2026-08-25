@@ -67,6 +67,56 @@ async function built(options = {}) {
   return { ...fixture, envelope: await envelopeApi.build({ ...scope, programCapture: fixture.capture, catalog }) };
 }
 
+async function builtWithSecondProgram() {
+  const fixture = captureFixture();
+  const second = model.createProgramDraft({
+    capture: fixture.capture,
+    ...scope,
+    purposeKey: 'secondary-program',
+    name: 'Secondary Program',
+    slots: [fixture.pull.version, fixture.push.version].map((version, index) => ({
+      slotId: `secondary-slot-${2 - index}`,
+      label: version.label,
+      preferredCalendarAnchor: null,
+      routineId: version.routineId,
+      routineVersionId: version.routineVersionId
+    })),
+    blockReviewPolicy: { boundaryKind: 'completed_cycles', boundaryValue: 3 },
+    programmingAuthority: 'off',
+    startsOn: '2026-08-25',
+    versionNote: 'Second stable identity fixture',
+    createId: fixture.createId,
+    now: fixture.now
+  });
+  return {
+    ...fixture,
+    capture: second.capture,
+    envelope: await envelopeApi.build({ ...scope, programCapture: second.capture, catalog })
+  };
+}
+
+async function completionEnvelope() {
+  const fixture = captureFixture();
+  fixture.capture.sequenceState.nextSlotIndex = 1;
+  fixture.capture.sequenceState.updatedAt = '2026-08-25T13:00:00.000Z';
+  const programVersionId = fixture.capture.sequenceState.programVersionId;
+  const envelope = await envelopeApi.build({
+    ...scope,
+    programCapture: fixture.capture,
+    catalog,
+    revisions: { definitions: 1, heads: 1, sequence: 2 },
+    lastTransition: {
+      transitionId: 'transition-workout-1',
+      kind: 'completion',
+      before: { programVersionId, nextSlotIndex: 0, completedCycles: 0 },
+      after: { programVersionId, nextSlotIndex: 1, completedCycles: 0 },
+      occurredAt: '2026-08-25T13:00:00.000Z',
+      workoutId: 'workout-1'
+    }
+  });
+  return { ...fixture, envelope };
+}
+
 async function hashes(envelope, options = {}) {
   return envelopeApi.fingerprints(envelope, { ...scope, ...options });
 }
@@ -132,14 +182,63 @@ test('shuffled object insertion order has identical canonical JSON and fingerpri
   assert.deepEqual(await hashes(shuffled), await hashes(envelope));
 });
 
-test('catalog member array traversal order is normalized deterministically', async () => {
-  const { capture, envelope } = await built();
+test('all stable-identity source collection traversal orders build to identical canonical bytes and fingerprints', async () => {
+  const { capture, envelope } = await builtWithSecondProgram();
   const reordered = clone(capture);
   reordered.routines.reverse();
   reordered.routineVersions.reverse();
+  reordered.programs.reverse();
+  reordered.programVersions.reverse();
   const rebuilt = await envelopeApi.build({ ...scope, programCapture: reordered, catalog });
   assert.equal(envelopeApi.canonicalize(rebuilt), envelopeApi.canonicalize(envelope));
   assert.deepEqual(await hashes(rebuilt), await hashes(envelope));
+});
+
+test('build emits every stable-identity envelope collection in canonical order', async () => {
+  const { envelope } = await builtWithSecondProgram();
+  const identities = [
+    [envelope.definitions.routines, value => value.routineId],
+    [envelope.definitions.routineVersions, value => value.routineVersionId],
+    [envelope.definitions.programs, value => value.programId],
+    [envelope.definitions.programVersions, value => value.programVersionId],
+    [envelope.heads.routines, value => value.routineId],
+    [envelope.heads.programs, value => value.programId],
+    [envelope.manifest.routines, value => value.routineId],
+    [envelope.manifest.routineVersions, value => value.routineVersionId],
+    [envelope.manifest.programs, value => value.programId],
+    [envelope.manifest.programVersions, value => value.programVersionId]
+  ];
+  identities.forEach(([values, selector]) => {
+    assert.deepEqual(values.map(selector), values.map(selector).toSorted());
+  });
+});
+
+test('reordered definition stable-identity collections are rejected even with matching manifest order', async () => {
+  const { envelope } = await builtWithSecondProgram();
+  for (const key of ['routines', 'routineVersions', 'programs', 'programVersions']) {
+    const invalid = clone(envelope);
+    invalid.definitions[key].reverse();
+    invalid.manifest[key].reverse();
+    assert.equal(await reason(invalid), 'NONCANONICAL_VALUE', key);
+  }
+});
+
+test('reordered head stable-identity collections are rejected', async () => {
+  const { envelope } = await builtWithSecondProgram();
+  for (const key of ['routines', 'programs']) {
+    const invalid = clone(envelope);
+    invalid.heads[key].reverse();
+    assert.equal(await reason(invalid), 'NONCANONICAL_VALUE', key);
+  }
+});
+
+test('reordered manifest stable-identity collections are rejected', async () => {
+  const { envelope } = await builtWithSecondProgram();
+  for (const key of ['routines', 'routineVersions', 'programs', 'programVersions']) {
+    const invalid = clone(envelope);
+    invalid.manifest[key].reverse();
+    assert.equal(await reason(invalid), 'NONCANONICAL_VALUE', key);
+  }
 });
 
 test('Routine prescription array order remains semantic', async () => {
@@ -151,6 +250,17 @@ test('Routine prescription array order remains semantic', async () => {
   assert.deepEqual(rebuilt.definitions.routineVersions[0].exercises.map(value => value.exerciseId), [
     'exercise-press', 'exercise-bench'
   ]);
+});
+
+test('Program slot array order remains semantic instead of being stable-identity sorted', async () => {
+  const { capture } = await builtWithSecondProgram();
+  const sourceVersion = capture.programVersions.find(value => value.slots.length === 2
+    && value.slots[0].slotId.startsWith('secondary-slot-'));
+  const envelope = await envelopeApi.build({ ...scope, programCapture: capture, catalog });
+  const builtVersion = envelope.definitions.programVersions.find(value => value.programVersionId === sourceVersion.programVersionId);
+  assert.deepEqual(builtVersion.slots.map(value => value.slotId), ['secondary-slot-2', 'secondary-slot-1']);
+  assert.notDeepEqual(builtVersion.slots.map(value => value.slotId), builtVersion.slots.map(value => value.slotId).toSorted());
+  assert.deepEqual(builtVersion.slots.map(value => value.sequence), [1, 2]);
 });
 
 test('definitions-only change affects definitions and aggregate only', async () => {
@@ -289,33 +399,47 @@ test('negative component revision is rejected', async () => {
 
 test('legacy sequence baseline may omit transition only at sequence revision one', async () => {
   const { envelope } = await built();
+  assert.equal(envelope.sequenceRevision, 1);
+  assert.equal(envelope.sequence.lastTransition, null);
+  assert.equal((await envelopeApi.validate(envelope, scope)).ok, true);
   const invalid = clone(envelope);
   invalid.sequenceRevision = 2;
   assert.equal(await reason(invalid), 'INVALID_SEQUENCE');
 });
 
 test('later sequence revision requires and validates an exact completion transition', async () => {
-  const { capture } = captureFixture();
-  capture.sequenceState.nextSlotIndex = 1;
-  capture.sequenceState.updatedAt = '2026-08-25T13:00:00.000Z';
-  const programVersionId = capture.sequenceState.programVersionId;
-  const envelope = await envelopeApi.build({
-    ...scope,
-    programCapture: capture,
-    catalog,
-    revisions: { definitions: 1, heads: 1, sequence: 2 },
-    lastTransition: {
-      transitionId: 'transition-workout-1',
-      kind: 'completion',
-      before: { programVersionId, nextSlotIndex: 0, completedCycles: 0 },
-      after: { programVersionId, nextSlotIndex: 1, completedCycles: 0 },
-      occurredAt: '2026-08-25T13:00:00.000Z',
-      workoutId: 'workout-1'
-    }
-  });
+  const { envelope } = await completionEnvelope();
   assert.equal((await envelopeApi.validate(envelope, scope)).ok, true);
   assert.equal(envelope.sequenceRevision, 2);
   assert.equal(envelope.sequence.lastTransition.kind, 'completion');
+});
+
+test('completion transition rejects null prior slot and cycle positions', async () => {
+  const { envelope } = await completionEnvelope();
+  for (const key of ['nextSlotIndex', 'completedCycles']) {
+    const invalid = clone(envelope);
+    invalid.sequence.lastTransition.before[key] = null;
+    assert.equal(await reason(invalid), 'INVALID_SEQUENCE', key);
+  }
+});
+
+test('completion transition rejects malformed numeric position types without coercion', async () => {
+  const malformedValues = ['0', false, true, 0.5, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, undefined];
+  const locations = [
+    ['before', (value, field, malformed) => { value.sequence.lastTransition.before[field] = malformed; }],
+    ['after', (value, field, malformed) => { value.sequence.lastTransition.after[field] = malformed; }],
+    ['current', (value, field, malformed) => { value.sequence[field] = malformed; }]
+  ];
+  for (const [location, assign] of locations) {
+    for (const field of ['nextSlotIndex', 'completedCycles']) {
+      for (const malformed of malformedValues) {
+        const { envelope } = await completionEnvelope();
+        const invalid = clone(envelope);
+        assign(invalid, field, malformed);
+        assert.equal(await reason(invalid), 'INVALID_SEQUENCE', `${location}.${field}: ${String(malformed)}`);
+      }
+    }
+  }
 });
 
 test('unsupported Program authority is rejected', async () => {
