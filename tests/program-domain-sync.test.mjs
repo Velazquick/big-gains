@@ -229,6 +229,37 @@ async function successor({ queue = cloud.createMemoryQueue(), capture = captureF
   return { queue, capture, first, second: second.operation, secondCapture };
 }
 
+async function zeroBaseSuccessor() {
+  const queue = cloud.createMemoryQueue();
+  const first = await firstOperation({ queue, capture: null, updatedAt: '2026-08-25T14:00:00.000Z' });
+  const second = await enqueue({
+    queue,
+    capture: captureFixture(),
+    acceptedBase: sync.baseFromOperation(first),
+    updatedAt: '2026-08-25T14:01:00.000Z'
+  });
+  assert.equal(second.ok, true);
+  assert.equal(second.enqueued, true);
+  return { queue, first, second: second.operation };
+}
+
+function recreateOperationInput(operation) {
+  const input = clone(operation);
+  delete input.idempotencyKey;
+  delete input.attempts;
+  return input;
+}
+
+function persistedQueueDocument(operation) {
+  return JSON.stringify({ version: 1, pending: [operation], acknowledgements: [] });
+}
+
+function assertDeepFrozen(value) {
+  if (!value || typeof value !== 'object') return;
+  assert.equal(Object.isFrozen(value), true);
+  Object.values(value).forEach(assertDeepFrozen);
+}
+
 test('1 canonical non-empty envelope enqueues with exact frozen bytes and fingerprints', async () => {
   const operation = await firstOperation();
   assert.equal(operation.entityType, 'program_domains');
@@ -654,4 +685,214 @@ test('35 existing queue reconciliation remains isolated from Program-domain oper
   assert.match(source, /if \(operation\.entityType === 'program_domains'\)/);
   assert.match(source, /program-domain-dedicated-transport-required/);
   assert.match(source, /!shadow\.tables\.includes\(operation\?\.entityType\)/);
+});
+
+test('36 Program operation creation rejects every non-exact accepted-base component revision type', async () => {
+  const { second } = await zeroBaseSuccessor();
+  const malformed = [
+    ['null', null],
+    ['false', false],
+    ['empty string', ''],
+    ['numeric string', '0'],
+    ['fraction', 0.5],
+    ['NaN', Number.NaN],
+    ['Infinity', Number.POSITIVE_INFINITY],
+    ['negative', -1],
+    ['object', {}],
+    ['array', []],
+    ['undefined', undefined]
+  ];
+  for (const [label, value] of malformed) {
+    const input = recreateOperationInput(second);
+    input.programDomain.acceptedBase.definitionsRevision = value;
+    assert.throws(() => cloud.createOperation(input), TypeError, label);
+  }
+});
+
+test('37 Program enqueue rejects a numeric-string accepted-base revision before operation creation', async () => {
+  const queue = cloud.createMemoryQueue();
+  const capture = captureFixture();
+  const first = await firstOperation({ queue, capture: null });
+  const acceptedBase = clone(sync.baseFromOperation(first));
+  acceptedBase.definitionsRevision = '0';
+  const outcome = await enqueue({ queue, capture, acceptedBase, updatedAt: '2026-08-25T14:01:00.000Z' });
+  assert.deepEqual(outcome, { ok: false, enqueued: false, reasonCode: sync.reasonCodes.STALE_BASE });
+  assert.equal(queue.pending().length, 1);
+});
+
+test('38 Program operation creation preserves exact integer zero and safe positive component revisions', async () => {
+  const zero = (await zeroBaseSuccessor()).second;
+  const positive = (await successor()).second;
+  const recreatedZero = cloud.createOperation(recreateOperationInput(zero));
+  const recreatedPositive = cloud.createOperation(recreateOperationInput(positive));
+  assert.equal(recreatedZero.programDomain.acceptedBase.definitionsRevision, 0);
+  assert.equal(typeof recreatedZero.programDomain.acceptedBase.definitionsRevision, 'number');
+  assert.equal(recreatedPositive.programDomain.acceptedBase.definitionsRevision, 1);
+  assert.equal(Number.isSafeInteger(recreatedPositive.programDomain.acceptedBase.definitionsRevision), true);
+});
+
+test('39 durable enqueue rejects malformed Program accepted-base revisions without persisting them', async () => {
+  const malformed = clone((await zeroBaseSuccessor()).second);
+  malformed.programDomain.acceptedBase.definitionsRevision = false;
+  const storage = memoryStorage();
+  const queue = cloud.createDurableQueue({ storage, key: 'program-domain-malformed-enqueue' });
+  assert.throws(() => queue.enqueue(malformed), TypeError);
+  assert.deepEqual(queue.pending(), []);
+  assert.equal(storage.value(), null);
+});
+
+test('40 durable reload rejects persisted null, false, empty-string, and numeric-string component revisions', async () => {
+  const valid = (await zeroBaseSuccessor()).second;
+  const malformed = [null, false, '', '0'];
+  for (const value of malformed) {
+    const operation = clone(valid);
+    operation.programDomain.acceptedBase.definitionsRevision = value;
+    const raw = persistedQueueDocument(operation);
+    const storage = memoryStorage(raw);
+    const restored = cloud.createDurableQueue({ storage, key: 'program-domain-malformed-reload' });
+    assert.deepEqual(restored.pending(), []);
+    assert.equal(storage.value(), raw);
+  }
+});
+
+test('41 malformed durable Program documents fail closed with one stable result and never normalize to zero', async () => {
+  const malformed = clone((await zeroBaseSuccessor()).second);
+  malformed.programDomain.acceptedBase.definitionsRevision = null;
+  malformed.programDomain.acceptedBase.headsRevision = false;
+  malformed.programDomain.acceptedBase.sequenceRevision = '';
+  const raw = persistedQueueDocument(malformed);
+  const first = cloud.createDurableQueue({ storage: memoryStorage(raw), key: 'program-domain-fail-closed-a' });
+  const second = cloud.createDurableQueue({ storage: memoryStorage(raw), key: 'program-domain-fail-closed-b' });
+  assert.deepEqual(first.pending(), []);
+  assert.deepEqual(second.pending(), []);
+  assert.equal(JSON.parse(raw).pending[0].programDomain.acceptedBase.definitionsRevision, null);
+});
+
+test('42 valid persisted integer-zero accepted bases reload as integer zero exactly', async () => {
+  const valid = (await zeroBaseSuccessor()).second;
+  const storage = memoryStorage(persistedQueueDocument(valid));
+  const restored = cloud.createDurableQueue({ storage, key: 'program-domain-valid-zero-reload' }).pending()[0];
+  assert.equal(restored.programDomain.acceptedBase.definitionsRevision, 0);
+  assert.equal(restored.programDomain.acceptedBase.headsRevision, 0);
+  assert.equal(restored.programDomain.acceptedBase.sequenceRevision, 0);
+  assert.equal(typeof restored.programDomain.acceptedBase.definitionsRevision, 'number');
+});
+
+test('43 created Program aggregate and component accepted-base identity is structurally frozen', async () => {
+  const operation = (await zeroBaseSuccessor()).second;
+  assertDeepFrozen(operation.baseRevision);
+  assertDeepFrozen(operation.programDomain.acceptedBase);
+});
+
+test('44 mutation attempts after create cannot change stored Program accepted-base identity', async () => {
+  const source = recreateOperationInput((await zeroBaseSuccessor()).second);
+  const operation = cloud.createOperation(source);
+  const before = JSON.stringify({ baseRevision: operation.baseRevision, acceptedBase: operation.programDomain.acceptedBase });
+  source.baseRevision.version = 99;
+  source.programDomain.acceptedBase.definitionsRevision = 99;
+  assert.equal(Reflect.set(operation.baseRevision, 'version', 99), false);
+  assert.equal(Reflect.set(operation.programDomain.acceptedBase, 'definitionsRevision', 99), false);
+  assert.equal(JSON.stringify({ baseRevision: operation.baseRevision, acceptedBase: operation.programDomain.acceptedBase }), before);
+});
+
+test('45 reloaded Program baseRevision and accepted-base component identity are structurally frozen', async () => {
+  const valid = (await zeroBaseSuccessor()).second;
+  const restored = cloud.createDurableQueue({
+    storage: memoryStorage(persistedQueueDocument(valid)),
+    key: 'program-domain-frozen-reload'
+  }).pending()[0];
+  assertDeepFrozen(restored.baseRevision);
+  assertDeepFrozen(restored.programDomain.acceptedBase);
+});
+
+test('46 mutation attempts after reload cannot change the accepted Program base', async () => {
+  const valid = (await zeroBaseSuccessor()).second;
+  const restored = cloud.createDurableQueue({
+    storage: memoryStorage(persistedQueueDocument(valid)),
+    key: 'program-domain-immutable-reload'
+  }).pending()[0];
+  const before = JSON.stringify({ baseRevision: restored.baseRevision, acceptedBase: restored.programDomain.acceptedBase });
+  assert.equal(Reflect.set(restored.baseRevision, 'version', 99), false);
+  assert.equal(Reflect.set(restored.programDomain.acceptedBase, 'headsRevision', 99), false);
+  assert.equal(JSON.stringify({ baseRevision: restored.baseRevision, acceptedBase: restored.programDomain.acceptedBase }), before);
+});
+
+test('47 retry retains the exact frozen accepted base and unchanged idempotency identity', async () => {
+  const valid = (await zeroBaseSuccessor()).second;
+  const queue = cloud.createDurableQueue({
+    storage: memoryStorage(persistedQueueDocument(valid)),
+    key: 'program-domain-exact-retry'
+  });
+  const restored = queue.pending()[0];
+  const baseRevision = restored.baseRevision;
+  const acceptedBase = restored.programDomain.acceptedBase;
+  const rpcBefore = sync.rpcArguments(restored);
+  const retried = queue.markRetried(restored.idempotencyKey);
+  assert.equal(retried.attempts, 1);
+  assert.equal(retried.idempotencyKey, restored.idempotencyKey);
+  assert.equal(retried.baseRevision, baseRevision);
+  assert.equal(retried.programDomain.acceptedBase, acceptedBase);
+  assert.deepEqual(sync.rpcArguments(retried), rpcBefore);
+  assertDeepFrozen(retried.baseRevision);
+  assertDeepFrozen(retried.programDomain.acceptedBase);
+});
+
+test('48 Program retry rejects a malformed accepted base instead of normalizing it', async () => {
+  const malformed = clone((await zeroBaseSuccessor()).second);
+  malformed.programDomain.acceptedBase.sequenceRevision = '';
+  assert.throws(() => cloud.retryOperation(malformed), TypeError);
+});
+
+test('49 durable round trip preserves exact accepted-base bytes and values', async () => {
+  const valid = (await zeroBaseSuccessor()).second;
+  const acceptedBytes = JSON.stringify({
+    baseRevision: valid.baseRevision,
+    acceptedBase: valid.programDomain.acceptedBase
+  });
+  const storage = memoryStorage();
+  const queue = cloud.createDurableQueue({ storage, key: 'program-domain-exact-round-trip' });
+  const persisted = queue.enqueue(valid);
+  const restored = cloud.createDurableQueue({ storage, key: 'program-domain-exact-round-trip' }).pending()[0];
+  assert.equal(JSON.stringify({
+    baseRevision: restored.baseRevision,
+    acceptedBase: restored.programDomain.acceptedBase
+  }), acceptedBytes);
+  assert.deepEqual(restored.baseRevision, persisted.baseRevision);
+  assert.deepEqual(restored.programDomain.acceptedBase, persisted.programDomain.acceptedBase);
+  assert.equal(restored.idempotencyKey, persisted.idempotencyKey);
+});
+
+test('50 legacy non-Program durable operations retain version-one queue compatibility', () => {
+  const legacy = cloud.createOperation({
+    owner: { accountId: 'legacy-account', profileId: 'legacy-profile' },
+    entityType: 'preferences', entityId: 'goals', mutation: 'upsert', version: '1',
+    updatedAt: '2026-08-25T14:00:00.000Z', payload: { goal: 'compatibility' },
+    baseRevision: { version: '1', updatedAt: '2026-08-24T14:00:00.000Z', fingerprint: 'legacy-base' }
+  });
+  const storage = memoryStorage(persistedQueueDocument(legacy));
+  const restored = cloud.createDurableQueue({ storage, key: 'legacy-queue-compatibility' }).pending()[0];
+  assert.equal(restored.entityType, 'preferences');
+  assert.equal(restored.version, 1);
+  assert.equal(restored.baseRevision.version, 1);
+  assert.deepEqual(restored.payload, { goal: 'compatibility' });
+});
+
+test('51 Program aggregate accepted-base and generic base revisions also require exact positive integers', async () => {
+  const valid = (await zeroBaseSuccessor()).second;
+  for (const value of [null, false, '', '1', 1.5, Number.NaN, Number.POSITIVE_INFINITY, -1, 0, {}, []]) {
+    const acceptedInput = recreateOperationInput(valid);
+    acceptedInput.programDomain.acceptedBase.version = value;
+    assert.throws(() => cloud.createOperation(acceptedInput), TypeError);
+
+    const genericInput = recreateOperationInput(valid);
+    genericInput.baseRevision.version = value;
+    assert.throws(() => cloud.createOperation(genericInput), TypeError);
+  }
+  const restoredInput = clone(valid);
+  restoredInput.baseRevision.version = '1';
+  const restored = cloud.createDurableQueue({
+    storage: memoryStorage(persistedQueueDocument(restoredInput)),
+    key: 'program-domain-malformed-aggregate-reload'
+  });
+  assert.deepEqual(restored.pending(), []);
 });

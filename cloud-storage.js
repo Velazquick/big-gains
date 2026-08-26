@@ -43,7 +43,8 @@
   }
 
   const fingerprint = value => typeof value === 'string' && /^[0-9a-f]{64}$/.test(value);
-  const nonnegativeRevision = value => Number.isSafeInteger(Number(value)) && Number(value) >= 0;
+  const nonnegativeRevision = value => Number.isSafeInteger(value) && value >= 0;
+  const positiveRevision = value => Number.isSafeInteger(value) && value >= 1;
 
   function normalizeProgramDomainBase(value, owner) {
     if (value == null) return null;
@@ -51,7 +52,7 @@
       || value.accountId !== owner.accountId
       || value.profileId !== owner.profileId
       || value.clientId !== 'program-domain'
-      || !Number.isSafeInteger(Number(value.version)) || Number(value.version) < 1
+      || !positiveRevision(value.version)
       || typeof value.updatedAt !== 'string' || !Number.isFinite(Date.parse(value.updatedAt))
       || !fingerprint(value.fingerprint)
       || !nonnegativeRevision(value.definitionsRevision) || !fingerprint(value.definitionsFingerprint)
@@ -63,14 +64,14 @@
       accountId: owner.accountId,
       profileId: owner.profileId,
       clientId: 'program-domain',
-      version: Number(value.version),
+      version: value.version,
       updatedAt: value.updatedAt,
       fingerprint: value.fingerprint,
-      definitionsRevision: Number(value.definitionsRevision),
+      definitionsRevision: value.definitionsRevision,
       definitionsFingerprint: value.definitionsFingerprint,
-      headsRevision: Number(value.headsRevision),
+      headsRevision: value.headsRevision,
       headsFingerprint: value.headsFingerprint,
-      sequenceRevision: Number(value.sequenceRevision),
+      sequenceRevision: value.sequenceRevision,
       sequenceFingerprint: value.sequenceFingerprint
     });
   }
@@ -96,9 +97,9 @@
     if ((emptyPayload && (value.definitionsRevision !== 0 || value.headsRevision !== 0 || value.sequenceRevision !== 0))
       || (!emptyPayload && (!isRecord(identity.payload)
         || identity.payload.clientId !== 'program-domain'
-        || Number(identity.payload.definitionsRevision) !== Number(value.definitionsRevision)
-        || Number(identity.payload.headsRevision) !== Number(value.headsRevision)
-        || Number(identity.payload.sequenceRevision) !== Number(value.sequenceRevision)
+        || identity.payload.definitionsRevision !== value.definitionsRevision
+        || identity.payload.headsRevision !== value.headsRevision
+        || identity.payload.sequenceRevision !== value.sequenceRevision
         || canonicalize(identity.payload.manifest) !== canonicalize(value.manifest)))) {
       throw new TypeError('Program-domain payload metadata is inconsistent.');
     }
@@ -112,8 +113,8 @@
         ['headsRevision', 'headsFingerprint'],
         ['sequenceRevision', 'sequenceFingerprint']
       ].map(([revisionKey, fingerprintKey]) => ({
-        revisionChanged: Number(value[revisionKey]) === acceptedBase[revisionKey] + 1,
-        revisionSame: Number(value[revisionKey]) === acceptedBase[revisionKey],
+        revisionChanged: value[revisionKey] === acceptedBase[revisionKey] + 1,
+        revisionSame: value[revisionKey] === acceptedBase[revisionKey],
         fingerprintChanged: value[fingerprintKey] !== acceptedBase[fingerprintKey]
       }));
       if (successors.some(component => !((component.revisionSame && !component.fingerprintChanged)
@@ -133,11 +134,11 @@
     return deepFreeze({
       clientId: 'program-domain',
       payloadCanonical: value.payloadCanonical,
-      definitionsRevision: Number(value.definitionsRevision),
+      definitionsRevision: value.definitionsRevision,
       definitionsFingerprint: value.definitionsFingerprint,
-      headsRevision: Number(value.headsRevision),
+      headsRevision: value.headsRevision,
       headsFingerprint: value.headsFingerprint,
-      sequenceRevision: Number(value.sequenceRevision),
+      sequenceRevision: value.sequenceRevision,
       sequenceFingerprint: value.sequenceFingerprint,
       manifest: clone(value.manifest),
       acceptedBase,
@@ -181,12 +182,17 @@
       updatedAt: input.updatedAt,
       payload: programPayload,
       payloadFingerprint: input.payloadFingerprint || stableHash(programPayload),
-      baseRevision: input.baseRevision == null ? null : {
+      baseRevision: input.baseRevision == null ? null : (input.entityType === 'program_domains' ? deepFreeze({
+        version: input.baseRevision.version,
+        updatedAt: input.baseRevision.updatedAt,
+        fingerprint: input.baseRevision.fingerprint,
+        tombstone: input.baseRevision.tombstone === true
+      }) : {
         version: Number(input.baseRevision.version),
         updatedAt: input.baseRevision.updatedAt,
         fingerprint: input.baseRevision.fingerprint,
         tombstone: input.baseRevision.tombstone === true
-      },
+      }),
       allowRecreation: input.allowRecreation === true,
       synthetic: input.synthetic === true
     };
@@ -219,7 +225,10 @@
     }
     if (input.baseRevision != null) {
       const base = input.baseRevision;
-      if (!Number.isSafeInteger(Number(base.version)) || Number(base.version) < 1
+      const validBaseVersion = isRecord(base) && (input.entityType === 'program_domains'
+        ? positiveRevision(base.version)
+        : Number.isSafeInteger(Number(base.version)) && Number(base.version) >= 1);
+      if (!validBaseVersion
         || typeof base.updatedAt !== 'string' || !Number.isFinite(Date.parse(base.updatedAt))
         || typeof base.fingerprint !== 'string' || !base.fingerprint) {
         throw new TypeError('A base revision requires version, updatedAt, and fingerprint values.');
@@ -235,6 +244,16 @@
   }
 
   function retryOperation(operation) {
+    if (operation?.entityType === 'program_domains') {
+      const valid = validPersistedOperation(operation);
+      if (!valid) throw new TypeError('A valid cloud operation is required.');
+      const frozenIdentity = Object.isFrozen(operation)
+        && Object.isFrozen(operation.payload)
+        && Object.isFrozen(operation.baseRevision)
+        && Object.isFrozen(operation.programDomain)
+        && Object.isFrozen(operation.programDomain?.acceptedBase) ? operation : valid;
+      return Object.freeze({ ...frozenIdentity, attempts: valid.attempts + 1 });
+    }
     return Object.freeze({ ...operation, attempts: Number(operation.attempts || 0) + 1 });
   }
 

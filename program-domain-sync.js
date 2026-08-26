@@ -30,7 +30,7 @@
   const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
   const nonempty = value => typeof value === 'string' && value.trim() === value && value.length > 0;
   const fingerprint = value => typeof value === 'string' && /^[0-9a-f]{64}$/.test(value);
-  const revision = value => Number.isSafeInteger(Number(value)) && Number(value) >= 0;
+  const revision = value => Number.isSafeInteger(value) && value >= 0;
 
   function deepFreeze(value) {
     if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
@@ -63,14 +63,14 @@
       accountId: baseAccountId,
       profileId: baseProfileId,
       clientId: baseClientId,
-      version: Number(field(value, 'version')),
+      version: field(value, 'version'),
       updatedAt: acceptedUpdatedAt,
       fingerprint: field(value, 'fingerprint'),
-      definitionsRevision: Number(field(value, 'definitionsRevision', 'definitions_revision')),
+      definitionsRevision: field(value, 'definitionsRevision', 'definitions_revision'),
       definitionsFingerprint: field(value, 'definitionsFingerprint', 'definitions_fingerprint'),
-      headsRevision: Number(field(value, 'headsRevision', 'heads_revision')),
+      headsRevision: field(value, 'headsRevision', 'heads_revision'),
       headsFingerprint: field(value, 'headsFingerprint', 'heads_fingerprint'),
-      sequenceRevision: Number(field(value, 'sequenceRevision', 'sequence_revision')),
+      sequenceRevision: field(value, 'sequenceRevision', 'sequence_revision'),
       sequenceFingerprint: field(value, 'sequenceFingerprint', 'sequence_fingerprint')
     };
     if (normalized.accountId !== accountId || normalized.profileId !== profileId
