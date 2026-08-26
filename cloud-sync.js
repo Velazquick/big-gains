@@ -476,6 +476,9 @@
       enabled: Boolean(client && owner),
       async send(operation) {
         if (operation.synthetic) return createCompletedWorkoutTransport({ client }).send(operation);
+        if (operation.entityType === 'program_domains') {
+          return Object.freeze({ ok: false, blocked: true, reason: 'program-domain-dedicated-transport-required' });
+        }
         const mapped = Object.values(owner.profiles).some(profile => profile.id === operation.owner.profileId);
         if (operation.owner.accountId !== owner.account.id || !mapped) return Object.freeze({ ok: false, blocked: true, reason: 'owner-mapping-mismatch' });
         let remote;
