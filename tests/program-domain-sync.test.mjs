@@ -165,13 +165,13 @@ function rowFor(operation, overrides = {}) {
 
 function clientFor(operation, {
   row = rowFor(operation),
-  rpcError = null,
-  rpcThrows = null,
+  functionError = null,
+  functionThrows = null,
   readError = null,
   alreadyApplied = false,
   authenticated = true
 } = {}) {
-  const calls = { rpc: [], reads: [], mutations: [] };
+  const calls = { edge: [], reads: [], mutations: [] };
   const client = {
     auth: {
       async getUser() {
@@ -180,12 +180,21 @@ function clientFor(operation, {
           : { data: { user: null }, error: { code: '401' } };
       }
     },
-    async rpc(name, args) {
-      calls.rpc.push({ name, args: clone(args) });
-      if (rpcThrows) throw rpcThrows;
-      return rpcError
-        ? { data: null, error: rpcError }
-        : { data: { ...clone(row), ...(alreadyApplied ? { already_applied: true } : {}) }, error: null };
+    functions: {
+      async invoke(name, options) {
+        calls.edge.push({ name, body: clone(options?.body) });
+        if (functionThrows) throw functionThrows;
+        return functionError
+          ? { data: null, error: functionError }
+          : {
+              data: {
+                ok: true,
+                disposition: alreadyApplied ? 'already-applied' : 'applied-or-already-applied',
+                version: operation.version
+              },
+              error: null
+            };
+      }
     },
     from(table) {
       calls.reads.push({ table, filters: {} });
@@ -301,8 +310,8 @@ test('4 replay uses the frozen payload and accepted base rather than current Pro
   const { client, calls } = clientFor(flow.second);
   const transport = sync.createTransport({ client, enabled: true, envelopeApi });
   assert.equal((await transport.send(flow.second)).ok, true);
-  assert.deepEqual(calls.rpc[0].args, frozen);
-  assert.equal(calls.rpc[0].args.expected_fingerprint, sync.baseFromOperation(flow.first).fingerprint);
+  assert.deepEqual(calls.edge[0].body, frozen);
+  assert.equal(calls.edge[0].body.expected_fingerprint, sync.baseFromOperation(flow.first).fingerprint);
 });
 
 test('5 invalid serializer state does not enqueue', async () => {
@@ -374,13 +383,13 @@ test('11 no semantic change creates no meaningless successor operation', async (
   assert.equal(queue.pending().length, 1);
 });
 
-test('12 guarded RPC receives every exact frozen accepted-base field', async () => {
+test('12 authenticated Edge gateway receives every exact frozen accepted-base field', async () => {
   const flow = await successor();
   const { client, calls } = clientFor(flow.second);
   const response = await sync.createTransport({ client, enabled: true, envelopeApi }).send(flow.second);
   assert.equal(response.ok, true);
-  assert.equal(calls.rpc[0].name, 'put_program_domain_guarded');
-  assert.deepEqual(calls.rpc[0].args, sync.rpcArguments(flow.second));
+  assert.equal(calls.edge[0].name, 'program-domain-write');
+  assert.deepEqual(calls.edge[0].body, sync.rpcArguments(flow.second));
 });
 
 test('13 Program transport never uses a direct table mutation path', async () => {
@@ -388,14 +397,18 @@ test('13 Program transport never uses a direct table mutation path', async () =>
   const { client, calls } = clientFor(operation);
   assert.equal((await sync.createTransport({ client, enabled: true, envelopeApi }).send(operation)).ok, true);
   assert.deepEqual(calls.mutations, []);
-  assert.equal(calls.rpc.length, 1);
+  assert.equal(calls.edge.length, 1);
   assert.equal(calls.reads.length, 1);
 });
 
 test('14 stale-base rejection retains the operation', async () => {
   const queue = cloud.createMemoryQueue();
   const operation = await firstOperation({ queue });
-  const { client } = clientFor(operation, { rpcError: { code: 'P0001', message: 'program domain accepted base is stale' } });
+  const { client } = clientFor(operation, {
+    functionError: {
+      context: new Response(JSON.stringify({ error: 'stale-base' }), { status: 409 })
+    }
+  });
   const runtime = sync.createQueueRuntime({ queue, transport: sync.createTransport({ client, enabled: true, envelopeApi }) });
   const outcome = await runtime.flush();
   assert.equal(outcome.reasonCode, sync.reasonCodes.STALE_BASE);
@@ -406,7 +419,7 @@ test('14 stale-base rejection retains the operation', async () => {
 test('15 transient network failure is retryable and retains the operation', async () => {
   const queue = cloud.createMemoryQueue();
   const operation = await firstOperation({ queue });
-  const { client } = clientFor(operation, { rpcThrows: new Error('synthetic outage') });
+  const { client } = clientFor(operation, { functionThrows: new Error('synthetic outage') });
   const outcome = await sync.createQueueRuntime({
     queue,
     transport: sync.createTransport({ client, enabled: true, envelopeApi })
@@ -426,7 +439,7 @@ test('16 authentication rejection retains and blocks the operation', async () =>
   }).flush();
   assert.equal(outcome.reasonCode, sync.reasonCodes.AUTH_REJECTED);
   assert.equal(outcome.failures[0].blocked, true);
-  assert.equal(calls.rpc.length, 0);
+  assert.equal(calls.edge.length, 0);
   assert.equal(queue.pending().length, 1);
 });
 
@@ -436,7 +449,7 @@ test('17 exact idempotent replay is a success candidate but still performs readb
   const response = await sync.createTransport({ client, enabled: true, envelopeApi }).send(operation);
   assert.equal(response.ok, true);
   assert.equal(response.disposition, 'already-applied');
-  assert.equal(calls.rpc.length, 1);
+  assert.equal(calls.edge.length, 1);
   assert.equal(calls.reads.length, 1);
 });
 
@@ -533,7 +546,7 @@ test('26 idempotent replay plus exact readback ACKs exactly once', async () => {
   const runtime = sync.createQueueRuntime({ queue, transport: sync.createTransport({ client, enabled: true, envelopeApi }) });
   assert.equal((await runtime.flush()).sent, 1);
   assert.equal((await runtime.flush()).sent, 0);
-  assert.equal(calls.rpc.length, 1);
+  assert.equal(calls.edge.length, 1);
   assert.equal(queue.acknowledgement(operation.idempotencyKey).reason, null);
 });
 
@@ -643,7 +656,11 @@ test('32 disabled Program transport makes no cloud calls', async () => {
   const queue = cloud.createMemoryQueue();
   await firstOperation({ queue });
   let calls = 0;
-  const client = { rpc() { calls += 1; }, from() { calls += 1; }, auth: { getUser() { calls += 1; } } };
+  const client = {
+    functions: { invoke() { calls += 1; } },
+    from() { calls += 1; },
+    auth: { getUser() { calls += 1; } }
+  };
   const outcome = await sync.createQueueRuntime({
     queue,
     transport: sync.createTransport({ client, enabled: false, envelopeApi })
@@ -895,4 +912,43 @@ test('51 Program aggregate accepted-base and generic base revisions also require
     key: 'program-domain-malformed-aggregate-reload'
   });
   assert.deepEqual(restored.pending(), []);
+});
+
+test('52 client transport names only the authenticated Edge gateway and has no direct Program RPC call', async () => {
+  const source = await readFile(new URL('../program-domain-sync.js', import.meta.url), 'utf8');
+  assert.equal(sync.functionName, 'program-domain-write');
+  assert.doesNotMatch(source, /client\.rpc\s*\(/);
+  assert.doesNotMatch(source, /put_program_domain_guarded/);
+  assert.match(source, /client\.functions\.invoke\(FUNCTION_NAME/);
+});
+
+test('53 an unavailable Edge gateway disables only Program transport and preserves the frozen queue', async () => {
+  const queue = cloud.createMemoryQueue();
+  const operation = await firstOperation({ queue });
+  const client = {
+    auth: { async getUser() { return { data: { user: { id: 'auth-user' } }, error: null }; } },
+    from() { throw new Error('readback must not run'); }
+  };
+  const transport = sync.createTransport({ client, enabled: true, envelopeApi });
+  assert.equal(transport.enabled, false);
+  const outcome = await sync.createQueueRuntime({ queue, transport }).flush();
+  assert.equal(outcome.reasonCode, sync.reasonCodes.UNSUPPORTED);
+  assert.equal(queue.pending()[0].idempotencyKey, operation.idempotencyKey);
+});
+
+test('54 a malformed Edge success response never reaches readback or ACK', async () => {
+  const queue = cloud.createMemoryQueue();
+  const operation = await firstOperation({ queue });
+  const { client, calls } = clientFor(operation);
+  client.functions.invoke = async (name, options) => {
+    calls.edge.push({ name, body: clone(options?.body) });
+    return { data: { ok: true, version: operation.version + 1 }, error: null };
+  };
+  const outcome = await sync.createQueueRuntime({
+    queue,
+    transport: sync.createTransport({ client, enabled: true, envelopeApi })
+  }).flush();
+  assert.equal(outcome.reasonCode, sync.reasonCodes.TRANSIENT_FAILURE);
+  assert.equal(calls.reads.length, 0);
+  assert.equal(queue.pending().length, 1);
 });

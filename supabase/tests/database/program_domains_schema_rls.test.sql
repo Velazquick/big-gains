@@ -4,15 +4,19 @@ create extension if not exists pgtap with schema extensions;
 select no_plan();
 
 select has_table('public', 'program_domains', 'program_domains table exists');
+select ok(
+  to_regprocedure('public.put_program_domain_guarded(uuid,bigint,timestamptz,text,bigint,text,bigint,text,bigint,text,bigint,timestamptz,jsonb,text,bigint,text,bigint,text,bigint,text,text)') is null,
+  'the authenticated-callable public Program write RPC is removed'
+);
 select has_function(
-  'public',
+  'private',
   'put_program_domain_guarded',
   array[
-    'uuid', 'bigint', 'timestamp with time zone', 'text', 'bigint', 'text',
+    'uuid', 'uuid', 'bigint', 'timestamp with time zone', 'text', 'bigint', 'text',
     'bigint', 'text', 'bigint', 'text', 'bigint', 'timestamp with time zone',
     'jsonb', 'text', 'bigint', 'text', 'bigint', 'text', 'bigint', 'text', 'text'
   ],
-  'guarded Program-domain RPC exists'
+  'private guarded Program-domain implementation exists'
 );
 
 select has_column('public', 'program_domains', 'id', 'Program domains have a UUID row identity');
@@ -72,30 +76,44 @@ select is(
 );
 
 select is(
-  (select prosecdef from pg_proc where oid = 'public.put_program_domain_guarded(uuid,bigint,timestamptz,text,bigint,text,bigint,text,bigint,text,bigint,timestamptz,jsonb,text,bigint,text,bigint,text,bigint,text,text)'::regprocedure),
+  (select prosecdef from pg_proc where oid = 'private.put_program_domain_guarded(uuid,uuid,bigint,timestamptz,text,bigint,text,bigint,text,bigint,text,bigint,timestamptz,jsonb,text,bigint,text,bigint,text,bigint,text,text)'::regprocedure),
   true,
-  'guarded Program-domain RPC is security definer'
+  'private guarded Program-domain implementation is security definer'
 );
 select ok(
-  pg_get_functiondef('public.put_program_domain_guarded(uuid,bigint,timestamptz,text,bigint,text,bigint,text,bigint,text,bigint,timestamptz,jsonb,text,bigint,text,bigint,text,bigint,text,text)'::regprocedure)
+  pg_get_functiondef('private.put_program_domain_guarded(uuid,uuid,bigint,timestamptz,text,bigint,text,bigint,text,bigint,text,bigint,timestamptz,jsonb,text,bigint,text,bigint,text,bigint,text,text)'::regprocedure)
     like '%SET search_path TO ''''%',
-  'guarded Program-domain RPC fixes an empty search path'
+  'private guarded Program-domain implementation fixes an empty search path'
 );
 select ok(
-  has_function_privilege(
+  position(
+    'auth.uid' in pg_get_functiondef('private.put_program_domain_guarded(uuid,uuid,bigint,timestamptz,text,bigint,text,bigint,text,bigint,text,bigint,timestamptz,jsonb,text,bigint,text,bigint,text,bigint,text,text)'::regprocedure)
+  ) = 0,
+  'private guarded implementation receives verified caller identity explicitly'
+);
+select ok(
+  not has_function_privilege(
     'authenticated',
-    'public.put_program_domain_guarded(uuid,bigint,timestamptz,text,bigint,text,bigint,text,bigint,text,bigint,timestamptz,jsonb,text,bigint,text,bigint,text,bigint,text,text)',
+    'private.put_program_domain_guarded(uuid,uuid,bigint,timestamptz,text,bigint,text,bigint,text,bigint,text,bigint,timestamptz,jsonb,text,bigint,text,bigint,text,bigint,text,text)',
     'EXECUTE'
   ),
-  'authenticated may execute the guarded Program-domain RPC'
+  'authenticated cannot execute the privileged Program-domain definer'
 );
 select ok(
   not has_function_privilege(
     'anon',
-    'public.put_program_domain_guarded(uuid,bigint,timestamptz,text,bigint,text,bigint,text,bigint,text,bigint,timestamptz,jsonb,text,bigint,text,bigint,text,bigint,text,text)',
+    'private.put_program_domain_guarded(uuid,uuid,bigint,timestamptz,text,bigint,text,bigint,text,bigint,text,bigint,timestamptz,jsonb,text,bigint,text,bigint,text,bigint,text,text)',
     'EXECUTE'
   ),
-  'anonymous may not execute the guarded Program-domain RPC'
+  'anonymous cannot execute the privileged Program-domain definer'
+);
+select ok(
+  has_function_privilege(
+    'service_role',
+    'private.put_program_domain_guarded(uuid,uuid,bigint,timestamptz,text,bigint,text,bigint,text,bigint,text,bigint,timestamptz,jsonb,text,bigint,text,bigint,text,bigint,text,text)',
+    'EXECUTE'
+  ),
+  'the server service path can execute the private guarded implementation'
 );
 select ok(has_table_privilege('authenticated', 'public.program_domains', 'SELECT'), 'authenticated may read RLS-visible Program domains');
 select ok(not has_table_privilege('authenticated', 'public.program_domains', 'INSERT'), 'authenticated has no direct Program-domain insert privilege');
@@ -134,11 +152,13 @@ insert into public.profile_memberships (user_id, account_id, profile_id)
 values ('a2000000-0000-0000-0000-000000000002', 'b1000000-0000-0000-0000-000000000001', 'c2000000-0000-0000-0000-000000000002');
 
 create function pg_temp.call_program_domain(target_profile uuid, accepted_base jsonb, candidate jsonb)
-returns public.program_domains
+returns jsonb
 language sql
+security definer
 set search_path = ''
 as $$
-  select public.put_program_domain_guarded(
+  select private.put_program_domain_guarded(
+    current_setting('request.jwt.claim.sub', true)::uuid,
     target_profile,
     (accepted_base ->> 'version')::bigint,
     (accepted_base ->> 'updatedAt')::timestamptz,
@@ -166,6 +186,19 @@ $$;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', 'a3000000-0000-0000-0000-000000000003', true);
 select set_config('request.jwt.claims', '{"sub":"a3000000-0000-0000-0000-000000000003","role":"authenticated"}', true);
+
+select throws_ok(
+  $test$select private.put_program_domain_guarded(
+    'a3000000-0000-0000-0000-000000000003',
+    'c3000000-0000-0000-0000-000000000003',
+    null, null, null, null, null, null, null, null, null,
+    1, '2026-08-25T14:00:00Z', '{}'::jsonb, repeat('a', 64),
+    0, repeat('b', 64), 0, repeat('c', 64), 0, repeat('d', 64),
+    'pps-authenticated-direct-function'
+  )$test$,
+  '42501', null,
+  'authenticated cannot directly execute the private privileged definer'
+);
 
 select lives_ok(
   $test$select pg_temp.call_program_domain(
@@ -446,6 +479,11 @@ select throws_ok(
   '42501', null,
   'authenticated cannot bypass the guarded RPC with direct update'
 );
+select throws_ok(
+  $$delete from public.program_domains$$,
+  '42501', null,
+  'authenticated cannot bypass the guarded gateway with direct delete'
+);
 
 reset role;
 select throws_ok(
@@ -510,7 +548,8 @@ select throws_ok(
 set local role anon;
 select throws_ok($$select * from public.program_domains$$, '42501', null, 'anonymous cannot read Program domains');
 select throws_ok(
-  $test$select public.put_program_domain_guarded(
+  $test$select private.put_program_domain_guarded(
+    'a5000000-0000-0000-0000-000000000005',
     'c5000000-0000-0000-0000-000000000005',
     null, null, null, null, null, null, null, null, null,
     1, now(), '{}'::jsonb, repeat('1', 64), 0, repeat('2', 64), 0, repeat('3', 64), 0, repeat('4', 64), 'pps-anon'
