@@ -68,6 +68,7 @@
       if (!workout?.completedAt) return [];
       const performed = list(workout.exercises).find(exercise => exactDefinition(catalog, exercise)?.canonicalId === definition.canonicalId);
       if (!performed) return [];
+      const historicalOptions = analytics.optionsForWorkout(workout, analyticsOptions());
       return [{
         exposureId: workout.id,
         workoutId: workout.id,
@@ -79,7 +80,7 @@
         loadBasis: goal.targetBasis,
         contentRevision: measurement.contentRevision,
         sets: list(performed.sets).map(set => {
-          const metrics = analytics.metricsForSet(set, { ...analyticsOptions(), exercise: performed, measurement });
+          const metrics = analytics.metricsForSet(set, { ...historicalOptions, exercise: performed, measurement });
           return {
             setId: set.id,
             enteredLoad: metrics?.enteredLoad,

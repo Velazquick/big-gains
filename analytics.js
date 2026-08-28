@@ -23,6 +23,26 @@
   };
   const bodyweightFrom = options => positive(options?.bodyweight);
 
+  function bodyweightAt(weights, at) {
+    const cutoff = timestamp(at);
+    if (cutoff === null) return null;
+    let winner = null;
+    let winnerTime = -Infinity;
+    list(weights).forEach(entry => {
+      const measuredAt = timestamp(entry?.date);
+      const weight = positive(entry?.weight);
+      if (measuredAt === null || weight === null || measuredAt > cutoff || measuredAt <= winnerTime) return;
+      winner = weight;
+      winnerTime = measuredAt;
+    });
+    return winner;
+  }
+
+  function optionsForWorkout(workout, options = {}) {
+    if (timestamp(workout?.completedAt) === null || !Array.isArray(options.weights)) return options;
+    return { ...options, bodyweight: bodyweightAt(options.weights, workout.completedAt) };
+  }
+
   function estimate1RM(weight, reps) {
     const safeWeight = number(weight);
     const safeReps = number(reps);
@@ -81,6 +101,18 @@
     if (!['per_hand', 'per_side'].includes(basis)) return null;
     if (measurement.repSemantics === 'bilateral_cycle' && ['bilateral', 'independent_bilateral'].includes(measurement.laterality)) return 2;
     if (['unilateral', 'alternating'].includes(measurement.laterality)) return 1;
+    return null;
+  }
+
+  function workloadFamilyFor(exercise, options = {}) {
+    const measurement = measurementFor(exercise, options);
+    const resistance = measurement.loadSemantics?.resistanceSemantics;
+    if (!['load_reps', 'assistance_reps'].includes(measurement.trackingModel)
+      || ['not_applicable', 'unknown'].includes(measurement.repSemantics)
+      || loadUnitsPerEvent(measurement) === null) return null;
+    if (resistance === 'machine_indicated') return 'machine_indicated';
+    if (['bodyweight_plus_external', 'assistance'].includes(resistance) && measurement.bodyweightModel === 'full_system') return 'modeled_system_load';
+    if (resistance === 'external') return 'external_load';
     return null;
   }
 
@@ -179,6 +211,9 @@
     const exercise = Array.isArray(source) ? options.exercise : source;
     const sets = workingSets(source).map(set => metricsForSet(set, { ...options, exercise }));
     const kinds = new Set(sets.map(set => set.volumeKind).filter(Boolean));
+    const contractFamily = workloadFamilyFor(exercise, options);
+    const contractKind = contractFamily === 'machine_indicated' ? 'indicated_load' : contractFamily;
+    if (sets.length && !kinds.size && contractKind) kinds.add(contractKind);
     const volumeKnown = sets.length > 0 && sets.every(set => set.volume !== null) && kinds.size <= 1;
     return {
       workingSets: sets, workingSetCount: sets.length,
@@ -203,7 +238,8 @@
 
   function workoutSummary(workout, options = {}) {
     const exercises = list(workout?.exercises);
-    const exerciseSummaries = exercises.map(exercise => setSummary(exercise, options));
+    const workoutOptions = optionsForWorkout(workout, options);
+    const exerciseSummaries = exercises.map(exercise => setSummary(exercise, workoutOptions));
     const working = exerciseSummaries.flatMap(summary => summary.workingSets);
     const kinds = new Set(exerciseSummaries.map(summary => summary.workingSetVolumeKind).filter(Boolean));
     const volumeKnown = exerciseSummaries.filter(summary => summary.workingSetCount).every(summary => summary.workingSetVolume !== null) && kinds.size <= 1;
@@ -233,11 +269,12 @@
     const workoutPrCounts = {};
     completedWorkouts(workouts).reverse().forEach(workout => {
       let prCount = 0;
+      const workoutOptions = optionsForWorkout(workout, options);
       list(workout.exercises).forEach(exercise => {
         const exerciseId = canonicalExerciseId(exercise);
         if (!exerciseId) return;
         workingSets(exercise).forEach(set => {
-          const metrics = metricsForSet(set, { ...options, exercise });
+          const metrics = metricsForSet(set, { ...workoutOptions, exercise });
           if (metrics.estimated1RM === null || metrics.estimated1RM <= number(records[exerciseId]?.estimated1RM)) return;
           records[exerciseId] = {
             exercise: exercise.name || '', estimated1RM: metrics.estimated1RM, weight: metrics.weight, reps: metrics.reps,
@@ -273,9 +310,15 @@
     const sessions = completedWorkouts(workouts).flatMap(workout => {
       const exercise = list(workout.exercises).find(item => canonicalExerciseId(item) === requested);
       if (!exercise) return [];
-      const summary = setSummary(exercise, options);
+      const workoutOptions = optionsForWorkout(workout, options);
+      const summary = setSummary(exercise, workoutOptions);
       if (!summary.workingSetCount) return [];
-      return [{ workoutId: workout.id, date: workout.completedAt, exerciseId: requested, exerciseName: exercise.name || '', muscle: exercise.muscle || '', equipment: exercise.equipment || '', ...summary }];
+      const workloadFamily = workloadFamilyFor(exercise, workoutOptions);
+      return [{
+        workoutId: workout.id, date: workout.completedAt, exerciseId: requested, exerciseName: exercise.name || '',
+        muscle: exercise.muscle || '', equipment: exercise.equipment || '', workloadFamily,
+        workload: workloadFamily ? summary.workingSetVolume : null, ...summary
+      }];
     });
     return sessions.map((session, index) => ({ ...session, delta: performanceDelta(session, sessions[index + 1], options) }));
   }
@@ -287,7 +330,12 @@
     const best = sessions.flatMap(session => session.workingSets).reduce((winner, candidate) => betterSet(candidate, winner) ? candidate : winner, null);
     return {
       exerciseId, sessions, latest: sessions[0] || null, previous: sessions[1] || null, bestWorkingSet: best,
-      points: sessions.slice().reverse().map(session => ({ workoutId: session.workoutId, date: session.date, weight: session.bestWorkingSet.weight, reps: session.bestWorkingSet.reps, estimated1RM: session.bestWorkingSet.estimated1RM, workingSetVolume: session.workingSetVolume, totalReps: session.totalReps }))
+      workloadFamily: sessions.find(session => session.workloadFamily)?.workloadFamily || null,
+      points: sessions.slice().reverse().map(session => ({
+        workoutId: session.workoutId, date: session.date, weight: session.bestWorkingSet.weight, reps: session.bestWorkingSet.reps,
+        estimated1RM: session.bestWorkingSet.estimated1RM, workingSetVolume: session.workingSetVolume,
+        workload: session.workload, workloadFamily: session.workloadFamily, totalReps: session.totalReps
+      }))
     };
   }
 
@@ -315,7 +363,7 @@
     const primary = {};
     const secondary = {};
     completedWorkouts(workouts).forEach(workout => list(workout.exercises).forEach(exercise => {
-      const summary = setSummary(exercise, options);
+      const summary = setSummary(exercise, optionsForWorkout(workout, options));
       if (!summary.workingSetCount) return;
       const roles = definitionFor(exercise)?.muscleRoles;
       const primaryNames = roles?.primary?.length ? roles.primary : muscleNames(exercise.muscle);
@@ -346,7 +394,7 @@
     const definitions = new Map(list(exercises).map(exercise => [exercise.id, exercise]));
     const totals = {};
     completedWorkouts(workouts).forEach(workout => list(workout.exercises).forEach(exercise => {
-      const summary = setSummary(exercise, options);
+      const summary = setSummary(exercise, optionsForWorkout(workout, options));
       if (!summary.workingSetCount) return;
       const exerciseId = canonicalExerciseId(exercise);
       addTotals(totals, definitions.get(exerciseId)?.family || exerciseId, summary);
@@ -354,10 +402,69 @@
     return totals;
   }
 
+  const WORKLOAD_FAMILIES = Object.freeze(['external_load', 'machine_indicated', 'modeled_system_load']);
+
+  function emptyWorkloadFamily() {
+    return { total: 0, workingSetCount: 0, sessionCount: 0, gapCount: 0, gapSessionCount: 0 };
+  }
+
+  function workloadWindow(workouts, { since, through, ...options }) {
+    const families = Object.fromEntries(WORKLOAD_FAMILIES.map(family => [family, emptyWorkloadFamily()]));
+    const contributingSessions = Object.fromEntries(WORKLOAD_FAMILIES.map(family => [family, new Set()]));
+    const gapSessions = Object.fromEntries(WORKLOAD_FAMILIES.map(family => [family, new Set()]));
+    const included = completedWorkouts(workouts).filter(workout => {
+      const completedAt = timestamp(workout.completedAt);
+      return completedAt > since && completedAt <= through;
+    });
+    included.forEach(workout => {
+      const workoutOptions = optionsForWorkout(workout, options);
+      list(workout.exercises).forEach(exercise => {
+        const family = workloadFamilyFor(exercise, workoutOptions);
+        if (!family) return;
+        workingSets(exercise).forEach(set => {
+          const metrics = metricsForSet(set, { ...workoutOptions, exercise });
+          if (metrics.volume === null) {
+            if (family === 'modeled_system_load') {
+              families[family].gapCount += 1;
+              gapSessions[family].add(workout.id);
+            }
+            return;
+          }
+          families[family].total += Number(metrics.volume);
+          families[family].workingSetCount += 1;
+          contributingSessions[family].add(workout.id);
+        });
+      });
+    });
+    WORKLOAD_FAMILIES.forEach(family => {
+      families[family].sessionCount = contributingSessions[family].size;
+      families[family].gapSessionCount = gapSessions[family].size;
+    });
+    return {
+      since: new Date(since).toISOString(), through: new Date(through).toISOString(),
+      workoutCount: included.length, families
+    };
+  }
+
+  function trainingWorkloadWindows(workouts, { now = Date.now(), days = 7, ...options } = {}) {
+    const parsedThrough = timestamp(now);
+    const through = parsedThrough === null ? Date.now() : parsedThrough;
+    const safeDays = Math.max(1, Math.round(number(days) || 1));
+    const span = safeDays * DAY_MS;
+    const currentSince = through - span;
+    const previousSince = currentSince - span;
+    const current = workloadWindow(workouts, { since: currentSince, through, ...options });
+    const previous = workloadWindow(workouts, { since: previousSince, through: currentSince, ...options });
+    const families = Object.fromEntries(WORKLOAD_FAMILIES.map(family => [family, {
+      current: current.families[family], previous: previous.families[family]
+    }]));
+    return { days: safeDays, through: new Date(through).toISOString(), current, previous, families };
+  }
+
   scope.BigGainsAnalytics = Object.freeze({
-    bestWorkingSet, derivePersonalRecords, durationSeconds, estimate1RM, exerciseFamilyTotals,
+    bestWorkingSet, bodyweightAt, derivePersonalRecords, durationSeconds, estimate1RM, exerciseFamilyTotals,
     exerciseHistory, exerciseTrend, isWorkingSet, measurementFor, metricsForSet, muscleNames,
-    muscleTotals, muscleWorkloadWindows, performanceDelta, profileBodyweight, previousPerformance,
-    recentMuscleWorkload, setSummary, workingSets, workoutSummary
+    muscleTotals, muscleWorkloadWindows, optionsForWorkout, performanceDelta, profileBodyweight, previousPerformance,
+    recentMuscleWorkload, setSummary, trainingWorkloadWindows, workingSets, workloadFamilyFor, workoutSummary
   });
 })(typeof window === 'object' ? window : globalThis);

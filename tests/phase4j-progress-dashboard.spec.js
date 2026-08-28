@@ -43,7 +43,7 @@ test.beforeEach(async ({ page }) => {
 
 test('Progress is a dark analytics dashboard with overview, heatmap, and capped recent history', async ({ page }) => {
   await expect(page.locator('#progressPanel')).toHaveClass(/progress-dashboard-panel/);
-  await expect(page.locator('.progress-overview-grid article')).toHaveCount(4);
+  await expect(page.locator('.progress-overview-grid article')).toHaveCount(3);
   await expect(page.locator('.progress-dashboard-head h2')).toHaveText('7-day progress');
   await expect(page.locator('.progress-overview-grid article').nth(0).locator('strong')).toHaveText('3');
   await expect(page.locator('.muscle-zone')).toHaveCount(24);
@@ -79,7 +79,7 @@ test('a selected zero-workload muscle stays selected and reports explicit zero m
   await expect(detail).toHaveAttribute('data-selected-muscle', 'Core');
   await expect(detail.locator('h3')).toHaveText('Core');
   await expect(detail.locator('.muscle-detail-head > strong')).toHaveText('0 sets');
-  await expect(detail.locator('.muscle-detail-metrics')).toContainText('Volume0 lb');
+  await expect(detail.locator('.muscle-detail-metrics')).toContainText('Primary working sets0');
   await expect(detail.locator('.muscle-detail-metrics')).toContainText('Reps0');
   await expect(detail.locator('.muscle-zero-state')).toContainText('No core working sets in the last 7 days');
   await expect(page.locator('[data-muscle-key="Core"]').first()).toHaveAttribute('aria-pressed', 'true');
@@ -90,7 +90,7 @@ test('a selected zero-workload muscle stays selected and reports explicit zero m
 
 test('Jorge dashboard stays inside an iPhone-sized viewport', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.locator('.progress-overview-grid article')).toHaveCount(4);
+  await expect(page.locator('.progress-overview-grid article')).toHaveCount(3);
   await expect(page.locator('.muscle-map-wrap')).toBeVisible();
   await expect(page.locator('#progressMuscleDetail')).toBeVisible();
 
@@ -121,7 +121,7 @@ test('strength drill-down remains available from the redesigned dashboard', asyn
   await expect(page.locator('#progressDialog')).toBeVisible();
   await expect(page.locator('#progressDialogTitle')).toHaveText('Seated Machine Chest Press');
   await expect(page.locator('#progressDialogContent')).toContainText('e1RM unavailable for this measurement contract');
-  await expect(page.locator('#progressDialogContent')).toContainText('indicated workload');
+  await expect(page.locator('#progressDialogContent')).toContainText('Machine-indicated volume trend');
   const shell = await page.locator('#progressDialog .history-dialog-shell').evaluate(element => {
     const styles = getComputedStyle(element);
     return { backgroundImage: styles.backgroundImage, color: styles.color };

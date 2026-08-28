@@ -91,7 +91,7 @@ function fmtDateLong(iso){return new Intl.DateTimeFormat('en-US',{weekday:'long'
 function fmtTime(seconds){seconds=Math.max(0,Math.floor(seconds));return `${String(Math.floor(seconds/60)).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`;}
 function escapeHtml(v){return String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
 function startOfWeek(){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-d.getDay());return d;}
-function analyticsOptions(){return {bodyweight:analyticsApi.profileBodyweight(state.weights),loadModeFor:exerciseCatalog.loadModeFor,measurementFor:exerciseCatalog.measurementFor};}
+function analyticsOptions(){return {bodyweight:analyticsApi.profileBodyweight(state.weights),weights:state.weights,loadModeFor:exerciseCatalog.loadModeFor,measurementFor:exerciseCatalog.measurementFor};}
 function derivePersonalRecords(workouts=state.workouts){return analyticsApi.derivePersonalRecords(workouts,analyticsOptions());}
 function volumeForWorkout(w){return analyticsApi.workoutSummary(w,analyticsOptions()).workingSetVolume;}
 function volumeForExercise(e){return analyticsApi.setSummary(e,analyticsOptions()).workingSetVolume;}
@@ -206,14 +206,14 @@ function renderCalendarDay(workouts){const [year,month,day]=calendarSelectedKey.
 function openHistory(id,originView=null){
   const w=state.workouts.find(x=>x.id===id);
   if(!w)return;
-  const title=completionWorkoutLabel(w.type),summary=analyticsApi.workoutSummary(w,analyticsOptions()),historyView=originView||progressApi.currentHistoryView?.(),archiveOpen=Boolean(historyView);
+  const historicalOptions=analyticsApi.optionsForWorkout(w,analyticsOptions()),title=completionWorkoutLabel(w.type),summary=analyticsApi.workoutSummary(w,historicalOptions),historyView=originView||progressApi.currentHistoryView?.(),archiveOpen=Boolean(historyView);
   $('historyDialogTitle').textContent=title;
   $('historyDialogDate').textContent=fmtWorkoutContext(w.completedAt);
   const closeButton=$('closeHistoryDialog');
   closeButton.textContent=historyView==='calendar'?'← Calendar':archiveOpen?'← History':'Close';
   closeButton.setAttribute('aria-label',historyView==='calendar'?'Back to History Calendar':archiveOpen?'Back to workout history':'Close workout detail');
   const exercises=(w.exercises||[]).map((e,exerciseIndex)=>{
-    const best=analyticsApi.bestWorkingSet(e,analyticsOptions()),exerciseId=e.definitionId||e.id,exerciseSummary=analyticsApi.setSummary(e,analyticsOptions());
+    const best=analyticsApi.bestWorkingSet(e,historicalOptions),exerciseId=e.definitionId||e.id,exerciseSummary=analyticsApi.setSummary(e,historicalOptions);
     let workingSetIndex=0;
     const sets=(e.sets||[]).map(s=>{
       const isWarmup=s.warmup===true;

@@ -195,6 +195,7 @@
     if (!analytics?.derivePersonalRecords) fail('analytics-unavailable', 'Cloud recovery requires the canonical analytics library.');
     return analytics.derivePersonalRecords(workouts, {
       bodyweight: analytics.profileBodyweight(weights),
+      weights,
       loadModeFor: window.BigGainsExerciseCatalog?.loadModeFor
     }).records;
   }
