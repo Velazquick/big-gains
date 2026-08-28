@@ -525,9 +525,14 @@
         local: summaryFromCapture(localSemantic),
         remote: summaryFromCapture(remoteSemantic),
         message: 'This Program changed on both devices.',
+        remoteIdentity: identity(remote.record),
+        guard: {
+          localSemanticCanonical: envelopeApi.canonicalize(localSemantic),
+          remoteIdentity: identity(remote.record)
+        },
         decisions: [
-          { id: 'keep_cloud', label: 'Keep cloud Program', supported: false, deferredTo: 'legacy_cutover_or_guarded_resolution' },
-          { id: 'keep_device', label: 'Keep this device Program', supported: false, deferredTo: 'legacy_cutover_or_guarded_publication' }
+          { id: 'keep_cloud', label: 'Use cloud Program', supported: true },
+          { id: 'keep_device', label: 'Use this device Program', supported: true }
         ]
       });
     }
@@ -608,6 +613,7 @@
     getOperations = () => [],
     initialized = true,
     freshDevice = false,
+    explicitChoice = false,
     envelopeApi = scope.BigGainsProgramDomainEnvelope,
     programModel = scope.BigGainsProgramModel,
     catalog = null,
@@ -616,7 +622,9 @@
     const mapping = ownerAndScope(options);
     const portsValid = mapping && typeof readRaw === 'function' && typeof writeRaw === 'function'
       && typeof removeRaw === 'function' && envelopeApi?.build && programModel?.normalizeCapture;
-    if (!portsValid || inspected?.state !== STATES.REMOTE_FAST_FORWARD_SAFE || !remote?.record || !remote?.envelope) {
+    const permittedState = inspected?.state === STATES.REMOTE_FAST_FORWARD_SAFE
+      || (explicitChoice === true && inspected?.state === STATES.DIVERGENT_CONFLICT);
+    if (!portsValid || !permittedState || !remote?.record || !remote?.envelope) {
       return result({ ok: false, reasonCode: REASON_CODES.ADOPTION_NOT_SAFE });
     }
     if (!sameIdentity(inspected?.guard?.remoteIdentity, remote.record)) {

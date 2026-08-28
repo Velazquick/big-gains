@@ -80,9 +80,12 @@
     if (identity.entityType !== 'program_domains') return null;
     const value = input.programDomain;
     const acceptedBase = normalizeProgramDomainBase(value?.acceptedBase, identity.owner);
+    const envelopeScope = value?.envelopeScope || identity.owner;
     if (identity.entityId !== 'program-domain' || identity.mutation !== 'upsert'
       || !isRecord(value)
       || value.clientId !== 'program-domain'
+      || !isRecord(envelopeScope) || typeof envelopeScope.accountId !== 'string' || !envelopeScope.accountId
+      || typeof envelopeScope.profileId !== 'string' || !envelopeScope.profileId
       || typeof value.payloadCanonical !== 'string'
       || value.payloadCanonical !== canonicalize(identity.payload)
       || !fingerprint(identity.payloadFingerprint)
@@ -133,6 +136,7 @@
     }
     return deepFreeze({
       clientId: 'program-domain',
+      envelopeScope: { accountId: envelopeScope.accountId, profileId: envelopeScope.profileId },
       payloadCanonical: value.payloadCanonical,
       definitionsRevision: value.definitionsRevision,
       definitionsFingerprint: value.definitionsFingerprint,

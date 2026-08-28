@@ -1,6 +1,6 @@
 # Big Gains Program portability synchronization v1
 
-- Status: **Normative target contract; Slice 1 schema and dormant Slices 2A, 2B, and 3 implemented**
+- Status: **Normative target contract; Slice 1 schema and dormant Slices 2A, 2B, 3, and pre-rollout cutover implemented**
 - Contract version: **`big-gains.program-portability-envelope.v1` / 1**
 - Repository baseline: `origin/main` at `c242bfd0c033df0e102739958f1cad7b1aa0aee6`
 - Runtime marker: `v95-mobile-startup-interactivity`
@@ -9,7 +9,7 @@
 
 The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHOULD**, **SHOULD NOT**, **MAY**, and **OPTIONAL** are normative when capitalized.
 
-Implementation tracking: Slice 1 adds the dormant local migration/RLS destination without applying it to the hosted project. Slice 2A adds the pure, runtime-unattached `BigGainsProgramDomainEnvelope` projection, validation, canonicalization, and fingerprint boundary. Slice 2B adds durable frozen Program operations, guarded RPC transport, exact readback-before-ACK, and dedicated queue ordering while remaining production-disabled and runtime-unattached. Slice 3 adds the runtime-unattached `BigGainsProgramDomainRecovery` remote reader/validator, no-mutation classifier, fresh-device dependency checks, and exact-rollback whole-graph adoption port. It does not perform legacy publication, conflict publication/rebasing, cutover, hosted migration, capability enablement, Auth change, production-data access, release-marker change, or deployment.
+Implementation tracking: Slice 1 adds the dormant local migration/RLS destination without applying it to the hosted project. Slice 2A adds the pure, runtime-unattached `BigGainsProgramDomainEnvelope` projection, validation, canonicalization, and fingerprint boundary. Slice 2B adds durable frozen Program operations, guarded RPC transport, exact readback-before-ACK, and dedicated queue ordering while remaining production-disabled and runtime-unattached. Slice 3 adds the runtime-unattached `BigGainsProgramDomainRecovery` remote reader/validator, no-mutation classifier, fresh-device dependency checks, and exact-rollback whole-graph adoption port. The pre-rollout cutover slice adds capability-gated inspection, revision-1 legacy/empty publication, deterministic conflict snapshots, stale-choice rejection, explicit cloud adoption, and contract-limited device publication/rebasing through the same frozen queue and guarded transport. Equal immutable identity with unequal payload, invalid lineage, and unprovable concurrent sequence state remain blocked instead of being overwritten or merged. All Program portability modules remain absent from production runtime assets. The hosted migration remains unapplied and no production capability, Auth, hosted data, release marker, or deployment setting is changed by this implementation.
 
 ## 0. Authority and boundary
 
@@ -250,6 +250,8 @@ Implementation tracking: Slice 1 adds the dormant local migration/RLS destinatio
 **PPS1-13.8 - Independent compatibility.** Existing independent and Sontai/SZW-compatible profiles use the same profile-scoped algorithm and retain their exact client IDs, storage namespaces, Programs, and presentation. Account recreation and invented migration data are forbidden.
 
 **PPS1-13.9 - Failure safety.** A failed write, lost response, malformed local capture, ownership mismatch, incomplete graph, or readback mismatch leaves local training usable, preserves the exact local capture and queue, and does not mark portability verified.
+
+Implementation note: `BigGainsProgramDomainCutover.createService(...)` is the dormant orchestration API for this section. `inspectCutover(...)` performs a fresh verified read/classification, `publishLegacy(...)` rechecks true row absence before freezing revision 1, and `resolveConflict(...)` revalidates a deterministic owner/scope plus local/remote fingerprint snapshot before either explicit choice. `Use cloud Program` delegates to the Slice 3 rollback-safe adoption transaction. `Use this device Program` retains compatible immutable remote members, changes only proved component revisions, and uses the guarded transport; it refuses equal-ID immutable disagreement, invalid/forked lineage, an empty-device erasure of a meaningful graph, or a sequence change lacking a contract-valid transition. Transport failure leaves the local profile unchanged and the exact operation pending. This implementation note does not enable or load the API in production.
 
 ## 14. Schema and RLS boundary
 

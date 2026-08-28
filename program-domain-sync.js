@@ -168,6 +168,7 @@
   async function enqueueProgramDomain({
     accountId,
     profileId,
+    scope: envelopeScope = { accountId, profileId },
     programCapture,
     acceptedBase = null,
     lastTransition = null,
@@ -178,17 +179,21 @@
     cloudApi = scope.BigGainsCloud,
     now = () => new Date().toISOString()
   } = {}) {
-    if (!nonempty(accountId) || !nonempty(profileId) || !queue?.enqueue || !queue?.pending
+    if (!nonempty(accountId) || !nonempty(profileId)
+      || !nonempty(envelopeScope?.accountId) || !nonempty(envelopeScope?.profileId)
+      || !queue?.enqueue || !queue?.pending
       || !envelopeApi?.build || !envelopeApi?.fingerprints || !cloudApi?.createOperation) {
       return result({ ok: false, enqueued: false, reasonCode: REASON_CODES.SERIALIZATION_FAILED });
     }
     try {
       const base = normalizeAcceptedBase(acceptedBase, { accountId, profileId });
       const initialEnvelope = await envelopeApi.build({
-        accountId, profileId, programCapture, catalog, lastTransition
+        accountId: envelopeScope.accountId, profileId: envelopeScope.profileId,
+        programCapture, catalog, lastTransition
       });
       const initialHashes = await envelopeApi.fingerprints(initialEnvelope, {
-        accountId, profileId, revisions: componentRevisions(initialEnvelope)
+        accountId: envelopeScope.accountId, profileId: envelopeScope.profileId,
+        revisions: componentRevisions(initialEnvelope)
       });
       if (noSemanticChange(base, initialHashes)) {
         return result({ ok: true, enqueued: false, noOp: true, reasonCode: null, operation: null });
@@ -199,9 +204,12 @@
       }
       const revisions = nextRevisions(base, initialHashes, initialEnvelope);
       const envelope = await envelopeApi.build({
-        accountId, profileId, programCapture, catalog, revisions, lastTransition
+        accountId: envelopeScope.accountId, profileId: envelopeScope.profileId,
+        programCapture, catalog, revisions, lastTransition
       });
-      const hashes = await envelopeApi.fingerprints(envelope, { accountId, profileId, revisions });
+      const hashes = await envelopeApi.fingerprints(envelope, {
+        accountId: envelopeScope.accountId, profileId: envelopeScope.profileId, revisions
+      });
       const predecessor = queuedPredecessor(queue, base, accountId, profileId);
       const operationUpdatedAt = updatedAt || now();
       if (normalizedInstant(operationUpdatedAt) !== operationUpdatedAt) {
@@ -226,6 +234,7 @@
         } : null,
         programDomain: {
           clientId: CLIENT_ID,
+          envelopeScope: clone(envelopeScope),
           payloadCanonical: envelopeApi.canonicalize(envelope),
           definitionsRevision: hashes.definitionsRevision,
           definitionsFingerprint: hashes.definitionsFingerprint,
@@ -318,6 +327,7 @@
   }
 
   async function verifyReadback(row, operation, envelopeApi) {
+    const envelopeScope = operation.programDomain.envelopeScope || operation.owner;
     if (!isRecord(row)
       || row.account_id !== operation.owner.accountId
       || row.profile_id !== operation.owner.profileId
@@ -343,14 +353,14 @@
         sequence: operation.programDomain.sequenceRevision
       };
       const validation = await envelopeApi.validate(row.payload, {
-        accountId: operation.owner.accountId,
-        profileId: operation.owner.profileId,
+        accountId: envelopeScope.accountId,
+        profileId: envelopeScope.profileId,
         revisions
       });
       if (!validation.ok) return false;
       const hashes = await envelopeApi.fingerprints(row.payload, {
-        accountId: operation.owner.accountId,
-        profileId: operation.owner.profileId,
+        accountId: envelopeScope.accountId,
+        profileId: envelopeScope.profileId,
         revisions
       });
       return hashes.fingerprint === operation.payloadFingerprint

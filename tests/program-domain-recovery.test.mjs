@@ -338,7 +338,8 @@ test('10 meaningful local and remote divergence requires an explicit conflict de
   const inspected = await classify({ remoteRead: readResult(remote.validated), localProgramCapture: divergentLocal(captureFixture()) });
   assert.equal(inspected.state, recovery.states.DIVERGENT_CONFLICT);
   assert.equal(inspected.message, 'This Program changed on both devices.');
-  assert.deepEqual(inspected.decisions.map(value => value.supported), [false, false]);
+  assert.deepEqual(inspected.decisions.map(value => value.supported), [true, true]);
+  assert.deepEqual(inspected.decisions.map(value => value.label), ['Use cloud Program', 'Use this device Program']);
 });
 
 test('11 pending local Program operation blocks adoption', async () => {
