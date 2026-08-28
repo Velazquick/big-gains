@@ -1,15 +1,15 @@
 # Big Gains Program portability synchronization v1
 
-- Status: **Normative target contract; Slice 1 schema and dormant Slice 2A serializer implemented**
+- Status: **Normative target contract; Slice 1 schema and dormant Slices 2A, 2B, and 3 implemented**
 - Contract version: **`big-gains.program-portability-envelope.v1` / 1**
-- Repository baseline: `origin/main` at `f941ac81ed3dc30ad09d186d154b3fe2c56efaa3`
+- Repository baseline: `origin/main` at `c242bfd0c033df0e102739958f1cad7b1aa0aee6`
 - Runtime marker: `v95-mobile-startup-interactivity`
 - Local profile schema: **5**
 - Date: 2026-08-25
 
 The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHOULD**, **SHOULD NOT**, **MAY**, and **OPTIONAL** are normative when capitalized.
 
-Implementation tracking: Slice 1 adds the dormant local migration/RLS destination without applying it to the hosted project. Slice 2A adds the pure, runtime-unattached `BigGainsProgramDomainEnvelope` projection, validation, canonicalization, and fingerprint boundary. It changes no schema-v5 profile shape, runtime asset manifest, queue, transport, recovery, Auth, hosted data, release marker, or deployment.
+Implementation tracking: Slice 1 adds the dormant local migration/RLS destination without applying it to the hosted project. Slice 2A adds the pure, runtime-unattached `BigGainsProgramDomainEnvelope` projection, validation, canonicalization, and fingerprint boundary. Slice 2B adds durable frozen Program operations, guarded RPC transport, exact readback-before-ACK, and dedicated queue ordering while remaining production-disabled and runtime-unattached. Slice 3 adds the runtime-unattached `BigGainsProgramDomainRecovery` remote reader/validator, no-mutation classifier, fresh-device dependency checks, and exact-rollback whole-graph adoption port. It does not perform legacy publication, conflict publication/rebasing, cutover, hosted migration, capability enablement, Auth change, production-data access, release-marker change, or deployment.
 
 ## 0. Authority and boundary
 
