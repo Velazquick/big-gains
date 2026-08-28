@@ -9,16 +9,27 @@
 .progress-window-toggle{display:inline-flex;gap:4px;padding:4px;border:1px solid var(--progress-line);border-radius:13px;background:#090c10}
 .progress-window-toggle button{min-width:48px;padding:8px 11px;border:0;border-radius:9px;background:transparent;color:var(--muted);font-weight:900;letter-spacing:.04em}
 .progress-window-toggle button.active{background:var(--accent);color:#0a0d10}
-.progress-overview-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.progress-overview-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .progress-overview-grid article{min-height:112px;padding:16px;border:1px solid var(--progress-line);border-radius:17px;background:linear-gradient(180deg,rgba(19,25,32,.95),rgba(11,15,20,.98))}
 .progress-overview-grid span{display:block;color:var(--muted);font-size:.67rem;font-weight:850;text-transform:uppercase;letter-spacing:.12em}
 .progress-overview-grid strong{display:block;margin:10px 0 5px;font-size:clamp(1.45rem,5vw,2rem);font-variant-numeric:tabular-nums;letter-spacing:-.045em}
 .progress-overview-grid small{color:#697382;font-size:.7rem}
-.progress-workload-card,.progress-strength-card{padding:20px;border:1px solid var(--progress-line);border-radius:22px;background:linear-gradient(180deg,rgba(15,20,26,.98),rgba(9,12,16,.98))}
+.progress-training-workload-card,.progress-workload-card,.progress-strength-card{padding:20px;border:1px solid var(--progress-line);border-radius:22px;background:linear-gradient(180deg,rgba(15,20,26,.98),rgba(9,12,16,.98))}
+.progress-training-workload-card{border-color:rgba(240,163,107,.18);background:radial-gradient(circle at 88% 0,rgba(240,163,107,.055),transparent 22rem),linear-gradient(180deg,rgba(15,20,26,.98),rgba(9,12,16,.98))}
 .progress-workload-card{border-color:rgba(216,255,62,.14);background:radial-gradient(circle at 12% 8%,rgba(216,255,62,.045),transparent 24rem),linear-gradient(180deg,rgba(15,20,26,.98),rgba(9,12,16,.98))}
 .progress-section-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:14px}
 .progress-section-head h3{margin:4px 0 5px;font-size:1.25rem;letter-spacing:-.035em}
 .progress-window-caption{flex:none;padding:6px 9px;border:1px solid var(--progress-line);border-radius:999px;color:#aeb7c3;font-size:.7rem;font-weight:800}
+.training-workload-list{display:grid;border:1px solid rgba(255,255,255,.055);border-radius:16px;overflow:hidden;background:rgba(0,0,0,.12)}
+.training-workload-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,.7fr);gap:18px;align-items:center;padding:15px 16px;border-bottom:1px solid var(--progress-line)}
+.training-workload-row:last-child{border-bottom:0}
+.training-workload-row>div>strong,.training-workload-row>div>small{display:block}
+.training-workload-row>div>strong{font-size:.9rem}
+.training-workload-row>div>small{margin-top:5px;color:var(--muted);font-size:.72rem;line-height:1.35}
+.training-workload-value{text-align:right}
+.training-workload-value>strong{font-size:1.08rem!important;font-variant-numeric:tabular-nums}
+.training-workload-empty,.progress-chart-empty{display:grid;gap:5px;padding:16px;border:1px solid var(--progress-line);border-radius:15px;background:rgba(0,0,0,.12)}
+.training-workload-empty span,.progress-chart-empty span{color:var(--muted);font-size:.78rem;line-height:1.45}
 .muscle-workload-layout{display:grid;grid-template-columns:minmax(260px,1.1fr) minmax(220px,.8fr);gap:14px;align-items:stretch}
 .muscle-map-wrap{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px;border:1px solid rgba(255,255,255,.055);border-radius:18px;background:rgba(0,0,0,.16)}
 .muscle-map-figure{display:grid;gap:5px;text-align:center}
@@ -67,11 +78,36 @@
 #progressDialog .history-dialog-head{position:sticky;top:-22px;z-index:2;margin:-22px -22px 18px;padding:22px;background:linear-gradient(180deg,#12171e 82%,rgba(18,23,30,.94));border-bottom:1px solid var(--progress-line)}
 #progressDialog .history-dialog-head h2{color:#fff}
 #progressDialog .history-dialog-head p{color:var(--muted)}
+#progressDialogContent{display:grid;gap:14px}
+#progressDialog .progress-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+#progressDialog .progress-summary-grid>div{display:grid;align-content:space-between;min-height:82px;padding:12px;border:1px solid var(--progress-line);border-radius:14px}
+#progressDialog .progress-summary-grid span{color:var(--muted);font-size:.66rem;font-weight:800;line-height:1.3;text-transform:uppercase;letter-spacing:.07em}
+#progressDialog .progress-summary-grid strong{margin-top:9px;font-size:.94rem;line-height:1.25}
+#progressDialog .progress-trend-note{display:grid;gap:5px;padding:14px;border:1px solid var(--progress-line);border-radius:14px}
+#progressDialog .progress-trend-note span{color:var(--muted);font-size:.78rem;line-height:1.45}
+#progressDialog .progress-chart{padding:14px;border:1px solid var(--progress-line);border-radius:16px;overflow:hidden}
+#progressDialog .progress-chart-title{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:8px}
+#progressDialog .progress-chart-title strong{font-size:.88rem;line-height:1.3}
+#progressDialog .progress-chart-title span{flex:none;color:var(--muted);font-size:.7rem}
+#progressDialog .progress-chart svg{display:block;width:100%;height:auto;min-height:150px}
+#progressDialog .progress-recent-head{margin-top:4px}
+#progressDialog .progress-recent-head h3{margin:4px 0 0;font-size:1.15rem}
+#progressDialog .progress-session-list{display:grid;gap:9px}
+#progressDialog .progress-session{display:grid;gap:10px;padding:14px;border:1px solid var(--progress-line);border-radius:15px}
+#progressDialog .progress-session small{display:block;margin-top:4px;font-size:.73rem;line-height:1.4}
+#progressDialog .progress-session-meta{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding-top:9px;border-top:1px solid var(--progress-line)}
+#progressDialog .progress-session-meta{text-align:right}
+#progressDialog .progress-session-meta>strong:first-child{text-align:left}
+#progressDialog .progress-session-sets{display:flex;flex-wrap:wrap;gap:6px}
+#progressDialog .progress-session-sets span{padding:6px 8px;border:1px solid var(--progress-line);border-radius:9px;font-size:.72rem}
 #progressDialog .history-summary-grid>div,#progressDialog .progress-trend-note,#progressDialog .progress-chart,#progressDialog .progress-session{border-color:var(--progress-line);background:rgba(16,22,28,.88)}
 #progressDialog .progress-grid-line{stroke:#27303a}
 #progressDialog .progress-axis-label,#progressDialog .progress-date-label{fill:#7f8996}
 #progressDialog .progress-line{stroke:var(--accent)}
 #progressDialog .progress-dot{fill:var(--accent);stroke:#0b0e12;stroke-width:3}
+#progressDialog .progress-gap-marker{stroke:#78828e;stroke-width:3;stroke-dasharray:5 7;opacity:.72}
+#progressDialog .progress-chart-empty{margin-top:14px}
+#progressDialog .progress-chart-gap-note{margin:0;padding:0 14px 13px;color:var(--muted);font-size:.72rem;line-height:1.4}
 #progressDialog .progress-session strong{color:#f5f7f8}
 #progressDialog .progress-session small,#progressDialog .progress-session-sets{color:var(--muted)}
 
@@ -80,12 +116,17 @@ html[data-profile="alexa"] .progress-window-toggle{background:#fff8fb;border-col
 html[data-profile="alexa"] .progress-window-toggle button{color:#745467}
 html[data-profile="alexa"] .progress-window-toggle button.active{background:linear-gradient(135deg,#d96fa8,#c85f98);color:#fff}
 html[data-profile="alexa"] .progress-overview-grid article,
+html[data-profile="alexa"] .progress-training-workload-card,
 html[data-profile="alexa"] .progress-workload-card,
 html[data-profile="alexa"] .progress-strength-card,
 html[data-profile="alexa"] .muscle-detail,
 html[data-profile="alexa"] #viewProgress .progress-preview,
 html[data-profile="alexa"] #viewProgress .progress-preview-stats>div{background:#fffefd;border-color:#e2c7d6;color:var(--text);box-shadow:0 10px 28px rgba(119,66,96,.06)}
 html[data-profile="alexa"] .progress-workload-card{background:radial-gradient(circle at 12% 8%,rgba(200,95,152,.08),transparent 24rem),linear-gradient(180deg,#fffefd,#fff7fb)}
+html[data-profile="alexa"] .progress-training-workload-card{background:radial-gradient(circle at 88% 0,rgba(200,95,152,.07),transparent 22rem),linear-gradient(180deg,#fffefd,#fff7fb)}
+html[data-profile="alexa"] .training-workload-list,
+html[data-profile="alexa"] .training-workload-empty,
+html[data-profile="alexa"] #progressDialog .progress-chart-empty{background:#fff8fb;border-color:#ead5e1}
 html[data-profile="alexa"] .muscle-map-wrap{background:#fff8fb;border-color:#e7ccd9}
 html[data-profile="alexa"] .body-outline{fill:#f2dde8;stroke:#d8bccc}
 html[data-profile="alexa"] .muscle-zone{stroke:rgba(132,73,106,.16)}
@@ -110,5 +151,5 @@ html[data-profile="alexa"] #progressDialog .progress-grid-line{stroke:#e3cbd8}
 html[data-profile="alexa"] #progressDialog .progress-axis-label,
 html[data-profile="alexa"] #progressDialog .progress-date-label{fill:#806173}
 
-@media(max-width:760px){.progress-dashboard-head{align-items:flex-start;flex-direction:column}.progress-window-toggle{align-self:stretch}.progress-window-toggle button{flex:1}.progress-overview-grid{grid-template-columns:1fr 1fr}.muscle-workload-layout{grid-template-columns:1fr}.muscle-map-figure svg{max-height:280px}.progress-history-footer{align-items:flex-start;flex-direction:column}}
-@media(max-width:480px){.progress-workload-card,.progress-strength-card{padding:16px}.progress-overview-grid article{min-height:98px;padding:14px}.muscle-map-wrap{gap:4px;padding:8px}.muscle-map-figure svg{max-height:245px}.muscle-detail{padding:15px}#progressDialog .history-dialog-shell{padding:16px;border-radius:20px}#progressDialog .history-dialog-head{top:-16px;margin:-16px -16px 16px;padding:16px}}
+@media(max-width:760px){.progress-dashboard-head{align-items:flex-start;flex-direction:column}.progress-window-toggle{align-self:stretch}.progress-window-toggle button{flex:1}.progress-overview-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.muscle-workload-layout{grid-template-columns:1fr}.muscle-map-figure svg{max-height:280px}.progress-history-footer{align-items:flex-start;flex-direction:column}.training-workload-row{grid-template-columns:1fr;gap:8px}.training-workload-value{text-align:left}}
+@media(max-width:480px){.progress-training-workload-card,.progress-workload-card,.progress-strength-card{padding:16px}.progress-overview-grid{gap:6px}.progress-overview-grid article{min-height:94px;padding:12px 10px}.progress-overview-grid strong{font-size:1.35rem}.training-workload-row{padding:13px}.progress-section-head{flex-direction:column}.muscle-map-wrap{gap:4px;padding:8px}.muscle-map-figure svg{max-height:245px}.muscle-detail{padding:15px}#progressDialog .history-dialog-shell{padding:16px;border-radius:20px}#progressDialog .history-dialog-head{top:-16px;margin:-16px -16px 16px;padding:16px}#progressDialog .progress-summary-grid{grid-template-columns:1fr 1fr}#progressDialog .progress-summary-grid>div:last-child{grid-column:1/-1;min-height:70px}#progressDialog .progress-session-meta{display:grid;text-align:left}#progressDialog .progress-chart{padding:11px}}
