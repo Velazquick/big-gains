@@ -187,66 +187,86 @@ function hosted(initialRow = null) {
       state.authCalls += 1;
       return { data: { user: { id: 'verified-user' } }, error: null };
     } },
-    async rpc(name, args) {
-      assert.equal(name, sync.rpcName);
-      state.rpcCalls += 1;
-      if (state.beforeRpc) {
-        const hook = state.beforeRpc;
-        state.beforeRpc = null;
-        await hook(state);
+    functions: {
+      async invoke(name, options) {
+        assert.equal(name, sync.functionName);
+        const args = options?.body;
+        state.rpcCalls += 1;
+        if (state.beforeRpc) {
+          const hook = state.beforeRpc;
+          state.beforeRpc = null;
+          await hook(state);
+        }
+        const current = state.row;
+        const currentVersion = current?.version ?? null;
+        const currentFingerprint = current?.fingerprint ?? null;
+        if (current && current.idempotency_key === args.operation_idempotency_key
+          && current.version === args.next_version && current.fingerprint === args.next_fingerprint) {
+          return {
+            data: { ok: true, disposition: 'already-applied', version: args.next_version },
+            error: null
+          };
+        }
+        if (args.expected_version !== currentVersion || args.expected_fingerprint !== currentFingerprint
+          || args.expected_updated_at !== (current?.updated_at ?? null)
+          || args.expected_definitions_revision !== (current?.definitions_revision ?? null)
+          || args.expected_definitions_fingerprint !== (current?.definitions_fingerprint ?? null)
+          || args.expected_heads_revision !== (current?.heads_revision ?? null)
+          || args.expected_heads_fingerprint !== (current?.heads_fingerprint ?? null)
+          || args.expected_sequence_revision !== (current?.sequence_revision ?? null)
+          || args.expected_sequence_fingerprint !== (current?.sequence_fingerprint ?? null)) {
+          return {
+            data: null,
+            error: { context: new Response(JSON.stringify({ error: 'stale-base' }), { status: 409 }) }
+          };
+        }
+        if (state.failRpc) {
+          return {
+            data: null,
+            error: { context: new Response(JSON.stringify({ error: 'gateway-unavailable' }), { status: 503 }) }
+          };
+        }
+        state.row = {
+          id: current?.id || 'program-domain-cutover-row',
+          account_id: owner.accountId,
+          profile_id: owner.profileId,
+          client_id: 'program-domain',
+          contract: envelopeApi.contract,
+          contract_version: envelopeApi.contractVersion,
+          payload: clone(args.next_payload),
+          version: args.next_version,
+          fingerprint: args.next_fingerprint,
+          definitions_revision: args.next_definitions_revision,
+          definitions_fingerprint: args.next_definitions_fingerprint,
+          heads_revision: args.next_heads_revision,
+          heads_fingerprint: args.next_heads_fingerprint,
+          sequence_revision: args.next_sequence_revision,
+          sequence_fingerprint: args.next_sequence_fingerprint,
+          idempotency_key: args.operation_idempotency_key,
+          base_version: args.expected_version,
+          base_updated_at: args.expected_updated_at,
+          base_fingerprint: args.expected_fingerprint,
+          base_definitions_revision: args.expected_definitions_revision,
+          base_definitions_fingerprint: args.expected_definitions_fingerprint,
+          base_heads_revision: args.expected_heads_revision,
+          base_heads_fingerprint: args.expected_heads_fingerprint,
+          base_sequence_revision: args.expected_sequence_revision,
+          base_sequence_fingerprint: args.expected_sequence_fingerprint,
+          created_at: current?.created_at || args.next_updated_at,
+          updated_at: args.next_updated_at
+        };
+        if (state.lostAckOnce) {
+          state.lostAckOnce = false;
+          return {
+            data: null,
+            error: { context: new Response(JSON.stringify({ error: 'gateway-unavailable' }), { status: 503 }) }
+          };
+        }
+        return {
+          data: { ok: true, disposition: 'applied-or-already-applied', version: args.next_version },
+          error: null
+        };
       }
-      const current = state.row;
-      const currentVersion = current?.version ?? null;
-      const currentFingerprint = current?.fingerprint ?? null;
-      if (current && current.idempotency_key === args.operation_idempotency_key
-        && current.version === args.next_version && current.fingerprint === args.next_fingerprint) {
-        return { data: { ...clone(current), already_applied: true }, error: null };
-      }
-      if (args.expected_version !== currentVersion || args.expected_fingerprint !== currentFingerprint
-        || args.expected_updated_at !== (current?.updated_at ?? null)
-        || args.expected_definitions_revision !== (current?.definitions_revision ?? null)
-        || args.expected_definitions_fingerprint !== (current?.definitions_fingerprint ?? null)
-        || args.expected_heads_revision !== (current?.heads_revision ?? null)
-        || args.expected_heads_fingerprint !== (current?.heads_fingerprint ?? null)
-        || args.expected_sequence_revision !== (current?.sequence_revision ?? null)
-        || args.expected_sequence_fingerprint !== (current?.sequence_fingerprint ?? null)) {
-        return { data: null, error: { code: 'P0001', message: 'accepted base changed' } };
-      }
-      if (state.failRpc) return { data: null, error: { code: '500', message: 'temporary outage' } };
-      state.row = {
-        id: current?.id || 'program-domain-cutover-row',
-        account_id: owner.accountId,
-        profile_id: owner.profileId,
-        client_id: 'program-domain',
-        contract: envelopeApi.contract,
-        contract_version: envelopeApi.contractVersion,
-        payload: clone(args.next_payload),
-        version: args.next_version,
-        fingerprint: args.next_fingerprint,
-        definitions_revision: args.next_definitions_revision,
-        definitions_fingerprint: args.next_definitions_fingerprint,
-        heads_revision: args.next_heads_revision,
-        heads_fingerprint: args.next_heads_fingerprint,
-        sequence_revision: args.next_sequence_revision,
-        sequence_fingerprint: args.next_sequence_fingerprint,
-        idempotency_key: args.operation_idempotency_key,
-        base_version: args.expected_version,
-        base_updated_at: args.expected_updated_at,
-        base_fingerprint: args.expected_fingerprint,
-        base_definitions_revision: args.expected_definitions_revision,
-        base_definitions_fingerprint: args.expected_definitions_fingerprint,
-        base_heads_revision: args.expected_heads_revision,
-        base_heads_fingerprint: args.expected_heads_fingerprint,
-        base_sequence_revision: args.expected_sequence_revision,
-        base_sequence_fingerprint: args.expected_sequence_fingerprint,
-        created_at: current?.created_at || args.next_updated_at,
-        updated_at: args.next_updated_at
-      };
-      if (state.lostAckOnce) {
-        state.lostAckOnce = false;
-        return { data: null, error: { code: '500', message: 'response lost' } };
-      }
-      return { data: clone(state.row), error: null };
     },
     from(table) {
       assert.equal(table, 'program_domains');

@@ -3,7 +3,7 @@
 
   const ENTITY_TYPE = 'program_domains';
   const CLIENT_ID = 'program-domain';
-  const RPC_NAME = 'put_program_domain_guarded';
+  const FUNCTION_NAME = 'program-domain-write';
   const ROW_COLUMNS = [
     'id', 'account_id', 'profile_id', 'client_id', 'contract', 'contract_version',
     'payload', 'version', 'fingerprint', 'definitions_revision', 'definitions_fingerprint',
@@ -301,6 +301,25 @@
     return REASON_CODES.TRANSIENT_FAILURE;
   }
 
+  async function classifyGatewayFailure(invokeResult) {
+    let stableError = isRecord(invokeResult?.data) ? invokeResult.data.error : null;
+    const response = invokeResult?.error?.context;
+    if (!stableError && response && typeof response.clone === 'function') {
+      try {
+        const body = await response.clone().json();
+        stableError = isRecord(body) ? body.error : null;
+      } catch {}
+    }
+    if (stableError === 'authentication-required' || stableError === 'profile-access-denied') {
+      return REASON_CODES.AUTH_REJECTED;
+    }
+    if (stableError === 'stale-base') return REASON_CODES.STALE_BASE;
+    if (stableError === 'invalid-request' || stableError === 'guard-rejected') return REASON_CODES.GUARD_REJECTED;
+    if (stableError === 'gateway-unavailable') return REASON_CODES.TRANSIENT_FAILURE;
+    const status = response?.status || invokeResult?.error?.status;
+    return classifyError({ ...invokeResult?.error, status });
+  }
+
   async function authenticate(client, verifyAuthenticated) {
     if (typeof verifyAuthenticated === 'function') {
       const verified = await verifyAuthenticated();
@@ -379,7 +398,9 @@
     verifyAuthenticated = null,
     envelopeApi = scope.BigGainsProgramDomainEnvelope
   } = {}) {
-    const available = Boolean(enabled && client && envelopeApi);
+    const available = Boolean(enabled && client && envelopeApi
+      && typeof client?.functions?.invoke === 'function'
+      && typeof client?.from === 'function');
     return result({
       enabled: available,
       reason: available ? null : REASON_CODES.UNSUPPORTED,
@@ -395,16 +416,22 @@
         } catch {
           return result({ ok: false, blocked: true, reasonCode: REASON_CODES.AUTH_REJECTED });
         }
-        let rpcResult;
+        let gatewayResult;
         try {
-          rpcResult = await client.rpc(RPC_NAME, rpcArguments(operation));
+          gatewayResult = await client.functions.invoke(FUNCTION_NAME, {
+            body: rpcArguments(operation)
+          });
         } catch (error) {
           const reasonCode = classifyError(error);
           return result({ ok: false, blocked: reasonCode !== REASON_CODES.TRANSIENT_FAILURE, reasonCode });
         }
-        if (rpcResult?.error) {
-          const reasonCode = classifyError(rpcResult.error);
+        if (gatewayResult?.error) {
+          const reasonCode = await classifyGatewayFailure(gatewayResult);
           return result({ ok: false, blocked: reasonCode !== REASON_CODES.TRANSIENT_FAILURE, reasonCode });
+        }
+        if (gatewayResult?.data?.ok !== true
+          || Number(gatewayResult?.data?.version) !== operation.version) {
+          return result({ ok: false, blocked: false, reasonCode: REASON_CODES.TRANSIENT_FAILURE });
         }
         let readback;
         try {
@@ -427,11 +454,12 @@
         if (!await verifyReadback(readback.data, operation, envelopeApi)) {
           return result({ ok: false, blocked: true, reasonCode: REASON_CODES.READBACK_MISMATCH });
         }
-        const rpcRow = Array.isArray(rpcResult?.data) ? rpcResult.data[0] : rpcResult?.data;
         return result({
           ok: true,
           reasonCode: null,
-          disposition: rpcRow?.already_applied === true ? 'already-applied' : 'applied-or-already-applied',
+          disposition: gatewayResult.data.disposition === 'already-applied'
+            ? 'already-applied'
+            : 'applied-or-already-applied',
           remoteId: readback.data.id || null,
           remoteVersion: operation.version
         });
@@ -554,7 +582,7 @@
   scope.BigGainsProgramDomainSync = Object.freeze({
     entityType: ENTITY_TYPE,
     clientId: CLIENT_ID,
-    rpcName: RPC_NAME,
+    functionName: FUNCTION_NAME,
     reasonCodes: REASON_CODES,
     enqueueProgramDomain,
     baseFromOperation,

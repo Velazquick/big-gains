@@ -1,6 +1,6 @@
 # Big Gains Program portability synchronization v1
 
-- Status: **Normative target contract; Slice 1 schema and dormant Slices 2A, 2B, 3, and pre-rollout cutover implemented**
+- Status: **Normative target contract; hosted dormant schema, hardened write gateway, and dormant Slices 2A, 2B, 3, and pre-rollout cutover implemented**
 - Contract version: **`big-gains.program-portability-envelope.v1` / 1**
 - Repository baseline: `origin/main` at `c242bfd0c033df0e102739958f1cad7b1aa0aee6`
 - Runtime marker: `v95-mobile-startup-interactivity`
@@ -9,7 +9,7 @@
 
 The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHOULD**, **SHOULD NOT**, **MAY**, and **OPTIONAL** are normative when capitalized.
 
-Implementation tracking: Slice 1 adds the dormant local migration/RLS destination without applying it to the hosted project. Slice 2A adds the pure, runtime-unattached `BigGainsProgramDomainEnvelope` projection, validation, canonicalization, and fingerprint boundary. Slice 2B adds durable frozen Program operations, guarded RPC transport, exact readback-before-ACK, and dedicated queue ordering while remaining production-disabled and runtime-unattached. Slice 3 adds the runtime-unattached `BigGainsProgramDomainRecovery` remote reader/validator, no-mutation classifier, fresh-device dependency checks, and exact-rollback whole-graph adoption port. The pre-rollout cutover slice adds capability-gated inspection, revision-1 legacy/empty publication, deterministic conflict snapshots, stale-choice rejection, explicit cloud adoption, and contract-limited device publication/rebasing through the same frozen queue and guarded transport. Equal immutable identity with unequal payload, invalid lineage, and unprovable concurrent sequence state remain blocked instead of being overwritten or merged. All Program portability modules remain absent from production runtime assets. The hosted migration remains unapplied and no production capability, Auth, hosted data, release marker, or deployment setting is changed by this implementation.
+Implementation tracking: Slice 1 adds the dormant migration/RLS destination, now applied to the hosted project with zero Program rows. Slice 2A adds the pure, runtime-unattached `BigGainsProgramDomainEnvelope` projection, validation, canonicalization, and fingerprint boundary. Slice 2B adds durable frozen Program operations, authenticated Edge gateway transport, exact readback-before-ACK, and dedicated queue ordering while remaining production-disabled and runtime-unattached. Slice 3 adds the runtime-unattached `BigGainsProgramDomainRecovery` remote reader/validator, no-mutation classifier, fresh-device dependency checks, and exact-rollback whole-graph adoption port. The pre-rollout cutover slice adds capability-gated inspection, revision-1 legacy/empty publication, deterministic conflict snapshots, stale-choice rejection, explicit cloud adoption, and contract-limited device publication/rebasing through the same frozen queue and guarded transport. Equal immutable identity with unequal payload, invalid lineage, and unprovable concurrent sequence state remain blocked instead of being overwritten or merged. All Program portability modules remain absent from production runtime assets. The write authority path is authenticated client → JWT-required Edge Function with verified caller identity → non-exposed private guarded database function → ordinary RLS-protected readback. The capability remains OFF and no Program data has been published or recovered.
 
 ## 0. Authority and boundary
 
@@ -264,6 +264,8 @@ Implementation note: `BigGainsProgramDomainCutover.createService(...)` is the do
 **PPS1-14.4 - Constraints.** The hosted boundary MUST enforce one stable Program-domain row per profile, positive monotonic aggregate revision, stable client ID, supported contract, immutable owner, guarded accepted-base replacement, and idempotency uniqueness. Client and server validation MUST enforce internal immutable member identity/fingerprint and lineage rules before acceptance.
 
 **PPS1-14.5 - Minimal audit metadata.** Creation/update time, aggregate revision, canonical fingerprint, idempotency key, and accepted-base identity are permitted. Remote UUIDs, retry counters, device identifiers, application traces, Analyzer output, and user-entered History do not become Program audit metadata.
+
+**PPS1-14.6 - Write authority path.** The browser MUST NOT execute a privileged database function directly. A write MUST pass through the JWT-required `program-domain-write` Edge Function, which derives the caller UUID only from a verified token and passes the exact frozen operation fields plus that server-derived identity to `private.put_program_domain_guarded`. The private fixed-empty-search-path definer independently proves the caller against the target account/profile, retains every revision, accepted-base, idempotency, ownership, and locking guard, and is executable by neither `anon` nor `authenticated`. ACK still requires an exact ordinary `authenticated` RLS readback.
 
 ## 15. RC acceptance scenarios
 
