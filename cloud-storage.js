@@ -9,6 +9,7 @@
     'bodyweight_entries',
     'preferences',
     'active_sessions',
+    'program_domains',
     'sync_metadata',
     'tombstones'
   ]);
@@ -16,6 +17,12 @@
 
   const isRecord = value => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
   const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
+
+  function deepFreeze(value) {
+    if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+    Object.values(value).forEach(deepFreeze);
+    return Object.freeze(value);
+  }
 
   function canonicalize(value) {
     if (Array.isArray(value)) return `[${value.map(canonicalize).join(',')}]`;
@@ -33,6 +40,110 @@
       hash = Math.imul(hash, 0x01000193);
     }
     return (hash >>> 0).toString(16).padStart(8, '0');
+  }
+
+  const fingerprint = value => typeof value === 'string' && /^[0-9a-f]{64}$/.test(value);
+  const nonnegativeRevision = value => Number.isSafeInteger(value) && value >= 0;
+  const positiveRevision = value => Number.isSafeInteger(value) && value >= 1;
+
+  function normalizeProgramDomainBase(value, owner) {
+    if (value == null) return null;
+    if (!isRecord(value)
+      || value.accountId !== owner.accountId
+      || value.profileId !== owner.profileId
+      || value.clientId !== 'program-domain'
+      || !positiveRevision(value.version)
+      || typeof value.updatedAt !== 'string' || !Number.isFinite(Date.parse(value.updatedAt))
+      || !fingerprint(value.fingerprint)
+      || !nonnegativeRevision(value.definitionsRevision) || !fingerprint(value.definitionsFingerprint)
+      || !nonnegativeRevision(value.headsRevision) || !fingerprint(value.headsFingerprint)
+      || !nonnegativeRevision(value.sequenceRevision) || !fingerprint(value.sequenceFingerprint)) {
+      throw new TypeError('A Program-domain accepted base requires the exact aggregate and component identities.');
+    }
+    return deepFreeze({
+      accountId: owner.accountId,
+      profileId: owner.profileId,
+      clientId: 'program-domain',
+      version: value.version,
+      updatedAt: value.updatedAt,
+      fingerprint: value.fingerprint,
+      definitionsRevision: value.definitionsRevision,
+      definitionsFingerprint: value.definitionsFingerprint,
+      headsRevision: value.headsRevision,
+      headsFingerprint: value.headsFingerprint,
+      sequenceRevision: value.sequenceRevision,
+      sequenceFingerprint: value.sequenceFingerprint
+    });
+  }
+
+  function normalizeProgramDomainMetadata(input, identity) {
+    if (identity.entityType !== 'program_domains') return null;
+    const value = input.programDomain;
+    const acceptedBase = normalizeProgramDomainBase(value?.acceptedBase, identity.owner);
+    if (identity.entityId !== 'program-domain' || identity.mutation !== 'upsert'
+      || !isRecord(value)
+      || value.clientId !== 'program-domain'
+      || typeof value.payloadCanonical !== 'string'
+      || value.payloadCanonical !== canonicalize(identity.payload)
+      || !fingerprint(identity.payloadFingerprint)
+      || !nonnegativeRevision(value.definitionsRevision) || !fingerprint(value.definitionsFingerprint)
+      || !nonnegativeRevision(value.headsRevision) || !fingerprint(value.headsFingerprint)
+      || !nonnegativeRevision(value.sequenceRevision) || !fingerprint(value.sequenceFingerprint)
+      || !isRecord(value.manifest)
+      || (value.predecessorIdempotencyKey !== null && typeof value.predecessorIdempotencyKey !== 'string')) {
+      throw new TypeError('A frozen Program-domain operation is required.');
+    }
+    const emptyPayload = isRecord(identity.payload) && Object.keys(identity.payload).length === 0;
+    if ((emptyPayload && (value.definitionsRevision !== 0 || value.headsRevision !== 0 || value.sequenceRevision !== 0))
+      || (!emptyPayload && (!isRecord(identity.payload)
+        || identity.payload.clientId !== 'program-domain'
+        || identity.payload.definitionsRevision !== value.definitionsRevision
+        || identity.payload.headsRevision !== value.headsRevision
+        || identity.payload.sequenceRevision !== value.sequenceRevision
+        || canonicalize(identity.payload.manifest) !== canonicalize(value.manifest)))) {
+      throw new TypeError('Program-domain payload metadata is inconsistent.');
+    }
+    if ((identity.version === 1 && acceptedBase !== null)
+      || (identity.version > 1 && (!acceptedBase || acceptedBase.version !== identity.version - 1))) {
+      throw new TypeError('Program-domain aggregate revisions require the exact preceding accepted base.');
+    }
+    if (acceptedBase) {
+      const successors = [
+        ['definitionsRevision', 'definitionsFingerprint'],
+        ['headsRevision', 'headsFingerprint'],
+        ['sequenceRevision', 'sequenceFingerprint']
+      ].map(([revisionKey, fingerprintKey]) => ({
+        revisionChanged: value[revisionKey] === acceptedBase[revisionKey] + 1,
+        revisionSame: value[revisionKey] === acceptedBase[revisionKey],
+        fingerprintChanged: value[fingerprintKey] !== acceptedBase[fingerprintKey]
+      }));
+      if (successors.some(component => !((component.revisionSame && !component.fingerprintChanged)
+        || (component.revisionChanged && component.fingerprintChanged)))
+        || successors.every(component => component.revisionSame)) {
+        throw new TypeError('Program-domain component revisions are not exact successors.');
+      }
+    }
+    const base = identity.baseRevision;
+    if ((acceptedBase === null) !== (base === null)
+      || (acceptedBase && (base.version !== acceptedBase.version
+        || base.updatedAt !== acceptedBase.updatedAt
+        || base.fingerprint !== acceptedBase.fingerprint
+        || base.tombstone === true))) {
+      throw new TypeError('Program-domain aggregate base metadata is inconsistent.');
+    }
+    return deepFreeze({
+      clientId: 'program-domain',
+      payloadCanonical: value.payloadCanonical,
+      definitionsRevision: value.definitionsRevision,
+      definitionsFingerprint: value.definitionsFingerprint,
+      headsRevision: value.headsRevision,
+      headsFingerprint: value.headsFingerprint,
+      sequenceRevision: value.sequenceRevision,
+      sequenceFingerprint: value.sequenceFingerprint,
+      manifest: clone(value.manifest),
+      acceptedBase,
+      predecessorIdempotencyKey: value.predecessorIdempotencyKey || null
+    });
   }
 
   function normalizeOwner(owner) {
@@ -56,26 +167,37 @@
   }
 
   function operationIdentity(input) {
-    return {
+    const owner = normalizeOwner(input.owner);
+    const programPayload = input.entityType === 'program_domains' && input.mutation !== 'delete'
+      ? deepFreeze(clone(input.payload ?? null))
+      : input.mutation === 'delete' ? null : input.payload ?? null;
+    const identity = {
       contract: 'big-gains.sync-op.v1',
       contractVersion: CONTRACT_VERSION,
-      owner: normalizeOwner(input.owner),
+      owner,
       entityType: input.entityType,
       entityId: input.entityId,
       mutation: input.mutation,
       version: input.version,
       updatedAt: input.updatedAt,
-      payload: input.mutation === 'delete' ? null : input.payload ?? null,
-      payloadFingerprint: input.payloadFingerprint || stableHash(input.mutation === 'delete' ? null : input.payload ?? null),
-      baseRevision: input.baseRevision == null ? null : {
+      payload: programPayload,
+      payloadFingerprint: input.payloadFingerprint || stableHash(programPayload),
+      baseRevision: input.baseRevision == null ? null : (input.entityType === 'program_domains' ? deepFreeze({
+        version: input.baseRevision.version,
+        updatedAt: input.baseRevision.updatedAt,
+        fingerprint: input.baseRevision.fingerprint,
+        tombstone: input.baseRevision.tombstone === true
+      }) : {
         version: Number(input.baseRevision.version),
         updatedAt: input.baseRevision.updatedAt,
         fingerprint: input.baseRevision.fingerprint,
         tombstone: input.baseRevision.tombstone === true
-      },
+      }),
       allowRecreation: input.allowRecreation === true,
       synthetic: input.synthetic === true
     };
+    const programDomain = normalizeProgramDomainMetadata(input, identity);
+    return programDomain ? { ...identity, programDomain } : identity;
   }
 
   function idempotencyKeyFor(identity) {
@@ -88,6 +210,7 @@
       identity.version,
       identity.updatedAt
     ];
+    if (identity.entityType === 'program_domains') segments.push(identity.payloadFingerprint);
     return `bg-sync-v${CONTRACT_VERSION}:${segments.map(value => encodeURIComponent(String(value))).join(':')}`;
   }
 
@@ -102,7 +225,10 @@
     }
     if (input.baseRevision != null) {
       const base = input.baseRevision;
-      if (!Number.isSafeInteger(Number(base.version)) || Number(base.version) < 1
+      const validBaseVersion = isRecord(base) && (input.entityType === 'program_domains'
+        ? positiveRevision(base.version)
+        : Number.isSafeInteger(Number(base.version)) && Number(base.version) >= 1);
+      if (!validBaseVersion
         || typeof base.updatedAt !== 'string' || !Number.isFinite(Date.parse(base.updatedAt))
         || typeof base.fingerprint !== 'string' || !base.fingerprint) {
         throw new TypeError('A base revision requires version, updatedAt, and fingerprint values.');
@@ -118,6 +244,16 @@
   }
 
   function retryOperation(operation) {
+    if (operation?.entityType === 'program_domains') {
+      const valid = validPersistedOperation(operation);
+      if (!valid) throw new TypeError('A valid cloud operation is required.');
+      const frozenIdentity = Object.isFrozen(operation)
+        && Object.isFrozen(operation.payload)
+        && Object.isFrozen(operation.baseRevision)
+        && Object.isFrozen(operation.programDomain)
+        && Object.isFrozen(operation.programDomain?.acceptedBase) ? operation : valid;
+      return Object.freeze({ ...frozenIdentity, attempts: valid.attempts + 1 });
+    }
     return Object.freeze({ ...operation, attempts: Number(operation.attempts || 0) + 1 });
   }
 
