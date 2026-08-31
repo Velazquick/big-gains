@@ -3,13 +3,13 @@
 - Status: **Normative target contract; hosted dormant schema, hardened write gateway, and dormant Slices 2A, 2B, 3, and pre-rollout cutover implemented**
 - Contract version: **`big-gains.program-portability-envelope.v1` / 1**
 - Repository baseline: `origin/main` at `c242bfd0c033df0e102739958f1cad7b1aa0aee6`
-- Runtime marker: `v95-mobile-startup-interactivity`
+- Runtime marker: `v96-program-portability-rollout`
 - Local profile schema: **5**
 - Date: 2026-08-25
 
 The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHOULD**, **SHOULD NOT**, **MAY**, and **OPTIONAL** are normative when capitalized.
 
-Implementation tracking: Slice 1 adds the dormant migration/RLS destination, now applied to the hosted project with zero Program rows. Slice 2A adds the pure, runtime-unattached `BigGainsProgramDomainEnvelope` projection, validation, canonicalization, and fingerprint boundary. Slice 2B adds durable frozen Program operations, authenticated Edge gateway transport, exact readback-before-ACK, and dedicated queue ordering while remaining production-disabled and runtime-unattached. Slice 3 adds the runtime-unattached `BigGainsProgramDomainRecovery` remote reader/validator, no-mutation classifier, fresh-device dependency checks, and exact-rollback whole-graph adoption port. The pre-rollout cutover slice adds capability-gated inspection, revision-1 legacy/empty publication, deterministic conflict snapshots, stale-choice rejection, explicit cloud adoption, and contract-limited device publication/rebasing through the same frozen queue and guarded transport. Equal immutable identity with unequal payload, invalid lineage, and unprovable concurrent sequence state remain blocked instead of being overwritten or merged. All Program portability modules remain absent from production runtime assets. The write authority path is authenticated client → JWT-required Edge Function with verified caller identity → non-exposed private guarded database function → ordinary RLS-protected readback. The capability remains OFF and no Program data has been published or recovered.
+Implementation tracking: the hosted migration/RLS destination and hardened JWT Edge gateway are live with zero Program rows at rollout preflight. The pure envelope, frozen transport, recovery classifier/adopter, and cutover orchestrator are now manifest-loaded behind the exact version-1 `BigGainsProgramPortability` bridge. That bridge owns a dedicated durable Program queue and accepted snapshot, preserves exact readback-before-ACK, derives only provable activation/successor/completion transitions, exposes deliberate publication/adoption/conflict actions, and keeps technical identities out of ordinary UI. Missing, false, malformed, or unknown capability values remain inert. The authority path remains authenticated client → JWT-required Edge Function with verified caller identity → non-exposed private guarded database function → ordinary RLS-protected readback. Production activation and A → B → A evidence are required before the feature is marked RC-complete.
 
 ## 0. Authority and boundary
 

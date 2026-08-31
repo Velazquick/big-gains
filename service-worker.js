@@ -1,4 +1,4 @@
-importScripts('./asset-manifest.js?v=v95-mobile-startup-interactivity-config-ab51ee79cd36825d', './service-worker-core.js');
+importScripts('./asset-manifest.js?v=v96-program-portability-rollout-config-ab51ee79cd36825d', './service-worker-core.js');
 
 const runtime = BigGainsServiceWorkerCore.createRuntime({
   manifest: BIG_GAINS_ASSET_MANIFEST,

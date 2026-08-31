@@ -6,6 +6,9 @@
     supabaseUrl: typeof existing?.supabaseUrl === 'string' ? existing.supabaseUrl : '',
     supabasePublishableKey: typeof existing?.supabasePublishableKey === 'string' ? existing.supabasePublishableKey : '',
     automaticReconciliation: existing?.automaticReconciliation === true,
+    programPortability: existing?.programPortability === true,
+    programPortabilityVersion: existing?.programPortability === true
+      && Number(existing?.programPortabilityVersion) === 1 ? 1 : null,
     authRedirectUrl: 'https://velazquick.github.io/big-gains/',
     authSetupRedirectUrl: 'https://velazquick.github.io/big-gains/auth-setup.html'
   });

@@ -810,8 +810,12 @@ test('41 normal user copy contains no revisions, fingerprints, or raw identifier
   assert.equal(Object.values(cutover.copy).some(value => /revision|fingerprint|\bid\b/i.test(value)), false);
 });
 
-test('42 the cutover module is not loaded by production HTML', async () => {
+test('42 the cutover module is loaded only through the versioned production manifest', async () => {
   const { readFile } = await import('node:fs/promises');
-  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  const [html, manifest] = await Promise.all([
+    readFile(new URL('../index.html', import.meta.url), 'utf8'),
+    readFile(new URL('../asset-manifest.js', import.meta.url), 'utf8')
+  ]);
   assert.equal(html.includes('program-domain-cutover.js'), false);
+  assert.equal(manifest.includes('program-domain-cutover.js'), true);
 });

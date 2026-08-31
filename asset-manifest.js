@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v95-mobile-startup-interactivity';
+  const release = 'v96-program-portability-rollout';
   const cloudConfigVersion = 'config-ab51ee79cd36825d'; // BIG_GAINS_CLOUD_CONFIG_VERSION
   const deploymentVersion = `${release}-${cloudConfigVersion}`;
   const manifestAsset = `./asset-manifest.js?v=${encodeURIComponent(deploymentVersion)}`;
@@ -44,6 +44,10 @@
     './cloud-storage.js',
     './program-model.js',
     './program-origin.js',
+    './program-domain-envelope.js',
+    './program-domain-sync.js',
+    './program-domain-recovery.js',
+    './program-domain-cutover.js',
     './state-persistence.js',
     './profiles.js',
     './exercise-catalog.js',
@@ -66,6 +70,7 @@
     './cloud-shadow.js',
     './managed-profile-recovery.js',
     './app.js',
+    './program-portability.js',
     './program-setup.js',
     './workout-mode.js',
     './v2-shell.js',
@@ -84,6 +89,11 @@
   const optionalScriptPaths = new Set([
     './reconciliation-control.js',
     './cloud-storage.js',
+    './program-domain-envelope.js',
+    './program-domain-sync.js',
+    './program-domain-recovery.js',
+    './program-domain-cutover.js',
+    './program-portability.js',
     './cloud-shadow.js',
     './alexa-shell.js',
     './training-pet.js',
