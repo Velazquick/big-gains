@@ -18,6 +18,7 @@ const productionScriptOrder = [
   'program-domain-recovery.js',
   'program-domain-cutover.js',
   'state-persistence.js',
+  'user-data-export.js',
   'profiles.js',
   'exercise-catalog.js',
   'program-analyzer.js',

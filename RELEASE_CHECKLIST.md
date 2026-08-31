@@ -77,6 +77,7 @@ For any production app-shell change:
 - [ ] Export a current profile backup and restore it into the same profile without schema or data loss.
 - [ ] Verify invalid JSON, invalid shapes, and cross-profile imports are rejected before either profile is modified.
 - [ ] If state fields change, decide whether full-state JSON backups need normalization, migration, or compatibility tests.
+- [ ] For user-export changes, prove current-profile isolation, empty output, completed warm-up/working-set facts, measurement semantics, CSV escaping/Unicode, deterministic order, curated JSON relationships/exclusions, offline/share/download delivery, zero storage/network mutation, and unchanged schema-v5 technical backup/restore behavior.
 - [ ] If completed workout, weight, PR, or profile fields change, verify `big-gains.snapshot.v1` consumers remain compatible or version the snapshot schema deliberately.
 - [ ] Confirm sync still excludes the token and local/live-only data: active workouts, rest timers, custom routines, exercise preferences, and timer feedback preferences.
 - [ ] Verify both profile snapshot paths and catch-up behavior when sync code changes. Remember that sync is outbound-only and overwrites the current profile snapshot; it does not merge or restore state.

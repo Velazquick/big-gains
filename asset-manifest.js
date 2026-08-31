@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v98-rc-self-serve-onboarding';
+  const release = 'v99-rc-user-data-export';
   const cloudConfigVersion = 'config-925e766c1b907250'; // BIG_GAINS_CLOUD_CONFIG_VERSION
   const deploymentVersion = `${release}-${cloudConfigVersion}`;
   const manifestAsset = `./asset-manifest.js?v=${encodeURIComponent(deploymentVersion)}`;
@@ -31,7 +31,8 @@
     './routine-prescription-v58.css',
     './goals.css',
     './program-setup.css',
-    './exercise-picker.css'
+    './exercise-picker.css',
+    './user-data-export.css'
   ];
   const scripts = [
     './boot-render-gate.js',
@@ -49,6 +50,7 @@
     './program-domain-recovery.js',
     './program-domain-cutover.js',
     './state-persistence.js',
+    './user-data-export.js',
     './profiles.js',
     './exercise-catalog.js',
     './program-analyzer.js',

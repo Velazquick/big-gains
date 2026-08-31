@@ -125,6 +125,8 @@ The RC account journey must satisfy all of the following:
 
 **Decision: user-portable export v1 is RC REQUIRED.** It is a separate product artifact from the existing full-state backup/restore.
 
+Implementation status: shipped in source as `v99-rc-user-data-export`; protected CI, merge, and production verification remain the release gate for this interval. The normative field and privacy contract is [User-owned data export v1](USER_DATA_EXPORT_V1.md).
+
 Use the ten-minute scope:
 
 - portable JSON contains completed workouts and sets, workout/exercise notes that belong to those records, bodyweight history, Goals, user-created Routines, the user-meaningful current Program/training structure, and meaningful preferences such as units and timer choices;
