@@ -261,34 +261,97 @@
   }
 
   function canonicalExerciseId(exercise) {
-    return definitionFor(exercise)?.id || (typeof exercise?.definitionId === 'string' && exercise.definitionId ? exercise.definitionId : exercise?.id);
+    const definition = definitionFor(exercise);
+    return definition?.canonicalId || definition?.id || (typeof exercise?.definitionId === 'string' && exercise.definitionId ? exercise.definitionId : exercise?.id);
   }
 
-  function derivePersonalRecords(workouts, options = {}) {
+  function legacyRecordKey(exercise) {
+    const definition = definitionFor(exercise);
+    return definition?.id || (typeof exercise?.definitionId === 'string' && exercise.definitionId ? exercise.definitionId : exercise?.id);
+  }
+
+  function indicatedLoadRecordFor(metrics, measurement) {
+    const loadBasis = measurement?.loadSemantics?.loadBasis;
+    const unit = typeof measurement?.ui?.loadUnit === 'string' ? measurement.ui.loadUnit.trim() : '';
+    if (!isWorkingSet(metrics)
+      || measurement?.trackingModel !== 'load_reps'
+      || measurement?.loadSemantics?.resistanceSemantics !== 'machine_indicated'
+      || !loadBasis || ['unknown', 'not_applicable'].includes(loadBasis)
+      || !unit || !Number.isFinite(metrics.enteredLoad) || metrics.enteredLoad <= 0) return null;
+    return {
+      recordType: 'indicated_load', recordLabel: 'Indicated Load Record', shortLabel: 'Load record',
+      observedValue: metrics.enteredLoad, unit, loadBasis, quality: 'limited_comparison'
+    };
+  }
+
+  function e1rmRecordFor(metrics, measurement) {
+    if (metrics?.estimated1RM === null || !Number.isFinite(Number(metrics?.estimated1RM))) return null;
+    return {
+      recordType: 'e1rm', recordLabel: 'e1RM Record', shortLabel: 'e1RM record',
+      observedValue: Number(metrics.estimated1RM), unit: measurement?.ui?.loadUnit || 'lb',
+      loadBasis: metrics.e1rm?.loadBasis || null, quality: metrics.e1rm?.quality || 'exact_arithmetic',
+      formulaId: metrics.formulaId, formulaVersion: metrics.formulaVersion
+    };
+  }
+
+  function derivePerformanceRecords(workouts, options = {}) {
     const records = {};
-    const workoutPrCounts = {};
+    const currentRecordStates = {};
+    const recordEvents = [];
+    const workoutRecordEvents = {};
+    const workoutRecordCounts = {};
     completedWorkouts(workouts).reverse().forEach(workout => {
-      let prCount = 0;
+      const workoutEvents = [];
       const workoutOptions = optionsForWorkout(workout, options);
-      list(workout.exercises).forEach(exercise => {
+      list(workout.exercises).forEach((exercise, exerciseIndex) => {
         const exerciseId = canonicalExerciseId(exercise);
         if (!exerciseId) return;
-        workingSets(exercise).forEach(set => {
+        const measurement = measurementFor(exercise, workoutOptions);
+        list(exercise.sets).forEach((set, setIndex) => {
+          if (!isWorkingSet(set)) return;
           const metrics = metricsForSet(set, { ...workoutOptions, exercise });
-          if (metrics.estimated1RM === null || metrics.estimated1RM <= number(records[exerciseId]?.estimated1RM)) return;
-          records[exerciseId] = {
-            exercise: exercise.name || '', estimated1RM: metrics.estimated1RM, weight: metrics.weight, reps: metrics.reps,
-            date: workout.completedAt, formulaId: metrics.formulaId, formulaVersion: metrics.formulaVersion,
-            e1rmLoadBasis: metrics.e1rm?.loadBasis,
-            ...(metrics.effectiveLoad !== metrics.weight ? { effectiveLoad: metrics.effectiveLoad } : {})
-          };
-          prCount += 1;
+          const candidates = [e1rmRecordFor(metrics, measurement), indicatedLoadRecordFor(metrics, measurement)].filter(Boolean);
+          candidates.forEach(candidate => {
+            const familyKey = candidate.recordType === 'e1rm' ? 'e1rm' : 'indicatedLoad';
+            const current = currentRecordStates[exerciseId]?.[familyKey];
+            if (current && candidate.observedValue <= current.observedValue) return;
+            const event = {
+              eventId: `${workout.id}:${exerciseIndex}:${set.id || setIndex}:${candidate.recordType}`,
+              workoutId: workout.id, exerciseId, exerciseName: exercise.name || '',
+              source: { setId: typeof set.id === 'string' && set.id ? set.id : null, exerciseIndex, setIndex },
+              date: workout.completedAt, weight: metrics.weight, reps: metrics.reps,
+              ...candidate
+            };
+            if (!currentRecordStates[exerciseId]) currentRecordStates[exerciseId] = {};
+            currentRecordStates[exerciseId][familyKey] = event;
+            recordEvents.push(event);
+            workoutEvents.push(event);
+            if (candidate.recordType === 'e1rm') {
+              const recordKey = legacyRecordKey(exercise);
+              if (recordKey) records[recordKey] = {
+                exercise: exercise.name || '', estimated1RM: metrics.estimated1RM, weight: metrics.weight, reps: metrics.reps,
+                date: workout.completedAt, formulaId: metrics.formulaId, formulaVersion: metrics.formulaVersion,
+                e1rmLoadBasis: metrics.e1rm?.loadBasis,
+                ...(metrics.effectiveLoad !== metrics.weight ? { effectiveLoad: metrics.effectiveLoad } : {})
+              };
+            }
+          });
         });
       });
-      workoutPrCounts[workout.id] = prCount;
+      workoutRecordEvents[workout.id] = workoutEvents;
+      workoutRecordCounts[workout.id] = workoutEvents.length;
     });
-    return Object.freeze({ records: Object.freeze(records), workoutPrCounts: Object.freeze(workoutPrCounts) });
+    return Object.freeze({
+      records: Object.freeze(records),
+      currentRecordStates: Object.freeze(currentRecordStates),
+      recordEvents: Object.freeze(recordEvents),
+      workoutRecordEvents: Object.freeze(workoutRecordEvents),
+      workoutRecordCounts: Object.freeze(workoutRecordCounts),
+      workoutPrCounts: Object.freeze(workoutRecordCounts)
+    });
   }
+
+  const derivePersonalRecords = derivePerformanceRecords;
 
   function performanceDelta(current, previous, options = {}) {
     const currentBest = current?.bestWorkingSet || bestWorkingSet(current, options);
@@ -306,7 +369,8 @@
 
   function exerciseHistory(workouts, exerciseId, options = {}) {
     if (typeof exerciseId !== 'string' || !exerciseId) return [];
-    const requested = catalog()?.getById?.(exerciseId)?.id || exerciseId;
+    const requestedDefinition = catalog()?.getById?.(exerciseId);
+    const requested = requestedDefinition?.canonicalId || requestedDefinition?.id || exerciseId;
     const sessions = completedWorkouts(workouts).flatMap(workout => {
       const exercise = list(workout.exercises).find(item => canonicalExerciseId(item) === requested);
       if (!exercise) return [];
@@ -391,13 +455,14 @@
   }
 
   function exerciseFamilyTotals(workouts, exercises, options = {}) {
-    const definitions = new Map(list(exercises).map(exercise => [exercise.id, exercise]));
+    const definitions = new Map(list(exercises).flatMap(exercise => [[exercise.id, exercise], ...(exercise.canonicalId ? [[exercise.canonicalId, exercise]] : [])]));
     const totals = {};
     completedWorkouts(workouts).forEach(workout => list(workout.exercises).forEach(exercise => {
       const summary = setSummary(exercise, optionsForWorkout(workout, options));
       if (!summary.workingSetCount) return;
       const exerciseId = canonicalExerciseId(exercise);
-      addTotals(totals, definitions.get(exerciseId)?.family || exerciseId, summary);
+      const definition = definitions.get(exerciseId) || definitionFor(exercise);
+      addTotals(totals, definition?.family || definition?.id || exerciseId, summary);
     }));
     return totals;
   }
@@ -462,7 +527,7 @@
   }
 
   scope.BigGainsAnalytics = Object.freeze({
-    bestWorkingSet, bodyweightAt, derivePersonalRecords, durationSeconds, estimate1RM, exerciseFamilyTotals,
+    bestWorkingSet, bodyweightAt, derivePerformanceRecords, derivePersonalRecords, durationSeconds, estimate1RM, exerciseFamilyTotals,
     exerciseHistory, exerciseTrend, isWorkingSet, measurementFor, metricsForSet, muscleNames,
     muscleTotals, muscleWorkloadWindows, optionsForWorkout, performanceDelta, profileBodyweight, previousPerformance,
     recentMuscleWorkload, setSummary, trainingWorkloadWindows, workingSets, workloadFamilyFor, workoutSummary

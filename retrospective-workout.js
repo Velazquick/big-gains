@@ -9,6 +9,7 @@
     let draft = null;
     let saving = false;
     let compatibilityAddId = null;
+    let pendingSetRemoval = null;
 
     function selectedDateKey() {
       return draft?.dateKey || context.getSelectedDateKey();
@@ -167,6 +168,11 @@
       return `Working set ${exercise.sets.filter(item => !item.warmup).indexOf(set) + 1}`;
     }
 
+    function setHasEnteredData(set) {
+      return set?.completed === true || ['weight', 'reps', 'distance', 'duration', 'durationSeconds']
+        .some(field => set?.[field] !== '' && set?.[field] != null && Number(set[field]) !== 0);
+    }
+
     function loadModeFor(exercise) {
       return context.loadModeFor?.(exercise) || (exercise?.equipment === 'Bodyweight' ? 'bodyweight' : 'external');
     }
@@ -179,12 +185,16 @@
         { name: 'reps', label: 'Reps', unit: '', step: 1 }
       ];
       const fieldInput = (field, set, setIndex) => `<label><span>${context.escapeHtml(field.label)}</span><span class="retrospective-input-value"><input type="number" min="0" step="${field.step}" inputmode="decimal" data-retro-field="${field.name}" data-ei="${exerciseIndex}" data-si="${setIndex}" value="${set[field.name] ?? ''}" aria-label="${context.escapeHtml(field.label)}">${field.unit ? `<small>${context.escapeHtml(field.unit)}</small>` : ''}</span></label>`;
-      const sets = exercise.sets.map((set, setIndex) => `<div class="retrospective-set ${set.completed ? 'is-complete' : ''}">
+      const sets = exercise.sets.map((set, setIndex) => {
+        const removalKey = `${exercise.id}:${set.id || setIndex}`;
+        const confirming = pendingSetRemoval === removalKey;
+        return `<div class="retrospective-set ${set.completed ? 'is-complete' : ''}">
         <label class="retrospective-set-kind"><span>Set type</span><select data-retro-field="setType" data-ei="${exerciseIndex}" data-si="${setIndex}" aria-label="Set type"><option value="warmup" ${set.warmup ? 'selected' : ''}>Warm-up</option><option value="working" ${set.warmup ? '' : 'selected'}>Working set</option></select></label>
         ${inputFields.map(field => fieldInput(field, set, setIndex)).join('')}
         <label class="retrospective-set-complete"><input type="checkbox" data-retro-field="completed" data-ei="${exerciseIndex}" data-si="${setIndex}" ${set.completed ? 'checked' : ''}><span>Performed</span></label>
-        <button type="button" class="ghost compact" data-retro-remove-set="${setIndex}" data-ei="${exerciseIndex}" aria-label="Remove ${context.escapeHtml(setLabel(exercise, set))}">Remove</button>
-      </div>`).join('');
+        <button type="button" class="ghost compact ${confirming ? 'danger is-confirming' : ''}" data-retro-remove-set="${setIndex}" data-ei="${exerciseIndex}" aria-label="${confirming ? 'Confirm: Remove this set from this workout?' : `Remove ${context.escapeHtml(setLabel(exercise, set))}`}">${confirming ? 'Sure?' : 'Remove'}</button>
+      </div>`;
+      }).join('');
       const currentDefinition = definitionFor(exercise);
       const definitionEditor = draft.mode === 'edit' ? `<label class="retrospective-exercise-choice"><span>Exercise</span><button type="button" class="exercise-picker-trigger" data-retro-choose="${exerciseIndex}"><span>${context.escapeHtml(currentDefinition?.name || exercise.name)} — ${context.escapeHtml(currentDefinition?.equipment || exercise.equipment)}</span><small>Replace</small></button><select class="exercise-picker-compat" data-retro-exercise-definition="${exerciseIndex}" aria-hidden="true" tabindex="-1">${exerciseDefinitionOptions(exercise, exerciseIndex).map(definition => `<option value="${definition.id}" ${definition.id === currentDefinition?.id ? 'selected' : ''}>${context.escapeHtml(definition.name)} — ${context.escapeHtml(definition.equipment)}</option>`).join('')}</select></label>` : '';
       return `<article class="active-exercise retrospective-exercise" data-retro-exercise="${exerciseIndex}">
@@ -231,6 +241,7 @@
         draft.exercises = context.routineEngine.getRoutine(type).map(id => context.exercises.find(exercise => exercise.id === id)).filter(Boolean).map(definition => createExercise(definition, type));
       }
       saving = false;
+      pendingSetRemoval = null;
       $('saveRetrospectiveWorkout').disabled = false;
       $('retrospectiveCompletionTime').value = '';
       $('retrospectiveDuration').value = '';
@@ -265,6 +276,7 @@
         originalWorkout: clone(workout)
       };
       saving = false;
+      pendingSetRemoval = null;
       $('saveRetrospectiveWorkout').disabled = false;
       $('retrospectiveCompletionTime').value = completionTime;
       $('retrospectiveDuration').value = durationMinutes;
@@ -282,6 +294,7 @@
       if (dialog.close && dialog.open) dialog.close(); else dialog.removeAttribute('open');
       if (discard) draft = null;
       saving = false;
+      pendingSetRemoval = null;
     }
 
     function completedAt() {
@@ -359,25 +372,18 @@
       if (draft.mode === 'edit') {
         nextWorkouts = previousWorkouts.map(existing => existing.id === workout.id ? workout : existing);
         const derived = context.derivePersonalRecords(nextWorkouts);
-        workout.prs = Number(derived.workoutPrCounts[workout.id] || 0);
+        workout.prs = Number(derived.workoutRecordCounts?.[workout.id] ?? derived.workoutPrCounts[workout.id] ?? 0);
         nextPrs = { ...derived.records };
       } else {
         nextPrs = { ...previousPrs };
       }
       if (draft.mode === 'create' && draft.evaluatePrs) {
-        completedExercises.forEach(exercise => exercise.sets.filter(set => !set.warmup).forEach(set => {
-          const key = exercise.definitionId || context.slug(exercise.name);
-          const interpreted = context.metricsForSet?.(exercise, set);
-          const score = interpreted ? interpreted.estimated1RM : context.estimate1RM(Number(set.weight), Number(set.reps));
-          if (score === null) return;
-          const current = nextPrs[key];
-          if (score > (current?.estimated1RM || 0)) {
-            nextPrs[key] = { exercise: exercise.name, estimated1RM: score, weight: Number(set.weight), reps: Number(set.reps), date: workout.completedAt, ...(interpreted?.formulaId ? { formulaId: interpreted.formulaId, formulaVersion: interpreted.formulaVersion, e1rmLoadBasis: interpreted.e1rm?.loadBasis } : {}) };
-            workout.prs += 1;
-          }
-        }));
+        nextWorkouts = [workout, ...previousWorkouts];
+        const derived = context.derivePersonalRecords(nextWorkouts);
+        workout.prs = Number(derived.workoutRecordCounts?.[workout.id] ?? derived.workoutPrCounts[workout.id] ?? 0);
+        nextPrs = { ...derived.records };
       }
-      if (draft.mode === 'create') nextWorkouts = [workout, ...previousWorkouts];
+      if (draft.mode === 'create' && !draft.evaluatePrs) nextWorkouts = [workout, ...previousWorkouts];
       context.getState().prs = nextPrs;
       context.getState().workouts = nextWorkouts;
       try {
@@ -448,7 +454,20 @@
           const target = button.dataset.retroMove === 'up' ? exerciseIndex - 1 : exerciseIndex + 1;
           if (target >= 0 && target < draft.exercises.length) [draft.exercises[exerciseIndex], draft.exercises[target]] = [draft.exercises[target], draft.exercises[exerciseIndex]];
         } else if (button.dataset.retroRemoveExercise !== undefined) draft.exercises.splice(exerciseIndex, 1);
-        else if (button.dataset.retroRemoveSet !== undefined) draft.exercises[exerciseIndex].sets.splice(Number(button.dataset.retroRemoveSet), 1);
+        else if (button.dataset.retroRemoveSet !== undefined) {
+          const setIndex = Number(button.dataset.retroRemoveSet);
+          const exercise = draft.exercises[exerciseIndex];
+          const set = exercise?.sets?.[setIndex];
+          if (!set) return;
+          const removalKey = `${exercise.id}:${set.id || setIndex}`;
+          if (setHasEnteredData(set) && pendingSetRemoval !== removalKey) {
+            pendingSetRemoval = removalKey;
+            render();
+            return;
+          }
+          exercise.sets.splice(setIndex, 1);
+          pendingSetRemoval = null;
+        }
         else if (button.dataset.retroAddSet !== undefined) {
           const exercise = draft.exercises[exerciseIndex];
           const prior = exercise.sets.filter(set => !set.warmup).at(-1);

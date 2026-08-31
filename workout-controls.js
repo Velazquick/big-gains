@@ -117,6 +117,7 @@
               <span class="set-done-icon">✓</span>
               <span class="set-done-text">${set.completed ? 'Done' : 'Complete'}</span>
             </button>
+            <button type="button" class="set-remove" data-remove-set="1" data-ei="${exerciseIndex}" data-si="${setIndex}" aria-label="Remove ${label}"><span aria-hidden="true">✕</span></button>
           </div>
         `;
       }).join('');

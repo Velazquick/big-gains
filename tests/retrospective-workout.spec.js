@@ -186,14 +186,14 @@ test('local completion time stays on the selected day near UTC midnight and meta
   await expect(page.locator('#historyDialogContent')).toContainText('Retrospective exercise note');
 });
 
-test('PR evaluation ON updates records while OFF saves normal volume without PR changes', async ({ page }) => {
+test('record evaluation ON creates indicated-load events while OFF remains action-scoped', async ({ page }) => {
   await openCalendar(page);
   await openEditor(page, '2026-08-03');
   await expect(page.locator('#retrospectiveEvaluatePrs')).toBeChecked();
   await completeFirstWorkingSet(page, { weight: '200', reps: '10' });
   await page.locator('#saveRetrospectiveWorkout').click();
   let stored = await readStoredJson(page, STORAGE_KEYS.jorge);
-  expect(stored.workouts[0].prs).toBe(0);
+  expect(stored.workouts[0].prs).toBe(1);
   expect(stored.prs['seated-machine-chest-press']).toBeUndefined();
 
   await openEditor(page, '2026-08-04');

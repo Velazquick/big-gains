@@ -389,7 +389,7 @@ html[data-accent="ember"][data-theme="performance-dark"] #finishWorkout:disabled
   html[data-accent="ember"][data-theme="performance-dark"] .workout-mode-toolbar button{font-size:.66rem;padding-inline:7px}
   html[data-accent="ember"][data-theme="performance-dark"] .exercise-head{padding-inline:13px}
   html[data-accent="ember"][data-theme="performance-dark"] .active-exercise-body{padding-inline:10px}
-  html[data-accent="ember"][data-theme="performance-dark"] .set-line{grid-template-columns:26px minmax(0,1fr) 46px;gap:6px;padding:9px 7px}
+  html[data-accent="ember"][data-theme="performance-dark"] .set-line{grid-template-columns:26px minmax(0,1fr) 46px 44px;gap:4px;padding:9px 7px}
   html[data-accent="ember"][data-theme="performance-dark"] .set-number{width:26px;height:28px}
   html[data-accent="ember"][data-theme="performance-dark"] .stepper-control{grid-template-columns:42px minmax(0,1fr) 42px;gap:4px}
   html[data-accent="ember"][data-theme="performance-dark"] .stepper button{width:42px;min-width:42px;min-height:46px}

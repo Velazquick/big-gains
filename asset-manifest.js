@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v99-rc-user-data-export';
+  const release = 'v100-rc-train-history-correctness';
   const cloudConfigVersion = 'config-925e766c1b907250'; // BIG_GAINS_CLOUD_CONFIG_VERSION
   const deploymentVersion = `${release}-${cloudConfigVersion}`;
   const manifestAsset = `./asset-manifest.js?v=${encodeURIComponent(deploymentVersion)}`;

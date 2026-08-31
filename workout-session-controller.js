@@ -153,6 +153,7 @@
     resolveLoadMode = defaultLoadMode,
     resolveMeasurement = exercise => exerciseCatalog?.measurementFor?.(exercise) || exercise?.measurement || null,
     metricsForSet = null,
+    derivePerformanceRecords = null,
     previousPerformance,
     estimate1RM,
     createId,
@@ -382,6 +383,25 @@
       return set;
     }
 
+    function setHasEnteredData(set) {
+      return set?.completed === true || ['weight', 'reps', 'distance', 'duration', 'durationSeconds']
+        .some(field => set?.[field] !== '' && set?.[field] != null && Number(set[field]) !== 0);
+    }
+
+    function removeSet(exerciseIndex, setIndex, { confirmed = false } = {}) {
+      const current = getActiveWorkout();
+      const exercise = current?.exercises?.[exerciseIndex];
+      const set = exercise?.sets?.[setIndex];
+      if (!set) return { removed: false, confirmationRequired: false };
+      if (setHasEnteredData(set) && !confirmed) return { removed: false, confirmationRequired: true, setId: set.id || null };
+      exercise.sets.splice(setIndex, 1);
+      resolveActiveIndex(current);
+      acknowledgeTimerReady();
+      persistActiveMutation();
+      renderActiveMutation();
+      return { removed: true, confirmationRequired: false, setId: set.id || null };
+    }
+
     function updateSet(exerciseIndex, setIndex, field, value) {
       const set = getActiveWorkout()?.exercises?.[exerciseIndex]?.sets?.[setIndex];
       if (!set) return false;
@@ -449,29 +469,38 @@
         programCapture: state.programCapture,
         restTimerEndsAt: state.restTimerEndsAt
       };
-      const nextPrs = { ...state.prs };
+      let nextPrs = { ...state.prs };
+      let nextWorkouts = [workout, ...state.workouts];
       let newPRs = 0;
-      completed.forEach(exercise => exercise.sets.filter(set => !set.warmup).forEach(set => {
-        const interpreted = typeof metricsForSet === 'function' ? metricsForSet(exercise, set) : null;
-        const score = interpreted ? interpreted.estimated1RM : estimate1RM(Number(set.weight), Number(set.reps));
-        if (score === null) return;
-        if (score > ((nextPrs[exercise.id] && nextPrs[exercise.id].estimated1RM) || 0)) {
-          nextPrs[exercise.id] = {
-            exercise: exercise.name,
-            estimated1RM: score,
-            weight: Number(set.weight),
-            reps: Number(set.reps),
-            date: completedAt,
-            ...(interpreted?.formulaId ? { formulaId: interpreted.formulaId, formulaVersion: interpreted.formulaVersion, e1rmLoadBasis: interpreted.e1rm?.loadBasis } : {})
-          };
-          newPRs += 1;
-        }
-      }));
-      workout.prs = newPRs;
+      if (typeof derivePerformanceRecords === 'function') {
+        const derived = derivePerformanceRecords(nextWorkouts);
+        nextPrs = { ...derived.records };
+        newPRs = Number(derived.workoutRecordCounts[workout.id] || 0);
+        workout.prs = newPRs;
+      } else {
+        completed.forEach(exercise => exercise.sets.filter(set => !set.warmup).forEach(set => {
+          const interpreted = typeof metricsForSet === 'function' ? metricsForSet(exercise, set) : null;
+          const score = interpreted ? interpreted.estimated1RM : estimate1RM(Number(set.weight), Number(set.reps));
+          if (score === null) return;
+          if (score > ((nextPrs[exercise.id] && nextPrs[exercise.id].estimated1RM) || 0)) {
+            nextPrs[exercise.id] = {
+              exercise: exercise.name,
+              estimated1RM: score,
+              weight: Number(set.weight),
+              reps: Number(set.reps),
+              date: completedAt,
+              ...(interpreted?.formulaId ? { formulaId: interpreted.formulaId, formulaVersion: interpreted.formulaVersion, e1rmLoadBasis: interpreted.e1rm?.loadBasis } : {})
+            };
+            newPRs += 1;
+          }
+        }));
+        workout.prs = newPRs;
+      }
+      const savedWorkout = nextWorkouts.find(item => item.id === workout.id) || workout;
       let sequenceResult = null;
       try {
-        sequenceResult = advanceProgramSequence({ activeWorkout: current, completedWorkout: workout, completedAt });
-        state.workouts = [workout, ...state.workouts];
+        sequenceResult = advanceProgramSequence({ activeWorkout: current, completedWorkout: savedWorkout, completedAt });
+        state.workouts = nextWorkouts;
         state.prs = nextPrs;
         if (sequenceResult?.capture) state.programCapture = sequenceResult.capture;
         clearRuntime();
@@ -486,7 +515,7 @@
         renderActiveMutation();
         return false;
       }
-      onCompleted({ workout, newPRs });
+      onCompleted({ workout: savedWorkout, newPRs });
       return true;
     }
 
@@ -511,6 +540,7 @@
       toggleExercise,
       removeExercise,
       addSet,
+      removeSet,
       updateSet,
       adjustSet,
       toggleSetCompleted,

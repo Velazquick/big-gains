@@ -1,4 +1,4 @@
-importScripts('./asset-manifest.js?v=v99-rc-user-data-export-config-925e766c1b907250', './service-worker-core.js');
+importScripts('./asset-manifest.js?v=v100-rc-train-history-correctness-config-925e766c1b907250', './service-worker-core.js');
 
 const runtime = BigGainsServiceWorkerCore.createRuntime({
   manifest: BIG_GAINS_ASSET_MANIFEST,

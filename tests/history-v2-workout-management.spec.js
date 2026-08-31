@@ -115,6 +115,8 @@ test('edit mode preserves effective bodyweight load while supporting set, exerci
   await page.locator('[data-retro-field="weight"][data-ei="0"][data-si="1"]').fill('25');
   await page.locator('[data-retro-field="reps"][data-ei="0"][data-si="1"]').fill('6');
   await page.locator('[data-retro-remove-set="0"][data-ei="0"]').click();
+  await expect(page.locator('[data-retro-remove-set="0"][data-ei="0"]')).toHaveText('Sure?');
+  await page.locator('[data-retro-remove-set="0"][data-ei="0"]').click();
   await page.locator('#retrospectiveExerciseSelect').selectOption('lat-pulldown');
   await page.locator('#retrospectiveAddExercise').click();
   await page.locator('[data-retro-exercise-definition="1"]').selectOption('seated-cable-row');

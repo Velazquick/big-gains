@@ -91,17 +91,19 @@ window.workoutProgress = (() => {
   }
 
   function dashboardSummary(workouts) {
+    const derived = context.analytics.derivePerformanceRecords(state().workouts, analyticsOptions());
     return workouts.reduce((totals, workout) => {
       const summary = context.analytics.workoutSummary(workout, analyticsOptions());
       totals.sessions += 1;
       totals.workingSets += summary.workingSetCount;
-      totals.prs += summary.prCount;
+      totals.records += Number(derived.workoutRecordCounts?.[workout.id] || 0);
       return totals;
-    }, { sessions: 0, workingSets: 0, prs: 0 });
+    }, { sessions: 0, workingSets: 0, records: 0 });
   }
 
   function sessionHistoryFor(exerciseId) {
     return context.analytics.exerciseHistory(state().workouts, exerciseId, analyticsOptions()).map(session => ({
+      workoutId: session.workoutId,
       date: session.date,
       sets: session.workingSets,
       best: session.bestWorkingSet,
@@ -111,6 +113,16 @@ window.workoutProgress = (() => {
       workload: session.workload,
       workloadFamily: session.workloadFamily
     }));
+  }
+
+  function currentRecordFor(exercise) {
+    const exerciseId = exercise?.canonicalId || exercise?.id;
+    const states = context.analytics.derivePerformanceRecords(state().workouts, analyticsOptions()).currentRecordStates?.[exerciseId] || {};
+    return states.e1rm || states.indicatedLoad || null;
+  }
+
+  function recordValue(record) {
+    return record ? `${record.observedValue} ${record.unit}` : '—';
   }
 
   function loggedExercises() {
@@ -356,8 +368,10 @@ window.workoutProgress = (() => {
     }
     const best = bestSetAcross(sessions, exercise);
     const latest = sessions[0];
+    const record = currentRecordFor(exercise);
+    const recordNote = record?.recordType === 'indicated_load' ? '<small class="record-qualification">Highest indicated load recorded for this exact exercise in this profile; machine setups may differ.</small>' : '';
     preview.className = 'progress-preview';
-    preview.innerHTML = `<div class="progress-preview-copy"><span class="exercise-muscle">${context.escapeHtml(exercise.muscle)}</span><h3>${context.escapeHtml(exercise.name)}</h3><p>${trendText(sessions)}</p></div><div class="progress-preview-stats"><div><span>Best set</span><strong>${context.escapeHtml(setLoadLabel(best))} × ${Number(best.reps)}</strong></div><div><span>Best e1RM</span><strong>${best.estimated1RM === null ? '—' : `${best.estimated1RM} lb`}</strong></div><div><span>Latest</span><strong>${latest.estimated1RM === null ? '—' : `${latest.estimated1RM} lb`}</strong></div></div>`;
+    preview.innerHTML = `<div class="progress-preview-copy"><span class="exercise-muscle">${context.escapeHtml(exercise.muscle)}</span><h3>${context.escapeHtml(exercise.name)}</h3><p>${trendText(sessions)}</p>${recordNote}</div><div class="progress-preview-stats"><div><span>Best set</span><strong>${context.escapeHtml(setLoadLabel(best))} × ${Number(best.reps)}</strong></div><div><span>${context.escapeHtml(record?.recordLabel || 'Performance Record')}</span><strong>${context.escapeHtml(recordValue(record))}</strong></div><div><span>Latest e1RM</span><strong>${latest.estimated1RM === null ? '—' : `${latest.estimated1RM} lb`}</strong></div></div>`;
   }
 
   function renderProgressDashboard() {
@@ -383,7 +397,7 @@ window.workoutProgress = (() => {
     <div class="progress-overview-grid" aria-label="Progress overview">
       <article><span>Sessions</span><strong>${summary.sessions}</strong><small>${selectedWindowDays} day window</small></article>
       <article><span>Working sets</span><strong>${summary.workingSets}</strong><small>warm-ups excluded</small></article>
-      <article><span>PRs</span><strong>${summary.prs}</strong><small>strength markers</small></article>
+      <article><span>Records</span><strong>${summary.records}</strong><small>typed record events</small></article>
     </div>
     ${trainingWorkloadMarkup()}
     <section class="progress-workload-card">
@@ -408,9 +422,11 @@ window.workoutProgress = (() => {
       return;
     }
     history.className = 'history-list progress-recent-history';
+    const recordCounts = context.analytics.derivePerformanceRecords(state().workouts, analyticsOptions()).workoutRecordCounts;
     history.innerHTML = `${workouts.map(workout => {
       const summary = context.analytics.workoutSummary(workout, analyticsOptions());
-      return `<button type="button" class="history-item progress-history-card" data-history-id="${context.escapeHtml(workout.id)}"><div class="progress-history-main"><div class="history-card-title"><strong>${context.escapeHtml(context.workoutLabel(workout.type))}</strong>${summary.prCount ? `<span class="pr-badge">${summary.prCount} PR${summary.prCount === 1 ? '' : 's'}</span>` : ''}</div><small>${formatArchiveDate(workout.completedAt)} · ${formatDuration(summary.durationSeconds)} · ${summary.workingSetCount} working set${summary.workingSetCount === 1 ? '' : 's'}</small>${workout.entryMethod === 'retrospective' ? '<span class="entered-later">Entered later</span>' : ''}</div><div class="history-meta"><strong>${formatVolume(summary.workingSetVolume,summary.workingSetVolumeKind)}</strong><small>${workloadLabel(summary.workingSetVolumeKind)}</small><span class="history-card-arrow" aria-hidden="true">→</span></div></button>`;
+      const recordCount = Number(recordCounts[workout.id] || 0);
+      return `<button type="button" class="history-item progress-history-card" data-history-id="${context.escapeHtml(workout.id)}"><div class="progress-history-main"><div class="history-card-title"><strong>${context.escapeHtml(context.workoutLabel(workout.type))}</strong>${recordCount ? `<span class="pr-badge">${recordCount} record${recordCount === 1 ? '' : 's'}</span>` : ''}</div><small>${formatArchiveDate(workout.completedAt)} · ${formatDuration(summary.durationSeconds)} · ${summary.workingSetCount} working set${summary.workingSetCount === 1 ? '' : 's'}</small>${workout.entryMethod === 'retrospective' ? '<span class="entered-later">Entered later</span>' : ''}</div><div class="history-meta"><strong>${formatVolume(summary.workingSetVolume,summary.workingSetVolumeKind)}</strong><small>${workloadLabel(summary.workingSetVolumeKind)}</small><span class="history-card-arrow" aria-hidden="true">→</span></div></button>`;
     }).join('')}<div class="progress-history-footer"><div><strong>Keep the full timeline close.</strong><span>Browse every completed session in List or Calendar.</span></div><button type="button" class="ghost compact" data-open-history-archive>Open History</button></div>`;
   }
 
@@ -439,10 +455,12 @@ window.workoutProgress = (() => {
       return;
     }
     archiveList.className = 'history-archive-list';
+    const recordCounts = context.analytics.derivePerformanceRecords(state().workouts, analyticsOptions()).workoutRecordCounts;
     archiveList.innerHTML = groupedHistory().map(group => `<section class="history-month-group" aria-labelledby="history-month-${group.heading.replace(/\s+/g, '-').toLowerCase()}"><div class="history-month-heading"><h3 id="history-month-${group.heading.replace(/\s+/g, '-').toLowerCase()}">${group.heading}</h3><span>${group.workouts.length} session${group.workouts.length === 1 ? '' : 's'}</span></div><div class="history-month-workouts">${group.workouts.map(workout => {
       const summary = context.analytics.workoutSummary(workout, analyticsOptions());
       const label = context.workoutLabel(workout.type);
-      return `<button type="button" class="history-archive-card" data-history-id="${context.escapeHtml(workout.id)}" aria-label="Open ${context.escapeHtml(label)} from ${context.escapeHtml(formatArchiveDate(workout.completedAt))}"><span class="history-date-block"><strong>${formatDay(workout.completedAt)}</strong><span>${formatWeekday(workout.completedAt)}</span></span><span class="history-archive-card-main"><span class="history-card-title"><strong>${context.escapeHtml(label)}</strong>${workout.entryMethod === 'retrospective' ? '<span class="entered-later">Entered later</span>' : ''}${summary.prCount ? `<span class="pr-badge">${summary.prCount} PR${summary.prCount === 1 ? '' : 's'}</span>` : ''}</span><span class="history-card-date">${context.escapeHtml(formatArchiveDate(workout.completedAt))}</span><span class="history-card-metrics"><span>${formatDuration(summary.durationSeconds)}</span><span>${summary.workingSetCount} working set${summary.workingSetCount === 1 ? '' : 's'}</span><span>${formatVolume(summary.workingSetVolume)} volume</span></span></span><span class="history-card-arrow" aria-hidden="true">→</span></button>`;
+      const recordCount = Number(recordCounts[workout.id] || 0);
+      return `<button type="button" class="history-archive-card" data-history-id="${context.escapeHtml(workout.id)}" aria-label="Open ${context.escapeHtml(label)} from ${context.escapeHtml(formatArchiveDate(workout.completedAt))}"><span class="history-date-block"><strong>${formatDay(workout.completedAt)}</strong><span>${formatWeekday(workout.completedAt)}</span></span><span class="history-archive-card-main"><span class="history-card-title"><strong>${context.escapeHtml(label)}</strong>${workout.entryMethod === 'retrospective' ? '<span class="entered-later">Entered later</span>' : ''}${recordCount ? `<span class="pr-badge">${recordCount} record${recordCount === 1 ? '' : 's'}</span>` : ''}</span><span class="history-card-date">${context.escapeHtml(formatArchiveDate(workout.completedAt))}</span><span class="history-card-metrics"><span>${formatDuration(summary.durationSeconds)}</span><span>${summary.workingSetCount} working set${summary.workingSetCount === 1 ? '' : 's'}</span><span>${formatVolume(summary.workingSetVolume)} volume</span></span></span><span class="history-card-arrow" aria-hidden="true">→</span></button>`;
     }).join('')}</div></section>`).join('');
   }
 
@@ -529,6 +547,7 @@ window.workoutProgress = (() => {
     } else {
       const best = bestSetAcross(sessions, exercise);
       const latest = sessions[0];
+      const record = currentRecordFor(exercise);
       const workloadFamily = sessions.find(session => session.workloadFamily)?.workloadFamily || null;
       const workloadMeta = WORKLOAD_FAMILY_META[workloadFamily];
       const totalWorkload = workloadFamily && sessions.every(session => session.workload !== null)
@@ -546,7 +565,8 @@ window.workoutProgress = (() => {
       const historyWorkload = workloadMeta
         ? totalWorkload === null ? `${sessions.length} sessions · workload has gaps` : `${sessions.length} sessions · ${formatLoadVolume(totalWorkload)}`
         : `${sessions.length} sessions · no load-volume family`;
-      content.innerHTML = `<div class="history-summary-grid progress-summary-grid"><div><span>Best set</span><strong>${context.escapeHtml(setLoadLabel(best))} × ${Number(best.reps)}</strong></div><div><span>Best estimated 1RM</span><strong>${best.estimated1RM === null ? '—' : `${best.estimated1RM} ${LOAD_DISPLAY.unit}`}</strong></div><div><span>Training history</span><strong>${historyWorkload}</strong></div></div><div class="progress-trend-note"><strong>${latest.estimated1RM === null ? 'e1RM unavailable' : `${latest.estimated1RM} ${LOAD_DISPLAY.unit} latest e1RM`}</strong><span>${trendText(sessions)}</span></div>${e1rmChart}${workloadChart(sessions, workloadFamily)}<div class="progress-recent-head"><span class="label">Recent work</span><h3>Session-by-session</h3></div><div class="progress-session-list">${recent}</div>`;
+      const recordQualification = record?.recordType === 'indicated_load' ? '<p class="record-qualification">Profile-local, exact-exercise indicated load. It does not claim equivalent resistance across machines, gyms, pulleys, attachments, or calibration.</p>' : '';
+      content.innerHTML = `<div class="history-summary-grid progress-summary-grid"><div><span>Best set</span><strong>${context.escapeHtml(setLoadLabel(best))} × ${Number(best.reps)}</strong></div><div><span>${context.escapeHtml(record?.recordLabel || 'Performance Record')}</span><strong>${context.escapeHtml(recordValue(record))}</strong></div><div><span>Training history</span><strong>${historyWorkload}</strong></div></div>${recordQualification}<div class="progress-trend-note"><strong>${latest.estimated1RM === null ? 'e1RM unavailable' : `${latest.estimated1RM} ${LOAD_DISPLAY.unit} latest e1RM`}</strong><span>${trendText(sessions)}</span></div>${e1rmChart}${workloadChart(sessions, workloadFamily)}<div class="progress-recent-head"><span class="label">Recent work</span><h3>Session-by-session</h3></div><div class="progress-session-list">${recent}</div>`;
     }
 
     const { dialog } = elements();

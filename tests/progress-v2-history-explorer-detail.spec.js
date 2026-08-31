@@ -86,7 +86,7 @@ test('History Explorer groups newest-first by month and keeps archive cards comp
   await expect(newest).toContainText('1h 00m');
   await expect(newest).toContainText('2 working sets');
   await expect(newest).toContainText('1,460 lb volume');
-  await expect(newest.locator('.pr-badge')).toHaveText('2 PRs');
+  await expect(newest.locator('.pr-badge')).toHaveText('2 records');
   await expect(page.locator('#historyArchiveList')).not.toContainText('Lat Pulldown');
   await expect(page.locator('#historyArchiveList')).not.toContainText('Leg Press');
   if (process.env.HISTORY_SCREENSHOT_DIR) {
@@ -130,7 +130,7 @@ test('archive opens the correct polished detail with bodyweight semantics and wo
   await expect(page.locator('.history-summary-grid')).toContainText('—');
   await expect(page.locator('.history-summary-grid')).toContainText('3');
   await expect(page.locator('.history-summary-grid')).not.toContainText('PRs');
-  await expect(page.locator('.history-pr-callout .pr-badge')).toHaveText('1 PR');
+  await expect(page.locator('.history-pr-callout .pr-badge')).toHaveText('1 record');
   await expect(page.locator('.history-detail-list .history-exercise h3')).toHaveText(['Pull-Up', 'Seated Cable Row']);
 
   const pullUp = page.locator('.history-exercise').first();
@@ -151,7 +151,8 @@ test('archive opens the correct polished detail with bodyweight semantics and wo
 
   await page.locator('#historyArchiveList [data-history-id="july-oldest"]').click();
   await expect(page.locator('.history-summary-grid > div')).toHaveCount(4);
-  await expect(page.locator('.history-pr-callout')).toHaveCount(0);
+  await expect(page.locator('.history-pr-callout .pr-badge')).toHaveText('1 record');
+  await expect(page.locator('.record-chip')).toHaveText('Load record');
   await expect(page.locator('.history-summary-grid')).not.toContainText('PRs');
 });
 

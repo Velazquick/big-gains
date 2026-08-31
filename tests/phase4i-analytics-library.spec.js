@@ -352,7 +352,7 @@ test('completed-workout recap is driven by working analytics and excludes warmup
   await expect(page.locator('#completionDuration')).toHaveText('60:00');
   await expect(page.locator('#completionWorkingSets')).toHaveText('2');
   await expect(page.locator('#completionVolume')).toHaveText('1,250 indicated lb');
-  await expect(page.locator('#completionPrCount')).toHaveText('0');
+  await expect(page.locator('#completionPrCount')).toHaveText('1');
   const stored = await jorgeState(page);
   expect(stored.workouts[0].sets).toBeUndefined();
   expect(stored.workouts[0].exercises[0].sets).toHaveLength(3);
