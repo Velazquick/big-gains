@@ -52,6 +52,8 @@ jobs:
           test -f program-domain-recovery.js
           test -f program-domain-cutover.js
           test -f program-portability.js
+          test -f user-data-export.js
+          test -f user-data-export.css
           test -f vendor/supabase.js
           test -f migration-preview.js
           test -f migration-preview.css
@@ -89,6 +91,8 @@ jobs:
             ['./program-domain-recovery.js', manifest.scripts],
             ['./program-domain-cutover.js', manifest.scripts],
             ['./program-portability.js', manifest.scripts],
+            ['./user-data-export.js', manifest.scripts],
+            ['./user-data-export.css', manifest.styles],
             ['./migration-preview.js', manifest.scripts],
             ['./migration-preview.css', manifest.styles]
           ];

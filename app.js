@@ -3,6 +3,7 @@ const workoutControlsApi=window.workoutControls;
 const notesApi=window.workoutNotes;
 const progressApi=window.workoutProgress;
 const analyticsApi=window.BigGainsAnalytics;
+const userExportApi=window.BigGainsUserDataExport;
 const WEEK_PLAN=PROFILE.weekPlan;
 const exerciseCatalog=window.BigGainsExerciseCatalog;
 const CATALOG_EXERCISES=exerciseCatalog.exercises;
@@ -28,6 +29,7 @@ let workoutTicker=null,deferredPrompt=null,cancelArmedUntil=0;
 let routineDraftDay=selectedDay,routineDraft=[];
 let quickCompatExerciseId=null,routineCompatExerciseId=null;
 let completionReceipt=null;
+let preparedUserExport=null;
 const exercisePicker=BigGainsExercisePicker.create({catalog:exerciseCatalog,getState:()=>state,getProfileId:()=>PROFILE.id});
 window.bigGainsExercisePicker=exercisePicker;
 const goalsApi=BigGainsGoals.create({
@@ -327,6 +329,13 @@ bind('routineExerciseSelect','change',e=>{routineCompatExerciseId=e.target.value
 bind('addRoutineExercise','click',()=>{if(routineCompatExerciseId){const id=routineCompatExerciseId;routineCompatExerciseId=null;if(id&&!routineDraft.some(entry=>exerciseCatalog.canonicalIdFor(entry.exerciseId)===exerciseCatalog.canonicalIdFor(id))){routineDraft.push({exerciseId:id,workingSets:3,targetReps:'8–10'});renderRoutineEditor();}return;}openRoutineExercisePicker();});
 bind('saveRoutine','click',saveRoutine);bind('resetRoutine','click',resetRoutine);bind('cancelRoutineDialog','click',closeRoutineEditor);bind('closeRoutineDialog','click',closeRoutineEditor);bind('routineDialog','click',e=>{if(e.target===$('routineDialog'))closeRoutineEditor();});
 bind('weightForm','submit',e=>{e.preventDefault();state.weights.unshift({weight:Number($('bodyweight').value),date:new Date().toISOString()});$('bodyweight').value='';saveState();renderAll();});
+function prepareUserExport(){return userExportApi.prepare({state,profile:{id:PROFILE.id,displayName:ACCOUNT.displayName,presentation:PRESENTATION},catalog:exerciseCatalog,appVersion:window.BIG_GAINS_ASSET_MANIFEST?.release,workoutLabel:completionWorkoutLabel,exportedAt:new Date().toISOString()});}
+function openUserExportDialog(message=''){const dialog=$('userDataExportDialog');$('userDataExportStatus').textContent=message;dialog.showModal();requestAnimationFrame(()=>$('userDataExportTitle').focus({preventScroll:true}));}
+function closeUserExportDialog(){$('userDataExportDialog').close();preparedUserExport=null;}
+bind('exportMyData','click',async()=>{preparedUserExport=prepareUserExport();if(userExportApi.canShareFiles(preparedUserExport)){const result=await userExportApi.share(preparedUserExport);if(result.ok||result.reason==='cancelled')return;openUserExportDialog('Sharing was unavailable. Download either private file below.');return;}openUserExportDialog();});
+bind('downloadCompletedSets','click',()=>{if(preparedUserExport&&userExportApi.download(preparedUserExport.csv))$('userDataExportStatus').textContent='Completed sets CSV downloaded.';});
+bind('downloadPersonalData','click',()=>{if(preparedUserExport&&userExportApi.download(preparedUserExport.json))$('userDataExportStatus').textContent='Personal data JSON downloaded.';});
+bind('closeUserDataExport','click',closeUserExportDialog);bind('userDataExportDialog','click',e=>{if(e.target===$('userDataExportDialog'))closeUserExportDialog();});
 bind('exportData','click',()=>{const backup=statePersistenceApi.prepareExport(state),blob=new Blob([backup.json],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=backup.filename;a.click();URL.revokeObjectURL(url);});
 bind('importData','change',async e=>{const file=e.target.files[0];if(!file)return;try{const imported=JSON.parse(await file.text()),result=statePersistenceApi.validateImport(imported);if(!result.ok){if(result.reason==='profile-mismatch'){alert(`This backup belongs to ${result.profileName}, not ${ACCOUNT.displayName}. Switch profiles before restoring it.`);return;}throw new Error('Invalid backup');}state=result.state;active=state.activeWorkout||null;const today=todaysWorkout();selectedDay=(active&&active.type)||(today==='Rest'?PROFILE.capabilities.restFallbackWorkout:today);saveState();renderAll();alert('Backup restored for '+ACCOUNT.displayName+'.');}catch{alert('That file is not a valid Big Gains backup.');}finally{e.target.value='';}});
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;$('installButton').classList.remove('hidden');});

@@ -1,0 +1,96 @@
+.data-export-group,
+.technical-backup-group {
+  display: grid;
+  gap: 10px;
+  align-items: start;
+}
+
+.data-export-group h3,
+.technical-backup-group h3,
+.data-export-group p,
+.technical-backup-group p {
+  margin: 0;
+}
+
+.data-export-group p,
+.technical-backup-group p {
+  max-width: 62ch;
+}
+
+.technical-backup-group {
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.user-data-export-dialog {
+  width: min(92vw, 620px);
+  max-width: 620px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.user-data-export-dialog::backdrop {
+  background: rgba(0, 0, 0, .72);
+  backdrop-filter: blur(4px);
+}
+
+.user-data-export-shell {
+  display: grid;
+  gap: 20px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .45);
+}
+
+.user-data-export-shell > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.user-data-export-shell h2 {
+  margin: 4px 0 8px;
+}
+
+.user-data-export-shell p {
+  margin: 0;
+}
+
+.user-data-export-options {
+  display: grid;
+  gap: 12px;
+}
+
+.user-data-export-options button {
+  display: grid;
+  gap: 5px;
+  padding: 16px;
+  text-align: left;
+}
+
+.user-data-export-options button span {
+  font-weight: 400;
+  line-height: 1.45;
+  opacity: .78;
+}
+
+.user-data-export-status {
+  min-height: 1.4em;
+  color: var(--muted);
+}
+
+@media (max-width: 560px) {
+  .data-export-group > button {
+    width: 100%;
+  }
+
+  .user-data-export-shell > header {
+    gap: 10px;
+  }
+}
