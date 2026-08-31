@@ -670,13 +670,15 @@ test('32 disabled Program transport makes no cloud calls', async () => {
   assert.equal(queue.pending().length, 1);
 });
 
-test('33 production startup remains untouched because the Program transport module is runtime-unattached', async () => {
-  const [documentSource, workerSource] = await Promise.all([
+test('33 production startup attaches Program transport only through the versioned asset manifest', async () => {
+  const [documentSource, workerSource, manifestSource] = await Promise.all([
     readFile(new URL('../index.html', import.meta.url), 'utf8'),
-    readFile(new URL('../service-worker.js', import.meta.url), 'utf8')
+    readFile(new URL('../service-worker.js', import.meta.url), 'utf8'),
+    readFile(new URL('../asset-manifest.js', import.meta.url), 'utf8')
   ]);
   assert.doesNotMatch(documentSource, /program-domain-sync\.js/);
   assert.doesNotMatch(workerSource, /program-domain-sync\.js/);
+  assert.match(manifestSource, /program-domain-sync\.js/);
 });
 
 test('34 durable queue format reloads old operations and the new frozen variant without a version upgrade', async () => {

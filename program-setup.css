@@ -111,6 +111,10 @@
 .today-plan-actions { flex: 0 0 auto; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
 .plan-page-head { align-items: flex-start; }
 .plan-overview, .plan-program-detail, #planProgramContent { display: grid; gap: 16px; }
+.program-portability-status { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.program-portability-status[hidden] { display: none; }
+.program-portability-status strong { display: block; margin-top: 5px; color: #dbe5df; line-height: 1.45; }
+.program-portability-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .plan-overview[hidden], .plan-program-detail[hidden] { display: none; }
 .plan-peer-grid, .plan-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .plan-peer-card, .plan-highlights, .plan-detail-section, .plan-program-hero, .plan-version-info { display: grid; gap: 16px; }
@@ -192,6 +196,8 @@
   .program-analyzer-heading { display: grid; }
   .program-analyzer-grid { grid-template-columns: 1fr; }
   .today-plan-card, .plan-card-head, .plan-program-identity { align-items: stretch; flex-direction: column; }
+  .program-portability-status { align-items: stretch; flex-direction: column; }
+  .program-portability-actions { justify-content: flex-start; }
   .today-plan-actions { justify-content: flex-start; }
   .plan-peer-grid, .plan-detail-grid { grid-template-columns: 1fr; }
   .plan-action-row > * { flex: 1 1 auto; }

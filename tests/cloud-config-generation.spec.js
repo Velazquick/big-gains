@@ -33,7 +33,7 @@ async function withGenerationWorkspace(callback) {
   }
 }
 
-async function generate({ directory, generatorPath }, flagValue) {
+async function generate({ directory, generatorPath }, flagValue, programFlagValue) {
   const env = {
     ...process.env,
     SUPABASE_URL: 'https://config-generation.supabase.co',
@@ -41,6 +41,8 @@ async function generate({ directory, generatorPath }, flagValue) {
   };
   if (flagValue === undefined) delete env.BIG_GAINS_AUTOMATIC_RECONCILIATION;
   else env.BIG_GAINS_AUTOMATIC_RECONCILIATION = flagValue;
+  if (programFlagValue === undefined) delete env.BIG_GAINS_PROGRAM_PORTABILITY;
+  else env.BIG_GAINS_PROGRAM_PORTABILITY = programFlagValue;
 
   const { stdout, stderr } = await execFileAsync(process.execPath, [generatorPath], { cwd: directory, env });
   const source = await readFile(join(directory, 'cloud-config.js'), 'utf8');
@@ -69,6 +71,10 @@ async function generate({ directory, generatorPath }, flagValue) {
 
 async function generatedConfig(flagValue) {
   return withGenerationWorkspace(workspace => generate(workspace, flagValue));
+}
+
+async function generatedProgramConfig(flagValue) {
+  return withGenerationWorkspace(workspace => generate(workspace, 'false', flagValue));
 }
 
 test('OFF, ON, and rollback OFF use deterministic payload versions and generated client references', async () => {
@@ -122,10 +128,30 @@ for (const scenario of [
   });
 }
 
+for (const scenario of [
+  { label: 'missing', value: undefined, expected: false },
+  { label: 'false', value: 'false', expected: false },
+  { label: 'case-normalized true', value: 'TrUe', expected: true },
+  { label: 'unexpected', value: '1', expected: false, warning: true }
+]) {
+  test(`generated cloud config treats ${scenario.label} Program portability as ${scenario.expected}`, async () => {
+    const result = await generatedProgramConfig(scenario.value);
+    expect(result.config).toMatchObject({
+      programPortability: scenario.expected,
+      programPortabilityVersion: scenario.expected ? 1 : null
+    });
+    expect(result.manifest.cloudConfigVersion).toBe(result.expectedVersion);
+    if (scenario.warning) expect(result.stderr).toContain('BIG_GAINS_PROGRAM_PORTABILITY must be "true" or "false"; defaulting to false.');
+    else expect(result.stderr).toBe('');
+  });
+}
+
 test('Pages passes and validates the automatic-reconciliation deployment config version', async () => {
   const workflow = await readFile(WORKFLOW_PATH, 'utf8');
   expect(workflow).toContain('BIG_GAINS_AUTOMATIC_RECONCILIATION: ${{ vars.BIG_GAINS_AUTOMATIC_RECONCILIATION }}');
   expect(workflow).not.toMatch(/BIG_GAINS_AUTOMATIC_RECONCILIATION:\s*\$\{\{\s*secrets\./);
+  expect(workflow).toContain('BIG_GAINS_PROGRAM_PORTABILITY: ${{ vars.BIG_GAINS_PROGRAM_PORTABILITY }}');
+  expect(workflow).not.toMatch(/BIG_GAINS_PROGRAM_PORTABILITY:\s*\$\{\{\s*secrets\./);
   expect(workflow).toContain('manifest.cloudConfigVersion');
   expect(workflow).toContain('./cloud-config.js?v=${manifest.cloudConfigVersion}');
 });

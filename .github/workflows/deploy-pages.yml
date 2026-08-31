@@ -31,6 +31,7 @@ jobs:
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
           BIG_GAINS_AUTOMATIC_RECONCILIATION: ${{ vars.BIG_GAINS_AUTOMATIC_RECONCILIATION }}
+          BIG_GAINS_PROGRAM_PORTABILITY: ${{ vars.BIG_GAINS_PROGRAM_PORTABILITY }}
         run: node scripts/write-cloud-config.mjs
 
       - name: Validate static site
@@ -45,6 +46,11 @@ jobs:
           test -f service-worker-core.js
           test -f cloud-sync.js
           test -f reconciliation-control.js
+          test -f program-domain-envelope.js
+          test -f program-domain-sync.js
+          test -f program-domain-recovery.js
+          test -f program-domain-cutover.js
+          test -f program-portability.js
           test -f vendor/supabase.js
           test -f migration-preview.js
           test -f migration-preview.css
@@ -77,6 +83,11 @@ jobs:
 
           const requiredAssets = [
             ['./reconciliation-control.js', manifest.scripts],
+            ['./program-domain-envelope.js', manifest.scripts],
+            ['./program-domain-sync.js', manifest.scripts],
+            ['./program-domain-recovery.js', manifest.scripts],
+            ['./program-domain-cutover.js', manifest.scripts],
+            ['./program-portability.js', manifest.scripts],
             ['./migration-preview.js', manifest.scripts],
             ['./migration-preview.css', manifest.styles]
           ];

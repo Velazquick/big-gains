@@ -32,12 +32,16 @@ const automaticReconciliation = deploymentBoolean(
   'BIG_GAINS_AUTOMATIC_RECONCILIATION',
   process.env.BIG_GAINS_AUTOMATIC_RECONCILIATION
 );
+const programPortability = deploymentBoolean(
+  'BIG_GAINS_PROGRAM_PORTABILITY',
+  process.env.BIG_GAINS_PROGRAM_PORTABILITY
+);
 
 if (!supabaseUrl || !supabasePublishableKey) {
   throw new Error('SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY are required.');
 }
 
-const source = `(() => {\n  'use strict';\n  window.__BIG_GAINS_CLOUD_CONFIG__ = Object.freeze({\n    supabaseUrl: ${JSON.stringify(supabaseUrl)},\n    supabasePublishableKey: ${JSON.stringify(supabasePublishableKey)},\n    automaticReconciliation: ${JSON.stringify(automaticReconciliation)},\n    authRedirectUrl: 'https://velazquick.github.io/big-gains/',\n    authSetupRedirectUrl: 'https://velazquick.github.io/big-gains/auth-setup.html'\n  });\n})();\n`;
+const source = `(() => {\n  'use strict';\n  window.__BIG_GAINS_CLOUD_CONFIG__ = Object.freeze({\n    supabaseUrl: ${JSON.stringify(supabaseUrl)},\n    supabasePublishableKey: ${JSON.stringify(supabasePublishableKey)},\n    automaticReconciliation: ${JSON.stringify(automaticReconciliation)},\n    programPortability: ${JSON.stringify(programPortability)},\n    programPortabilityVersion: ${programPortability ? '1' : 'null'},\n    authRedirectUrl: 'https://velazquick.github.io/big-gains/',\n    authSetupRedirectUrl: 'https://velazquick.github.io/big-gains/auth-setup.html'\n  });\n})();\n`;
 
 const cloudConfigVersion = `config-${createHash('sha256').update(source).digest('hex').slice(0, 16)}`;
 const [manifestSource, indexSource, authSetupSource, serviceWorkerSource] = await Promise.all([

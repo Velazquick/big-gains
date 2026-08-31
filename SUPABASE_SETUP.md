@@ -19,6 +19,12 @@ The browser must never receive a secret key, legacy service-role key, JWT signin
 
 For deployment, add `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` as GitHub Actions repository variables. The Pages workflow generates `cloud-config.js` only in the deployment artifact. If either variable is absent, the checked-in empty/default-off config is deployed and the app remains local-only.
 
+### Program Portability Runtime v1
+
+`BIG_GAINS_PROGRAM_PORTABILITY` is the repository-controlled static rollout gate. The generator accepts only case-insensitive `true` after trimming; every absent, false, or unexpected value emits `programPortability: false` and `programPortabilityVersion: null`. Exact ON emits `programPortability: true` and `programPortabilityVersion: 1`, and the generated config hash rotates every deployment cache identity.
+
+The gate is not database authority. Every Program write still requires the signed-in user JWT, `program-domain-write` with platform JWT verification, the private guarded database function, and an exact RLS readback before queue ACK. Capability OFF performs no Program read, write, queue, recovery, or cutover action. Set the repository variable only for the reviewed rollout commit, and set it back to `false` for static containment; no schema change is part of either operation.
+
 ### Runtime Reconciliation Control v1
 
 Automatic reconciliation now has two separately administered values with the same namespaced key. The GitHub Actions repository or `github-pages` environment **variable** is only the static Pages capability gate. The Supabase Edge Function **secret/environment value** is the authoritative runtime operational switch. The existing device-local pause is a third, independent OFF override. Do not copy either value into browser source.

@@ -2,7 +2,7 @@
 
 - Status: **Canonical RC execution plan**
 - Audit baseline: `origin/main` at `8ce0a52cf7441921533d957559ef7f4df1847e92`
-- Runtime marker: `v95-mobile-startup-interactivity`
+- Runtime marker: `v96-program-portability-rollout`
 - Local profile schema: **5**
 - Audit date: 2026-08-24
 

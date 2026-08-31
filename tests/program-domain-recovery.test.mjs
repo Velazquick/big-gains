@@ -585,15 +585,17 @@ test('27 independent user cannot validate another user remote row', async () => 
   assert.equal(other.ok, false);
 });
 
-test('28 offline and current startup remain unchanged while capability is unavailable', async () => {
+test('28 offline capability-off behavior remains inert while recovery is manifest-loaded', async () => {
   const read = await recovery.readRemote({ enabled: false, client: null, owner, scope: profileScope });
   assert.equal(read.state, recovery.states.UNSUPPORTED);
-  const [documentSource, workerSource] = await Promise.all([
+  const [documentSource, workerSource, manifestSource] = await Promise.all([
     readFile(new URL('../index.html', import.meta.url), 'utf8'),
-    readFile(new URL('../service-worker.js', import.meta.url), 'utf8')
+    readFile(new URL('../service-worker.js', import.meta.url), 'utf8'),
+    readFile(new URL('../asset-manifest.js', import.meta.url), 'utf8')
   ]);
   assert.doesNotMatch(documentSource, /program-domain-recovery\.js/);
   assert.doesNotMatch(workerSource, /program-domain-recovery\.js/);
+  assert.match(manifestSource, /program-domain-recovery\.js/);
 });
 
 test('29 repeated classification is stable and idempotent', async () => {

@@ -13,6 +13,7 @@
     ['direction', () => window.bigGainsDirection],
     ['sync-gateway', () => window.BigGainsSync],
     ['cloud-sync', () => window.BigGainsCloudSync],
+    ['program-portability', () => window.BigGainsProgramPortability],
     ['migration-preview', () => window.BigGainsMigrationPreview],
     ['controlled-migration', () => window.BigGainsControlledMigration]
   ];
