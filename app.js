@@ -15,8 +15,10 @@ window.workoutRoutineEngine=routineEngine;
 const DEFAULT_ROUTINES=routineEngine.defaultRoutines;
 const LIBRARY_ROUTINE_TYPES=routineEngine.libraryRoutineTypes;
 const statePersistenceApi=bigGainsStatePersistence.create({account:ACCOUNT,profile:PROFILE,profileConfig:PROFILE_CONFIG,validWorkoutTypes:Object.keys(DEFAULT_ROUTINES),createId:uid,slug:exerciseCatalog.idForName,exerciseCatalog});
+const hadStoredState=statePersistenceApi.hasStoredState();
 state=statePersistenceApi.load();
-if(bigGainsAccounts.runtime.kind==='independent'&&bigGainsAccounts.runtime.newlyProvisioned&&!statePersistenceApi.hasStoredState()){
+if(bigGainsAccounts.runtime.kind==='independent'&&bigGainsAccounts.runtime.newlyProvisioned&&!hadStoredState){
+  state.onboarding={contractVersion:1,status:'in_progress',lastStage:'welcome',completedAt:null,skippedAt:null};
   statePersistenceApi.save(state,null);
   bigGainsAccounts.completeIndependentBootstrap(bigGainsAccounts.runtime.authUserId);
 }
@@ -115,7 +117,7 @@ function renderLibrary(){renderSelectors();const list=BigGainsExercisePicker.fil
 function suggestionIdsForDay(day){return BigGainsExercisePicker.sortExercises(CATALOG_EXERCISES.filter(exercise=>exercise.day===day)).slice(0,10).map(exercise=>exercise.canonicalId);}
 function openLibraryExercisePicker(){const eligible=new Set(libraryEligibleExercises().map(exercise=>exercise.canonicalId));return exercisePicker.open({title:active?'Add exercise to workout':'Choose an exercise',prompt:active?'Choose one local EKF exercise to add to the workout in progress.':'Choosing an exercise starts a workout only after you confirm the exact movement.',excludedExerciseIds:active?.exercises.map(exercise=>exercise.id)||[],eligibilityPredicate:exercise=>eligible.has(exercise.canonicalId),suggestionIds:suggestionIdsForDay(selectedDay),suggestionLabel:`Suggested for ${displayWorkout(selectedDay)}`,returnFocus:()=>$('addSelectedExercise'),onSelect:canonicalId=>{const definition=exerciseCatalog.getById(canonicalId);if(definition){workoutSessionController.addExercise(definition.id,{scroll:true});window.bigGainsViewShell?.showView('train');}}});}
 function lastPerformance(exerciseId){return analyticsApi.previousPerformance(state.workouts,exerciseId,analyticsOptions());}
-function renderActiveSession(scroll=true){if(!active)return;selectedDay=active.type;$('activePanel').classList.remove('hidden');$('cancelWorkout').classList.remove('hidden');$('cancelWorkout').textContent='Cancel';$('activeWorkoutTitle').textContent=displayWorkout(active.type);if($('activeWorkoutMeta'))$('activeWorkoutMeta').textContent=`${active.exercises.length} movement${active.exercises.length===1?'':'s'} · In progress`;clearInterval(workoutTicker);workoutTicker=setInterval(renderWorkoutClock,1000);renderWorkoutClock();renderActive();renderLibrary();timerController.renderPreferences();timerController.reconcile();if(scroll)$('activePanel').scrollIntoView({behavior:'smooth',block:'start'});}
+function renderActiveSession(scroll=true){if(!active)return;selectedDay=active.type;$('activePanel').classList.remove('hidden');$('cancelWorkout').classList.remove('hidden');$('cancelWorkout').textContent='Cancel';$('activeWorkoutTitle').textContent=displayWorkout(active.type);if($('activeWorkoutMeta'))$('activeWorkoutMeta').textContent=`${active.exercises.length} movement${active.exercises.length===1?'':'s'} · In progress`;if($('firstWorkoutGuidance'))$('firstWorkoutGuidance').hidden=!(state.onboarding&&state.workouts.length===0);clearInterval(workoutTicker);workoutTicker=setInterval(renderWorkoutClock,1000);renderWorkoutClock();renderActive();renderLibrary();timerController.renderPreferences();timerController.reconcile();if(scroll)$('activePanel').scrollIntoView({behavior:'smooth',block:'start'});}
 function renderCompletion(workout){
   if(!workout)return false;
   completionReceipt={workoutId:workout.id,workout};
@@ -151,7 +153,18 @@ function dismissCompletion(){
   $('top').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
   return true;
 }
-function reviewCompletedWorkout(){if(!completionReceipt)return false;openHistory(completionReceipt.workoutId);return true;}
+function reviewCompletedWorkout(){if(!completionReceipt)return false;window.bigGainsViewShell?.showView('progress',{workout:false,historyView:'list'});openHistory(completionReceipt.workoutId,'list');return true;}
+
+function updateOnboarding(status,lastStage){
+  if(!state.onboarding)return false;
+  const now=new Date().toISOString();
+  state.onboarding={contractVersion:1,status,lastStage,completedAt:status==='completed'?now:null,skippedAt:status==='skipped'?now:null};
+  saveState();
+  renderFirstRunOnboarding();
+  return true;
+}
+function renderFirstRunOnboarding(){const panel=$('firstRunOnboarding');if(!panel)return;const visible=state.onboarding?.status==='in_progress',wasHidden=panel.hidden;panel.hidden=!visible;document.body.classList.toggle('first-run-open',visible);if(visible&&wasHidden)requestAnimationFrame(()=>$('firstRunTitle')?.focus({preventScroll:true}));}
+function startBlankWorkout(){window.bigGainsViewShell?.showView('train',{workout:false});if(!active)workoutSessionController.start(selectedDay,{loadRoutine:false,scroll:true});else workoutSessionController.resume(true);window.setTimeout(openLibraryExercisePicker,80);}
 const workoutSessionController=BigGainsWorkoutSessionController.create({
   getState:()=>state,
   getActiveWorkout:()=>active,
@@ -183,7 +196,7 @@ const workoutSessionController=BigGainsWorkoutSessionController.create({
   scheduleAfterCompletion:callback=>requestAnimationFrame(callback),
   advanceProgramSequence:({activeWorkout,completedAt})=>activeWorkout?.programOrigin?BigGainsProgramOrigin.advanceCaptureForCompletion({capture:state.programCapture,programOrigin:activeWorkout.programOrigin,workoutId:activeWorkout.id,accountId:ACCOUNT.accountId,profileId:PROFILE.id,catalog:exerciseCatalog,completedAt}):null,
   onCompletionAdvanced:({nextIndex})=>{if(nextIndex>=0&&!matchMedia('(prefers-reduced-motion: reduce)').matches)requestAnimationFrame(()=>document.querySelectorAll('#activeExercises .active-exercise')[nextIndex]?.scrollIntoView({behavior:'smooth',block:'nearest'}));},
-  onCompleted:({workout,newPRs})=>{$('heroNote').textContent=`Workout saved${newPRs?` · ${newPRs} new PR${newPRs===1?'':'s'}`:''}.`;renderAll();renderCompletion(workout);},
+  onCompleted:({workout,newPRs})=>{updateOnboarding('completed','first_success');$('heroNote').textContent=`Workout saved${newPRs?` · ${newPRs} new PR${newPRs===1?'':'s'}`:''}.`;renderAll();renderCompletion(workout);},
   onDiscarded:()=>{renderHero();renderLibrary();$('workoutPanel').scrollIntoView({behavior:'smooth'});}
 });
 window.workoutSessionController=workoutSessionController;
@@ -255,12 +268,15 @@ function closeRoutineEditor(){const d=$('routineDialog');if(d.close)d.close();el
 function saveRoutine(){state.customRoutines[routineDraftDay]=routineDraft.map(entry=>({exerciseId:entry.exerciseId,workingSets:Math.min(12,Math.max(1,Math.round(Number(entry.workingSets)||3))),targetReps:String(entry.targetReps||'').trim().slice(0,20)}));saveState();renderLibrary();closeRoutineEditor();}
 function resetRoutine(){delete state.customRoutines[routineDraftDay];delete routineVariantSelections[routineDraftDay];routineDraft=routineEngine.getDraft(routineDraftDay);saveState();renderRoutineEditor();renderLibrary();}
 function renderWeights(){const box=$('weightHistory');if(!state.weights.length){box.className='mini-list empty';box.textContent='No weigh-ins yet.';return;}box.className='mini-list';box.innerHTML=state.weights.slice(0,5).map(x=>`<div class="weight-row"><strong>${x.weight} lb</strong><small>${fmtDate(x.date)}</small></div>`).join('');}
-function renderAll(){if(window.BigGainsBootGate&&!window.BigGainsBootGate.canRender())return false;renderGreeting();renderHero();renderStats();renderEquipment();renderLibrary();renderHistory();renderCalendar();renderWeights();goalsApi.render();window.BigGainsProgramSetup?.render();timerController.renderPreferences();if(active)showActive(false);else timerController.deactivate();progressApi.afterFullRender({activeWorkout:active});return true;}
+function renderAll(){if(window.BigGainsBootGate&&!window.BigGainsBootGate.canRender())return false;renderGreeting();renderHero();renderStats();renderEquipment();renderLibrary();renderHistory();renderCalendar();renderWeights();goalsApi.render();window.BigGainsProgramSetup?.render();timerController.renderPreferences();if(active)showActive(false);else timerController.deactivate();progressApi.afterFullRender({activeWorkout:active});renderFirstRunOnboarding();return true;}
 function bind(id,event,handler){const el=$(id);if(el)el.addEventListener(event,handler);}
 timerController.initialize();
 goalsApi.initialize();
 bind('dayTabs','click',e=>{const b=e.target.closest('[data-day]');if(!b)return;selectedDay=b.dataset.day;$('muscleFilter').value='all';$('equipmentFilter').value='all';$('exerciseSearch').value='';renderLibrary();});
 bind('startWorkout','click',()=>{const today=todaysWorkout();if(active)workoutSessionController.resume(true);else if(today!=='Rest')workoutSessionController.start(today,{loadRoutine:true,scroll:true});});
+bind('trainBlankStart','click',startBlankWorkout);
+bind('firstRunTrain','click',()=>{updateOnboarding('completed','train');startBlankWorkout();});
+bind('firstRunExplore','click',()=>{updateOnboarding('skipped','explore');window.bigGainsViewShell?.showView('today',{workout:false});});
 bind('profileSelect','change',e=>switchProfile(e.target.value));
 bind('routineSelect','change',e=>{const day=e.target.dataset.variantFor;if(day)selectRoutineVariant(day,e.target.value);});
 bind('loadRoutine','click',()=>workoutSessionController.replace(selectedDay,{loadRoutine:true,scroll:true}));

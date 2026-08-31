@@ -26,8 +26,8 @@ function friendState(overrides = {}) {
   };
 }
 
-async function installIndependentRuntime(page, { state = friendState(), includeState = true } = {}) {
-  await page.addInitScript(({ authUserId, cloudAccountId, cloudProfileId, clientId, storageKey, state, includeState }) => {
+async function installIndependentRuntime(page, { state = friendState(), includeState = true, newlyProvisioned = false } = {}) {
+  await page.addInitScript(({ authUserId, cloudAccountId, cloudProfileId, clientId, storageKey, state, includeState, newlyProvisioned }) => {
     localStorage.setItem('big-gains-runtime-accounts-v1', JSON.stringify({
       version: 1,
       activeAuthUserId: authUserId,
@@ -35,13 +35,80 @@ async function installIndependentRuntime(page, { state = friendState(), includeS
         [authUserId]: {
           kind: 'independent', authUserId, cloudAccountId, cloudProfileId, clientId,
           displayName: 'Riley',
-          presentation: { petEnabled: false, accent: 'cobalt', theme: 'performance-dark' }
+          presentation: { petEnabled: false, accent: 'cobalt', theme: 'performance-dark' },
+          newlyProvisioned
         }
       }
     }));
     if (includeState && localStorage.getItem(storageKey) === null) localStorage.setItem(storageKey, JSON.stringify(state));
-  }, { authUserId, cloudAccountId, cloudProfileId, clientId, storageKey, state, includeState });
+  }, { authUserId, cloudAccountId, cloudProfileId, clientId, storageKey, state, includeState, newlyProvisioned });
 }
+
+test('new independent profile sees welcome once and can finish a blank first workout into History', async ({ page }) => {
+  await installIndependentRuntime(page, { includeState: false, newlyProvisioned: true });
+  await openApp(page);
+
+  await expect(page.locator('#firstRunOnboarding')).toBeVisible();
+  await expect(page.locator('#firstRunOnboarding')).toContainText('Private training');
+  await page.reload();
+  await expect(page.locator('#firstRunOnboarding')).toBeVisible();
+  await page.locator('#firstRunTrain').click();
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'train');
+  await expect(page.locator('#firstWorkoutGuidance')).toBeVisible();
+  await expect(page.locator('#exercisePickerDialog')).toBeVisible();
+  await page.locator('#exercisePickerSearch').fill('Barbell Bench Press');
+  await page.locator('[data-exercise-picker-select]').filter({ hasText: 'Barbell Bench Press' }).first().click();
+
+  const workingSet = page.locator('.active-exercise .set-line').nth(1);
+  await workingSet.locator('input[data-field="weight"]').fill('100');
+  await workingSet.locator('input[data-field="reps"]').fill('5');
+  await workingSet.locator('[data-complete-set]').click();
+  await expect(page.locator('#finishWorkout')).toBeEnabled();
+  await page.locator('#finishWorkout').click();
+  await expect(page.locator('#workoutCompletion')).toBeVisible();
+  await expect(page.locator('#completionReceiptCopy')).toContainText('Saved on this device');
+  await page.locator('#completionReview').click();
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'progress');
+  await expect(page.locator('#historyDialog')).toBeVisible();
+
+  const saved = await page.evaluate(storageKey => JSON.parse(localStorage.getItem(storageKey)), storageKey);
+  expect(saved.workouts).toHaveLength(1);
+  expect(saved.workouts[0].exercises[0].sets).toHaveLength(1);
+  expect(saved.onboarding).toMatchObject({ contractVersion: 1, status: 'completed', lastStage: 'first_success' });
+
+  await page.locator('#closeHistoryDialog').click();
+  await page.reload();
+  await expect(page.locator('#firstRunOnboarding')).toBeHidden();
+});
+
+test('profile-scoped onboarding state round-trips through the existing cloud preference recovery path', async ({ page }) => {
+  const onboarding = { contractVersion: 1, status: 'completed', lastStage: 'train', completedAt: '2026-08-31T12:00:00.000Z', skippedAt: null };
+  await installIndependentRuntime(page, { state: friendState({ onboarding }) });
+  await openApp(page);
+  const recovered = await page.evaluate(async ({ cloudAccountId, cloudProfileId, clientId }) => {
+    const records = await BigGainsCloudShadow.localRecords(clientId, state);
+    const rowsByTable = Object.fromEntries(BigGainsCloudShadow.tables.map(table => [table, []]));
+    for (const record of records) {
+      const row = {
+        id: `cloud-${record.clientId}`, account_id: cloudAccountId, profile_id: cloudProfileId,
+        client_id: record.clientId, idempotency_key: `onboarding-${record.clientId}`, version: 1,
+        created_at: '2026-08-31T12:00:00.000Z', updated_at: '2026-08-31T12:00:00.000Z'
+      };
+      if (record.table === 'bodyweight_entries') Object.assign(row, { measured_at: record.data.measuredAt, weight_value: record.data.weightValue, unit: record.data.unit });
+      else {
+        row.payload = BigGainsCloudShadow.envelopeFor(record);
+        if (record.table === 'workouts') row.completed_at = record.data.completedAt;
+      }
+      rowsByTable[record.table].push(row);
+    }
+    const profiles = { [clientId]: { id: cloudProfileId, client_id: clientId } };
+    const cloud = await BigGainsCloudShadow.reconstructCloud({ rowsByTable, tombstones: [], profiles, accountId: cloudAccountId });
+    const result = await BigGainsCloudShadow.schemaV5FromCloud({ cloud, profileClientId: clientId });
+    return { onboarding: result.state.onboarding, preference: result.records.find(record => record.clientId === 'onboarding') };
+  }, { cloudAccountId, cloudProfileId, clientId });
+  expect(recovered.onboarding).toEqual(onboarding);
+  expect(recovered.preference).toMatchObject({ table: 'preferences', entityType: 'onboardingPreference', clientId: 'onboarding' });
+});
 
 async function installCloudIdentityShape(page, profileClientId) {
   const now = '2026-08-07T20:00:00.000Z';
@@ -181,6 +248,7 @@ test('independent runtime renders one identity with cobalt performance tokens an
   await expect(page.locator('#profileSelect option')).toHaveCount(1);
   await expect(page.locator('#profileSelect option')).toHaveText('Riley');
   await expect(page.locator('#trainingPetCard')).toBeHidden();
+  await expect(page.locator('#firstRunOnboarding')).toBeHidden();
   expect(await page.locator('[data-profile-only="alexa"]').evaluateAll(elements => elements.every(element => element.hidden))).toBe(true);
   await page.locator('.bottom-nav [data-view="library"]').click();
   await expect(page.locator('#routineSelect')).not.toContainText('Jorge');
@@ -340,6 +408,8 @@ test('fresh invited Auth user sees onboarding, provisions once through RPC, and 
   await expect(page.locator('html')).toHaveAttribute('data-account-mode', 'independent');
   await expect(page.locator('#greeting')).toContainText('Riley');
   await expect(page.locator('#independentAccountOnboarding')).toBeHidden();
+  await expect(page.locator('#firstRunOnboarding')).toBeVisible();
+  await page.locator('#firstRunExplore').click();
   expect(rpcCalls).toBe(1);
   const result = await page.evaluate(({ storageKey, authUserId }) => ({
     state: JSON.parse(localStorage.getItem(storageKey)),
@@ -347,11 +417,14 @@ test('fresh invited Auth user sees onboarding, provisions once through RPC, and 
     managed: localStorage.getItem('big-gains-v2'),
     alexa: localStorage.getItem('big-gains-alexa-v1')
   }), { storageKey, authUserId });
-  expect(result.state).toMatchObject({ version: 5, profileId: clientId, workouts: [], weights: [] });
+  expect(result.state).toMatchObject({ version: 5, profileId: clientId, workouts: [], weights: [], onboarding: { contractVersion: 1, status: 'skipped', lastStage: 'explore' } });
   expect(result.runtime.activeAuthUserId).toBe(authUserId);
   expect(result.runtime.accounts[authUserId]).toMatchObject({ kind: 'independent', cloudAccountId, cloudProfileId, clientId });
   expect(result.managed).toBeNull();
   expect(result.alexa).toBeNull();
+  await page.reload();
+  await expect(page.locator('#firstRunOnboarding')).toBeHidden();
+  expect(rpcCalls).toBe(1);
 });
 
 test('independent production transport recovers a lost ACK and preserves friend tombstone semantics', async ({ page }) => {

@@ -6,6 +6,7 @@
     supabaseUrl: typeof existing?.supabaseUrl === 'string' ? existing.supabaseUrl : '',
     supabasePublishableKey: typeof existing?.supabasePublishableKey === 'string' ? existing.supabasePublishableKey : '',
     automaticReconciliation: existing?.automaticReconciliation === true,
+    selfServeSignup: existing?.selfServeSignup === true,
     programPortability: existing?.programPortability === true,
     programPortabilityVersion: existing?.programPortability === true
       && Number(existing?.programPortabilityVersion) === 1 ? 1 : null,

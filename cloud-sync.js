@@ -995,7 +995,8 @@
         <button id="cloudPasswordReset" class="ghost" type="button">Set or reset password</button>
         ${supabaseBoundary.isStandalone() ? '' : '<button id="cloudMagicLink" class="ghost" type="button">Use Magic Link in this browser</button>'}
       </form>
-      <div class="data-actions"><button id="cloudRemoteFastForward" class="primary" type="button" hidden>Update this device</button><button id="cloudSyncNow" class="secondary" type="button" hidden>Check now</button><button id="cloudSignOut" class="ghost" type="button" hidden>Sign out</button></div>
+      <div class="data-actions"><button id="cloudRemoteFastForward" class="primary" type="button" hidden>Update this device</button><button id="cloudSyncNow" class="secondary" type="button" hidden>Check now</button><button id="cloudSignOut" class="ghost" type="button" hidden>Sign out of cloud</button></div>
+      <small id="cloudSignOutNote" hidden>Signing out of cloud keeps this profile's training readable on this device.</small>
       <small id="cloudQueueStatus"></small>`;
   }
 
@@ -1018,6 +1019,7 @@
     const syncButton = document.getElementById('cloudSyncNow');
     const fastForwardButton = document.getElementById('cloudRemoteFastForward');
     const signOutButton = document.getElementById('cloudSignOut');
+    const signOutNote = document.getElementById('cloudSignOutNote');
     const queueStatus = document.getElementById('cloudQueueStatus');
     const profileBox = document.getElementById('cloudShadowProfiles');
     const conflictBox = document.getElementById('cloudConflictResolution');
@@ -1079,6 +1081,7 @@
     fastForwardButton.hidden = !session || !fastForwardAvailable || automaticFastForward;
     fastForwardButton.disabled = busy || comparing;
     signOutButton.hidden = !session;
+    signOutNote.hidden = !session;
     conflictBox.hidden = state !== 'SYNC CONFLICT' || !conflict;
     if (conflict) {
       const occurredAt = conflict.localSummary?.completedAt || conflict.cloudSummary?.completedAt;

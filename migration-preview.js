@@ -45,7 +45,7 @@
   });
   const KNOWN_STATE_KEYS = new Set([
     'version', 'profileId', 'goals', 'workouts', 'weights', 'prs', 'activeWorkout',
-    'restTimerEndsAt', 'customRoutines', 'timerPreferences', 'exercisePreferences',
+    'restTimerEndsAt', 'customRoutines', 'timerPreferences', 'exercisePreferences', 'onboarding',
     // Program-1A is validated by state-persistence and intentionally excluded
     // from the frozen migration/cloud record set until a cloud schema exists.
     'programCapture'
@@ -231,6 +231,18 @@
       if (preference.cue !== undefined && typeof preference.cue !== 'string') issue(issues, expectedProfileId, `exercisePreferences.${exerciseId}.cue`, 'Saved cue must be text.');
       if (preference.restSeconds !== undefined && (!validNumber(preference.restSeconds) || preference.restSeconds < 30)) issue(issues, expectedProfileId, `exercisePreferences.${exerciseId}.restSeconds`, 'Saved rest must be at least 30 seconds.');
     });
+
+    if (value.onboarding !== undefined) {
+      const onboarding = value.onboarding;
+      if (!isRecord(onboarding)
+        || onboarding.contractVersion !== 1
+        || !['in_progress', 'completed', 'skipped'].includes(onboarding.status)
+        || !['welcome', 'train', 'explore', 'first_success'].includes(onboarding.lastStage)
+        || (onboarding.completedAt !== null && !validDate(onboarding.completedAt))
+        || (onboarding.skippedAt !== null && !validDate(onboarding.skippedAt))) {
+        issue(issues, expectedProfileId, 'onboarding', 'Onboarding state must match the version 1 profile-scoped contract.');
+      }
+    }
 
     if (value.activeWorkout !== null) validateWorkout(value.activeWorkout, 0, expectedProfileId, issues, new Set(), { active: true });
     if (value.restTimerEndsAt !== null && (!validNumber(value.restTimerEndsAt) || value.restTimerEndsAt === 0)) {
