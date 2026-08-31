@@ -188,6 +188,7 @@
           <div class="train-preview-action" id="trainPreviewAction">
             <p>Starts from your saved lineup. Reorder or add movements inside the workout.</p>
             <button id="trainPreviewStart" class="primary" type="button">Start Workout</button>
+            <button id="trainBlankStart" class="ghost" type="button">Start blank workout</button>
           </div>
         </section>
         <section class="panel active-panel hidden" id="activePanel">
@@ -198,6 +199,11 @@
           <div class="workout-mode-toolbar" id="workoutModeToolbar">
             <button id="exitWorkoutMode" class="ghost compact" type="button">Exit Workout Mode</button>
           </div>
+          <section id="firstWorkoutGuidance" class="first-workout-guidance" aria-label="First workout steps" hidden>
+            <strong>Your first workout, in four steps</strong>
+            <ol><li>Choose an exercise.</li><li>Enter a working set.</li><li>Mark the set complete.</li><li>Finish to save it in History.</li></ol>
+            <small>No Goal or Program is required. The rest timer is optional.</small>
+          </section>
           <div id="workoutPetSlot" class="workout-pet-slot" aria-label="Workout companion"></div>
           <div id="activeExercises" class="active-exercises"></div>
           <section class="panel timer-card hidden" id="timerCard" data-timer-state="unavailable" aria-live="polite">
@@ -216,7 +222,7 @@
           <button id="browseWorkoutLibrary" class="secondary wide active-workout-add-exercise" type="button">Add Exercise</button>
           <button id="finishWorkout" class="primary wide" type="button" disabled>Finish workout</button>
         </section>
-        <div class="train-empty"><strong>No active workout.</strong><span>Start today's plan or build one from Library.</span></div>
+        <div class="train-empty"><strong>No active workout.</strong><span>Start a blank workout or use a saved routine. No Goal or Program is required.</span></div>
       </section>
 
       <section class="view" id="viewProgress">
@@ -278,6 +284,7 @@
         <div class="workout-completion-copy">
           <span class="label">Workout saved</span>
           <h1 id="workoutCompletionTitle" tabindex="-1">Workout complete</h1>
+          <p id="completionReceiptCopy">Saved on this device. You can review the session in History.</p>
           <p id="completionPrCopy" class="completion-pr-copy" hidden></p>
         </div>
         <div id="completionPetSlot" class="completion-pet-slot" aria-label="Workout companion"></div>
@@ -291,7 +298,25 @@
         </dl>
         <div class="completion-actions">
           <button id="completionDone" class="primary" type="button">Done</button>
-          <button id="completionReview" class="ghost compact" type="button">Review workout</button>
+          <button id="completionReview" class="ghost compact" type="button">View in History</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="firstRunOnboarding" class="first-run-onboarding" aria-labelledby="firstRunTitle" hidden>
+      <div class="first-run-card">
+        <span class="label">Welcome to Big Gains</span>
+        <h1 id="firstRunTitle" tabindex="-1">Private training, without the setup ceremony.</h1>
+        <p>Log workouts, plan when you want structure, and see your progress—all inside your private profile.</p>
+        <dl>
+          <div><dt>Train</dt><dd>Log a workout now.</dd></div>
+          <div><dt>Plan</dt><dd>Add Goals or a Program when you want structure.</dd></div>
+          <div><dt>Progress</dt><dd>Review History, workload, and records.</dd></div>
+          <div><dt>Library</dt><dd>Find routines, exercises, and building blocks.</dd></div>
+        </dl>
+        <div class="first-run-actions">
+          <button id="firstRunTrain" class="primary" type="button">Train now</button>
+          <button id="firstRunExplore" class="ghost" type="button">Explore app</button>
         </div>
       </div>
     </section>
@@ -332,7 +357,7 @@
   </div></dialog>
 
   <dialog id="exercisePickerDialog" class="exercise-picker-dialog" aria-labelledby="exercisePickerTitle" aria-describedby="exercisePickerPrompt"><div class="exercise-picker-shell"><header class="exercise-picker-head"><div><span class="label">Exercise Library</span><h2 id="exercisePickerTitle">Choose an exercise</h2><p id="exercisePickerPrompt">Search the local exercise catalog.</p></div><button id="closeExercisePicker" class="ghost compact" type="button" aria-label="Cancel exercise selection">Cancel</button></header><div class="exercise-picker-controls"><label class="exercise-picker-search"><span>Search exercises</span><input id="exercisePickerSearch" type="search" placeholder="Name, alias, muscle, or equipment" autocomplete="off" enterkeyhint="search"></label><div class="exercise-picker-filter-row"><label class="exercise-picker-filter"><span>Muscle</span><select id="exercisePickerMuscle" aria-label="Filter exercises by muscle"></select></label><label class="exercise-picker-filter"><span>Equipment</span><select id="exercisePickerEquipment" aria-label="Filter exercises by equipment"></select></label><button id="exercisePickerClearFilters" class="ghost compact" type="button" hidden>Clear</button></div></div><div id="exercisePickerResults" class="exercise-picker-results" aria-live="polite"></div></div></dialog>
-  <script src="asset-manifest.js?v=v97-program-portability-convergence-config-ab51ee79cd36825d" data-big-gains-manifest></script>
+  <script src="asset-manifest.js?v=v98-rc-self-serve-onboarding-config-925e766c1b907250" data-big-gains-manifest></script>
   <script src="asset-loader.js"></script>
 </body>
 </html>

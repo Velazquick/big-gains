@@ -328,12 +328,27 @@
       };
     }
 
+    function normalizeOnboarding(value) {
+      if (!isRecord(value)) return null;
+      const statuses = new Set(['in_progress', 'completed', 'skipped']);
+      const stages = new Set(['welcome', 'train', 'explore', 'first_success']);
+      const status = statuses.has(value.status) ? value.status : 'in_progress';
+      return {
+        contractVersion: 1,
+        status,
+        lastStage: stages.has(value.lastStage) ? value.lastStage : 'welcome',
+        completedAt: status === 'completed' && validDate(value.completedAt) ? new Date(value.completedAt).toISOString() : null,
+        skippedAt: status === 'skipped' && validDate(value.skippedAt) ? new Date(value.skippedAt).toISOString() : null
+      };
+    }
+
     function normalizeState(value, profileId = profile.id) {
       const defaults = blankState(profileId);
       const saved = isRecord(value) ? value : {};
+      const { onboarding: ignoredOnboarding, ...savedState } = saved;
       return {
         ...defaults,
-        ...saved,
+        ...savedState,
         version: 5,
         profileId,
         goals: normalizeGoals(saved.goals),
@@ -342,6 +357,9 @@
         prs: normalizePrs(saved.prs),
         activeWorkout: normalizeActiveWorkout(saved.activeWorkout),
         customRoutines: normalizeCustomRoutines(saved.customRoutines),
+        ...(Object.hasOwn(saved, 'onboarding') && normalizeOnboarding(saved.onboarding)
+          ? { onboarding: normalizeOnboarding(saved.onboarding) }
+          : {}),
         ...(Object.hasOwn(saved, 'programCapture') ? {
           programCapture: window.BigGainsProgramModel.normalizeCapture(saved.programCapture, {
             accountId: ownerAccount.accountId,
@@ -422,6 +440,7 @@
       storageKey,
       blankState,
       normalizeState,
+      normalizeOnboarding,
       hasStoredState,
       load,
       save,

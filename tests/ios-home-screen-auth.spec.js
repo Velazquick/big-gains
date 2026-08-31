@@ -153,7 +153,7 @@ test('password reset is generic, targets auth-setup, and enforces the resend coo
 
   await page.locator('#accountOnboardingEmail').fill(AUTH_EMAIL);
   await page.locator('#accountOnboardingReset').click();
-  await expect(page.locator('#accountOnboardingDetail')).toContainText('If this invited account exists');
+  await expect(page.locator('#accountOnboardingDetail')).toContainText('If an account can use password recovery');
   await page.locator('#accountOnboardingReset').click({ force: true });
 
   expect(calls.recover).toHaveLength(1);
@@ -204,6 +204,8 @@ test('an unexpected owner profile shape is blocked and locally signed out withou
   const before = await page.evaluate(key => localStorage.getItem(key), STORAGE_KEYS.jorge);
 
   await page.locator('.bottom-nav [data-view="library"]').click();
+  await expect(page.locator('#cloudSignOut')).toHaveText('Sign out of cloud');
+  await expect(page.locator('#cloudSignOutNote')).toContainText('keeps this profile\'s training readable on this device');
   await page.locator('#cloudAuthEmail').fill(AUTH_EMAIL);
   await page.locator('#cloudAuthPassword').fill('correct horse battery staple');
   await page.locator('#cloudAuthForm button[type="submit"]').click();

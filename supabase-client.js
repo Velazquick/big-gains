@@ -3,14 +3,35 @@
 
   const config = window.__BIG_GAINS_CLOUD_CONFIG__ || {};
   const configured = Boolean(config.supabaseUrl && config.supabasePublishableKey);
+  const signupAvailable = configured && config.selfServeSignup === true;
   const AUTH_STORAGE_KEY = 'big-gains-supabase-auth-v1';
+  const SIGNUP_COOLDOWN_KEY = 'big-gains-signup-cooldown-v1';
+  const SIGNUP_PENDING_KEY = 'big-gains-signup-pending-v1';
   const RESET_COOLDOWN_KEY = 'big-gains-password-reset-cooldown-v1';
   const MAGIC_LINK_COOLDOWN_KEY = 'big-gains-magic-link-cooldown-v1';
   const REQUEST_COOLDOWN_MS = 60_000;
   let client = null;
   let passwordSignInBusy = false;
+  let signupBusy = false;
   let passwordResetBusy = false;
   let magicLinkBusy = false;
+
+  function captureAuthCallback() {
+    const query = new URLSearchParams(location.search);
+    const fragment = new URLSearchParams(location.hash.replace(/^#/, ''));
+    const read = name => query.get(name) || fragment.get(name) || '';
+    const type = read('type');
+    const error = read('error_description') || read('error');
+    return Object.freeze({
+      present: Boolean(type || error || read('code') || read('access_token') || read('refresh_token')),
+      type,
+      confirmation: type === 'signup' || type === 'email',
+      error: error ? String(error).replaceAll('+', ' ') : '',
+      errorCode: read('error_code')
+    });
+  }
+
+  const authCallbackState = captureAuthCallback();
 
   function getClient() {
     if (!configured) return null;
@@ -43,6 +64,23 @@
     const value = String(email || '').trim().toLowerCase();
     if (!value) throw new Error('Enter your email address.');
     return value;
+  }
+
+  function pendingSignup() {
+    try {
+      const parsed = JSON.parse(sessionStorage.getItem(SIGNUP_PENDING_KEY) || 'null');
+      return parsed?.email
+        ? Object.freeze({ email: String(parsed.email), requestedAt: Number(parsed.requestedAt) || 0 })
+        : null;
+    } catch { return null; }
+  }
+
+  function rememberSignup(email) {
+    try { sessionStorage.setItem(SIGNUP_PENDING_KEY, JSON.stringify({ email, requestedAt: Date.now() })); } catch {}
+  }
+
+  function clearPendingSignup() {
+    try { sessionStorage.removeItem(SIGNUP_PENDING_KEY); } catch {}
   }
 
   function cooldownRemaining(key) {
@@ -93,12 +131,91 @@
       error.code = 'identity-mismatch';
       throw error;
     }
+    if (user.email_confirmed_at === null && !user.confirmed_at) {
+      if (rejectOnFailure) await rejectSession();
+      const error = new Error('Confirm your email before continuing. Open the newest Big Gains confirmation message, then sign in again.');
+      error.code = 'email-not-confirmed';
+      throw error;
+    }
     return Object.freeze({ ...user });
+  }
+
+  async function signUpWithPassword(email, password) {
+    const current = getClient();
+    if (!current || !signupAvailable) {
+      const error = new Error('Account creation is not available yet. Existing users can still sign in.');
+      error.code = 'signup-unavailable';
+      throw error;
+    }
+    if (navigator.onLine === false) {
+      const error = new Error('Connect to the internet to create an account.');
+      error.code = 'network-unavailable';
+      throw error;
+    }
+    const normalized = normalizedEmail(email);
+    const secret = String(password || '');
+    if (secret.length < 8) throw new Error('Use at least 8 characters for your password.');
+    const remaining = cooldownRemaining(SIGNUP_COOLDOWN_KEY);
+    if (remaining || signupBusy) {
+      return Object.freeze({ accepted: true, email: normalized, cooldownSeconds: Math.max(1, Math.ceil(remaining / 1000)) });
+    }
+    signupBusy = true;
+    try {
+      const { data, error } = await current.auth.signUp({
+        email: normalized,
+        password: secret,
+        options: { emailRedirectTo: config.authRedirectUrl || 'https://velazquick.github.io/big-gains/' }
+      });
+      beginCooldown(SIGNUP_COOLDOWN_KEY);
+      if (data?.session) await rejectSession();
+      if (error) {
+        const message = String(error.message || '').toLowerCase();
+        if (error.status === 429 || message.includes('rate limit')) {
+          const rejected = new Error('Please wait a minute before trying again.');
+          rejected.code = 'signup-rate-limited';
+          throw rejected;
+        }
+        if (message.includes('password') && (message.includes('weak') || message.includes('characters'))) throw error;
+        if (message.includes('signup') && message.includes('disabled')) {
+          const rejected = new Error('Account creation is not available yet. Existing users can still sign in.');
+          rejected.code = 'signup-unavailable';
+          throw rejected;
+        }
+        // Existing-account responses are intentionally indistinguishable from accepted requests.
+      }
+      rememberSignup(normalized);
+      return Object.freeze({ accepted: true, email: normalized, cooldownSeconds: Math.ceil(REQUEST_COOLDOWN_MS / 1000) });
+    } finally {
+      signupBusy = false;
+    }
+  }
+
+  async function resendSignupConfirmation(email) {
+    const current = getClient();
+    if (!current || !signupAvailable) throw new Error('Account creation is not available yet.');
+    const normalized = normalizedEmail(email);
+    const remaining = cooldownRemaining(SIGNUP_COOLDOWN_KEY);
+    if (remaining || signupBusy) {
+      return Object.freeze({ accepted: true, cooldownSeconds: Math.max(1, Math.ceil(remaining / 1000)) });
+    }
+    signupBusy = true;
+    beginCooldown(SIGNUP_COOLDOWN_KEY);
+    rememberSignup(normalized);
+    try {
+      await current.auth.resend({
+        type: 'signup',
+        email: normalized,
+        options: { emailRedirectTo: config.authRedirectUrl || 'https://velazquick.github.io/big-gains/' }
+      });
+    } catch {}
+    finally { signupBusy = false; }
+    return Object.freeze({ accepted: true, cooldownSeconds: Math.ceil(REQUEST_COOLDOWN_MS / 1000) });
   }
 
   async function signInWithPassword(email, password) {
     const current = getClient();
     if (!current) throw new Error('Private cloud is not configured.');
+    if (navigator.onLine === false) throw new Error('Connect to the internet to sign in on a new device.');
     const normalized = normalizedEmail(email);
     const secret = String(password || '');
     if (!secret) throw new Error('Enter your password.');
@@ -109,7 +226,7 @@
       const { data, error } = await current.auth.signInWithPassword({ email: normalized, password: secret });
       if (error || !data?.session?.user?.id) {
         await rejectSession();
-        const rejected = new Error('Email or password is incorrect, or this invited account is not ready.');
+        const rejected = new Error('Email or password is incorrect, or this account is not ready.');
         rejected.code = 'password-sign-in-rejected';
         rejected.cause = error || null;
         throw rejected;
@@ -350,11 +467,17 @@
 
   window.BigGainsSupabase = Object.freeze({
     configured,
+    signupAvailable,
+    authCallbackState,
     status: () => Object.freeze({ configured, signedIn: false }),
     getClient,
     session,
     verifiedUser,
     signInWithPassword,
+    signUpWithPassword,
+    resendSignupConfirmation,
+    pendingSignup,
+    clearPendingSignup,
     requestPasswordReset,
     requestMagicLink,
     requestJorgeMagicLink: requestMagicLink,
@@ -368,6 +491,7 @@
     isStandalone: standalone,
     cooldowns: () => Object.freeze({
       passwordResetMs: cooldownRemaining(RESET_COOLDOWN_KEY),
+      signupMs: cooldownRemaining(SIGNUP_COOLDOWN_KEY),
       magicLinkMs: cooldownRemaining(MAGIC_LINK_COOLDOWN_KEY)
     })
   });

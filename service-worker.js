@@ -1,4 +1,4 @@
-importScripts('./asset-manifest.js?v=v97-program-portability-convergence-config-ab51ee79cd36825d', './service-worker-core.js');
+importScripts('./asset-manifest.js?v=v98-rc-self-serve-onboarding-config-925e766c1b907250', './service-worker-core.js');
 
 const runtime = BigGainsServiceWorkerCore.createRuntime({
   manifest: BIG_GAINS_ASSET_MANIFEST,

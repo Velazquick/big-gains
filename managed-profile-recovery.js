@@ -14,7 +14,7 @@
   const ADOPTION_KEY = `${runtime.cloudKeys.catalog}-automatic-adoption-v1`;
   const RECOVERABLE_BLANK_KEYS = new Set([
     'version', 'profileId', 'goals', 'workouts', 'weights', 'prs', 'activeWorkout',
-    'restTimerEndsAt', 'customRoutines', 'timerPreferences', 'exercisePreferences'
+    'restTimerEndsAt', 'customRoutines', 'timerPreferences', 'exercisePreferences', 'onboarding'
   ]);
 
   const trainingKeys = new Set([
@@ -101,6 +101,7 @@
       || !Array.isArray(value.weights) || value.weights.length !== 0
       || !isRecord(value.prs) || Object.keys(value.prs).length !== 0
       || !isRecord(value.customRoutines) || Object.keys(value.customRoutines).length !== 0
+      || Object.hasOwn(value, 'onboarding')
       || (value.activeWorkout !== null && value.activeWorkout !== undefined)
       || (value.restTimerEndsAt !== null && value.restTimerEndsAt !== undefined)
       || ('exercisePreferences' in value
