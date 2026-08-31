@@ -1,15 +1,15 @@
 # Big Gains Program portability synchronization v1
 
-- Status: **Normative target contract; hosted dormant schema, hardened write gateway, and dormant Slices 2A, 2B, 3, and pre-rollout cutover implemented**
+- Status: **Implemented behind a fail-closed capability; production proof paused after a false local-order conflict and capability rolled back OFF pending corrected physical reproof**
 - Contract version: **`big-gains.program-portability-envelope.v1` / 1**
 - Repository baseline: `origin/main` at `c242bfd0c033df0e102739958f1cad7b1aa0aee6`
-- Runtime marker: `v96-program-portability-rollout`
+- Runtime marker: `v97-program-portability-convergence`
 - Local profile schema: **5**
 - Date: 2026-08-25
 
 The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHOULD**, **SHOULD NOT**, **MAY**, and **OPTIONAL** are normative when capitalized.
 
-Implementation tracking: the hosted migration/RLS destination and hardened JWT Edge gateway are live with zero Program rows at rollout preflight. The pure envelope, frozen transport, recovery classifier/adopter, and cutover orchestrator are now manifest-loaded behind the exact version-1 `BigGainsProgramPortability` bridge. That bridge owns a dedicated durable Program queue and accepted snapshot, preserves exact readback-before-ACK, derives only provable activation/successor/completion transitions, exposes deliberate publication/adoption/conflict actions, and keeps technical identities out of ordinary UI. Missing, false, malformed, or unknown capability values remain inert. The authority path remains authenticated client → JWT-required Edge Function with verified caller identity → non-exposed private guarded database function → ordinary RLS-protected readback. Production activation and A → B → A evidence are required before the feature is marked RC-complete.
+Implementation tracking: the hosted migration/RLS destination and hardened JWT Edge gateway are live. Rollout preflight proved zero Program rows; the first deliberate physical publication created exactly one revision-1 row and received exact readback ACK without changing History or unrelated hosted sources. Device A then displayed a false conflict because recovery compared locally retained immutable-member array order with the envelope's canonical catalog order. Rollout stopped before either conflict choice, and the capability was returned to OFF without editing the accepted row. Recovery now proves equality by rebuilding the local envelope at the remote revisions and matching the aggregate plus all three component fingerprints; a stored device with an empty local Program may also adopt a complete validated remote graph. The pure envelope, frozen transport, recovery classifier/adopter, and cutover orchestrator remain manifest-loaded behind the exact version-1 `BigGainsProgramPortability` bridge. Missing, false, malformed, or unknown capability values remain inert. Production reactivation and complete A → B → A evidence are required before the feature is marked RC-complete.
 
 ## 0. Authority and boundary
 

@@ -425,6 +425,31 @@ test('14 pristine fresh device can adopt a complete graph', async () => {
   assert.equal(inspected.state, recovery.states.REMOTE_FAST_FORWARD_SAFE);
 });
 
+test('14a a stored device with no local Program can adopt without inventing a conflict', async () => {
+  const remote = await remoteFor();
+  const inspected = await classify({
+    remoteRead: readResult(remote.validated),
+    localProgramCapture: model.blankCapture(),
+    pristine: false,
+    freshDevice: false
+  });
+  assert.equal(inspected.state, recovery.states.REMOTE_FAST_FORWARD_SAFE);
+});
+
+test('14b canonical domain fingerprints converge despite local immutable-member ordering', async () => {
+  const canonical = successorCapture(captureFixture(), null);
+  const remote = await remoteFor({ capture: canonical });
+  const reordered = clone(canonical);
+  reordered.programVersions.reverse();
+  const normalizedRemote = recovery.captureFromEnvelope(remote.envelope);
+  assert.notEqual(envelopeApi.canonicalize(reordered), envelopeApi.canonicalize(normalizedRemote));
+  const inspected = await classify({
+    remoteRead: readResult(remote.validated),
+    localProgramCapture: reordered
+  });
+  assert.equal(inspected.state, recovery.states.EXACT);
+});
+
 test('15 fresh-device reconstruction preserves exact Program and Routine identities and sequence', async () => {
   const capture = captureFixture();
   const remote = await remoteFor({ capture });
