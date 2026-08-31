@@ -3,7 +3,7 @@
 - Status: **Normative product and implementation contract; documentation only**
 - Contract version: **1**
 - Repository baseline: `origin/main` at `b5ffd908952b875e79c24c9b36525a88b092a5d6`
-- Runtime marker: `v96-program-portability-rollout`
+- Runtime marker: `v97-program-portability-convergence`
 - Local profile schema: **5**
 - Date: 2026-08-25
 - RC plan items closed by a later conforming implementation: R1, R2, R3, and R6 in the [Release Candidate Plan](RELEASE_CANDIDATE_PLAN.md)

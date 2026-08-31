@@ -327,6 +327,39 @@
     return envelopeApi.canonicalize(left) === envelopeApi.canonicalize(right);
   }
 
+  async function matchesDomainFingerprint(localSemantic, remote, mapping, {
+    envelopeApi = scope.BigGainsProgramDomainEnvelope,
+    catalog = null
+  } = {}) {
+    if (!remote?.record || !isRecord(remote?.envelope)) return false;
+    const revisions = {
+      definitions: remote.record.definitionsRevision,
+      heads: remote.record.headsRevision,
+      sequence: remote.record.sequenceRevision
+    };
+    try {
+      const envelope = await envelopeApi.build({
+        accountId: mapping.scope.accountId,
+        profileId: mapping.scope.profileId,
+        programCapture: meaningfulCapture(localSemantic) ? localSemantic : null,
+        catalog,
+        revisions,
+        lastTransition: remote.envelope.sequence?.lastTransition || null
+      });
+      const hashes = await envelopeApi.fingerprints(envelope, {
+        accountId: mapping.scope.accountId,
+        profileId: mapping.scope.profileId,
+        revisions
+      });
+      return hashes.fingerprint === remote.record.fingerprint
+        && hashes.definitionsFingerprint === remote.record.definitionsFingerprint
+        && hashes.headsFingerprint === remote.record.headsFingerprint
+        && hashes.sequenceFingerprint === remote.record.sequenceFingerprint;
+    } catch {
+      return false;
+    }
+  }
+
   function summaryFromCapture(capture) {
     const active = capture?.programVersions?.find(value => value.programVersionId === capture.activeProgramVersionId) || null;
     const head = capture?.programs?.find(value => value.activeVersionId === capture.activeProgramVersionId)
@@ -497,7 +530,10 @@
     }
     const remoteCapture = captureFromEnvelope(remote.envelope);
     const remoteSemantic = captureSemantic(remoteCapture, mapping, common);
-    const localMatchesRemote = sameCapture(localSemantic, remoteSemantic, envelopeApi);
+    const localMatchesRemote = await matchesDomainFingerprint(localSemantic, remote, mapping, {
+      envelopeApi,
+      catalog
+    });
     if (pending.length) {
       const localAhead = pending.length === 1
         && pendingRepresentsLocal(pending[0], localSemantic, remote, mapping, common);
@@ -515,11 +551,13 @@
     }
     let localMatchesAccepted = false;
     if (acceptedRemote?.envelope || acceptedRemote?.payload) {
-      const acceptedCapture = captureFromEnvelope(acceptedRemote.envelope || acceptedRemote.payload);
-      localMatchesAccepted = sameCapture(localSemantic, captureSemantic(acceptedCapture, mapping, common), envelopeApi);
+      localMatchesAccepted = await matchesDomainFingerprint(localSemantic, {
+        record: acceptedRemote.record || acceptedRemote,
+        envelope: acceptedRemote.envelope || acceptedRemote.payload
+      }, mapping, { envelopeApi, catalog });
     }
-    const freshSafe = (pristine || freshDevice) && !localMeaningful;
-    const fastForwardSafe = localMatchesRemote || freshSafe || (monotonic.advanced && localMatchesAccepted);
+    const emptyLocalSafe = !localMeaningful;
+    const fastForwardSafe = localMatchesRemote || emptyLocalSafe || (monotonic.advanced && localMatchesAccepted);
     if (!fastForwardSafe) {
       return classification(STATES.DIVERGENT_CONFLICT, REASON_CODES.LOCAL_REMOTE_DIVERGED, {
         local: summaryFromCapture(localSemantic),
