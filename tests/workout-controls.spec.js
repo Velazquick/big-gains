@@ -94,3 +94,71 @@ test('Add set inherits the latest working values once, persists, and updates pro
   stored = await jorgeState(page);
   expect(stored.workouts[0].exercises[0].sets.filter(set => !set.warmup)).toHaveLength(4);
 });
+
+test('empty active sets remove immediately, persist across reload, and renumber without ID corruption', async ({ page }) => {
+  await page.locator('input[data-field="weight"][data-ei="0"][data-si="3"]').fill('');
+  await page.locator('input[data-field="reps"][data-ei="0"][data-si="3"]').fill('');
+  await page.getByRole('button', { name: 'Remove Set 3 of 3' }).click();
+
+  let stored = await jorgeState(page);
+  const working = stored.activeWorkout.exercises[0].sets.filter(set => !set.warmup);
+  expect(working.map(set => set.id)).toEqual(['active-working-1', 'active-working-2']);
+  expect(new Set(stored.activeWorkout.exercises[0].sets.map(set => set.id)).size).toBe(stored.activeWorkout.exercises[0].sets.length);
+  await expect(page.getByRole('button', { name: 'Complete Set 1 of 2' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Complete Set 2 of 2' })).toBeVisible();
+
+  await page.reload();
+  stored = await jorgeState(page);
+  expect(stored.activeWorkout.exercises[0].sets.filter(set => !set.warmup)).toHaveLength(2);
+  await expect(page.getByRole('button', { name: 'Remove Set 2 of 2' })).toBeVisible();
+});
+
+test('entered working and warm-up sets require an inline confirmation while prescription provenance stays unchanged', async ({ page }) => {
+  const before = await page.evaluate(() => {
+    active.programOrigin = { contractVersion: 1, marker: 'preserve-me' };
+    saveState();
+    return {
+      routine: structuredClone(state.customRoutines),
+      prescription: structuredClone(workoutRoutineEngine.getPrescription('Push', 'seated-machine-chest-press')),
+      origin: structuredClone(active.programOrigin)
+    };
+  });
+
+  const workingRemove = page.getByRole('button', { name: 'Remove Set 2 of 3' });
+  await workingRemove.click();
+  await expect(page.getByRole('button', { name: 'Confirm: Remove this set from this workout?' })).toHaveText('Sure?');
+  expect((await jorgeState(page)).activeWorkout.exercises[0].sets.filter(set => !set.warmup)).toHaveLength(3);
+  await page.getByRole('button', { name: 'Confirm: Remove this set from this workout?' }).click();
+
+  const warmupRemove = page.getByRole('button', { name: 'Remove Warm-up' });
+  await warmupRemove.click();
+  await expect(page.getByRole('button', { name: 'Confirm: Remove this set from this workout?' })).toHaveText('Sure?');
+  await page.getByRole('button', { name: 'Confirm: Remove this set from this workout?' }).click();
+
+  const after = await page.evaluate(() => ({
+    routine: structuredClone(state.customRoutines),
+    prescription: structuredClone(workoutRoutineEngine.getPrescription('Push', 'seated-machine-chest-press')),
+    origin: structuredClone(active.programOrigin),
+    targetWorkingSets: active.exercises[0].targetWorkingSets
+  }));
+  expect(after.routine).toEqual(before.routine);
+  expect(after.prescription).toEqual(before.prescription);
+  expect(after.origin).toEqual(before.origin);
+  expect(after.targetWorkingSets).toBeUndefined();
+  expect((await jorgeState(page)).activeWorkout.exercises[0].sets.filter(set => !set.warmup)).toHaveLength(2);
+});
+
+test('completion accepts explicitly fewer sets and the next planned session restores the original prescription', async ({ page }) => {
+  const remove = page.getByRole('button', { name: 'Remove Set 3 of 3' });
+  await remove.click();
+  await page.getByRole('button', { name: 'Confirm: Remove this set from this workout?' }).click();
+  await page.getByRole('button', { name: 'Complete Set 1 of 2' }).click();
+  await page.getByRole('button', { name: 'Complete Set 2 of 2' }).click();
+  await page.locator('#finishWorkout').click();
+
+  let stored = await jorgeState(page);
+  expect(stored.workouts[0].exercises[0].sets.filter(set => !set.warmup)).toHaveLength(2);
+  await page.evaluate(() => workoutSessionController.start('Push', { loadRoutine: true, scroll: false }));
+  stored = await jorgeState(page);
+  expect(stored.activeWorkout.exercises.find(exercise => exercise.id === 'seated-machine-chest-press').sets.filter(set => !set.warmup)).toHaveLength(3);
+});

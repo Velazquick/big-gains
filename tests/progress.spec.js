@@ -65,5 +65,5 @@ test('refreshes the progress panel after a full render without persisting', asyn
   expect(storageWrites).toBe(0);
   await expect(page.locator('#progressExerciseSelect')).toHaveValue('seated-machine-chest-press');
   await expect(page.locator('#progressPreview')).toContainText('Seated Machine Chest Press');
-  await expect(page.locator('#progressPreview')).toContainText('Best e1RM');
+  await expect(page.locator('#progressPreview')).toContainText('Indicated Load Record');
 });

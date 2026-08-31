@@ -168,7 +168,7 @@ test('bottom Add Exercise action stays separate from the timer and meets the mob
   expect((await jorgeState(page)).activeWorkout.id).toBe(workoutId);
 });
 
-test('the integrated pet stays restrained through calm, rest, rest-complete, and ineligible-machine completion states', async ({ page }) => {
+test('the integrated pet stays restrained through calm and rest, then recognizes an indicated-load record', async ({ page }) => {
   await installLocalStorageFixture(page, 'activeWorkoutWithExercises');
   await openApp(page);
   await expect(page.locator('#workoutPetSlot #trainingPet')).toHaveAttribute('data-state', 'calm');
@@ -183,7 +183,7 @@ test('the integrated pet stays restrained through calm, rest, rest-complete, and
   await expect(page.locator('#trainingPetMessage')).toHaveText("You're up.");
 
   await page.locator('#finishWorkout').click();
-  await expect(page.locator('#trainingPet')).toHaveAttribute('data-state', 'complete');
+  await expect(page.locator('#trainingPet')).toHaveAttribute('data-state', 'pr');
   await expect(page.locator('#trainingPetCard')).toBeVisible();
 });
 

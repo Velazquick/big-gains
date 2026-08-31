@@ -41,7 +41,7 @@ test('selected-day summaries are accurate and reuse history detail', async ({ pa
   const lateWorkout = page.locator('#calendarDayWorkouts [data-history-id="late-workout"]');
   await expect(lateWorkout).toContainText('30:00');
   await expect(lateWorkout).toContainText('1 exercises · 1 working sets');
-  await expect(lateWorkout).toContainText('2 PRs');
+  await expect(lateWorkout).toContainText('0 records');
   await lateWorkout.click();
   await expect(page.locator('#historyDialog')).toBeVisible();
   await expect(page.locator('#historyDialogContent .history-exercise')).toHaveCount(1);
