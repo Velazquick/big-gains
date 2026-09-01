@@ -72,7 +72,12 @@ async function routeAuth(page, {
   await page.route(`${SUPABASE_ORIGIN}/**`, async route => {
     const request = route.request();
     const url = new URL(request.url());
-    const headers = { 'access-control-allow-origin': '*', 'content-type': 'application/json' };
+    const headers = {
+      'access-control-allow-origin': '*',
+      'access-control-allow-headers': 'apikey, authorization, content-type, x-client-info',
+      'access-control-allow-methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+      'content-type': 'application/json'
+    };
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
     if (url.pathname.endsWith('/auth/v1/token')) {
       calls.token.push(request.postDataJSON());

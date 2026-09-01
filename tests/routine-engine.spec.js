@@ -199,9 +199,14 @@ test('reset returns to the profile default without touching active or completed 
     selectedDay = 'Push';
     openRoutineEditor();
   });
-  await page.locator('#resetRoutine').click();
+  const reset = page.locator('#resetRoutine');
+  await reset.click();
+  let stored = await readStoredJson(page, STORAGE_KEYS.jorge);
+  expect(stored.customRoutines.Push).toEqual(['barbell-bench-press']);
+  await expect(reset).toHaveAccessibleName('Confirm: Restore the original Jorge Push routine?');
+  await reset.click();
 
-  const stored = await readStoredJson(page, STORAGE_KEYS.jorge);
+  stored = await readStoredJson(page, STORAGE_KEYS.jorge);
   expect(stored.customRoutines.Push).toBeUndefined();
   expect(stored.activeWorkout).toEqual(before.activeWorkout);
   expect(stored.workouts).toEqual(before.workouts);

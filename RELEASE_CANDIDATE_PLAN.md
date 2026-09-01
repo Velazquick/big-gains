@@ -14,6 +14,8 @@ Implementation update: `v101-rc-settings-units` implements the release-facing Se
 
 Implementation update: `v102-rc-active-workout-units` adds an active-session-only lb/kg override with precedence over the profile default. The override is validated as additive active-workout UI metadata, can ride the existing active-session JSON payload, and is explicitly omitted from completed History. Toggling rerenders canonical values without rewriting them; input converts once back to pounds. Completion, discard, and the next workout end the override lifetime without changing Settings, Program/Routine prescriptions, progression, analytics, records, schema, Auth, or hosted data.
 
+Implementation update: `v103-rc-hardening-pass-1` adds the canonical [recovery and rebuild runbook](RECOVERY_RUNBOOK.md), confirms the protected test-gated Pages path, closes two attributable destructive-action gaps (an active exercise with entered/completed sets and a customized Routine reset now require explicit second confirmation), and makes History-detail focus restoration browser-independent. Safe device-profile removal remains deferred because managed profiles share Auth plus queue/catalog metadata and the current runtime lacks an atomic namespace manifest/rollback boundary that can prove exact-profile deletion without affecting its sibling.
+
 This plan supersedes calendar-driven external-test targets. Big Gains reaches release candidate when it is the product the owner intends to hand to people and the gates below are proved. It is not a promise of zero bugs.
 
 ## 1. RC product standard

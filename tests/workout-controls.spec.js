@@ -26,11 +26,31 @@ test('reorders and removes exercises without changing selector compatibility', a
     'lat-pulldown', 'seated-machine-chest-press'
   ]);
 
-  await page.getByRole('button', { name: 'Remove Seated Machine Chest Press' }).click();
+  const remove = page.getByRole('button', { name: 'Remove Seated Machine Chest Press' });
+  await remove.click();
+  await expect(cards).toHaveCount(2);
+  await expect(remove).toHaveAccessibleName('Confirm: Remove Seated Machine Chest Press and its entered sets from this workout?');
+  await remove.click();
   await expect(cards).toHaveCount(1);
   await expect(cards.locator('h3')).toHaveText(['Lat Pulldown']);
   await expect(page.locator('#quickExerciseSelect')).toBeAttached();
   expect((await jorgeState(page)).activeWorkout.exercises.map(exercise => exercise.id)).toEqual(['lat-pulldown']);
+});
+
+test('an exercise without entered set data removes immediately', async ({ page }) => {
+  await page.evaluate(() => {
+    state.activeWorkout.exercises[1].sets.forEach(set => {
+      set.weight = '';
+      set.reps = '';
+      set.completed = false;
+    });
+    saveState();
+    renderActive();
+  });
+
+  await page.getByRole('button', { name: 'Remove Lat Pulldown' }).click();
+  await expect(page.locator('#activeExercises .active-exercise')).toHaveCount(1);
+  expect((await jorgeState(page)).activeWorkout.exercises.map(exercise => exercise.id)).toEqual(['seated-machine-chest-press']);
 });
 
 test('edits set values through inputs and steppers', async ({ page }) => {

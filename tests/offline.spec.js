@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
 
-const CURRENT_RELEASE = 'v102-rc-active-workout-units';
+const CURRENT_RELEASE = 'v103-rc-hardening-pass-1';
 const CURRENT_CONFIG_VERSION = 'config-925e766c1b907250';
 const CURRENT_CACHE = `big-gains-shell-${CURRENT_RELEASE}-${CURRENT_CONFIG_VERSION}`;
 const PREVIOUS_CACHE = 'big-gains-shell-v94-pe-1c-atomic-proposal-application-config-ab51ee79cd36825d';
