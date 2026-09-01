@@ -461,7 +461,8 @@
       if (!completed.length) return false;
       const completedAt = new Date(now()).toISOString();
       const durationSeconds = Math.floor((now() - new Date(current.startedAt)) / 1000);
-      const workout = { ...current, completedAt, durationSeconds, exercises: completed };
+      const { displayUnitOverride: ignoredDisplayUnitOverride, ...completedWorkout } = current;
+      const workout = { ...completedWorkout, completedAt, durationSeconds, exercises: completed };
       const state = getState();
       const previous = {
         workouts: state.workouts,

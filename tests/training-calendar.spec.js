@@ -4,6 +4,9 @@ import { openApp } from './helpers/app.js';
 import { openHistoryCalendar } from './helpers/history.js';
 
 test.use({ timezoneId: 'America/New_York' });
+test.beforeEach(async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-08-31T16:00:00.000Z'));
+});
 
 async function seedCalendar(page, { active = null, alexa = false } = {}) {
   // These timestamps fall on different UTC dates but the same local date in New York.

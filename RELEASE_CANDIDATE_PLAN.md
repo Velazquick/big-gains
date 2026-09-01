@@ -12,6 +12,8 @@ Implementation update: `v100-rc-train-history-correctness` implements R5's two-f
 
 Implementation update: `v101-rc-settings-units` implements the release-facing Settings pass without changing the five-destination product model. The profile-scoped lb/kg preference is a presentation/input boundary over canonical-pound schema-v5 facts; an absent preference remains the backward-compatible pound default, and toggling never rewrites History. Cloud, backup, and support actions move into secondary Settings while engineering-heavy details remain available only under Advanced diagnostics. Appearance is omitted until it has a generic profile-safe contract.
 
+Implementation update: `v102-rc-active-workout-units` adds an active-session-only lb/kg override with precedence over the profile default. The override is validated as additive active-workout UI metadata, can ride the existing active-session JSON payload, and is explicitly omitted from completed History. Toggling rerenders canonical values without rewriting them; input converts once back to pounds. Completion, discard, and the next workout end the override lifetime without changing Settings, Program/Routine prescriptions, progression, analytics, records, schema, Auth, or hosted data.
+
 This plan supersedes calendar-driven external-test targets. Big Gains reaches release candidate when it is the product the owner intends to hand to people and the gates below are proved. It is not a promise of zero bugs.
 
 ## 1. RC product standard
