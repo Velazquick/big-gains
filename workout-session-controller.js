@@ -350,14 +350,18 @@
       return true;
     }
 
-    function removeExercise(index) {
+    function removeExercise(index, { confirmed = false } = {}) {
       const current = getActiveWorkout();
-      if (!current?.exercises?.[index]) return false;
+      const exercise = current?.exercises?.[index];
+      if (!exercise) return { removed: false, confirmationRequired: false };
+      if (exercise.sets?.some(setHasEnteredData) && !confirmed) {
+        return { removed: false, confirmationRequired: true, exerciseId: exercise.id || null };
+      }
       current.exercises.splice(index, 1);
       persistActiveMutation();
       renderActiveMutation();
       renderLibraryMutation();
-      return true;
+      return { removed: true, confirmationRequired: false, exerciseId: exercise.id || null };
     }
 
     function addSet(exerciseIndex) {

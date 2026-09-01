@@ -26,7 +26,7 @@ if(bigGainsAccounts.runtime.kind==='independent'&&bigGainsAccounts.runtime.newly
 }
 let selectedDay=(state.activeWorkout&&state.activeWorkout.type)||(todaysWorkout()==='Rest'?PROFILE.capabilities.restFallbackWorkout:todaysWorkout());
 let active=state.activeWorkout||null;
-let workoutTicker=null,deferredPrompt=null,cancelArmedUntil=0,setRemovalArmed=null,setRemovalTimer=null;
+let workoutTicker=null,deferredPrompt=null,cancelArmedUntil=0,setRemovalArmed=null,setRemovalTimer=null,exerciseRemovalArmed=null,exerciseRemovalTimer=null,routineResetArmedUntil=0,routineResetTimer=null;
 let routineDraftDay=selectedDay,routineDraft=[];
 let quickCompatExerciseId=null,routineCompatExerciseId=null;
 let completionReceipt=null;
@@ -63,7 +63,7 @@ const localDateKey=value=>{const date=value instanceof Date?value:new Date(value
 const calendarSavedKey=bigGainsAccounts.registry.sessionKey(ACCOUNT,'calendar-date');
 let calendarSelectedKey=(()=>{try{return sessionStorage.getItem(calendarSavedKey);}catch{return null;}})()||localDateKey(new Date());
 let calendarMonth=(()=>{const [year,month]=calendarSelectedKey.split('-').map(Number);return new Date(year,month-1,1);})();
-let historyEditReturnView=null;
+let historyEditReturnView=null,historyDetailTrigger=null;
 const retrospectiveApi=window.bigGainsRetrospective.create({
   profile:PROFILE,routineEngine,exercises:CATALOG_EXERCISES,createId:uid,slug:exerciseCatalog.idForName,escapeHtml,
   picker:exercisePicker,catalog:exerciseCatalog,
@@ -244,6 +244,7 @@ function renderCalendarDay(workouts){const [year,month,day]=calendarSelectedKey.
 function openHistory(id,originView=null){
   const w=state.workouts.find(x=>x.id===id);
   if(!w)return;
+  if(!$('historyDialog').open)historyDetailTrigger=document.activeElement;
   const historicalOptions=analyticsApi.optionsForWorkout(w,analyticsOptions()),title=completionWorkoutLabel(w.type),summary=analyticsApi.workoutSummary(w,historicalOptions),historyView=originView||progressApi.currentHistoryView?.(),archiveOpen=Boolean(historyView),recordDerivation=derivePersonalRecords(),workoutEvents=recordDerivation.workoutRecordEvents?.[w.id]||[];
   $('historyDialogTitle').textContent=title;
   $('historyDialogDate').textContent=fmtWorkoutContext(w.completedAt);
@@ -294,7 +295,7 @@ function renderRoutineEditor(){const list=$('routineEditorList'),used=new Set(ro
 function openRoutineExercisePicker(index=null){const current=index===null?null:routineDraft[index]?.exerciseId;const excluded=routineDraft.filter((_,itemIndex)=>itemIndex!==index).map(entry=>entry.exerciseId);return exercisePicker.open({title:index===null?'Add exercise to routine':'Replace routine exercise',prompt:'This changes only the future routine draft. Active and completed workouts stay unchanged.',currentExerciseId:current,excludedExerciseIds:excluded,suggestionIds:suggestionIdsForDay(routineDraftDay),suggestionLabel:`Suggested for ${displayWorkout(routineDraftDay)}`,returnFocus:()=>index===null?$('addRoutineExercise'):document.querySelector(`[data-routine-choose="${index}"]`),onSelect:canonicalId=>{const definition=exerciseCatalog.getById(canonicalId);if(!definition)return;if(index===null)routineDraft.push({exerciseId:definition.id,workingSets:3,targetReps:'8–10'});else routineDraft[index].exerciseId=definition.id;renderRoutineEditor();}});}
 function closeRoutineEditor(){const d=$('routineDialog');if(d.close)d.close();else d.removeAttribute('open');}
 function saveRoutine(){state.customRoutines[routineDraftDay]=routineDraft.map(entry=>({exerciseId:entry.exerciseId,workingSets:Math.min(12,Math.max(1,Math.round(Number(entry.workingSets)||3))),targetReps:String(entry.targetReps||'').trim().slice(0,20)}));saveState();renderLibrary();closeRoutineEditor();}
-function resetRoutine(){delete state.customRoutines[routineDraftDay];delete routineVariantSelections[routineDraftDay];routineDraft=routineEngine.getDraft(routineDraftDay);saveState();renderRoutineEditor();renderLibrary();}
+function resetRoutine(){const button=$('resetRoutine'),now=Date.now(),customized=Object.hasOwn(state.customRoutines||{},routineDraftDay);if(customized&&now>=routineResetArmedUntil){routineResetArmedUntil=now+3500;button.textContent='Tap again to restore';button.classList.add('danger','is-confirming');button.setAttribute('aria-label',`Confirm: Restore the original ${displayWorkout(routineDraftDay)} routine?`);clearTimeout(routineResetTimer);routineResetTimer=setTimeout(()=>{if(Date.now()>=routineResetArmedUntil){routineResetArmedUntil=0;button.textContent='Restore original';button.classList.remove('danger','is-confirming');button.removeAttribute('aria-label');}},3600);return false;}routineResetArmedUntil=0;clearTimeout(routineResetTimer);delete state.customRoutines[routineDraftDay];delete routineVariantSelections[routineDraftDay];routineDraft=routineEngine.getDraft(routineDraftDay);saveState();renderRoutineEditor();renderLibrary();button.textContent='Restore original';button.classList.remove('danger','is-confirming');button.removeAttribute('aria-label');return true;}
 function renderWeights(){const box=$('weightHistory');if(!state.weights.length){box.className='mini-list empty';box.textContent='No weigh-ins yet.';return;}box.className='mini-list';box.innerHTML=state.weights.slice(0,5).map(x=>`<div class="weight-row"><strong>${unitsApi.formatBodyweight(x.weight,state)}</strong><small>${fmtDate(x.date)}</small></div>`).join('');}
 function renderAll(){if(window.BigGainsBootGate&&!window.BigGainsBootGate.canRender())return false;renderGreeting();renderHero();renderStats();renderEquipment();renderLibrary();renderHistory();renderCalendar();renderWeights();renderSettings();goalsApi.render();window.BigGainsProgramSetup?.render();timerController.renderPreferences();if(active)showActive(false);else timerController.deactivate();progressApi.afterFullRender({activeWorkout:active});renderFirstRunOnboarding();return true;}
 function bind(id,event,handler){const el=$(id);if(el)el.addEventListener(event,handler);}
@@ -332,7 +333,7 @@ bind('activeExercises','click',e=>{
   if(head&&!e.target.closest('button,input,select,textarea,a')){e.preventDefault();toggleRenderedExercise(Number(head.dataset.exerciseHead),head);return;}
   const t=e.target.closest('button');
   if(!t)return;
-  if(t.dataset.removeExercise!==undefined){workoutSessionController.removeExercise(Number(t.dataset.removeExercise));return;}
+  if(t.dataset.removeExercise!==undefined){const exerciseIndex=Number(t.dataset.removeExercise),exercise=active.exercises[exerciseIndex],key=exercise?`${active.id}:${exercise.id||exerciseIndex}`:'';const result=workoutSessionController.removeExercise(exerciseIndex,{confirmed:key&&exerciseRemovalArmed===key});if(result.confirmationRequired){exerciseRemovalArmed=key;clearTimeout(exerciseRemovalTimer);t.classList.add('is-confirming');t.textContent='Sure?';t.setAttribute('aria-label',`Confirm: Remove ${exercise?.name||'this exercise'} and its entered sets from this workout?`);exerciseRemovalTimer=setTimeout(()=>{if(exerciseRemovalArmed===key){exerciseRemovalArmed=null;t.classList.remove('is-confirming');t.textContent='✕';t.setAttribute('aria-label',`Remove ${exercise?.name||'exercise'}`);}},3500);}else if(result.removed){exerciseRemovalArmed=null;clearTimeout(exerciseRemovalTimer);}return;}
   if(t.dataset.addSet!==undefined){workoutSessionController.addSet(Number(t.dataset.addSet));return;}
   if(t.dataset.removeSet!==undefined){
     const exerciseIndex=Number(t.dataset.ei),setIndex=Number(t.dataset.si),set=active.exercises[exerciseIndex]?.sets?.[setIndex],key=set?`${active.id}:${set.id||`${exerciseIndex}:${setIndex}`}`:'';
@@ -360,6 +361,7 @@ bind('calendarPrevious','click',()=>{calendarMonth=new Date(calendarMonth.getFul
 bind('calendarNext','click',()=>{calendarMonth=new Date(calendarMonth.getFullYear(),calendarMonth.getMonth()+1,1);renderCalendar();});
 bind('calendarToday','click',()=>{const today=new Date();calendarSelectedKey=localDateKey(today);calendarMonth=new Date(today.getFullYear(),today.getMonth(),1);try{sessionStorage.setItem(calendarSavedKey,calendarSelectedKey);}catch{}renderCalendar();});
 bind('closeHistoryDialog','click',closeHistory);bind('historyDialog','click',e=>{if(e.target===$('historyDialog'))closeHistory();});
+bind('historyDialog','close',()=>{const trigger=historyDetailTrigger;historyDetailTrigger=null;requestAnimationFrame(()=>{if(trigger?.isConnected)trigger.focus({preventScroll:true});});});
 bind('editCompletedWorkout','click',editCompletedWorkout);bind('requestDeleteCompletedWorkout','click',requestDeleteCompletedWorkout);bind('cancelDeleteCompletedWorkout','click',cancelDeleteCompletedWorkout);bind('confirmDeleteCompletedWorkout','click',deleteCompletedWorkout);
 bind('completionDone','click',dismissCompletion);bind('completionReview','click',reviewCompletedWorkout);
 bind('routineEditorList','click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.routineChoose!==undefined)return openRoutineExercisePicker(Number(b.dataset.routineChoose));const i=Number(b.dataset.index);if(b.dataset.routineMove==='up'&&i>0)[routineDraft[i-1],routineDraft[i]]=[routineDraft[i],routineDraft[i-1]];else if(b.dataset.routineMove==='down'&&i<routineDraft.length-1)[routineDraft[i+1],routineDraft[i]]=[routineDraft[i],routineDraft[i+1]];else if(b.dataset.routineRemove!==undefined)routineDraft.splice(Number(b.dataset.routineRemove),1);renderRoutineEditor();});
