@@ -60,6 +60,9 @@
     }
     await add('preferences', 'goals', 'goals', state.goals);
     await add('preferences', 'timerPreferences', 'timer', state.timerPreferences);
+    // Absence is the backwards-compatible pounds default. Only kg needs a
+    // cloud row; switching back to lb naturally tombstones that preference.
+    if (state.unitPreferences?.weightUnit === 'kg') await add('preferences', 'unitPreferences', 'units', state.unitPreferences);
     if (state.onboarding) await add('preferences', 'onboardingPreference', 'onboarding', state.onboarding);
     for (const [exerciseId, preference] of Object.entries(state.exercisePreferences || {}).sort(([a], [b]) => a.localeCompare(b))) {
       await add('preferences', 'exercisePreference', `exercise:${encodeURIComponent(exerciseId)}`, { exerciseId, preference });
@@ -216,11 +219,16 @@
       activeWorkout: null,
       restTimerEndsAt: null,
       customRoutines: {},
+      // Missing is the backward-compatible pound default. Leave it undefined
+      // so schema-v5 snapshots created before unit preferences are not
+      // rewritten merely by recovery.
+      unitPreferences: undefined,
       timerPreferences: null
     };
     const exercisePreferences = {};
     let goalsCount = 0;
     let timerCount = 0;
+    let unitsCount = 0;
     let onboardingCount = 0;
     let activeCount = 0;
     for (const record of profileCloud.current) {
@@ -253,6 +261,11 @@
         state.timerPreferences = clone(record.data);
         continue;
       }
+      if (record.table === 'preferences' && record.entityType === 'unitPreferences' && record.clientId === 'units') {
+        unitsCount += 1;
+        state.unitPreferences = clone(record.data);
+        continue;
+      }
       if (record.table === 'preferences' && record.entityType === 'onboardingPreference' && record.clientId === 'onboarding') {
         onboardingCount += 1;
         state.onboarding = clone(record.data);
@@ -276,7 +289,7 @@
       }
       fail('fresh-recovery-unsupported-cloud-record', `Cloud record ${record.table}/${record.clientId} cannot reconstruct schema v5.`);
     }
-    if (goalsCount !== 1 || timerCount !== 1 || onboardingCount > 1 || activeCount > 1) {
+    if (goalsCount !== 1 || timerCount !== 1 || unitsCount > 1 || onboardingCount > 1 || activeCount > 1) {
       fail('fresh-recovery-incomplete-cloud-state', 'Fresh cloud recovery requires exactly one goals row, one timer row, and at most one active session.');
     }
     state.workouts.sort((left, right) => new Date(right.completedAt) - new Date(left.completedAt)

@@ -203,7 +203,7 @@ test('an unexpected owner profile shape is blocked and locally signed out withou
   await openApp(page);
   const before = await page.evaluate(key => localStorage.getItem(key), STORAGE_KEYS.jorge);
 
-  await page.locator('.bottom-nav [data-view="library"]').click();
+  await page.locator('#openSettings').click();
   await expect(page.locator('#cloudSignOut')).toHaveText('Sign out of cloud');
   await expect(page.locator('#cloudSignOutNote')).toContainText('keeps this profile\'s training readable on this device');
   await page.locator('#cloudAuthEmail').fill(AUTH_EMAIL);

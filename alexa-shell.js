@@ -33,7 +33,8 @@
     const flowers = Array.from({length:12},(_,i)=>`<span class="garden-bloom ${i < Math.min(12,count) ? 'is-grown' : ''}" aria-hidden="true">${i%3===0?'✿':i%3===1?'❀':'✦'}</span>`).join('');
     const target = new Date(PROFILE.goals.targetDate+'T12:00:00');
     const days = Math.max(0,Math.ceil((target-Date.now())/86400000));
-    garden.innerHTML = `<div class="garden-copy"><span class="label">Consistency garden</span><h2>${stages[stage]}</h2><p>${count} completed movement${count===1?'':'s'} have helped it grow. Missed days never undo your care.</p></div><div class="garden-bed" aria-label="Garden with ${count} completed workouts">${flowers}</div><div class="goal-grid"><div><span>Primary goal</span><strong>Weight loss</strong></div><div><span>Starting point</span><strong>225 lb</strong></div><div><span>Growing</span><strong>Glutes, legs & back</strong></div><div><span>December 20</span><strong>${days} days to nurture</strong></div></div>`;
+    const startingWeight = window.BigGainsUnits?.formatBodyweight(PROFILE.goals.startingWeight, state) || `${PROFILE.goals.startingWeight} lb`;
+    garden.innerHTML = `<div class="garden-copy"><span class="label">Consistency garden</span><h2>${stages[stage]}</h2><p>${count} completed movement${count===1?'':'s'} have helped it grow. Missed days never undo your care.</p></div><div class="garden-bed" aria-label="Garden with ${count} completed workouts">${flowers}</div><div class="goal-grid"><div><span>Primary goal</span><strong>Weight loss</strong></div><div><span>Starting point</span><strong>${startingWeight}</strong></div><div><span>Growing</span><strong>Glutes, legs & back</strong></div><div><span>December 20</span><strong>${days} days to nurture</strong></div></div>`;
   }
 
   function initialize() {

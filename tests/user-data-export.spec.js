@@ -68,7 +68,7 @@ test('empty current profile exports valid versioned files without mutating state
   expect(data).toMatchObject({
     format: 'big-gains.user-export.v1',
     version: 1,
-    metadata: { exportedAt: EXPORTED_AT, appVersion: 'v100-rc-train-history-correctness', displayName: 'Jorge' },
+    metadata: { exportedAt: EXPORTED_AT, appVersion: 'v101-rc-settings-units', displayName: 'Jorge' },
     workouts: [],
     bodyweight: [],
     routines: [],
@@ -284,7 +284,7 @@ test('fallback sheet downloads each file and leaves storage, cloud, and technica
   });
   await installLocalStorageFixture(page, 'completedWorkouts');
   await openApp(page);
-  await page.locator('.bottom-nav button[data-view="library"]').click();
+  await page.locator('#openSettings').click();
   const before = await page.evaluate(() => {
     window.__exportNetworkCalls = [];
     const nativeFetch = window.fetch;
@@ -334,7 +334,7 @@ test('native file share is used only when the browser confirms both files are sh
   });
   await installLocalStorageFixture(page, 'blankJorge');
   await openApp(page);
-  await page.locator('.bottom-nav button[data-view="library"]').click();
+  await page.locator('#openSettings').click();
   await page.locator('#exportMyData').click();
 
   await expect.poll(() => page.evaluate(() => window.__sharedExport)).not.toBeNull();
@@ -357,7 +357,7 @@ test('export remains available offline from the precached local app', async ({ p
   await context.setOffline(true);
   await page.reload();
   await expect(page).toHaveTitle('Big Gains');
-  await page.locator('.bottom-nav button[data-view="library"]').click();
+  await page.locator('#openSettings').click();
   await page.locator('#exportMyData').click();
   await expect(page.locator('#userDataExportDialog')).toBeVisible();
   const downloadEvent = page.waitForEvent('download');

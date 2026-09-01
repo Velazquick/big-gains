@@ -34,19 +34,18 @@
     return Object.freeze(value);
   };
 
-  function displayLoad(load, measurement) {
+  function displayLoad(load, measurement, units, state) {
     const basis = measurement?.loadSemantics?.loadBasis;
-    const unit = measurement?.ui?.loadUnit || 'lb';
     const suffix = basis === 'per_hand' ? ' per hand' : basis === 'per_side' ? ' per side' : '';
-    return `${Number(load).toLocaleString('en-US')} ${unit}${suffix}`;
+    return units?.formatLoad(load, state, { suffix }) || `${Number(load).toLocaleString('en-US')} lb${suffix}`;
   }
 
-  function displayGoalTarget(goal, measurement) {
+  function displayGoalTarget(goal, measurement, units, state) {
     const loadBasis = measurement?.loadSemantics?.loadBasis;
     const suffix = goal?.targetBasis === 'combined_external_load' ? ' total'
       : loadBasis === 'per_hand' ? ' per hand'
         : loadBasis === 'per_side' ? ' per side' : '';
-    return `${Number(goal?.targetValue).toLocaleString('en-US')} ${goal?.unit || 'lb'}${suffix}`;
+    return units?.formatLoad(goal?.targetValue, state, { suffix }) || `${Number(goal?.targetValue).toLocaleString('en-US')} ${goal?.unit || 'lb'}${suffix}`;
   }
 
   function exactDefinition(catalog, exercise) {
@@ -169,7 +168,7 @@
     return isRecord(candidate) ? candidate : null;
   }
 
-  function create({ account, profile, catalog, analytics, analyticsOptions, getState, createId }) {
+  function create({ account, profile, catalog, analytics, analyticsOptions, getState, createId, units = scope.BigGainsUnits }) {
     const engine = scope.BigGainsGoalsProgression;
     if (!account || !profile || !catalog || !analytics || !engine
       || typeof analyticsOptions !== 'function' || typeof getState !== 'function' || typeof createId !== 'function') {
@@ -214,8 +213,8 @@
         diagnostic: diagnostic ? { ...diagnostic } : null,
         conflict: result.conflict ? { ...result.conflict, safeRecommendation: null } : null,
         display: {
-          goal: displayGoalTarget(goal, measurement),
-          load: recommendation ? displayLoad(recommendation.enteredLoad, measurement) : null,
+          goal: displayGoalTarget(goal, measurement, units, getState()),
+          load: recommendation ? displayLoad(recommendation.enteredLoad, measurement, units, getState()) : null,
           loadLabel: measurement.ui?.loadLabel || 'Weight'
         }
       });
@@ -341,8 +340,10 @@
     function render(exercise, escapeHtml) {
       const snapshot = exercise?.goalGuidance;
       if (!snapshot) return '';
+      const measurement = catalog.measurementFor(exercise);
       const copy = presentationFor(snapshot);
-      const goal = snapshot.display?.goal ? `${snapshot.exerciseName} ${snapshot.display.goal}` : snapshot.exerciseName;
+      const goalDisplay = snapshot.targetValue ? displayGoalTarget(snapshot, measurement, units, getState()) : snapshot.display?.goal;
+      const goal = goalDisplay ? `${snapshot.exerciseName} ${goalDisplay}` : snapshot.exerciseName;
       if (snapshot.status === 'available' && snapshot.recommendation) {
         const reps = snapshot.recommendation.repTargets;
         const repText = [...new Set(reps)].length === 1 ? reps[0] : reps.join('/');
@@ -351,7 +352,7 @@
           : '';
         return `<section class="goal-train-guidance" data-goal-guidance-status="available" data-goal-reason="${escapeHtml(snapshot.reasonCode)}">
           <div class="goal-train-heading"><span>Strength goal · ${escapeHtml(goal)}</span><em>${escapeHtml(copy.chip)}</em></div>
-          <strong class="goal-train-target">Today: ${escapeHtml(snapshot.display.load)} × ${escapeHtml(repText)} · ${snapshot.recommendation.workingSetCount} set${snapshot.recommendation.workingSetCount === 1 ? '' : 's'}</strong>
+          <strong class="goal-train-target">Today: ${escapeHtml(displayLoad(snapshot.recommendation.enteredLoad, measurement, units, getState()))} × ${escapeHtml(repText)} · ${snapshot.recommendation.workingSetCount} set${snapshot.recommendation.workingSetCount === 1 ? '' : 's'}</strong>
           <small>${escapeHtml(snapshot.display.loadLabel)} · editable starting target</small>
           ${attainment}
           <details><summary>Why this target?</summary><strong>${escapeHtml(copy.title)}</strong><p>${escapeHtml(snapshot.explanation)}</p></details>

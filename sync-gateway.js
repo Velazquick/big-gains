@@ -227,7 +227,7 @@
   }
 
   function renderCard() {
-    const panel = document.getElementById('settingsPanel');
+    const panel = document.getElementById('advancedDiagnostics');
     if (!panel || document.getElementById('syncGatewayCard')) return;
 
     const config = readConfig();

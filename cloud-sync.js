@@ -973,11 +973,10 @@
 
   function cardMarkup() {
     if (!supabaseBoundary.configured) {
-      return '<span class="label">Cloud shadow</span><h3>Not configured</h3><p>Training stays local on this device.</p>';
+      return '<span class="label">Cloud &amp; backup</span><h3>Saved on this device</h3><p>Cloud sync is not configured. Training remains available locally.</p>';
     }
-    return `<span class="label">Cloud shadow</span><h3 id="cloudShadowHeading">Checking quietly…</h3>
-      <p id="cloudAuthDetail">Training stays local while the cloud copy is checked.</p>
-      <div id="cloudShadowProfiles" class="cloud-shadow-profiles" hidden></div>
+    return `<span class="label">Cloud &amp; backup</span><h3 id="cloudShadowHeading">Checking quietly…</h3>
+      <p id="cloudAuthDetail">Training stays local while your cloud backup is checked.</p>
       <section id="cloudConflictResolution" class="cloud-conflict-resolution" hidden>
         <span class="label">Needs your choice</span><h4 id="cloudConflictTitle"></h4><p id="cloudConflictSummary"></p>
         <div class="cloud-conflict-choices">
@@ -987,7 +986,6 @@
         <div class="data-actions cloud-conflict-actions"><button id="cloudKeepDevice" class="primary" type="button">Keep this device version</button><button id="cloudKeepCloud" class="secondary" type="button">Keep cloud version</button></div>
         <details><summary>Technical details</summary><pre id="cloudConflictTechnical"></pre></details>
       </section>
-      <details id="cloudShadowDrift" class="cloud-shadow-drift" hidden><summary>What needs attention</summary><ul id="cloudShadowDriftList"></ul></details>
       <form id="cloudAuthForm" class="cloud-auth-form" hidden>
         <label><span>Email</span><input id="cloudAuthEmail" type="email" autocomplete="email" required></label>
         <label><span>Password</span><input id="cloudAuthPassword" type="password" autocomplete="current-password" required></label>
@@ -997,17 +995,22 @@
       </form>
       <div class="data-actions"><button id="cloudRemoteFastForward" class="primary" type="button" hidden>Update this device</button><button id="cloudSyncNow" class="secondary" type="button" hidden>Check now</button><button id="cloudSignOut" class="ghost" type="button" hidden>Sign out of cloud</button></div>
       <small id="cloudSignOutNote" hidden>Signing out of cloud keeps this profile's training readable on this device.</small>
-      <small id="cloudQueueStatus"></small>`;
+      <details class="settings-advanced cloud-advanced-diagnostics">
+        <summary>Cloud diagnostics</summary>
+        <div id="cloudShadowProfiles" class="cloud-shadow-profiles" hidden></div>
+        <small id="cloudQueueStatus"></small>
+        <details id="cloudShadowDrift" class="cloud-shadow-drift" hidden><summary>Reconciliation details</summary><ul id="cloudShadowDriftList"></ul></details>
+      </details>`;
   }
 
   function ensureCard() {
-    const panel = document.getElementById('settingsPanel');
-    if (!panel || document.getElementById('cloudFoundationCard')) return;
+    const mount = document.getElementById('cloudSettingsMount');
+    if (!mount || document.getElementById('cloudFoundationCard')) return;
     const card = document.createElement('section');
     card.id = 'cloudFoundationCard';
     card.className = 'cloud-foundation-card cloud-shadow-card';
     card.innerHTML = cardMarkup();
-    panel.insertAdjacentElement('afterend', card);
+    mount.append(card);
   }
 
   async function render() {
@@ -1062,7 +1065,7 @@
         : state;
     const profileNames = shadow.profileIds.map(id => window.bigGainsAccounts.registry.resolve(id)?.displayName || id);
     const blockedReason = lastResult?.failures?.[0]?.reason || lastResult?.reason || null;
-    detail.textContent = state === 'IN SYNC' ? `${profileNames.join(' and ')} ${profileNames.length === 1 ? 'matches' : 'match'} the private cloud shadow.`
+    detail.textContent = state === 'IN SYNC' ? 'Your cloud backup is up to date.'
       : state === 'LOCAL CHANGES PENDING' ? `${pending} change${pending === 1 ? '' : 's'} waiting for connection.`
         : state === 'CLOUD BEHIND / RETRYING' ? 'Cloud is catching up. Training stays local.'
           : state === 'REMOTE CHANGES AVAILABLE' ? 'Verified newer training changes are ready to update this device.'
@@ -1073,8 +1076,8 @@
               : state === 'SYNC CONFLICT' ? 'Local and remote training both changed. Nothing was overwritten.'
           : state === 'DRIFT DETECTED' ? `${blockedReason ? `Queue blocked: ${blockedReason}. ` : 'Drift detected — '}Local data is unchanged.`
             : state === 'OFFLINE' ? 'Offline. Training stays local.'
-              : state === 'SIGNED OUT' ? 'Signed-out training stays local. Sign in to compare the cloud shadow.'
-                : 'Checking the private cloud copy.';
+              : state === 'SIGNED OUT' ? 'Signed-out training stays local. Sign in to use cloud backup.'
+                : 'Checking your private cloud backup.';
     form.hidden = Boolean(session);
     syncButton.hidden = !session;
     syncButton.disabled = busy || comparing;

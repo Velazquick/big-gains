@@ -189,7 +189,7 @@ test('Safari compatibility Magic Link disables signup and uses the GitHub Pages 
   });
   await installLocalStorageFixture(page, 'blankJorge');
   await openApp(page);
-  await page.locator('.bottom-nav [data-view="library"]').click();
+  await page.locator('#openSettings').click();
   await page.locator('#cloudAuthEmail').fill('jorge.synthetic@example.com');
   await page.locator('#cloudMagicLink').click();
   await expect(page.locator('#cloudAuthDetail')).toContainText('Check your email');

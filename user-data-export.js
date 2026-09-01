@@ -494,6 +494,10 @@
         theme: cleanText(presentation?.theme) || null,
         accent: cleanText(presentation?.accent) || null,
         companionEnabled: presentation?.petEnabled === true
+      },
+      weightUnits: {
+        canonicalStorageUnit: 'lb',
+        preferredDisplayUnit: state?.unitPreferences?.weightUnit === 'kg' ? 'kg' : 'lb'
       }
     };
   }
@@ -516,7 +520,9 @@
       metadata: {
         exportedAt: at,
         appVersion: cleanText(appVersion) || 'unknown',
-        displayName: cleanText(profile.displayName) || 'Big Gains user'
+        displayName: cleanText(profile.displayName) || 'Big Gains user',
+        canonicalWeightUnit: 'lb',
+        preferredWeightUnit: state?.unitPreferences?.weightUnit === 'kg' ? 'kg' : 'lb'
       },
       workouts: workoutsJson(workouts, catalog, refs, workoutLabel),
       bodyweight: bodyweightJson(state),

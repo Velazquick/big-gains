@@ -338,7 +338,8 @@ test('no write occurs without file selection and second inline confirmation', as
     window.BigGainsSupabase = { configured: true, async session() { return { user: { id: 'auth-jorge' } }; }, getClient() { return client; }, onAuthStateChange() { return { unsubscribe() {} }; } };
   }, ZERO_COUNTS);
   await page.evaluate(() => BigGainsControlledMigration.refresh());
-  await page.locator('.bottom-nav [data-view="library"]').click();
+  await page.locator('#openSettings').click();
+  await page.locator('#advancedDiagnostics').evaluate(element => { element.open = true; });
   const card = page.locator('#controlledMigrationCard');
   await expect(card.locator('#approvedMigrationAudit')).toBeVisible();
   await expect(card.locator('#runControlledMigration')).toHaveCount(0);

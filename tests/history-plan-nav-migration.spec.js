@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
   await openApp(page);
 });
 
-test('primary navigation is exactly Today, Plan, Train, Progress, and Library', async ({ page }) => {
+test('primary navigation remains exactly Today, Plan, Train, Progress, and Library', async ({ page }) => {
   const nav = page.locator('.bottom-nav');
   await expect(nav.locator('button')).toHaveCount(5);
   await expect(nav.locator('button')).toHaveText(['Today', 'Plan', 'Train', 'Progress', 'Library']);

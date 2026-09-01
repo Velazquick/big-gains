@@ -85,7 +85,7 @@ test('History Explorer groups newest-first by month and keeps archive cards comp
   await expect(newest).toContainText('Pull');
   await expect(newest).toContainText('1h 00m');
   await expect(newest).toContainText('2 working sets');
-  await expect(newest).toContainText('1,460 lb volume');
+  await expect(newest).toContainText('1.5K lb volume');
   await expect(newest.locator('.pr-badge')).toHaveText('2 records');
   await expect(page.locator('#historyArchiveList')).not.toContainText('Lat Pulldown');
   await expect(page.locator('#historyArchiveList')).not.toContainText('Leg Press');

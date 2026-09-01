@@ -289,7 +289,7 @@ function completedWorkout(id, reps, completedAt = '2026-08-10T18:30:00.000Z') {
 
 async function expectAutomaticRemoteFastForward(page, expectedPrimary) {
   await expect(page.locator('#cloudShadowHeading')).toHaveText('In sync');
-  await page.locator('.bottom-nav [data-view="library"]').click();
+  await page.locator('#openSettings').click();
   await expect(page.locator('#cloudShadowHeading')).toHaveText('In sync');
   const result = await page.evaluate(({ storageKey, catalogKey, clientId }) => ({
     state: JSON.parse(localStorage.getItem(storageKey)),
@@ -372,7 +372,7 @@ test('the rollout flag can keep guarded remote advancement manual on one device'
   });
   await page.reload({ waitUntil: 'domcontentloaded' });
 
-  await page.locator('.bottom-nav [data-view="library"]').click();
+  await page.locator('#openSettings').click();
   await expect(page.locator('#cloudShadowHeading')).toHaveText('Changes from another device');
   await expect(page.locator('#cloudRemoteFastForward')).toBeVisible();
   expect(await page.evaluate(storageKey => JSON.parse(localStorage.getItem(storageKey)).goals.primary, storageKey)).toBe('Shared baseline');
@@ -393,7 +393,7 @@ test('a missing rollout flag defaults guarded remote advancement to manual', asy
   });
   await page.reload({ waitUntil: 'domcontentloaded' });
 
-  await page.locator('.bottom-nav [data-view="library"]').click();
+  await page.locator('#openSettings').click();
   await expect(page.locator('#cloudShadowHeading')).toHaveText('Changes from another device');
   await expect(page.locator('#cloudRemoteFastForward')).toBeVisible();
   const result = await page.evaluate(storageKey => ({
@@ -419,7 +419,7 @@ test('runtime OFF keeps a capability-enabled remote advancement manual', async (
   });
   await page.reload({ waitUntil: 'domcontentloaded' });
 
-  await page.locator('.bottom-nav [data-view="library"]').click();
+  await page.locator('#openSettings').click();
   await expect(page.locator('#cloudShadowHeading')).toHaveText('Changes from another device');
   await expect(page.locator('#cloudRemoteFastForward')).toBeVisible();
   expect(await page.evaluate(storageKey => JSON.parse(localStorage.getItem(storageKey)).goals.primary, storageKey)).toBe('Shared baseline');
@@ -443,7 +443,7 @@ for (const status of [401, 403]) {
     });
     await page.reload({ waitUntil: 'domcontentloaded' });
 
-    await page.locator('.bottom-nav [data-view="library"]').click();
+  await page.locator('#openSettings').click();
     await expect(page.locator('#cloudShadowHeading')).toHaveText('Changes from another device');
     await expect(page.locator('#cloudRemoteFastForward')).toBeVisible();
     await expect.poll(() => page.evaluate(() => BigGainsCloudSync.status().automaticDecision)).toMatchObject({
@@ -463,7 +463,7 @@ test('the device-local emergency pause overrides runtime ON before the endpoint 
   });
   await page.reload({ waitUntil: 'domcontentloaded' });
 
-  await page.locator('.bottom-nav [data-view="library"]').click();
+  await page.locator('#openSettings').click();
   await expect(page.locator('#cloudShadowHeading')).toHaveText('Changes from another device');
   const result = await page.evaluate(() => BigGainsCloudSync.status());
   expect(result.automaticReconciliationPaused).toBe(true);
@@ -481,7 +481,7 @@ test('runtime control network failure fails closed while explicit manual adoptio
   });
   await page.reload({ waitUntil: 'domcontentloaded' });
 
-  await page.locator('.bottom-nav [data-view="library"]').click();
+  await page.locator('#openSettings').click();
   await expect(page.locator('#cloudShadowHeading')).toHaveText('Changes from another device');
   await expect.poll(() => page.evaluate(() => BigGainsCloudSync.status().automaticDecision)).toMatchObject({
     enabled: false, reason: 'runtime-unavailable', detail: 'request-failed'
@@ -640,7 +640,7 @@ test('a higher completed-workout revision fast-forwards onto the second device w
   await page.reload({ waitUntil: 'domcontentloaded' });
 
   await expect(page.locator('#cloudShadowHeading')).toHaveText('In sync');
-  await page.locator('.bottom-nav [data-view="library"]').click();
+  await page.locator('#openSettings').click();
   await expect(page.locator('#cloudShadowHeading')).toHaveText('In sync');
 
   const result = await page.evaluate(({ storageKey, catalogKey, clientId, workoutId }) => {
@@ -672,7 +672,7 @@ test('a higher workout tombstone fast-forwards onto the second device and cannot
   await page.reload({ waitUntil: 'domcontentloaded' });
 
   await expect(page.locator('#cloudShadowHeading')).toHaveText('In sync');
-  await page.locator('.bottom-nav [data-view="library"]').click();
+  await page.locator('#openSettings').click();
   await expect(page.locator('#cloudShadowHeading')).toHaveText('In sync');
 
   const result = await page.evaluate(({ storageKey, catalogKey, clientId, workoutId }) => {
@@ -774,7 +774,7 @@ for (const choice of [
       allowWrites: choice.expectedVersion === 4
     });
     await page.reload({ waitUntil: 'domcontentloaded' });
-    await page.locator('.bottom-nav [data-view="library"]').click();
+    await page.locator('#openSettings').click();
 
     await expect(page.locator('#cloudShadowHeading')).toHaveText('SYNC CONFLICT');
     await expect(page.locator('#cloudConflictTitle')).toContainText('Pull');

@@ -34,7 +34,7 @@ window.workoutProgress = (() => {
   });
 
   const list = value => Array.isArray(value) ? value : [];
-  const LOAD_DISPLAY = Object.freeze({ unit: 'lb', factor: 1 });
+  const units = window.BigGainsUnits;
   const WORKLOAD_FAMILY_META = Object.freeze({
     external_load: { label: 'External-load volume' },
     machine_indicated: { label: 'Machine-indicated volume' },
@@ -50,8 +50,8 @@ window.workoutProgress = (() => {
   };
   const completedAt = workout => new Date(workout?.completedAt || 0).getTime();
   const analyticsOptions = () => context.getAnalyticsOptions?.() || {};
-  const formatLoadVolume = value => value === null ? '—' : `${formatCompact(Number(value) * LOAD_DISPLAY.factor)} ${LOAD_DISPLAY.unit}`;
-  const formatVolume = (value, kind = null) => value === null ? '—' : `${formatCompact(Number(value) * LOAD_DISPLAY.factor)} ${kind === 'indicated_load' ? `indicated ${LOAD_DISPLAY.unit}` : kind === 'modeled_system_load' ? `modeled ${LOAD_DISPLAY.unit}` : LOAD_DISPLAY.unit}`;
+  const formatLoadVolume = value => value === null ? '—' : units.formatWorkload(value, state(), { compact: true });
+  const formatVolume = (value, kind = null) => value === null ? '—' : units.formatWorkload(value, state(), { kind, compact: true });
   const workloadLabel = kind => kind === 'indicated_load' ? 'indicated workload' : kind === 'modeled_system_load' ? 'modeled system volume' : kind === 'external_load' ? 'external-load volume' : 'comparable workload';
   const formatMonthHeading = iso => new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(new Date(iso)).toUpperCase();
   const formatArchiveDate = iso => new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).format(new Date(iso));
@@ -59,15 +59,15 @@ window.workoutProgress = (() => {
   const formatWeekday = iso => new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(new Date(iso)).toUpperCase();
   const setLoadLabel = set => {
     if (set?.trackingModel === 'duration') return `${Number(set.duration) || 0} sec`;
-    if (set?.trackingModel === 'load_distance') return `${Number(set.weight) || 0} lb · ${Number(set.distance) || 0}`;
+    if (set?.trackingModel === 'load_distance') return `${units.formatLoad(Number(set.weight) || 0, state())} · ${Number(set.distance) || 0}`;
     if (set?.trackingModel === 'reps_only') return 'Bodyweight';
-    if (set?.resistanceSemantics === 'assistance') return `${Number(set.weight) || 0} lb assistance`;
+    if (set?.resistanceSemantics === 'assistance') return `${units.formatLoad(Number(set.weight) || 0, state())} assistance`;
     if (set?.loadMode !== 'bodyweight') {
       const suffix = set?.loadBasis === 'per_hand' ? ' per hand' : set?.loadBasis === 'per_side' ? ' per side' : '';
-      return `${Number(set?.weight) || 0} lb${suffix}`;
+      return units.formatLoad(Number(set?.weight) || 0, state(), { suffix });
     }
     const added = Number(set.weight) || 0;
-    return added > 0 ? `Bodyweight + ${added} lb` : 'Bodyweight';
+    return added > 0 ? `Bodyweight + ${units.formatLoad(added, state())}` : 'Bodyweight';
   };
 
   function state() {
@@ -122,7 +122,7 @@ window.workoutProgress = (() => {
   }
 
   function recordValue(record) {
-    return record ? `${record.observedValue} ${record.unit}` : '—';
+    return record ? units.formatLoad(record.observedValue, state()) : '—';
   }
 
   function loggedExercises() {
@@ -141,7 +141,7 @@ window.workoutProgress = (() => {
     const change = latest - first;
     if (!change) return 'Estimated strength is holding steady.';
     const percent = first ? Math.round(Math.abs(change) / first * 100) : 0;
-    return `${change > 0 ? '+' : '−'}${Math.abs(change)} lb estimated strength${percent ? ` (${percent}%)` : ''} since the first log.`;
+    return `${change > 0 ? '+' : '−'}${units.formatLoad(Math.abs(change), state())} estimated strength${percent ? ` (${percent}%)` : ''} since the first log.`;
   }
 
   function progressChart(sessions) {
@@ -162,9 +162,9 @@ window.workoutProgress = (() => {
     const grid = [0, 0.5, 1].map(ratio => {
       const value = min + (max - min) * ratio;
       const y = yFor(value);
-      return `<line class="progress-grid-line" x1="${padX}" y1="${y}" x2="${width - padX}" y2="${y}"></line><text class="progress-axis-label" x="6" y="${y + 4}">${Math.round(value)}</text>`;
+      return `<line class="progress-grid-line" x1="${padX}" y1="${y}" x2="${width - padX}" y2="${y}"></line><text class="progress-axis-label" x="6" y="${y + 4}">${units.formatLoad(value, state())}</text>`;
     }).join('');
-    const dots = data.map((session, index) => `<circle class="progress-dot" cx="${xFor(index)}" cy="${yFor(session.estimated1RM)}" r="5"><title>${context.fmtDate(session.date)}: ${session.estimated1RM} lb estimated 1RM</title></circle>`).join('');
+    const dots = data.map((session, index) => `<circle class="progress-dot" cx="${xFor(index)}" cy="${yFor(session.estimated1RM)}" r="5"><title>${context.fmtDate(session.date)}: ${units.formatLoad(session.estimated1RM, state())} estimated 1RM</title></circle>`).join('');
     return `<div class="progress-chart"><div class="progress-chart-title"><strong>Estimated 1RM trend</strong><span>Last ${data.length} session${data.length === 1 ? '' : 's'}</span></div><svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Estimated one rep max trend">${grid}<polyline class="progress-line" points="${points}"></polyline>${dots}<text class="progress-date-label" x="${padX}" y="${height - 7}">${context.escapeHtml(formatMonthDay(data[0].date))}</text><text class="progress-date-label" text-anchor="end" x="${width - padX}" y="${height - 7}">${context.escapeHtml(formatMonthDay(data[data.length - 1].date))}</text></svg></div>`;
   }
 
@@ -194,7 +194,7 @@ window.workoutProgress = (() => {
     const grid = [0, 0.5, 1].map(ratio => {
       const value = min + (max - min) * ratio;
       const y = yFor(value);
-      return `<line class="progress-grid-line" x1="${padX}" y1="${y}" x2="${width - padX}" y2="${y}"></line><text class="progress-axis-label" x="6" y="${y + 4}">${formatCompact(value)}</text>`;
+      return `<line class="progress-grid-line" x1="${padX}" y1="${y}" x2="${width - padX}" y2="${y}"></line><text class="progress-axis-label" x="6" y="${y + 4}">${units.formatWorkload(value, state(), { compact: true })}</text>`;
     }).join('');
     const segments = [];
     let segment = [];
@@ -371,7 +371,7 @@ window.workoutProgress = (() => {
     const record = currentRecordFor(exercise);
     const recordNote = record?.recordType === 'indicated_load' ? '<small class="record-qualification">Highest indicated load recorded for this exact exercise in this profile; machine setups may differ.</small>' : '';
     preview.className = 'progress-preview';
-    preview.innerHTML = `<div class="progress-preview-copy"><span class="exercise-muscle">${context.escapeHtml(exercise.muscle)}</span><h3>${context.escapeHtml(exercise.name)}</h3><p>${trendText(sessions)}</p>${recordNote}</div><div class="progress-preview-stats"><div><span>Best set</span><strong>${context.escapeHtml(setLoadLabel(best))} × ${Number(best.reps)}</strong></div><div><span>${context.escapeHtml(record?.recordLabel || 'Performance Record')}</span><strong>${context.escapeHtml(recordValue(record))}</strong></div><div><span>Latest e1RM</span><strong>${latest.estimated1RM === null ? '—' : `${latest.estimated1RM} lb`}</strong></div></div>`;
+    preview.innerHTML = `<div class="progress-preview-copy"><span class="exercise-muscle">${context.escapeHtml(exercise.muscle)}</span><h3>${context.escapeHtml(exercise.name)}</h3><p>${trendText(sessions)}</p>${recordNote}</div><div class="progress-preview-stats"><div><span>Best set</span><strong>${context.escapeHtml(setLoadLabel(best))} × ${Number(best.reps)}</strong></div><div><span>${context.escapeHtml(record?.recordLabel || 'Performance Record')}</span><strong>${context.escapeHtml(recordValue(record))}</strong></div><div><span>Latest e1RM</span><strong>${latest.estimated1RM === null ? '—' : units.formatLoad(latest.estimated1RM, state())}</strong></div></div>`;
   }
 
   function renderProgressDashboard() {
@@ -559,14 +559,14 @@ window.workoutProgress = (() => {
           : session.workload === null
             ? `${workloadMeta.label} unavailable · no bodyweight at workout`
             : `${formatLoadVolume(session.workload)} ${workloadMeta.label.toLowerCase()}`;
-        return `<article class="progress-session"><div><strong>${context.fmtDate(session.date)}</strong><small>${session.sets.length} working set${session.sets.length === 1 ? '' : 's'} · ${sessionWorkload}</small></div><div class="progress-session-meta"><strong>${context.escapeHtml(setLoadLabel(session.best))} × ${session.best.reps}</strong><small>${session.estimated1RM === null ? 'e1RM unavailable for this measurement contract or session context' : `${session.estimated1RM} ${LOAD_DISPLAY.unit} e1RM`}</small></div><div class="progress-session-sets">${session.sets.map(set => `<span>${context.escapeHtml(setLoadLabel(set))} × ${Number(set.reps)}</span>`).join('')}</div></article>`;
+        return `<article class="progress-session"><div><strong>${context.fmtDate(session.date)}</strong><small>${session.sets.length} working set${session.sets.length === 1 ? '' : 's'} · ${sessionWorkload}</small></div><div class="progress-session-meta"><strong>${context.escapeHtml(setLoadLabel(session.best))} × ${session.best.reps}</strong><small>${session.estimated1RM === null ? 'e1RM unavailable for this measurement contract or session context' : `${units.formatLoad(session.estimated1RM, state())} e1RM`}</small></div><div class="progress-session-sets">${session.sets.map(set => `<span>${context.escapeHtml(setLoadLabel(set))} × ${Number(set.reps)}</span>`).join('')}</div></article>`;
       }).join('');
       const e1rmChart = sessions.some(session => session.estimated1RM === null) ? '' : progressChart(sessions);
       const historyWorkload = workloadMeta
         ? totalWorkload === null ? `${sessions.length} sessions · workload has gaps` : `${sessions.length} sessions · ${formatLoadVolume(totalWorkload)}`
         : `${sessions.length} sessions · no load-volume family`;
       const recordQualification = record?.recordType === 'indicated_load' ? '<p class="record-qualification">Profile-local, exact-exercise indicated load. It does not claim equivalent resistance across machines, gyms, pulleys, attachments, or calibration.</p>' : '';
-      content.innerHTML = `<div class="history-summary-grid progress-summary-grid"><div><span>Best set</span><strong>${context.escapeHtml(setLoadLabel(best))} × ${Number(best.reps)}</strong></div><div><span>${context.escapeHtml(record?.recordLabel || 'Performance Record')}</span><strong>${context.escapeHtml(recordValue(record))}</strong></div><div><span>Training history</span><strong>${historyWorkload}</strong></div></div>${recordQualification}<div class="progress-trend-note"><strong>${latest.estimated1RM === null ? 'e1RM unavailable' : `${latest.estimated1RM} ${LOAD_DISPLAY.unit} latest e1RM`}</strong><span>${trendText(sessions)}</span></div>${e1rmChart}${workloadChart(sessions, workloadFamily)}<div class="progress-recent-head"><span class="label">Recent work</span><h3>Session-by-session</h3></div><div class="progress-session-list">${recent}</div>`;
+      content.innerHTML = `<div class="history-summary-grid progress-summary-grid"><div><span>Best set</span><strong>${context.escapeHtml(setLoadLabel(best))} × ${Number(best.reps)}</strong></div><div><span>${context.escapeHtml(record?.recordLabel || 'Performance Record')}</span><strong>${context.escapeHtml(recordValue(record))}</strong></div><div><span>Training history</span><strong>${historyWorkload}</strong></div></div>${recordQualification}<div class="progress-trend-note"><strong>${latest.estimated1RM === null ? 'e1RM unavailable' : `${units.formatLoad(latest.estimated1RM, state())} latest e1RM`}</strong><span>${trendText(sessions)}</span></div>${e1rmChart}${workloadChart(sessions, workloadFamily)}<div class="progress-recent-head"><span class="label">Recent work</span><h3>Session-by-session</h3></div><div class="progress-session-list">${recent}</div>`;
     }
 
     const { dialog } = elements();
