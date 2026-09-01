@@ -24,6 +24,7 @@
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   };
   const repText = entry => entry?.repTarget?.text ?? entry?.targetReps ?? '';
+  const displayGoalLoad = goal => window.BigGainsUnits?.formatLoad(goal?.targetValue, state) || `${Number(goal?.targetValue) || '—'} lb`;
   const copyEntries = entries => entries.map(entry => ({
     exerciseId: canonicalId(entry.exerciseId),
     workingSets: Number(entry.workingSets) || 3,
@@ -134,7 +135,7 @@
       const definition = exerciseCatalog.getById(entry.exerciseId);
       const goal = goalForExercise(entry.exerciseId);
       return `<article class="program-exercise-row" data-program-exercise="${entryIndex}">
-        <header><span class="program-order">${entryIndex + 1}</span><div><strong>${escapeHtml(definition?.name || 'Unknown exercise')}</strong><small>${escapeHtml([definition?.muscle, definition?.equipment].filter(Boolean).join(' · '))}</small>${goal ? `<span class="program-goal-chip">Supports ${escapeHtml(definition?.name || 'this')} Goal · ${escapeHtml(String(goal.targetValue))} ${escapeHtml(goal.unit)}</span>` : ''}</div><div class="program-row-actions"><button type="button" data-program-move="up" data-index="${entryIndex}" ${entryIndex === 0 ? 'disabled' : ''} aria-label="Move up">↑</button><button type="button" data-program-move="down" data-index="${entryIndex}" ${entryIndex === routine.entries.length - 1 ? 'disabled' : ''} aria-label="Move down">↓</button><button type="button" data-program-remove="${entryIndex}" aria-label="Remove exercise">×</button></div></header>
+        <header><span class="program-order">${entryIndex + 1}</span><div><strong>${escapeHtml(definition?.name || 'Unknown exercise')}</strong><small>${escapeHtml([definition?.muscle, definition?.equipment].filter(Boolean).join(' · '))}</small>${goal ? `<span class="program-goal-chip">Supports ${escapeHtml(definition?.name || 'this')} Goal · ${escapeHtml(displayGoalLoad(goal))}</span>` : ''}</div><div class="program-row-actions"><button type="button" data-program-move="up" data-index="${entryIndex}" ${entryIndex === 0 ? 'disabled' : ''} aria-label="Move up">↑</button><button type="button" data-program-move="down" data-index="${entryIndex}" ${entryIndex === routine.entries.length - 1 ? 'disabled' : ''} aria-label="Move down">↓</button><button type="button" data-program-remove="${entryIndex}" aria-label="Remove exercise">×</button></div></header>
         <div class="program-exercise-fields"><label><span>Exercise</span><button type="button" class="exercise-picker-trigger" data-program-replace="${entryIndex}"><span>${escapeHtml(definition?.name || 'Unknown exercise')} — ${escapeHtml(definition?.equipment || '')}</span><small>Replace</small></button></label><label><span>Working sets</span><input data-program-field="workingSets" data-index="${entryIndex}" type="number" min="1" max="12" step="1" inputmode="numeric" value="${entry.workingSets}"></label><label><span>Rep target / range</span><input data-program-field="targetReps" data-index="${entryIndex}" type="text" maxlength="40" list="targetRepPresets" placeholder="8–10" value="${escapeHtml(entry.targetReps)}"></label><label><span>Rest seconds <small>(capture only)</small></span><input data-program-field="restSeconds" data-index="${entryIndex}" type="number" min="1" max="900" step="5" inputmode="numeric" placeholder="Exercise preference" value="${entry.restSeconds ?? ''}"></label></div>
       </article>`;
     }).join('');
@@ -192,7 +193,7 @@
     const goals = activeGoals();
     return `<section class="program-step" aria-labelledby="programStepTitle">
       <div class="program-step-heading"><span class="label">Goals and priorities</span><h2 id="programStepTitle">Connect destinations to this route</h2><p>Linking a Goal lets Plan show factual support. It does not edit the Goal or authorize Train changes.</p></div>
-      <section class="program-goal-links"><span class="label">Active Goals</span>${goals.length ? goals.map(goal => { const definition = exerciseCatalog.getById(goal.exerciseId); return `<label><input type="checkbox" data-program-goal-id="${escapeHtml(goal.goalId)}" ${wizard.program.priorityGoalIds.includes(goal.goalId) ? 'checked' : ''}><span><strong>${escapeHtml(definition?.name || 'Strength Goal')}</strong><small>Target ${escapeHtml(String(goal.targetValue))} ${escapeHtml(goal.unit)} · reference only</small></span></label>`; }).join('') : '<div class="program-empty-choice"><strong>No active Goals yet.</strong><p>You can still create and activate a Program. Add Goals later without changing this Routine content.</p></div>'}</section>
+      <section class="program-goal-links"><span class="label">Active Goals</span>${goals.length ? goals.map(goal => { const definition = exerciseCatalog.getById(goal.exerciseId); return `<label><input type="checkbox" data-program-goal-id="${escapeHtml(goal.goalId)}" ${wizard.program.priorityGoalIds.includes(goal.goalId) ? 'checked' : ''}><span><strong>${escapeHtml(definition?.name || 'Strength Goal')}</strong><small>Target ${escapeHtml(displayGoalLoad(goal))} · reference only</small></span></label>`; }).join('') : '<div class="program-empty-choice"><strong>No active Goals yet.</strong><p>You can still create and activate a Program. Add Goals later without changing this Routine content.</p></div>'}</section>
     </section>`;
   }
 
@@ -607,7 +608,7 @@
   }
 
   function goalTarget(goal) {
-    return `${goalName(goal)} · target ${Number(goal?.targetValue) || '—'} ${goal?.unit || ''}`.trim();
+    return `${goalName(goal)} · target ${displayGoalLoad(goal)}`;
   }
 
   function linkedGoalFacts(analysis, goalId) {

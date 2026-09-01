@@ -184,7 +184,14 @@
         { name: 'weight', label: bodyweight ? 'Added weight' : 'Weight', unit: 'lb', step: 5 },
         { name: 'reps', label: 'Reps', unit: '', step: 1 }
       ];
-      const fieldInput = (field, set, setIndex) => `<label><span>${context.escapeHtml(field.label)}</span><span class="retrospective-input-value"><input type="number" min="0" step="${field.step}" inputmode="decimal" data-retro-field="${field.name}" data-ei="${exerciseIndex}" data-si="${setIndex}" value="${set[field.name] ?? ''}" aria-label="${context.escapeHtml(field.label)}">${field.unit ? `<small>${context.escapeHtml(field.unit)}</small>` : ''}</span></label>`;
+      const preferredUnit = context.units?.unitFor(context.getState()) || 'lb';
+      const fieldInput = (field, set, setIndex) => {
+        const isLoad = field.name === 'weight';
+        const value = isLoad ? context.units.inputValue(set[field.name], context.getState()) : set[field.name] ?? '';
+        const step = isLoad ? context.units.inputStep(field.step, context.getState()) : field.step;
+        const unit = isLoad ? preferredUnit : field.unit;
+        return `<label><span>${context.escapeHtml(field.label)}</span><span class="retrospective-input-value"><input type="number" min="0" step="${step}" inputmode="decimal" data-retro-field="${field.name}" data-ei="${exerciseIndex}" data-si="${setIndex}" value="${value}" aria-label="${context.escapeHtml(field.label)}">${unit ? `<small>${context.escapeHtml(unit)}</small>` : ''}</span></label>`;
+      };
       const sets = exercise.sets.map((set, setIndex) => {
         const removalKey = `${exercise.id}:${set.id || setIndex}`;
         const confirming = pendingSetRemoval === removalKey;
@@ -441,7 +448,13 @@
         if (field === 'setType' && set) {
           set.warmup = event.target.value === 'warmup';
           render();
-        } else if (field && set) set[field] = event.target.type === 'checkbox' ? event.target.checked : safeNumber(event.target.value);
+        } else if (field && set) {
+          if (event.target.type === 'checkbox') set[field] = event.target.checked;
+          else if (field === 'weight') {
+            const canonical = event.target.value === '' ? '' : context.units.toCanonicalPounds(event.target.value, context.units.unitFor(context.getState()));
+            if (canonical !== null) set[field] = canonical;
+          } else set[field] = safeNumber(event.target.value);
+        }
         if (event.target.dataset.retroExerciseNote !== undefined) draft.exercises[Number(event.target.dataset.retroExerciseNote)].note = event.target.value;
       });
       $('retrospectiveExercises').addEventListener('click', event => {

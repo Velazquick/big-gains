@@ -203,7 +203,7 @@ test('editing an active set leaves previous-performance history and display unto
     saveState();
     renderActive();
   }, history);
-  await expect(page.locator('[data-previous-performance="seated-machine-chest-press"]')).toHaveText('100 × 10');
+  await expect(page.locator('[data-previous-performance="seated-machine-chest-press"]')).toHaveText('100 lb × 10');
   const before = (await jorgeState(page)).workouts;
 
   await page.locator('input[data-field="weight"][data-ei="0"][data-si="1"]').fill('145');
@@ -211,7 +211,7 @@ test('editing an active set leaves previous-performance history and display unto
   const stored = await jorgeState(page);
   expect(stored.workouts).toEqual(before);
   expect(stored.activeWorkout.exercises[0].sets[1].weight).toBe(145);
-  await expect(page.locator('[data-previous-performance="seated-machine-chest-press"]')).toHaveText('100 × 10');
+  await expect(page.locator('[data-previous-performance="seated-machine-chest-press"]')).toHaveText('100 lb × 10');
 });
 
 test('set mutation follows a replaced live state and never mutates the previous active object', async ({ page }) => {

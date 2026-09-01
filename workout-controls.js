@@ -18,18 +18,18 @@
       <div class="${className}">
         <span class="stepper-label">${label}</span>
         <div class="stepper-control">
-          <button type="button" data-adjust="-${step}" data-field="${field}" data-ei="${exerciseIndex}" data-si="${setIndex}" aria-label="Decrease ${label}">−</button>
+          <button type="button" data-adjust="-${options.adjustStep ?? step}" data-field="${field}" data-ei="${exerciseIndex}" data-si="${setIndex}" aria-label="Decrease ${label}">−</button>
           <div class="stepper-value">
             <input data-field="${field}" data-ei="${exerciseIndex}" data-si="${setIndex}" type="number" min="0" step="${step}" inputmode="decimal" value="${safeValue}" placeholder="${options.mayBeZero ? '0' : '—'}" aria-label="${label}">
             ${unit}
           </div>
-          <button type="button" data-adjust="${step}" data-field="${field}" data-ei="${exerciseIndex}" data-si="${setIndex}" aria-label="Increase ${label}">+</button>
+          <button type="button" data-adjust="${options.adjustStep ?? step}" data-field="${field}" data-ei="${exerciseIndex}" data-si="${setIndex}" aria-label="Increase ${label}">+</button>
         </div>
       </div>
     `;
   }
 
-  function summaryFor(exercise, estimate1RM, summarize = null) {
+  function summaryFor(exercise, estimate1RM, summarize = null, formatLoad = value => String(Number(value)), formatWorkload = (value, kind) => `${Math.round(value).toLocaleString('en-US')} ${kind === 'indicated_load' ? 'indicated lb' : 'lb volume'}`) {
     const working = (exercise.sets || []).filter(set => !set.warmup);
     const completed = working.filter(set => set.completed);
     const best = completed.reduce((winner, set) => {
@@ -38,14 +38,14 @@
     }, null);
     const semantic = typeof summarize === 'function' ? summarize(exercise) : null;
     const volume = semantic?.workingSetVolume ?? completed.reduce((total, set) => total + Number(set.weight || 0) * Number(set.reps || 0), 0);
-    const volumeLabel = semantic?.workingSetVolume === null ? 'Workload unavailable' : `${Math.round(volume).toLocaleString('en-US')} ${semantic?.workingSetVolumeKind === 'indicated_load' ? 'indicated lb' : 'lb volume'}`;
+    const volumeLabel = semantic?.workingSetVolume === null ? 'Workload unavailable' : formatWorkload(volume, semantic?.workingSetVolumeKind);
     return {
       complete: working.length > 0 && completed.length === working.length,
       completed: completed.length,
       total: working.length,
       progress: working.length ? `Set ${Math.min(completed.length + 1, working.length)} of ${working.length}` : 'No working sets',
       status: working.length ? `${completed.length}/${working.length} working sets` : 'No working sets',
-      best: best ? `Best ${Number(best.weight)} × ${Number(best.reps)}` : 'Tap to open and start',
+      best: best ? `Best ${formatLoad(best.weight)} × ${Number(best.reps)}` : 'Tap to open and start',
       volume: volumeLabel
     };
   }
@@ -70,7 +70,7 @@
     return `Set ${position} of ${working.length}`;
   }
 
-  function renderActive({ activeWorkout, box, finishButton, lastPerformance, performanceDelta, estimate1RM, escapeHtml, stepper, loadModeFor = exercise => exercise?.equipment === 'Bodyweight' ? 'bodyweight' : 'external', inputFieldsFor = () => null, setSummaryFor = null, guidanceMarkupFor = () => '' }) {
+  function renderActive({ activeWorkout, box, finishButton, lastPerformance, performanceDelta, estimate1RM, escapeHtml, stepper, loadModeFor = exercise => exercise?.equipment === 'Bodyweight' ? 'bodyweight' : 'external', inputFieldsFor = () => null, setSummaryFor = null, formatLoad = value => String(Number(value)), formatWorkload = null, guidanceMarkupFor = () => '' }) {
     if (!activeWorkout) return;
     if (!activeWorkout.exercises.length) {
       box.innerHTML = '<div class="empty">Choose a routine or an exercise above.</div>';
@@ -87,12 +87,12 @@
         { name: 'reps', label: 'Reps', unit: '', step: 1, mayBeZero: false }
       ];
       const last = lastPerformance(exercise.id);
-      const previous = last ? `${last.bestWorkingSet.weight} × ${last.bestWorkingSet.reps}` : 'First time logged';
+      const previous = last ? `${formatLoad(last.bestWorkingSet.weight)} × ${last.bestWorkingSet.reps}` : 'First time logged';
       const previousSets = last?.workingSets?.length > 1
-        ? last.workingSets.map(set => `${set.weight} × ${set.reps}`).join(' · ')
+        ? last.workingSets.map(set => `${formatLoad(set.weight)} × ${set.reps}`).join(' · ')
         : '';
       const improvement = performanceDelta(exercise, last)?.improvement || null;
-      const summary = summaryFor(exercise, estimate1RM, setSummaryFor);
+      const summary = summaryFor(exercise, estimate1RM, setSummaryFor, formatLoad, formatWorkload || undefined);
       const hasPersistedFocus = activeWorkout.focusedExerciseId === activeWorkout.exercises[activeIndex]?.id;
       const collapsed = exerciseIndex === activeIndex && !hasPersistedFocus ? false : isCollapsed(exercise);
       const isActive = exerciseIndex === activeIndex;

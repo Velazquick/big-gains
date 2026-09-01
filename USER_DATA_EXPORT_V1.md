@@ -62,13 +62,15 @@ The top-level marker is:
 
 Top-level sections are `metadata`, `workouts`, `bodyweight`, `goals`, `routines`, `program`, and `preferences`.
 
-- `metadata` contains the fixed export time, app release, and display name. It contains no email, Auth user ID, account ID, or profile UUID.
+- `metadata` contains the fixed export time, app release, display name, canonical weight unit (`lb`), and preferred display unit. It contains no email, Auth user ID, account ID, or profile UUID.
 - `workouts` contains completed History only, user notes, readable exercise identity, completed raw set facts, and an optional sanitized Program relationship.
-- `bodyweight` contains chronological pounds entries with their measurement timestamps.
+- `bodyweight` contains chronological canonical-pound entries with their measurement timestamps.
 - `goals` contains the human overview, target/status fields, attainment, and the current meaningful recommendation. Bounded engine traces and evidence-selection internals are omitted.
 - `routines` contains only saved/custom routine prescriptions from the profile state.
 - `program` contains Program records, immutable Program versions, immutable Routine versions, slots, cadence, review settings, Goal links, lineage, and current sequence position.
-- `preferences` contains timer sound/vibration, saved exercise cues/rest choices, and current presentation choices.
+- `preferences` contains timer sound/vibration, saved exercise cues/rest choices, current presentation choices, and explicit canonical/preferred weight units.
+
+The v1 data contract remains backward compatible and canonical. Existing raw load/bodyweight fields and CSV `Load unit` values remain pounds; they are not rewritten to the current display preference. The unit preference is additive metadata so a consumer can distinguish canonical stored facts from the user's current presentation choice. The schema-v5 technical backup remains storage-semantic and is not converted.
 
 Relationship identifiers are regenerated as export-local references such as `workout-1`, `goal-1`, `routine-version-2`, and `program-version-1`. Program transport envelopes and stored ownership IDs never cross the export boundary.
 

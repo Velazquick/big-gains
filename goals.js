@@ -41,11 +41,11 @@
     return exercise?.analytics?.e1rmLoadBasis || exercise?.measurement?.analytics?.e1rmLoadBasis || null;
   }
 
-  function targetLabelFor(exercise) {
+  function targetLabelFor(exercise, unit = 'lb') {
     const loadBasis = exercise?.measurement?.loadSemantics?.loadBasis;
-    if (loadBasis === 'per_hand') return 'lb per hand';
-    if (loadBasis === 'per_side') return 'lb per side';
-    return 'lb total';
+    if (loadBasis === 'per_hand') return `${unit} per hand`;
+    if (loadBasis === 'per_side') return `${unit} per side`;
+    return `${unit} total`;
   }
 
   function create(options) {
@@ -72,6 +72,9 @@
     let initialized = false;
     let editingGoalId = null;
     const $ = getElement;
+    const units = options.units || scope.BigGainsUnits;
+    const preferredUnit = () => units?.unitFor(getState()) || 'lb';
+    const displayLoad = value => units?.formatLoad(value, getState()) || `${value} lb`;
     const ownsGoal = goal => goal?.profileId === profile.id && goal?.accountId === account.accountId;
     const scopedGoals = () => list(getState()?.goals?.strengthGoals).filter(ownsGoal);
     const goalById = goalId => scopedGoals().find(goal => goal.goalId === goalId) || null;
@@ -272,7 +275,9 @@
     }
 
     function formatTarget(goal, exercise) {
-      return `${goal.targetValue.toLocaleString('en-US')} ${targetLabelFor(exercise)}`;
+      const basis = exercise?.measurement?.loadSemantics?.loadBasis;
+      const suffix = basis === 'per_hand' ? ' per hand' : basis === 'per_side' ? ' per side' : ' total';
+      return units?.formatLoad(goal.targetValue, getState(), { suffix }) || `${goal.targetValue.toLocaleString('en-US')} ${targetLabelFor(exercise)}`;
     }
 
     function evidenceMarkup(goal) {
@@ -281,15 +286,15 @@
         return '<span class="goal-attainment achieved">Achieved · completed target single</span>';
       }
       if (evidence.state === 'achieved') return '<span class="goal-attainment achieved">Target achieved · Completed single recorded</span>';
-      if (evidence.state === 'estimated_reached') return `<span class="goal-attainment estimated">Estimated target reached · No target single logged</span><small>Best existing estimate: ${escapeHtml(evidence.bestEstimate)} lb</small>`;
-      if (evidence.bestEstimate !== null) return `<span class="goal-attainment">Tracked · Best existing estimate ${escapeHtml(evidence.bestEstimate)} lb</span>`;
+      if (evidence.state === 'estimated_reached') return `<span class="goal-attainment estimated">Estimated target reached · No target single logged</span><small>Best existing estimate: ${escapeHtml(displayLoad(evidence.bestEstimate))}</small>`;
+      if (evidence.bestEstimate !== null) return `<span class="goal-attainment">Tracked · Best existing estimate ${escapeHtml(displayLoad(evidence.bestEstimate))}</span>`;
       return '<span class="goal-attainment">Tracked · No eligible completed evidence yet</span>';
     }
 
     function displayExposure(load, repTargets, workingSetCount) {
       const unique = [...new Set(list(repTargets))];
       const reps = unique.length === 1 ? unique[0] : list(repTargets).join('/');
-      return `${Number(load).toLocaleString('en-US')} × ${reps} × ${workingSetCount}`;
+      return `${displayLoad(load)} × ${reps} × ${workingSetCount}`;
     }
 
     function trajectoryMarkup(goal, exercise, evidence) {
@@ -413,7 +418,7 @@
       const eligible = scope.BigGainsExercisePicker
         ? scope.BigGainsExercisePicker.filterExercises({ catalog, exercises: eligibleExercises(catalog), term })
         : eligibleExercises(catalog).filter(exercise => catalog.matchesSearch(exercise, term));
-      select.innerHTML = eligible.map(exercise => `<option value="${escapeHtml(exercise.canonicalId)}">${escapeHtml(exercise.name)} — ${escapeHtml(targetLabelFor(exercise))}</option>`).join('');
+      select.innerHTML = eligible.map(exercise => `<option value="${escapeHtml(exercise.canonicalId)}">${escapeHtml(exercise.name)} — ${escapeHtml(targetLabelFor(exercise, preferredUnit()))}</option>`).join('');
       if (selectedId && eligible.some(exercise => exercise.canonicalId === selectedId)) select.value = selectedId;
       select.disabled = !eligible.length;
       $('saveGoal').disabled = !eligible.length;
@@ -424,7 +429,7 @@
     function renderExerciseChoice() {
       const selected = catalog.getById($('goalExerciseSelect')?.value);
       const choice = $('goalExerciseChoice');
-      if (choice) choice.textContent = selected ? `${selected.name} — ${targetLabelFor(selected)}` : 'Choose an eligible exercise';
+      if (choice) choice.textContent = selected ? `${selected.name} — ${targetLabelFor(selected, preferredUnit())}` : 'Choose an eligible exercise';
     }
 
     function openExercisePicker() {
@@ -455,7 +460,7 @@
       renderExerciseOptions('', goal?.exerciseId || '');
       if (goal) {
         $('goalExerciseSelect').value = goal.exerciseId;
-        $('goalTargetValue').value = String(goal.targetValue);
+        $('goalTargetValue').value = String(units?.inputValue(goal.targetValue, getState()) ?? goal.targetValue);
         $('goalTargetDate').value = goal.targetDate || '';
         $('goalLabel').value = goal.label || '';
       }
@@ -473,7 +478,7 @@
     function formValues() {
       return {
         exerciseId: $('goalExerciseSelect').value,
-        targetValue: $('goalTargetValue').value,
+        targetValue: units?.toCanonicalPounds($('goalTargetValue').value, preferredUnit()) ?? $('goalTargetValue').value,
         targetDate: $('goalTargetDate').value,
         label: $('goalLabel').value
       };

@@ -45,7 +45,7 @@
   });
   const KNOWN_STATE_KEYS = new Set([
     'version', 'profileId', 'goals', 'workouts', 'weights', 'prs', 'activeWorkout',
-    'restTimerEndsAt', 'customRoutines', 'timerPreferences', 'exercisePreferences', 'onboarding',
+    'restTimerEndsAt', 'customRoutines', 'unitPreferences', 'timerPreferences', 'exercisePreferences', 'onboarding',
     // Program-1A is validated by state-persistence and intentionally excluded
     // from the frozen migration/cloud record set until a cloud schema exists.
     'programCapture'
@@ -217,6 +217,11 @@
     });
 
     if (!isRecord(value.goals)) issue(issues, expectedProfileId, 'goals', 'Goal preferences must be an object.');
+    if (value.unitPreferences !== undefined && (!isRecord(value.unitPreferences)
+      || value.unitPreferences.contractVersion !== 1
+      || !['lb', 'kg'].includes(value.unitPreferences.weightUnit))) {
+      issue(issues, expectedProfileId, 'unitPreferences', 'Weight-unit preference must use contract version 1 and lb or kg.');
+    }
     if (!isRecord(value.timerPreferences)
       || typeof value.timerPreferences.sound !== 'boolean'
       || typeof value.timerPreferences.vibration !== 'boolean') {
@@ -481,12 +486,12 @@
   function ensureCard() {
     let card = document.getElementById('migrationPreviewCard');
     if (card) return card;
-    const anchor = document.getElementById('cloudFoundationCard') || document.getElementById('settingsPanel');
+    const anchor = document.getElementById('advancedDiagnostics');
     if (!anchor) return null;
     card = document.createElement('section');
     card.id = 'migrationPreviewCard';
     card.className = 'cloud-foundation-card migration-preview-card';
-    anchor.insertAdjacentElement('afterend', card);
+    anchor.append(card);
     return card;
   }
 

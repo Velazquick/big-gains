@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v100-rc-train-history-correctness';
+  const release = 'v101-rc-settings-units';
   const cloudConfigVersion = 'config-925e766c1b907250'; // BIG_GAINS_CLOUD_CONFIG_VERSION
   const deploymentVersion = `${release}-${cloudConfigVersion}`;
   const manifestAsset = `./asset-manifest.js?v=${encodeURIComponent(deploymentVersion)}`;
@@ -32,7 +32,8 @@
     './goals.css',
     './program-setup.css',
     './exercise-picker.css',
-    './user-data-export.css'
+  './user-data-export.css',
+  './settings.css'
   ];
   const scripts = [
     './boot-render-gate.js',
@@ -49,6 +50,7 @@
     './program-domain-sync.js',
     './program-domain-recovery.js',
     './program-domain-cutover.js',
+    './measurement-units.js',
     './state-persistence.js',
     './user-data-export.js',
     './profiles.js',

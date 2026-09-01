@@ -46,7 +46,7 @@
   <div class="app-shell">
     <header class="topbar" id="top">
       <div><p class="eyebrow">BIG GAINS</p><h1 id="greeting">Welcome to Big Gains.</h1></div>
-      <div class="topbar-actions"><label class="profile-switcher"><span>Profile</span><select id="profileSelect" aria-label="Choose profile"></select></label><button id="installButton" class="ghost hidden" type="button">Install</button></div>
+      <div class="topbar-actions"><label class="profile-switcher"><span>Profile</span><select id="profileSelect" aria-label="Choose profile"></select></label><button id="openSettings" class="ghost compact" type="button" aria-label="Open Settings">Settings</button><button id="installButton" class="ghost hidden" type="button">Install</button></div>
     </header>
 
     <main>
@@ -275,19 +275,64 @@
           <div class="library-toolbar"><select id="quickExerciseSelect" class="exercise-picker-compat" aria-hidden="true" tabindex="-1"></select><button id="addSelectedExercise" class="secondary wide" type="button">Choose an exercise</button></div>
           <details><summary class="secondary wide">Browse full exercise library</summary><div class="library-toolbar library-exercise-filters"><label class="search-box"><span>Find an exercise</span><input id="exerciseSearch" type="search" placeholder="Search chest press, cable row, squat…" autocomplete="off" /></label><label><span>Muscle</span><select id="muscleFilter" aria-label="Filter by muscle"><option value="all">All muscles</option></select></label><label><span>Equipment</span><select id="equipmentFilter" aria-label="Filter by equipment"><option value="all">All equipment</option></select></label></div><div class="library-az-label"><strong>All exercises A–Z</strong><button id="clearLibraryFilters" class="ghost compact" type="button" hidden>Clear filters</button></div><div id="exerciseLibrary" class="exercise-library"></div></details>
         </section>
-        <section class="panel data-panel" id="settingsPanel">
-          <div class="section-heading"><div><span class="label">Your data</span><h2>Export and backup</h2></div></div>
-          <div class="data-export-group">
-            <h3>Export my data</h3>
-            <p>Download your completed training history and personal Big Gains data in readable files. Nothing is deleted or changed.</p>
-            <button id="exportMyData" class="primary" type="button">Export my data</button>
-          </div>
-          <div class="technical-backup-group">
-            <h3>Technical backup &amp; restore</h3>
-            <p>This separate full-state file is for Big Gains recovery. The readable export above is not a restore file.</p>
-            <div class="data-actions"><button id="exportData" class="secondary" type="button">Download technical backup</button><label class="secondary file-button">Restore technical backup<input id="importData" type="file" accept="application/json" /></label></div>
-          </div>
-        </section>
+      </section>
+
+      <section class="view" id="viewSettings">
+        <div class="v2-page-head"><div><span class="label">Settings</span><h2>Make Big Gains yours.</h2><p>Profile preferences stay local-first and follow your profile when cloud sync is available.</p></div></div>
+        <div class="settings-stack">
+          <section class="panel settings-section" aria-labelledby="settingsProfileTitle">
+            <div class="settings-section-head"><div><span class="label">Profile</span><h2 id="settingsProfileTitle">Your training profile</h2></div><strong id="settingsProfileName">Big Gains user</strong></div>
+            <p>Your workouts, preferences, and recovery state remain isolated to this profile.</p>
+          </section>
+
+          <section class="panel settings-section" aria-labelledby="settingsUnitsTitle">
+            <div class="settings-section-head"><div><span class="label">Units</span><h2 id="settingsUnitsTitle">Weight units</h2></div></div>
+            <fieldset class="unit-choice" id="weightUnitChoice">
+              <legend class="sr-only">Weight units</legend>
+              <label><input type="radio" name="weightUnit" value="lb"><span>Pounds <small>lb</small></span></label>
+              <label><input type="radio" name="weightUnit" value="kg"><span>Kilograms <small>kg</small></span></label>
+            </fieldset>
+            <p>Changes how weights are entered and displayed. Existing workout history is preserved.</p>
+          </section>
+
+          <section class="panel settings-section" aria-labelledby="settingsTrainingTitle">
+            <div class="settings-section-head"><div><span class="label">Training</span><h2 id="settingsTrainingTitle">Rest timer</h2></div></div>
+            <div class="settings-toggle-list">
+              <label><span><strong>Completion sound</strong><small>Play a sound when rest ends.</small></span><input id="settingsTimerSound" type="checkbox"></label>
+              <label><span><strong>Vibration</strong><small>Vibrate when supported by this device.</small></span><input id="settingsTimerVibration" type="checkbox"></label>
+            </div>
+          </section>
+
+          <div id="cloudSettingsMount" aria-live="polite"></div>
+
+          <section class="panel data-panel settings-section" id="settingsPanel" aria-labelledby="settingsBackupTitle">
+            <div class="settings-section-head"><div><span class="label">Cloud &amp; backup</span><h2 id="settingsBackupTitle">Your data</h2></div></div>
+            <div class="data-export-group">
+              <h3>Export my data</h3>
+              <p>Download readable training and personal data files. Canonical values include explicit units.</p>
+              <button id="exportMyData" class="primary" type="button">Export my data</button>
+            </div>
+            <div class="technical-backup-group">
+              <h3>Technical backup &amp; restore</h3>
+              <p>This full-state recovery file is separate from the readable export.</p>
+              <div class="data-actions"><button id="exportData" class="secondary" type="button">Download technical backup</button><label class="secondary file-button">Restore technical backup<input id="importData" type="file" accept="application/json" /></label></div>
+            </div>
+          </section>
+
+          <section class="panel settings-section" aria-labelledby="settingsSupportTitle">
+            <div class="settings-section-head"><div><span class="label">Support</span><h2 id="settingsSupportTitle">Help &amp; diagnostics</h2></div></div>
+            <p>Advanced details are available for troubleshooting without crowding everyday settings.</p>
+            <details class="settings-advanced" id="advancedDiagnostics">
+              <summary>Advanced diagnostics</summary>
+              <dl class="diagnostics-list">
+                <div><dt>App version</dt><dd id="diagnosticAppVersion">—</dd></div>
+                <div><dt>Profile ID</dt><dd id="diagnosticProfileId">—</dd></div>
+                <div><dt>Stored data</dt><dd>Schema v5 · canonical pounds</dd></div>
+                <div><dt>Unit preference</dt><dd id="diagnosticWeightUnit">—</dd></div>
+              </dl>
+            </details>
+          </section>
+        </div>
       </section>
     </main>
 
@@ -370,7 +415,7 @@
   </div></dialog>
 
   <dialog id="exercisePickerDialog" class="exercise-picker-dialog" aria-labelledby="exercisePickerTitle" aria-describedby="exercisePickerPrompt"><div class="exercise-picker-shell"><header class="exercise-picker-head"><div><span class="label">Exercise Library</span><h2 id="exercisePickerTitle">Choose an exercise</h2><p id="exercisePickerPrompt">Search the local exercise catalog.</p></div><button id="closeExercisePicker" class="ghost compact" type="button" aria-label="Cancel exercise selection">Cancel</button></header><div class="exercise-picker-controls"><label class="exercise-picker-search"><span>Search exercises</span><input id="exercisePickerSearch" type="search" placeholder="Name, alias, muscle, or equipment" autocomplete="off" enterkeyhint="search"></label><div class="exercise-picker-filter-row"><label class="exercise-picker-filter"><span>Muscle</span><select id="exercisePickerMuscle" aria-label="Filter exercises by muscle"></select></label><label class="exercise-picker-filter"><span>Equipment</span><select id="exercisePickerEquipment" aria-label="Filter exercises by equipment"></select></label><button id="exercisePickerClearFilters" class="ghost compact" type="button" hidden>Clear</button></div></div><div id="exercisePickerResults" class="exercise-picker-results" aria-live="polite"></div></div></dialog>
-  <script src="asset-manifest.js?v=v100-rc-train-history-correctness-config-925e766c1b907250" data-big-gains-manifest></script>
+  <script src="asset-manifest.js?v=v101-rc-settings-units-config-925e766c1b907250" data-big-gains-manifest></script>
   <script src="asset-loader.js"></script>
 </body>
 </html>

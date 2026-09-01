@@ -79,6 +79,7 @@
         activeWorkout: null,
         restTimerEndsAt: null,
         customRoutines: {},
+        unitPreferences: { contractVersion: 1, weightUnit: 'lb' },
         timerPreferences: { sound: true, vibration: true }
       };
     }
@@ -328,6 +329,13 @@
       };
     }
 
+    function normalizeUnitPreferences(value) {
+      return window.BigGainsUnits?.preference(value) || {
+        contractVersion: 1,
+        weightUnit: value?.weightUnit === 'kg' ? 'kg' : 'lb'
+      };
+    }
+
     function normalizeOnboarding(value) {
       if (!isRecord(value)) return null;
       const statuses = new Set(['in_progress', 'completed', 'skipped']);
@@ -346,7 +354,7 @@
       const defaults = blankState(profileId);
       const saved = isRecord(value) ? value : {};
       const { onboarding: ignoredOnboarding, ...savedState } = saved;
-      return {
+      const normalized = {
         ...defaults,
         ...savedState,
         version: 5,
@@ -372,6 +380,15 @@
           ? saved.restTimerEndsAt
           : null
       };
+      // Older schema-v5 profiles intentionally keep the pound default
+      // implicit until the user makes an explicit unit choice. This keeps
+      // loading the app from rewriting an otherwise untouched profile.
+      if (Object.hasOwn(saved, 'unitPreferences')) {
+        normalized.unitPreferences = normalizeUnitPreferences(saved.unitPreferences);
+      } else {
+        delete normalized.unitPreferences;
+      }
+      return normalized;
     }
 
     function migrateLegacyV1(value) {

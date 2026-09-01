@@ -10,6 +10,8 @@ RC-2 signup, first-run, first-success, and full recovery behavior is governed by
 
 Implementation update: `v100-rc-train-history-correctness` implements R5's two-family derived record taxonomy and exact source-set attribution, plus active and retrospective warm-up/working-set removal without changing prescriptions. Protected CI, exact-head merge, and Pages verification remain the release gates for this interval.
 
+Implementation update: `v101-rc-settings-units` implements the release-facing Settings pass without changing the five-destination product model. The profile-scoped lb/kg preference is a presentation/input boundary over canonical-pound schema-v5 facts; an absent preference remains the backward-compatible pound default, and toggling never rewrites History. Cloud, backup, and support actions move into secondary Settings while engineering-heavy details remain available only under Advanced diagnostics. Appearance is omitted until it has a generic profile-safe contract.
+
 This plan supersedes calendar-driven external-test targets. Big Gains reaches release candidate when it is the product the owner intends to hand to people and the gates below are proved. It is not a promise of zero bugs.
 
 ## 1. RC product standard

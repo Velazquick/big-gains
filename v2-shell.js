@@ -4,7 +4,7 @@
   const views = [...document.querySelectorAll('.view')];
   const navButtons = [...document.querySelectorAll('.bottom-nav [data-view]')];
   const activePanel = document.getElementById('activePanel');
-  const validViews = new Set(['today', 'plan', 'goals', 'train', 'history', 'calendar', 'progress', 'library']);
+  const validViews = new Set(['today', 'plan', 'goals', 'train', 'history', 'calendar', 'progress', 'library', 'settings']);
   let initialized = false;
 
   function showView(name, options = {}) {
@@ -46,6 +46,8 @@
       event.stopImmediatePropagation();
       showView(button.dataset.view);
     }, true));
+
+    document.getElementById('openSettings')?.addEventListener('click', () => showView('settings'));
 
     document.getElementById('startWorkout')?.addEventListener('click', () => {
       setTimeout(() => showView('train'), 0);

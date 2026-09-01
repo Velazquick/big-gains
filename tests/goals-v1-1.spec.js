@@ -150,10 +150,10 @@ test('Goals v1.1: active goal detail shows a conditional trajectory and aggressi
   await page.evaluate(() => bigGainsViewShell.showView('goals', { workout: false, instant: true }));
   const card = page.locator('#activeGoalsList .goal-card');
   await card.locator('.goal-trajectory').click();
-  await expect(card.locator('.goal-trajectory')).toContainText('Current next exposure: 215 × 5 × 5');
+  await expect(card.locator('.goal-trajectory')).toContainText('Current next exposure: 215 lb × 5 × 5');
   await expect(card.locator('.goal-trajectory li')).toHaveCount(3);
-  await expect(card.locator('.goal-trajectory')).toContainText('215 × 6 × 5');
-  await expect(card.locator('.goal-trajectory')).toContainText('220 × 4 × 5');
+  await expect(card.locator('.goal-trajectory')).toContainText('215 lb × 6 × 5');
+  await expect(card.locator('.goal-trajectory')).toContainText('220 lb × 4 × 5');
   await expect(card.locator('.goal-trajectory')).toContainText('actual performance differs');
   await expect(card.locator('.goal-trajectory')).not.toContainText('Week 1');
   await expect(card.locator('.goal-deadline-outlook')).toHaveAttribute('data-deadline-status', 'aggressive');

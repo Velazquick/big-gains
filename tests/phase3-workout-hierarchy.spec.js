@@ -83,7 +83,7 @@ test('exercise cards expose active, upcoming, completed, prior-performance, prog
   await expect(cards.nth(0)).toHaveAttribute('aria-current', 'step');
   await expect(cards.nth(0).locator('.exercise-toggle')).toHaveAttribute('aria-expanded', 'true');
   await expect(cards.nth(0)).toContainText('Last');
-  await expect(cards.nth(0)).toContainText('100 × 10');
+  await expect(cards.nth(0)).toContainText('100 lb × 10');
   await expect(cards.nth(0)).toContainText('Set 1 of 3');
   await expect(cards.nth(1)).toHaveClass(/is-upcoming/);
   await expect(cards.nth(1)).toHaveClass(/is-collapsed/);

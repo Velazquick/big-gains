@@ -17,6 +17,7 @@ const productionScriptOrder = [
   'program-domain-sync.js',
   'program-domain-recovery.js',
   'program-domain-cutover.js',
+  'measurement-units.js',
   'state-persistence.js',
   'user-data-export.js',
   'profiles.js',

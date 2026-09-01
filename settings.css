@@ -1,0 +1,25 @@
+.settings-stack{display:grid;gap:16px}
+.settings-stack>.panel,.settings-stack>#cloudSettingsMount>.cloud-foundation-card{margin:0}
+.settings-section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+.settings-section-head h2{margin:5px 0 0;font-size:1.3rem}
+.settings-section>p{margin:12px 0 0;color:var(--muted);line-height:1.5}
+.unit-choice{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:18px 0 0;padding:0;border:0}
+.unit-choice label{cursor:pointer}
+.unit-choice input{position:absolute;width:1px;height:1px;margin:0;opacity:0;pointer-events:none}
+.unit-choice span{display:flex;align-items:center;justify-content:space-between;padding:15px;border:1px solid var(--line);border-radius:14px;background:var(--panel3);font-weight:850}
+.unit-choice small{color:var(--muted);font-size:.78rem;text-transform:uppercase}
+.unit-choice input:checked+span{border-color:var(--accent);background:rgba(216,255,62,.1);box-shadow:0 0 0 2px rgba(216,255,62,.08)}
+.unit-choice input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.settings-toggle-list{display:grid;gap:10px;margin-top:18px}
+.settings-toggle-list label{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--panel3)}
+.settings-toggle-list span,.settings-toggle-list small{display:block}
+.settings-toggle-list small{margin-top:4px;color:var(--muted)}
+.settings-toggle-list input{width:22px;height:22px;accent-color:var(--accent)}
+.settings-advanced{margin-top:18px;border:1px solid var(--line);border-radius:14px;background:var(--panel3);overflow:hidden}
+.settings-advanced summary{cursor:pointer;padding:15px;font-weight:850}
+.diagnostics-list{display:grid;gap:0;margin:0;padding:0 15px 15px}
+.diagnostics-list div{display:flex;justify-content:space-between;gap:18px;padding:10px 0;border-top:1px solid var(--line)}
+.diagnostics-list dt{color:var(--muted)}
+.diagnostics-list dd{margin:0;text-align:right;overflow-wrap:anywhere}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:560px){.topbar{align-items:stretch;flex-direction:column;gap:12px}.topbar-actions{width:100%;justify-content:space-between;min-width:0}.unit-choice{grid-template-columns:1fr}.settings-section-head{display:block}.diagnostics-list div{display:block}.diagnostics-list dd{margin-top:4px;text-align:left}}

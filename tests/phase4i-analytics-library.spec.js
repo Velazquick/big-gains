@@ -326,7 +326,7 @@ test('active workout shows canonical previous performance and a meaningful impro
   await openApp(page);
   const card = page.locator('#activeExercises .active-exercise').first();
 
-  await expect(card.locator('[data-previous-performance="seated-machine-chest-press"]')).toHaveText('100 × 10');
+  await expect(card.locator('[data-previous-performance="seated-machine-chest-press"]')).toHaveText('100 lb × 10');
   await expect(card.locator('[data-improvement-delta]')).toHaveCount(0);
   await card.locator('input[data-field="weight"][data-si="1"]').fill('155');
   await card.locator('input[data-field="reps"][data-si="1"]').fill('10');

@@ -92,7 +92,7 @@ test('keeps Jorge and Alexa localStorage isolated', async ({ page }) => {
 test('rejects a cross-profile import without modifying either profile', async ({ page }) => {
   await installLocalStorageFixture(page, ['blankJorge', 'blankAlexa'], { activeProfile: 'jorge' });
   await openApp(page);
-  await page.locator('.bottom-nav [data-view="library"]').click();
+  await page.locator('#openSettings').click();
   const jorgeBefore = await readStoredJson(page, STORAGE_KEYS.jorge);
   const alexaBefore = await readStoredJson(page, STORAGE_KEYS.alexa);
 
@@ -120,7 +120,7 @@ test('rejects a cross-profile import without modifying either profile', async ({
 test('exports the existing backup format and restores it without schema changes', async ({ page }) => {
   await installLocalStorageFixture(page, 'completedWorkouts');
   await openApp(page);
-  await page.locator('.bottom-nav [data-view="library"]').click();
+  await page.locator('#openSettings').click();
 
   const downloadPromise = page.waitForEvent('download');
   await page.locator('#exportData').click();
@@ -143,7 +143,7 @@ test('exports the existing backup format and restores it without schema changes'
   await page.locator('#weightForm button[type="submit"]').click();
   expect((await readStoredJson(page, STORAGE_KEYS.jorge)).weights[0].weight).toBe(211);
 
-  await page.locator('.bottom-nav [data-view="library"]').click();
+  await page.locator('#openSettings').click();
   const dialogPromise = page.waitForEvent('dialog');
   await page.locator('#importData').setInputFiles(downloadPath);
   const dialog = await dialogPromise;
@@ -158,6 +158,8 @@ test('same-profile imports replace live timer ports without retaining the prior 
   await openApp(page);
   await page.getByRole('button', { name: 'Complete Set 1 of 3' }).click();
   const timerA = await page.evaluate(() => workoutTimerController.getStatus());
+  await page.locator('#exitWorkoutMode').click();
+  await page.locator('#openSettings').click();
 
   const importedDeadline = Date.now() + 120_000;
   const imported = {
