@@ -22,4 +22,4 @@
 .diagnostics-list dt{color:var(--muted)}
 .diagnostics-list dd{margin:0;text-align:right;overflow-wrap:anywhere}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-@media(max-width:560px){.unit-choice{grid-template-columns:1fr}.settings-section-head{display:block}.diagnostics-list div{display:block}.diagnostics-list dd{margin-top:4px;text-align:left}}
+@media(max-width:560px){.topbar{align-items:stretch;flex-direction:column;gap:12px}.topbar-actions{width:100%;justify-content:space-between;min-width:0}.unit-choice{grid-template-columns:1fr}.settings-section-head{display:block}.diagnostics-list div{display:block}.diagnostics-list dd{margin-top:4px;text-align:left}}

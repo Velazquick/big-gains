@@ -3,10 +3,25 @@ import { installLocalStorageFixture, readStoredJson, STORAGE_KEYS } from './fixt
 import { openApp } from './helpers/app.js';
 import { openHistory } from './helpers/history.js';
 
+test.use({ timezoneId: 'UTC' });
+
 test.beforeEach(async ({ page }) => {
   await installLocalStorageFixture(page, 'completedWorkouts');
   await openApp(page);
 });
+
+async function showFixtureMonth(page) {
+  const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const target = 2026 * 12 + 7;
+  for (let attempts = 0; attempts < 36; attempts += 1) {
+    const heading = (await page.locator('#calendarMonthHeading').textContent()).trim();
+    const [monthName, yearText] = heading.split(' ');
+    const current = Number(yearText) * 12 + months.indexOf(monthName);
+    if (current === target) return;
+    await page.locator(current > target ? '#calendarPrevious' : '#calendarNext').click();
+  }
+  throw new Error('Could not navigate History calendar to August 2026.');
+}
 
 test('primary navigation remains exactly Today, Plan, Train, Progress, and Library', async ({ page }) => {
   const nav = page.locator('.bottom-nav');
@@ -39,6 +54,7 @@ test('History defaults to List and the same workout returns to its List or Calen
   await page.locator('#historyCalendarTab').click();
   await expect(page.locator('body')).toHaveAttribute('data-route', 'history-calendar');
   await expect(page.locator('#historyCalendarTab')).toHaveAttribute('aria-selected', 'true');
+  await showFixtureMonth(page);
   await page.locator('[data-calendar-date="2026-08-04"]').click();
   await page.locator('#calendarDayWorkouts [data-history-id="completed-push-1"]').click();
   await expect(page.locator('#historyDialogTitle')).toHaveText('Push');
@@ -74,6 +90,7 @@ test('legacy Calendar and History deep links resolve to the Progress-owned Histo
 test('History navigation does not mutate schema-v5 workout or profile-owned data', async ({ page }) => {
   const before = await readStoredJson(page, STORAGE_KEYS.jorge);
   await openHistory(page, 'calendar');
+  await showFixtureMonth(page);
   await page.locator('[data-calendar-date="2026-08-04"]').click();
   await page.locator('#historyCalendarTab').press('ArrowLeft');
   await expect(page.locator('#historyListTab')).toHaveAttribute('aria-selected', 'true');
