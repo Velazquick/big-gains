@@ -11,6 +11,10 @@
     weightUnit: UNITS.has(value?.weightUnit) ? value.weightUnit : 'lb'
   });
   const unitFor = state => preference(state?.unitPreferences).weightUnit;
+  const effectiveUnitFor = (activeWorkout, state) => UNITS.has(activeWorkout?.displayUnitOverride)
+    ? activeWorkout.displayUnitOverride
+    : unitFor(state);
+  const displayUnit = (state, override) => UNITS.has(override) ? override : unitFor(state);
   const round = (value, digits) => {
     const power = 10 ** digits;
     return Math.round((Number(value) + Number.EPSILON) * power) / power;
@@ -43,34 +47,34 @@
     }).format(Number(value));
   }
 
-  function formatLoad(value, state, { suffix = '', digits = 1 } = {}) {
+  function formatLoad(value, state, { suffix = '', digits = 1, unit = null } = {}) {
     if (!finite(value)) return '—';
-    const unit = unitFor(state);
-    return `${formatNumber(fromCanonicalPounds(value, unit, { digits }), { digits })} ${unit}${suffix}`;
+    const shownUnit = displayUnit(state, unit);
+    return `${formatNumber(fromCanonicalPounds(value, shownUnit, { digits }), { digits })} ${shownUnit}${suffix}`;
   }
 
   function formatBodyweight(value, state) {
     return formatLoad(value, state, { digits: 1 });
   }
 
-  function formatWorkload(value, state, { kind = null, compact = false } = {}) {
+  function formatWorkload(value, state, { kind = null, compact = false, unit = null } = {}) {
     if (!finite(value)) return '—';
-    const unit = unitFor(state);
-    const shown = fromCanonicalPounds(value, unit, { workload: true });
+    const shownUnit = displayUnit(state, unit);
+    const shown = fromCanonicalPounds(value, shownUnit, { workload: true });
     const qualifier = kind === 'indicated_load' ? 'indicated '
       : kind === 'modeled_system_load' ? 'modeled '
         : '';
-    return `${formatNumber(shown, { digits: 0, compact })} ${qualifier}${unit}`;
+    return `${formatNumber(shown, { digits: 0, compact })} ${qualifier}${shownUnit}`;
   }
 
-  function inputValue(value, state) {
+  function inputValue(value, state, { unit = null } = {}) {
     if (value === '' || value == null) return '';
-    return fromCanonicalPounds(value, unitFor(state), { digits: 3 });
+    return fromCanonicalPounds(value, displayUnit(state, unit), { digits: 3 });
   }
 
-  function inputStep(canonicalStep, state) {
+  function inputStep(canonicalStep, state, { unit = null } = {}) {
     if (!finite(canonicalStep) || Number(canonicalStep) <= 0) return 0.1;
-    return unitFor(state) === 'kg'
+    return displayUnit(state, unit) === 'kg'
       ? Math.max(0.1, round(Number(canonicalStep) / POUNDS_PER_KILOGRAM, 1))
       : Number(canonicalStep);
   }
@@ -91,6 +95,7 @@
       POUNDS_PER_KILOGRAM,
       preference,
       unitFor,
+      effectiveUnitFor,
       fromCanonicalPounds,
       toCanonicalPounds,
       formatNumber,

@@ -34,18 +34,18 @@
     return Object.freeze(value);
   };
 
-  function displayLoad(load, measurement, units, state) {
+  function displayLoad(load, measurement, units, state, unit = null) {
     const basis = measurement?.loadSemantics?.loadBasis;
     const suffix = basis === 'per_hand' ? ' per hand' : basis === 'per_side' ? ' per side' : '';
-    return units?.formatLoad(load, state, { suffix }) || `${Number(load).toLocaleString('en-US')} lb${suffix}`;
+    return units?.formatLoad(load, state, { suffix, unit }) || `${Number(load).toLocaleString('en-US')} lb${suffix}`;
   }
 
-  function displayGoalTarget(goal, measurement, units, state) {
+  function displayGoalTarget(goal, measurement, units, state, unit = null) {
     const loadBasis = measurement?.loadSemantics?.loadBasis;
     const suffix = goal?.targetBasis === 'combined_external_load' ? ' total'
       : loadBasis === 'per_hand' ? ' per hand'
         : loadBasis === 'per_side' ? ' per side' : '';
-    return units?.formatLoad(goal?.targetValue, state, { suffix }) || `${Number(goal?.targetValue).toLocaleString('en-US')} ${goal?.unit || 'lb'}${suffix}`;
+    return units?.formatLoad(goal?.targetValue, state, { suffix, unit }) || `${Number(goal?.targetValue).toLocaleString('en-US')} ${goal?.unit || 'lb'}${suffix}`;
   }
 
   function exactDefinition(catalog, exercise) {
@@ -337,12 +337,12 @@
       };
     }
 
-    function render(exercise, escapeHtml) {
+    function render(exercise, escapeHtml, displayUnit = null) {
       const snapshot = exercise?.goalGuidance;
       if (!snapshot) return '';
       const measurement = catalog.measurementFor(exercise);
       const copy = presentationFor(snapshot);
-      const goalDisplay = snapshot.targetValue ? displayGoalTarget(snapshot, measurement, units, getState()) : snapshot.display?.goal;
+      const goalDisplay = snapshot.targetValue ? displayGoalTarget(snapshot, measurement, units, getState(), displayUnit) : snapshot.display?.goal;
       const goal = goalDisplay ? `${snapshot.exerciseName} ${goalDisplay}` : snapshot.exerciseName;
       if (snapshot.status === 'available' && snapshot.recommendation) {
         const reps = snapshot.recommendation.repTargets;
@@ -352,7 +352,7 @@
           : '';
         return `<section class="goal-train-guidance" data-goal-guidance-status="available" data-goal-reason="${escapeHtml(snapshot.reasonCode)}">
           <div class="goal-train-heading"><span>Strength goal · ${escapeHtml(goal)}</span><em>${escapeHtml(copy.chip)}</em></div>
-          <strong class="goal-train-target">Today: ${escapeHtml(displayLoad(snapshot.recommendation.enteredLoad, measurement, units, getState()))} × ${escapeHtml(repText)} · ${snapshot.recommendation.workingSetCount} set${snapshot.recommendation.workingSetCount === 1 ? '' : 's'}</strong>
+          <strong class="goal-train-target">Today: ${escapeHtml(displayLoad(snapshot.recommendation.enteredLoad, measurement, units, getState(), displayUnit))} × ${escapeHtml(repText)} · ${snapshot.recommendation.workingSetCount} set${snapshot.recommendation.workingSetCount === 1 ? '' : 's'}</strong>
           <small>${escapeHtml(snapshot.display.loadLabel)} · editable starting target</small>
           ${attainment}
           <details><summary>Why this target?</summary><strong>${escapeHtml(copy.title)}</strong><p>${escapeHtml(snapshot.explanation)}</p></details>

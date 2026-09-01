@@ -277,6 +277,8 @@ The storage keys are:
 
 All weight-bearing schema-v5 facts are canonical pounds. `state.unitPreferences` is optional and profile-scoped; absence means pounds, while `{ contractVersion: 1, weightUnit: "kg" }` changes only rendering and input parsing. Kilogram input is converted once at the persistence boundary using `1 kg = 2.2046226218 lb`; render and prefill convert from the unchanged canonical value. Workload, e1RM, record, Goal, Program, bodyweight, and History math therefore remain unit-agnostic internally, and repeated preference toggles cannot introduce storage drift. The existing preferences shadow carries only an explicit kilogram choice; absence remains the backward-compatible pound default and produces no schema, table, RLS, or Auth change.
 
+An active workout may additionally carry `displayUnitOverride: "lb" | "kg"` as UI/session metadata. The effective Train unit is `activeWorkout.displayUnitOverride ?? state.unitPreferences.weightUnit ?? "lb"`. The override uses the existing active-session JSON serialization for local/offline resume (and may therefore ride the existing active-session shadow payload) without adding a table, column, or entity. It is never copied into the completed workout: completion strips it before History, analytics, records, Program provenance, and exports receive the workout, while discard removes it with the active object. A new workout has no override and returns to the profile preference.
+
 When Jorge has no current state, the persistence layer imports only valid legacy weights into a new version-5 state. It does not reconstruct undocumented legacy workouts, does not modify the legacy key/value, and persists the new Jorge state so the migration is idempotent.
 
 ## Phase 4D migration preview

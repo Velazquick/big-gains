@@ -125,6 +125,8 @@
       };
       if (value.entryMethod === 'retrospective') workout.entryMethod = 'retrospective';
       else delete workout.entryMethod;
+      // Active-workout display choice is session UI state, never History data.
+      delete workout.displayUnitOverride;
       const programOrigin = normalizeProgramOrigin(value.programOrigin);
       if (programOrigin) workout.programOrigin = programOrigin;
       else delete workout.programOrigin;
@@ -146,6 +148,7 @@
       const programOrigin = normalizeProgramOrigin(value.programOrigin);
       if (programOrigin) workout.programOrigin = programOrigin;
       else delete workout.programOrigin;
+      if (!['lb', 'kg'].includes(value.displayUnitOverride)) delete workout.displayUnitOverride;
       return workout;
     }
 
