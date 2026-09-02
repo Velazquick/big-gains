@@ -182,6 +182,21 @@ select is((select count(*) from public.profiles), 1::bigint, 'independent user s
 select is((select count(*) from public.workouts where client_id in ('jorge-workout', 'alexa-workout')), 0::bigint, 'independent user cannot read managed workouts');
 select is((select count(*) from public.profile_memberships), 0::bigint, 'independent user cannot read managed memberships');
 
+-- A brand-new user must still bootstrap after the managed-access SELECT policy
+-- is installed. INSERT ... RETURNING checks that policy against the new row.
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '94000000-0000-0000-0000-000000000004', true);
+select set_config('request.jwt.claims', '{"sub":"94000000-0000-0000-0000-000000000004","role":"authenticated"}', true);
+select lives_ok(
+  $$select * from public.bootstrap_independent_account('New independent after managed access')$$,
+  'unassigned user can bootstrap with the managed-access policies installed'
+);
+select is((select count(*) from public.accounts), 1::bigint, 'new independent owner sees only the newly inserted account');
+select is((select count(*) from public.profiles), 1::bigint, 'new independent owner sees exactly one profile');
+select is((select count(*) from public.profile_memberships), 0::bigint, 'public bootstrap creates no managed membership');
+select is((select count(*) from public.workouts), 0::bigint, 'new independent owner cannot see any pre-existing workouts');
+
 reset role;
 set local role anon;
 select throws_ok($$select * from public.accounts$$, '42501', null, 'anonymous cannot read accounts');
