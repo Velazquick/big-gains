@@ -303,7 +303,13 @@ test('a stale timer A READY reset cannot clobber timer B after discard and repla
 
   await page.locator('#cancelWorkout').click();
   await page.locator('#cancelWorkout').click();
-  await page.evaluate(() => workoutSessionController.start('Push', { loadRoutine: true, scroll: false }));
+  // Discard schedules a return to Today. Settle that navigation before the
+  // direct controller setup, which does not itself choose the Train view.
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'today');
+  await page.evaluate(() => {
+    workoutSessionController.start('Push', { loadRoutine: true, scroll: false });
+    window.bigGainsViewShell.showView('train', { instant: true, scroll: false });
+  });
   await page.locator('input[data-field="weight"][data-ei="0"][data-si="1"]').fill('100');
   await page.locator('input[data-field="reps"][data-ei="0"][data-si="1"]').fill('8');
   await completeSet(page, 1);
