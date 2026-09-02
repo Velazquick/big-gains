@@ -8,6 +8,8 @@
 - Date: 2026-08-25
 - RC plan items closed by a later conforming implementation: R1, R2, R3, and R6 in the [Release Candidate Plan](RELEASE_CANDIDATE_PLAN.md)
 
+Implementation status, 2026-09-02: public signup and custom SMTP are now enabled. See [live Auth readiness and activation evidence](RC2_SELF_SERVE_AUTH_READINESS.md) for deployed markers, confirmation/bootstrap proof, retained test-data deltas, and the initial callback retry observation. Section 1 below records the original 2026-08-25 baseline; it is not a statement of today's deployment.
+
 The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHOULD**, **SHOULD NOT**, **MAY**, and **OPTIONAL** are normative when capitalized.
 
 ## 0. Authority, boundary, and precedence
