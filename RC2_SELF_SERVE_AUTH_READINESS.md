@@ -34,6 +34,8 @@ The original independent pgTAP suite failed before the repair. After the canonic
 
 Both protected PR/branch browser checks passed all 521 browser tests plus the 201 Program checks. One initial branch run timed out on an unchanged timer visibility test; the PR run passed it, three focused repetitions passed, and the full unchanged-head branch retry passed. No check was bypassed and no protection was changed.
 
+The same timer-test timeout recurred during the readiness follow-up. Its setup raced the existing 100 ms discard-to-Today navigation: a direct controller start does not select Train. The test now waits for the completed discard navigation and explicitly selects Train for its replacement-workout setup. Product code and all stale-timer assertions are unchanged; this fixes the repeated CI setup race rather than retrying it indefinitely.
+
 The operator authorized a previously unused mailbox for a disposable profile labeled **RC Signup Test 2026-09-02**. No real-user credentials are used and the test must not fabricate completed training History.
 
 The isolated browser began with no Auth storage. Production Create account was visible; signup returned HTTP 200 with an unconfirmed identity and no session. A hosted query proved **zero application accounts, profiles, or memberships before confirmation**. Confirmation changed only the Auth identity; another hosted query proved all three application counts remained zero before bootstrap.
