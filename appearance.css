@@ -15,7 +15,9 @@
 
 /* Only opt-in profiles use this layer. Theme surfaces and legacy accents stay
    in their existing stylesheets. Text ink and filled controls have distinct tokens. */
-html[data-appearance-version="1"] :is(.primary,.day-tabs button.active,.bottom-nav button.active,.set-line.is-current .set-done,.pr-badge,.history-record-pill,.record-chip,.progress-window-toggle button.active,.active-workout-unit-choice button[aria-pressed="true"]){background:var(--accent-primary)!important;border-color:var(--accent-primary)!important;color:var(--on-accent)!important}
+html[data-appearance-version="1"] :is(.primary:not(.danger),.day-tabs button.active,.bottom-nav button.active,.set-line.is-current .set-done,.pr-badge,.history-record-pill,.record-chip,.progress-window-toggle button.active,.active-workout-unit-choice button[aria-pressed="true"]){background:var(--accent-primary)!important;border-color:var(--accent-primary)!important;color:var(--on-accent)!important}
+html[data-appearance-version="1"] .primary.danger{background:var(--danger)!important;border-color:var(--danger)!important;color:#111!important}
+html[data-appearance-version="1"][data-theme="wellness-light"] .primary.danger{color:#fff!important}
 html[data-appearance-version="1"] :is(.eyebrow,.label,.exercise-muscle,.add-set,.exercise-delta,.exercise-target,.goal-target,.calendar-date[aria-selected="true"]){color:var(--accent)}
 html[data-appearance-version="1"] :is(.hero-card,#viewToday .hero-card){border-color:var(--accent-border-soft);background:linear-gradient(135deg,var(--accent-soft),transparent)}
 html[data-appearance-version="1"] .hero-card::before{background:linear-gradient(180deg,var(--accent),transparent)}

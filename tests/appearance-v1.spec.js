@@ -13,7 +13,7 @@ async function setup(page, profile = 'jorge') {
     localStorage.setItem('big-gains-v2', JSON.stringify(jorge));
     localStorage.setItem('big-gains-alexa-v1', JSON.stringify(alexa));
     localStorage.setItem('appearance-seeded','1');
-  }, { profile, jorge: { ...blankState('jorge'), workouts: [completedWorkout()] }, alexa: blankState('alexa') });
+  }, { profile, jorge: { ...blankState('jorge'), workouts: [completedWorkout()] }, alexa: { ...blankState('alexa'), workouts: [completedWorkout()] } });
   await openApp(page);
 }
 async function choose(page, name) {
@@ -69,6 +69,15 @@ for (const profile of ['jorge','alexa']) for (const name of names) {
     await expect(page.locator('#viewProgress')).toBeVisible();
     await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));
     await page.screenshot({path:info.outputPath(`${profile}-${name}-progress.png`),animations:'disabled'});
+    await page.locator('#history [data-history-id="completed-push-1"]').click();
+    await expect(page.locator('#historyDialog')).toBeVisible();
+    await page.locator('#requestDeleteCompletedWorkout').click();
+    await expect(page.locator('#confirmDeleteCompletedWorkout')).toBeVisible();
+    const deletion=await page.locator('#confirmDeleteCompletedWorkout').evaluate(e=>({bg:getComputedStyle(e).backgroundColor,color:getComputedStyle(e).color}));
+    expect(contrast(deletion.bg,before.danger)).toBeCloseTo(1,6);
+    expect(contrast(deletion.bg,deletion.color)).toBeGreaterThanOrEqual(4.5);
+    await page.locator('#cancelDeleteCompletedWorkout').click();
+    await page.locator('#closeHistoryDialog').click();
     for(const view of ['plan','library','today']) {
       await page.locator(`.bottom-nav [data-view="${view}"]`).click();
       await expect(page.locator(`#view${title(view)}`)).toBeVisible();
