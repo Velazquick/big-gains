@@ -12,7 +12,7 @@ insert into public.profiles values
   (3,'cobalt','performance-dark',false,'legacy-c'),
   (4,'merlot','slate-dark',false,'legacy-d');
 create temp table before_migration as select md5(string_agg(to_jsonb(p)::text,',' order by id)) as checksum from public.profiles p;
-\ir ../supabase/migrations/20260903022549_appearance_v1_accent_contract.sql
+\ir ../supabase/migrations/20260903024032_appearance_v1_accent_contract.sql
 do $$
 declare color text; affected integer;
 begin
