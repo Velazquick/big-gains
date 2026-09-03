@@ -3,6 +3,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname } from 'node:path';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
+import { offlineServer } from './support/offline-server.js';
 
 const RELEASE = 'v106-safe-pwa-updates';
 const V103 = 'v103-rc-hardening-pass-1';
@@ -35,13 +36,14 @@ async function harness(browser, { legacy = false } = {}) {
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const origin = `http://127.0.0.1:${server.address().port}`;
+  const setServerOffline = offlineServer(server);
   const context = await browser.newContext({ serviceWorkers: 'allow', viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   await installLocalStorageFixture(page, 'blankJorge');
   await page.goto(origin);
   await controlled(page);
   return { page, context, origin, deploy: value => { version = value; }, offline: async value => {
-    if (process.env.PWA_PROTOCOL_OFFLINE === 'true') await context.setOffline(value);
+    if (process.env.PWA_REFUSE_CONNECTIONS === 'true') await setServerOffline(value);
     else down = value;
   }, redirect: value => { redirect = value; }, failWorker: value => { failWorker = value; },
     close: async () => { await context.close(); await new Promise(resolve => server.close(resolve)); } };

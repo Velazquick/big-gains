@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mode: [dropped, protocol]
+        mode: [dropped, refused]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -25,7 +25,7 @@ jobs:
       - name: Compare five real-worker suites without retries
         env:
           BIG_GAINS_WEBKIT_QA: 'true'
-          PWA_PROTOCOL_OFFLINE: ${{ matrix.mode == 'protocol' && 'true' || 'false' }}
+          PWA_REFUSE_CONNECTIONS: ${{ matrix.mode == 'refused' && 'true' || 'false' }}
           DEBUG: pw:browser
           PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-webkit
         run: npx playwright test --project=webkit --output=test-results-webkit --workers=1 --repeat-each=5 tests/custom-domain-transition.spec.js tests/pwa-update.spec.js
