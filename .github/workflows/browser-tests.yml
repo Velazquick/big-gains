@@ -56,7 +56,8 @@ jobs:
         env:
           BIG_GAINS_WEBKIT_QA: 'true'
           PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-pwa-repeat
-        run: npx playwright test --project=webkit --output=test-results-pwa-repeat tests/pwa-update.spec.js --grep 'real waiting worker: idle approval' --repeat-each=10
+        run: |
+          npx playwright test --project=webkit --output=test-results-pwa-repeat tests/pwa-update.spec.js --grep 'real waiting worker: idle approval' --repeat-each=10
 
       - name: Run browser tests
         run: npm run test:pwa-update && npm test
