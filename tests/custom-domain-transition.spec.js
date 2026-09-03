@@ -11,12 +11,14 @@ import { installLocalStorageFixture } from './fixtures/local-storage.js';
 
 // Exercise real navigation redirects, service workers and origin boundaries.
 // No production network, credentials, or application data are used.
-test('installed legacy shell survives a Pages redirect without moving local state', async ({ browser }) => {
+test('installed legacy shell survives a Pages redirect without moving local state', async ({ browser, browserName }) => {
   let redirect = false;
+  let networkDown = false;
   let target;
   const root = new URL('../', import.meta.url);
   const mime = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json' };
   const serve = prefix => createServer(async (req, res) => {
+    if (networkDown) { req.socket.destroy(); return; }
     const url = new URL(req.url, 'http://localhost');
     if (!url.pathname.startsWith(prefix)) { res.writeHead(404).end(); return; }
     const path = url.pathname.slice(prefix.length) || 'index.html';
@@ -58,10 +60,14 @@ test('installed legacy shell survives a Pages redirect without moving local stat
     await expect(page.locator('#activePanel')).toBeVisible();
     expect(await page.evaluate(() => localStorage.getItem('migration-origin-sentinel'))).toBe('legacy-only');
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('big-gains-v2')).activeWorkout.id)).toBe(activeBefore.id);
-    await context.setOffline(true);
+    networkDown = true;
+    // Windows WebKit's context offline toggle fails before worker dispatch;
+    // dropped real server connections exercise the worker's network fallback.
+    if (browserName !== 'webkit') await context.setOffline(true);
     await page.reload();
     await expect(page.locator('#activePanel')).toBeVisible();
-    await context.setOffline(false);
+    networkDown = false;
+    if (browserName !== 'webkit') await context.setOffline(false);
     const fresh = await context.newPage();
     await fresh.goto(target);
     expect(await fresh.evaluate(() => localStorage.getItem('migration-origin-sentinel'))).toBeNull();
@@ -72,11 +78,12 @@ test('installed legacy shell survives a Pages redirect without moving local stat
   }
 });
 
-test('exact generated deployment loads all assets, Auth URLs, manifest and offline shell at root', async ({ browser }) => {
+test('exact generated deployment loads all assets, Auth URLs, manifest and offline shell at root', async ({ browser, browserName }) => {
   const directory = await mkdtemp(join(tmpdir(), 'big-gains-domain-'));
   const repo = fileURLToPath(new URL('../', import.meta.url));
   let server;
   let context;
+  let networkDown = false;
   try {
     await cp(repo, directory, { recursive: true, filter: source => !['.git', 'node_modules', 'test-results', 'playwright-report'].some(name => source === resolve(repo, name) || source.startsWith(resolve(repo, name) + '/')) });
     await promisify(execFile)(process.execPath, [join(directory, 'scripts/write-cloud-config.mjs')], { env: {
@@ -86,6 +93,7 @@ test('exact generated deployment loads all assets, Auth URLs, manifest and offli
     const mime = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json' };
     const requests = [];
     server = createServer(async (req, res) => {
+      if (networkDown) { req.socket.destroy(); return; }
       const path = new URL(req.url, 'http://localhost').pathname;
       requests.push(path);
       try {
@@ -123,7 +131,8 @@ test('exact generated deployment loads all assets, Auth URLs, manifest and offli
     expect(state.cached).toEqual(state.expected);
     expect(failures).toEqual([]);
     expect(requests.some(path => path.includes('/big-gains/'))).toBe(false);
-    await context.setOffline(true);
+    networkDown = true;
+    if (browserName !== 'webkit') await context.setOffline(true);
     await page.reload();
     await expect(page).toHaveTitle('Big Gains');
     await expect(page.locator('#accountOnboardingCreate')).toBeVisible();

@@ -2,6 +2,10 @@ import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture, STORAGE_KEYS } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
 
+// These Auth contracts use synthetic HTTP routes. Service-worker networking can
+// bypass those routes in WebKit; real workers are covered by domain/offline tests.
+test.use({ serviceWorkers: async ({ browserName }, use) => use(browserName === 'webkit' ? 'block' : 'allow') });
+
 const SUPABASE_ORIGIN = 'https://synthetic-ios-auth.supabase.co';
 const AUTH_USER_ID = '97000000-0000-0000-0000-000000000001';
 const OTHER_USER_ID = '97000000-0000-0000-0000-000000000002';

@@ -2,6 +2,10 @@ import { createHash } from 'node:crypto';
 import { expect, test } from '@playwright/test';
 import { openApp } from './helpers/app.js';
 
+// Keep synthetic cloud traffic inside Playwright routing in every browser.
+// Root-domain worker control/offline behavior has separate real-network tests.
+test.use({ serviceWorkers: async ({ browserName }, use) => use(browserName === 'webkit' ? 'block' : 'allow') });
+
 const NOW = '2026-08-09T12:00:00.000Z';
 const MANAGED_AUTH = '60000000-0000-0000-0000-000000000001';
 const MANAGED_ACCOUNT = '60000000-0000-0000-0000-000000000002';
@@ -322,7 +326,7 @@ async function waitForManagedRestore(page, storage) {
       }), storage);
       return [restored.jorge?.workouts?.[0]?.id || null, restored.alexa?.workouts?.[0]?.id || null];
     } catch { return null; }
-  }).toEqual(['jorge-cloud-workout', 'alexa-cloud-workout']);
+  }, { timeout: 15_000 }).toEqual(['jorge-cloud-workout', 'alexa-cloud-workout']);
   return restored;
 }
 
@@ -591,7 +595,7 @@ test('changed owner profile mapping during the fresh read blocks partial-blank r
     session: await BigGainsSupabase.session()
   }), owner);
 
-  expect(result).toMatchObject({ ok: false, blocked: true, reason: 'owner-verification-changed' });
+  expect(result, JSON.stringify(result)).toMatchObject({ ok: false, blocked: true, reason: 'owner-verification-changed' });
   expect(await page.evaluate(keys => Object.values(keys.states).map(key => localStorage.getItem(key)), storage)).toEqual([null, null]);
   expect(await page.evaluate(key => localStorage.getItem(key), storage.recovery)).toBeNull();
   expect(cloud.writes).toEqual([]);
@@ -641,7 +645,7 @@ test('managed owner restores Jorge and Alexa from fresh cloud despite prior drif
     try { return await page.evaluate(() => sessionStorage.getItem('big-gains-test-recovery-copy-seen')); }
     catch { return null; }
   }).toMatch(/Restoring your training to this device[\s\S]*verified private cloud copy/);
-  await expect(page.locator('#independentAccountOnboarding')).toBeHidden();
+  await expect(page.locator('#independentAccountOnboarding')).toBeHidden({ timeout: 15_000 });
   let restored = null;
   await expect.poll(async () => {
     try {

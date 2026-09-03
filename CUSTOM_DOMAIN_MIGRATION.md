@@ -28,4 +28,6 @@ If HTTPS, callbacks, recovery, or installed-app safety fails, do not announce th
 
 ## Evidence boundary
 
+The protected `playwright` job also runs the focused mobile WebKit domain/Auth/recovery suite on Linux. Synthetic Auth/recovery routes disable workers only in WebKit so worker traffic cannot bypass HTTP mocks; real workers are exercised independently by the generated-root and legacy-transition tests. Chromium checks full browser offline mode. WebKit checks dropped server connections because its Windows offline toggle fails before worker dispatch even on the unchanged baseline. Neither emulation constitutes physical iOS proof.
+
 The migration execution report records actual DNS/Pages/Auth state, final main/deployment, mail/callback evidence, test totals, application hashes, and unresolved gates. This runbook describes the intended configuration, not a substitute for live verification. Physical iOS Home Screen install/offline/auth/recovery proof must be recorded by a person with the device.
