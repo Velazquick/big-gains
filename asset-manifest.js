@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v104-custom-domain-app';
+  const release = 'v105-appearance-v1';
   const cloudConfigVersion = 'config-925e766c1b907250'; // BIG_GAINS_CLOUD_CONFIG_VERSION
   const deploymentVersion = `${release}-${cloudConfigVersion}`;
   const manifestAsset = `./asset-manifest.js?v=${encodeURIComponent(deploymentVersion)}`;
@@ -33,11 +33,13 @@
     './program-setup.css',
     './exercise-picker.css',
   './user-data-export.css',
-  './settings.css'
+  './settings.css',
+    './appearance.css'
   ];
   const scripts = [
     './boot-render-gate.js',
     './runtime-interactivity-gate.js',
+    './appearance-model.js',
     './account-context.js',
     './cloud-config.js',
     './vendor/supabase.js',
@@ -54,6 +56,7 @@
     './state-persistence.js',
     './user-data-export.js',
     './profiles.js',
+    './profile-appearance.js',
     './exercise-catalog.js',
     './program-analyzer.js',
     './programming-engine.js',

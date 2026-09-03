@@ -7,7 +7,7 @@ html[data-profile="alexa"]{
   --muted:#6f5263;
   --line:#e6cad9;
   --accent:#c85f98;
-  --accent-soft:rgba(200,95,152,.11);
+  --accent-soft:rgba(var(--accent-rgb,200,95,152),.11);
   --accent2:#a9477e;
   --danger:#b94463;
   --amber:#a56a24;
@@ -103,7 +103,7 @@ html[data-profile="alexa"] #viewToday .hero-card{
   background:linear-gradient(140deg,rgba(244,207,226,.72),rgba(251,239,247,.94) 48%,#fffdfd 100%);
 }
 html[data-profile="alexa"] #viewToday .hero-card::before{
-  background:linear-gradient(180deg,var(--accent),rgba(200,95,152,.16));
+  background:linear-gradient(180deg,var(--accent),rgba(var(--accent-rgb,200,95,152),.16));
 }
 html[data-profile="alexa"] .session-meta span{
   border-color:#dfc4d3;
@@ -139,7 +139,7 @@ html[data-profile="alexa"] input:focus,
 html[data-profile="alexa"] select:focus,
 html[data-profile="alexa"] textarea:focus{
   border-color:var(--accent);
-  box-shadow:0 0 0 3px rgba(200,95,152,.13);
+  box-shadow:0 0 0 3px rgba(var(--accent-rgb,200,95,152),.13);
 }
 html[data-profile="alexa"] .secondary,
 html[data-profile="alexa"] .ghost,
@@ -162,7 +162,7 @@ html[data-profile="alexa"] .day-tabs button{
   color:#745467;
 }
 html[data-profile="alexa"] .exercise-card.added{
-  border-color:rgba(200,95,152,.58);
+  border-color:rgba(var(--accent-rgb,200,95,152),.58);
   background:#fff1f7;
 }
 html[data-profile="alexa"] .pr-badge{
@@ -188,7 +188,7 @@ html[data-profile="alexa"] .active-exercise{
   background:linear-gradient(180deg,#fffefd,#fff6fa);
 }
 html[data-profile="alexa"] .active-exercise.is-complete{
-  border-color:rgba(200,95,152,.42);
+  border-color:rgba(var(--accent-rgb,200,95,152),.42);
 }
 html[data-profile="alexa"] .active-exercise-body,
 html[data-profile="alexa"] .collapsed-summary{
@@ -220,11 +220,11 @@ html[data-profile="alexa"] .set-line{
   background:#fffdfd;
 }
 html[data-profile="alexa"] .set-line.is-current{
-  border-color:rgba(200,95,152,.46);
+  border-color:rgba(var(--accent-rgb,200,95,152),.46);
   background:linear-gradient(135deg,rgba(236,188,215,.34),#fffafd 64%);
 }
 html[data-profile="alexa"] .set-line.completed{
-  border-color:rgba(200,95,152,.28);
+  border-color:rgba(var(--accent-rgb,200,95,152),.28);
   background:#fff1f7;
 }
 html[data-profile="alexa"] .set-line.is-upcoming{

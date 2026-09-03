@@ -5,7 +5,7 @@
   const LEGACY_STATE_KEY = 'big-gains-v1';
   const RUNTIME_ACCOUNTS_KEY = 'big-gains-runtime-accounts-v1';
   const PRESENTATION = Object.freeze({
-    accents: Object.freeze(['ember', 'rose', 'cobalt', 'merlot']),
+    accents: Object.freeze(['volt', 'cobalt', 'merlot', 'rose', 'violet', 'ember']),
     themes: Object.freeze(['performance-dark', 'wellness-light', 'slate-dark'])
   });
   const INDEPENDENT_PROFILE_PREFIX = 'independent-';
@@ -30,6 +30,7 @@
   const safeToken = value => String(value || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
   const presentationFor = value => Object.freeze({
     petEnabled: value?.petEnabled !== false,
+    ...(value?.accentVersion === 1 ? { accentVersion: 1 } : {}),
     accent: PRESENTATION.accents.includes(value?.accent) ? value.accent : 'cobalt',
     theme: PRESENTATION.themes.includes(value?.theme) ? value.theme : 'performance-dark'
   });
@@ -223,6 +224,7 @@
         presentation: presentationFor({
           petEnabled: profile.pet_enabled,
           accent: profile.accent,
+          accentVersion: profile.accent_version,
           theme: profile.theme
         })
       });
@@ -245,6 +247,7 @@
       presentation: presentationFor({
         petEnabled: profile.pet_enabled,
         accent: profile.accent,
+          accentVersion: profile.accent_version,
         theme: profile.theme
       })
     });
@@ -287,11 +290,12 @@
       const cloud = presentationFor({
         petEnabled: profile.pet_enabled,
         accent: profile.accent,
+          accentVersion: profile.accent_version,
         theme: profile.theme
       });
       const current = runtime.descriptors[0].presentation;
       return cloud.petEnabled === current.petEnabled
-        && cloud.accent === current.accent
+        && (window.BigGainsAppearance || cloud.accent === current.accent)
         && cloud.theme === current.theme;
     }
     if (runtime.kind !== 'independent') return false;
@@ -300,11 +304,12 @@
     const cloud = presentationFor({
       petEnabled: profile.pet_enabled,
       accent: profile.accent,
+          accentVersion: profile.accent_version,
       theme: profile.theme
     });
     const current = runtime.descriptors[0].presentation;
     return cloud.petEnabled === current.petEnabled
-      && cloud.accent === current.accent
+      && (window.BigGainsAppearance || cloud.accent === current.accent)
       && cloud.theme === current.theme;
   }
 

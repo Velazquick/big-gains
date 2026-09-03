@@ -340,7 +340,7 @@
           .eq('id', membership.account_id)
           .limit(2),
         current.from('profiles')
-          .select('id,account_id,client_id,display_name,pet_enabled,accent,theme,created_at')
+          .select('id,account_id,client_id,display_name,pet_enabled,accent,accent_version,theme,created_at')
           .eq('account_id', membership.account_id)
           .eq('id', membership.profile_id)
           .limit(2)
@@ -375,7 +375,7 @@
 
     const account = ownedRows[0];
     const profiles = await current.from('profiles')
-      .select('id,account_id,client_id,display_name,pet_enabled,accent,theme,created_at')
+      .select('id,account_id,client_id,display_name,pet_enabled,accent,accent_version,theme,created_at')
       .eq('account_id', account.id)
       .limit(4);
     if (profiles.error) throw profiles.error;
@@ -417,6 +417,34 @@
       membership: state.membership || null,
       authUserId: state.authUserId
     });
+  }
+
+  // Presentation writes use verified ownership and compare-and-set on only
+  // the two accent columns. A stale device never overwrites a newer choice.
+  async function updateProfileAccent({ authUserId, accountId, profileId, clientId, expected, accent }) {
+    const model = window.BigGainsAppearanceModel;
+    if (!model?.names.includes(accent) || !model.normalize(expected)) throw new Error('Invalid accent operation.');
+    const currentSession = await session();
+    if (currentSession?.user?.id !== authUserId) throw new Error('Presentation identity changed.');
+    await verifiedUser(authUserId);
+    const owner = await readCloudAccount(authUserId);
+    const row = owner.profiles[clientId];
+    if (!window.bigGainsAccounts.matchesCloudOwner(owner, authUserId)
+      || owner.account.id !== accountId || row?.id !== profileId || row.account_id !== accountId) {
+      throw new Error('Presentation profile ownership changed.');
+    }
+    if ((await session())?.user?.id !== authUserId) throw new Error('Presentation session changed.');
+    const result = await getClient().from('profiles')
+      .update({ accent, accent_version: 1 })
+      .eq('id', profileId).eq('account_id', accountId).eq('client_id', clientId)
+      .eq('accent', expected.accent).eq('accent_version', expected.version)
+      .select('id,account_id,client_id,accent,accent_version');
+    if (result.error) throw result.error;
+    if (!result.data?.length) return null;
+    if (result.data.length !== 1 || result.data[0].id !== profileId
+      || result.data[0].account_id !== accountId || result.data[0].client_id !== clientId
+      || result.data[0].accent !== accent || result.data[0].accent_version !== 1) throw new Error('Presentation readback mismatch.');
+    return result.data[0];
   }
 
   function validatedDisplayName(value) {
@@ -482,6 +510,7 @@
     requestMagicLink,
     requestJorgeMagicLink: requestMagicLink,
     signOut,
+    updateProfileAccent,
     readAccountState,
     readCloudAccount,
     readJorgeCloudProfiles: readCloudAccount,

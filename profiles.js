@@ -117,6 +117,8 @@ const PRESENTATION = bigGainsAccounts.presentationFor(ACCOUNT.presentation || {
 });
 document.documentElement.dataset.profile = PROFILE.id;
 document.documentElement.dataset.profileConfig = ACCOUNT.profileConfigRef;
+// Existing focused Train presentation is a profile style, independent of color.
+document.documentElement.dataset.trainPresentation = ACCOUNT.profileConfigRef === 'jorge' ? 'focused' : 'standard';
 document.documentElement.dataset.accountMode = bigGainsAccounts.runtime.kind;
 document.documentElement.dataset.accent = PRESENTATION.accent;
 document.documentElement.dataset.theme = PRESENTATION.theme;
