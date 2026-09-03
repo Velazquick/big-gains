@@ -5,6 +5,7 @@ import { openApp } from './helpers/app.js';
 const productionScriptOrder = [
   'boot-render-gate.js',
   'runtime-interactivity-gate.js',
+  'appearance-model.js',
   'account-context.js',
   'cloud-config.js',
   'supabase.js',
@@ -21,6 +22,7 @@ const productionScriptOrder = [
   'state-persistence.js',
   'user-data-export.js',
   'profiles.js',
+  'profile-appearance.js',
   'exercise-catalog.js',
   'program-analyzer.js',
   'programming-engine.js',
