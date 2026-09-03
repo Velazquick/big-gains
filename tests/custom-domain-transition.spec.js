@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './support/service-worker-browser.js';
 import { createServer } from 'node:http';
 import { cp, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
@@ -11,7 +11,7 @@ import { installLocalStorageFixture } from './fixtures/local-storage.js';
 
 // Exercise real navigation redirects, service workers and origin boundaries.
 // No production network, credentials, or application data are used.
-test('installed legacy shell survives a Pages redirect without moving local state', async ({ browser, browserName }) => {
+test('installed legacy shell survives a Pages redirect without moving local state', async ({ serviceWorkerBrowser: browser, browserName }) => {
   let redirect = false;
   let networkDown = false;
   let target;
@@ -78,7 +78,7 @@ test('installed legacy shell survives a Pages redirect without moving local stat
   }
 });
 
-test('exact generated deployment loads all assets, Auth URLs, manifest and offline shell at root', async ({ browser, browserName }) => {
+test('exact generated deployment loads all assets, Auth URLs, manifest and offline shell at root', async ({ serviceWorkerBrowser: browser, browserName }) => {
   const directory = await mkdtemp(join(tmpdir(), 'big-gains-domain-'));
   const repo = fileURLToPath(new URL('../', import.meta.url));
   let server;

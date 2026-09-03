@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './support/service-worker-browser.js';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname } from 'node:path';
@@ -54,7 +54,7 @@ async function offer(h) {
   await h.page.evaluate(() => bigGainsPwaUpdate.check(true));
   await expect(h.page.locator('#pwaUpdate')).toBeVisible({ timeout: 15000 });
 }
-test('real waiting worker: idle approval updates once, preserves data and launches offline', async ({ browser }, testInfo) => {
+test('real waiting worker: idle approval updates once, preserves data and launches offline', async ({ serviceWorkerBrowser: browser }, testInfo) => {
   const h = await harness(browser);
   try {
     await h.page.evaluate(() => localStorage.setItem('pwa-proof-sentinel', 'unchanged'));
@@ -97,7 +97,7 @@ test('real waiting worker: idle approval updates once, preserves data and launch
     throw error;
   } finally { await h.close(); }
 });
-test('real active workout defers update; Later preserves session across background and offline reopen', async ({ browser }) => {
+test('real active workout defers update; Later preserves session across background and offline reopen', async ({ serviceWorkerBrowser: browser }) => {
   const h = await harness(browser);
   try {
     await h.page.locator('#quickStartSession').click();
@@ -114,7 +114,7 @@ test('real active workout defers update; Later preserves session across backgrou
   } finally { await h.close(); }
 });
 
-test('new shell with older worker and failed install has no false restart offer; recovery updates normally', async ({ browser }) => {
+test('new shell with older worker and failed install has no false restart offer; recovery updates normally', async ({ serviceWorkerBrowser: browser }) => {
   const h = await harness(browser);
   try {
     h.deploy('v107-synthetic-update'); h.failWorker(true);
@@ -148,7 +148,7 @@ for (const [name, setup, cleanup, reason] of [
   await page.evaluate(cleanup);
   await expect.poll(() => page.evaluate(() => BigGainsPwaUpdate.safety().safe)).toBe(true);
 });
-test('another open controlled client blocks forced worker activation', async ({ browser }) => {
+test('another open controlled client blocks forced worker activation', async ({ serviceWorkerBrowser: browser }) => {
   const h = await harness(browser);
   try {
     const other = await h.context.newPage(); await other.goto(h.origin); await controlled(other);
@@ -214,7 +214,7 @@ test('a selected hidden restore file blocks restart until the existing writer cl
   await page.evaluate(() => { document.getElementById('importData').value = ''; });
   expect(await page.evaluate(() => BigGainsPwaUpdate.safety().safe)).toBe(true);
 });
-test('v103 same-origin close/reopen permits natural activation without any skipWaiting message', async ({ browser }) => {
+test('v103 same-origin close/reopen permits natural activation without any skipWaiting message', async ({ serviceWorkerBrowser: browser }) => {
   const h = await harness(browser, { legacy: true });
   try {
     await h.page.evaluate(() => localStorage.setItem('close-proof', 'kept'));
@@ -228,7 +228,7 @@ test('v103 same-origin close/reopen permits natural activation without any skipW
     expect(await reopened.evaluate(() => localStorage.getItem('close-proof'))).toBe('kept');
   } finally { await h.close(); }
 });
-test('v103 same-origin: can discover waiting worker but cannot activate it; new navigation bootstraps update UI', async ({ browser }) => {
+test('v103 same-origin: can discover waiting worker but cannot activate it; new navigation bootstraps update UI', async ({ serviceWorkerBrowser: browser }) => {
   const h = await harness(browser, { legacy: true });
   try {
     await h.page.evaluate(() => localStorage.setItem('v103-sentinel', 'preserved'));
@@ -245,7 +245,7 @@ test('v103 same-origin: can discover waiting worker but cannot activate it; new 
     expect(await h.page.evaluate(() => localStorage.getItem('v103-sentinel'))).toBe('preserved');
   } finally { await h.close(); }
 });
-test('v103 legacy-origin: redirected worker update fails and old cached shell remains; no cross-origin data movement', async ({ browser }) => {
+test('v103 legacy-origin: redirected worker update fails and old cached shell remains; no cross-origin data movement', async ({ serviceWorkerBrowser: browser }) => {
   const old = await harness(browser, { legacy: true });
   const current = await harness(browser);
   try {
