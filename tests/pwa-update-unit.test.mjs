@@ -58,6 +58,17 @@ test('another live client refusal leaves data/page in place', async () => {
   const f = fixture(); await f.api.check(); f.refuse(); assert.equal(await f.api.accept(), false);
   assert.equal(f.api.status().error, 'other-clients'); assert.equal(f.counts().reloads, 0);
 });
+
+test('Later also dismisses a new controller after an unsafe restart race', async () => {
+  const f = fixture(); await f.api.check(); await f.api.accept(); f.setSafe(false);
+  f.registration.waiting = null; f.container.controller = f.next; f.container.fire('controllerchange');
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(f.api.status().available, true); assert.equal(f.counts().reloads, 0);
+  f.api.later(); f.setSafe(true); f.api.refresh();
+  assert.equal(f.api.status().dismissed, true); assert.equal(f.counts().reloads, 0);
+  await f.api.check(true); assert.equal(f.api.status().dismissed, false);
+  await f.api.accept(); assert.equal(f.counts().reloads, 1);
+});
 test('installing worker state transition is observed', async () => {
   const f = fixture(); f.registration.waiting = null; f.registration.installing = f.next;
   await f.api.check(); assert.equal(f.api.status().waiting, false);

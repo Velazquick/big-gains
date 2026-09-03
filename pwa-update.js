@@ -69,7 +69,7 @@
     const watched = new WeakSet();
     const status = () => ({ release, workerRelease, waitingRelease, waiting: Boolean(waiting), applying,
       available: Boolean(waiting || (workerRelease && workerRelease !== release)),
-      dismissed: dismissed === waiting && Boolean(waiting), error, safety: getSafety() });
+      dismissed: Boolean(dismissed) && dismissed === (waiting || container.controller), error, safety: getSafety() });
     const emit = () => publish(status());
     async function inspect() {
       waiting = registration?.waiting || null;
@@ -145,7 +145,7 @@
       return true;
     }
     return Object.freeze({ check, accept, status, refresh: emit,
-      later: () => { dismissed = waiting; emit(); } });
+      later: () => { dismissed = waiting || container.controller; emit(); } });
   }
 
   scope.BigGainsPwaUpdate = Object.freeze({ create, safety });
