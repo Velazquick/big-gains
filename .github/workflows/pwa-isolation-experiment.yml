@@ -1,4 +1,4 @@
-name: PWA offline simulation experiment
+name: PWA WebKit platform comparison
 on:
   push:
     branches: [hotfix/pwa-update-lifecycle]
@@ -6,12 +6,12 @@ permissions:
   contents: read
 jobs:
   compare:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.platform }}
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        mode: [dropped, refused]
+        platform: [ubuntu-latest, macos-15]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -25,13 +25,12 @@ jobs:
       - name: Compare five real-worker suites without retries
         env:
           BIG_GAINS_WEBKIT_QA: 'true'
-          PWA_REFUSE_CONNECTIONS: ${{ matrix.mode == 'refused' && 'true' || 'false' }}
           DEBUG: pw:browser
           PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-webkit
         run: npx playwright test --project=webkit --output=test-results-webkit --workers=1 --repeat-each=5 tests/custom-domain-transition.spec.js tests/pwa-update.spec.js
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: offline-${{ matrix.mode }}
+          name: platform-${{ matrix.platform }}
           path: playwright-report-webkit/
           retention-days: 7
