@@ -25,3 +25,4 @@ html[data-appearance-version="1"] .progress-dot{fill:var(--accent-chart)!importa
 html[data-appearance-version="1"] :is(.set-line.completed,.set-line.completed .set-done,.timer-presets button[aria-pressed="true"],.unit-choice input:checked+span){border-color:var(--accent-border);background:var(--accent-soft);color:var(--accent)}
 html[data-appearance-version="1"] .set-line[data-set-state="current"] .set-done{background:var(--accent-primary)!important;border-color:var(--accent-primary)!important;color:var(--on-accent)!important}
 html[data-appearance-version="1"] body{background:radial-gradient(circle at 84% -8%,rgba(var(--accent-rgb),.075),transparent 28rem),var(--bg)}
+html[data-appearance-version="1"] .program-setup-dialog{--accent:var(--accent-dark-ink)}

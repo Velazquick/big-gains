@@ -25,14 +25,15 @@
     const value = current();
     const root = document.documentElement;
     root.dataset.appearanceVersion = String(value.version);
-    const variableNames = ['accent','accent-primary','accent2','accent-bright','accent-rgb','accent-soft','accent-border','accent-border-soft','on-accent','accent-chart','accent-glow','accent-wash','accent-wash-strong'];
+    const variableNames = ['accent','appearance-ink','accent-dark-ink','accent-dark-rgb','accent-primary','accent2','accent-bright','accent-rgb','accent-soft','accent-border','accent-border-soft','on-accent','accent-chart','accent-glow','accent-wash','accent-wash-strong'];
     variableNames.forEach(name => root.style.removeProperty(`--${name}`));
     root.dataset.accent = value.accent;
     // Legacy CSS remains byte-for-byte in effect until an explicit v1 choice.
     if (value.version === 1) {
       const tokens = model.tokens(value.accent, PRESENTATION.theme === 'wellness-light');
+      const dark = model.tokens(value.accent);
       root.dataset.accent = value.accent;
-      const vars = { accent: tokens.ink, 'accent-primary': tokens.primary, accent2: tokens.primary,
+      const vars = { accent: tokens.ink, 'appearance-ink': tokens.ink, 'accent-dark-ink': dark.ink, 'accent-dark-rgb': dark.rgb, 'accent-primary': tokens.primary, accent2: tokens.primary,
         'accent-bright': tokens.bright, 'accent-rgb': tokens.rgb, 'accent-soft': tokens.soft,
         'accent-border': tokens.border, 'accent-border-soft': tokens.borderSoft, 'on-accent': tokens.on,
         'accent-chart': tokens.chart, 'accent-glow': `rgba(${tokens.rgb},.13)`,

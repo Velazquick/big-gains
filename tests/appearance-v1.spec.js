@@ -118,3 +118,21 @@ test('all palettes distinguish foregrounds on every supported panel', async ({pa
     for(const panel of mode==='dark'?['#080a0d','#11151b','#171c23','#0c0f13','#181d24']:['#fff9fb','#fffefd','#f8e8f1','#fff4f8'])expect(contrast(p.ink,panel),`${name} ${mode} ink`).toBeGreaterThanOrEqual(4.5);
   }
 });
+
+test('Program current-step accents follow each palette while validation errors stay semantic', async ({page}) => {
+  await setup(page);
+  await page.locator('.bottom-nav [data-view="plan"]').click();
+  await page.locator('[data-plan-setup]').first().click();
+  await expect(page.locator('.program-setup-progress .is-current')).toBeVisible();
+  for(const name of names){
+    const result=await page.evaluate(name=>{
+      BigGainsAppearance.select(name);
+      const current=document.querySelector('.program-setup-progress .is-current');
+      const error=document.querySelector('.program-setup-error');
+      return {color:getComputedStyle(current).color,ink:BigGainsAppearanceModel.tokens(name).ink,error:error?getComputedStyle(error).color:null};
+    },name);
+    expect(contrast(result.color,'#0d1116')).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(result.color,result.ink)).toBeCloseTo(1,6);
+    if(result.error)expect(result.error).toBe('rgb(255, 156, 150)');
+  }
+});
