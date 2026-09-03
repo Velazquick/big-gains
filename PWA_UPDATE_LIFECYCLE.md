@@ -41,6 +41,9 @@ registration bypasses the HTTP cache using `updateViaCache: none`.
 - Update now rechecks safety, requests `SKIP_WAITING`, and authorizes only that
   worker's controllerchange. Recheck safety at the restart boundary and reload
   at most once. No approval survives a page reload or unsafe race.
+- Without a waiting worker, offer restart only after an observed controller
+  replacement, comparing deployment identity (including config-only changes).
+  A new page with an older worker after failed installation is not a restart offer.
 - The worker rejects forced activation when any other same-scope window exists,
   including a legacy or password-setup window. Close those windows and retry.
 - Freeze new user interactions during the short approved restart, with bounded

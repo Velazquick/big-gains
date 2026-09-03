@@ -6,7 +6,7 @@ import vm from 'node:vm';
 const context = { setTimeout: fn => { /* timers are advanced explicitly by each test */ }, clearTimeout() {} };
 vm.runInNewContext(readFileSync(new URL('../pwa-update.js', import.meta.url), 'utf8'), context);
 const create = context.BigGainsPwaUpdate.create;
-function fixture() {
+function fixture({ release = 'old', deployment } = {}) {
   const events = () => ({ listeners: {}, addEventListener(n, f) { this.listeners[n] = f; }, fire(n) { this.listeners[n]?.(); } });
   const old = { release: 'old' }, next = { ...events(), release: 'new', state: 'installed' };
   const container = { ...events(), controller: old };
@@ -14,9 +14,9 @@ function fixture() {
   let safe = true, reloads = 0, updates = 0, time = 0, refusal = null;
   const sent = [];
   const api = create({ container, register: async () => registration, getSafety: () => ({ safe }),
-    release: 'old', now: () => time, reload: () => reloads++,
+    release, deployment, now: () => time, reload: () => reloads++,
     ask: async (worker, type) => {
-      if (type === 'GET_VERSION') return worker ? { release: worker.release } : null;
+      if (type === 'GET_VERSION') return worker ? { release: worker.release, deploymentVersion: worker.deploymentVersion } : null;
       sent.push(type); return refusal || { ok: true };
     } });
   return { api, container, registration, next, sent, setSafe: value => { safe = value; },
@@ -67,6 +67,32 @@ test('Later also dismisses a new controller after an unsafe restart race', async
   f.api.later(); f.setSafe(true); f.api.refresh();
   assert.equal(f.api.status().dismissed, true); assert.equal(f.counts().reloads, 0);
   await f.api.check(true); assert.equal(f.api.status().dismissed, false);
+  await f.api.accept(); assert.equal(f.counts().reloads, 1);
+});
+
+test('a newer page with an older controller and no waiting worker never offers a false restart', async () => {
+  const f = fixture({ release: 'new' }); f.registration.waiting = null; await f.api.check();
+  assert.equal(f.api.status().workerRelease, 'old'); assert.equal(f.api.status().available, false);
+  assert.equal(await f.api.accept(), false); assert.equal(f.counts().reloads, 0);
+});
+
+test('an observed controller replacement offers restart without automatically reloading', async () => {
+  const f = fixture(); f.registration.waiting = null; await f.api.check();
+  f.container.controller = f.next; f.container.fire('controllerchange');
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(f.api.status().available, true); assert.equal(f.counts().reloads, 0);
+  await f.api.accept(); assert.equal(f.counts().reloads, 1);
+});
+
+test('a config-only controller replacement still offers a guarded restart', async () => {
+  const f = fixture({ release: 'same', deployment: 'same-config-old' });
+  f.container.controller.release = 'same'; f.container.controller.deploymentVersion = 'same-config-old';
+  f.next.release = 'same'; f.next.deploymentVersion = 'same-config-new';
+  f.registration.waiting = null; await f.api.check();
+  assert.equal(f.api.status().available, false);
+  f.container.controller = f.next; f.container.fire('controllerchange');
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(f.api.status().available, true); assert.equal(f.counts().reloads, 0);
   await f.api.accept(); assert.equal(f.counts().reloads, 1);
 });
 test('installing worker state transition is observed', async () => {

@@ -54,7 +54,7 @@
   }
 
   function create({ container, register, getSafety, reload, publish = () => {}, ask = message,
-    release, now = () => Date.now() }) {
+    release, deployment = release, now = () => Date.now() }) {
     let registration = null;
     let checking = null;
     let lastCheck = -Infinity;
@@ -64,11 +64,14 @@
     let reloaded = false;
     let applying = false;
     let workerRelease = null;
+    let workerDeployment = null;
     let waitingRelease = null;
     let error = null;
+    let previousController = container.controller;
+    let replacementController = null;
     const watched = new WeakSet();
-    const status = () => ({ release, workerRelease, waitingRelease, waiting: Boolean(waiting), applying,
-      available: Boolean(waiting || (workerRelease && workerRelease !== release)),
+    const status = () => ({ release, workerRelease, workerDeployment, waitingRelease, waiting: Boolean(waiting), applying,
+      available: Boolean(waiting || (replacementController === container.controller && replacementController && workerDeployment && workerDeployment !== deployment)),
       dismissed: Boolean(dismissed) && dismissed === (waiting || container.controller), error, safety: getSafety() });
     const emit = () => publish(status());
     async function inspect() {
@@ -77,11 +80,14 @@
       const controller = container.controller;
       const [next, current] = await Promise.all([ask(target, 'GET_VERSION'), ask(controller, 'GET_VERSION')]);
       if (target === waiting) waitingRelease = next?.release || null;
-      if (controller === container.controller) workerRelease = current?.release || null;
+      if (controller === container.controller) {
+        workerRelease = current?.release || null;
+        workerDeployment = current?.deploymentVersion || current?.release || null;
+      }
       emit();
       // Only the sole, current, safely idle client may retire old shell caches.
       // The worker additionally checks exact deployment identity and no install.
-      if (workerRelease === release && !waiting && getSafety().safe) void ask(controller, 'PRUNE_CACHES');
+      if (workerDeployment === deployment && !waiting && getSafety().safe) void ask(controller, 'PRUNE_CACHES');
     }
     function watch() {
       const worker = registration?.installing;
@@ -115,6 +121,10 @@
       return true;
     }
     container.addEventListener('controllerchange', () => {
+      // A version mismatch alone may mean this page is newer than its worker.
+      // Only an observed replacement can offer restart without a waiting update.
+      if (previousController && container.controller !== previousController) replacementController = container.controller;
+      previousController = container.controller;
       if (approved && container.controller === approved) guardedReload();
       void inspect();
     });
@@ -122,7 +132,7 @@
       if (applying || reloaded || !getSafety().safe) { emit(); return false; }
       const target = registration?.waiting;
       if (!target) {
-        if (!workerRelease || workerRelease === release) return false;
+        if (replacementController !== container.controller || !workerDeployment || workerDeployment === deployment) return false;
         approved = container.controller;
         return guardedReload();
       }
@@ -156,6 +166,7 @@
     container: navigator.serviceWorker,
     register: () => navigator.serviceWorker.register('./service-worker.js', { updateViaCache: 'none', scope: './' }),
     release: scope.BIG_GAINS_ASSET_MANIFEST.release,
+    deployment: scope.BIG_GAINS_ASSET_MANIFEST.deploymentVersion,
     getSafety: safety,
     reload: () => location.reload(),
     publish: value => {

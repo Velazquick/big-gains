@@ -10,12 +10,13 @@ test.setTimeout(60000);
 // Exact v103 core from e728f76; shell reduced to its load-only registration and
 // marker. This models real worker lifecycle, not every historical v103 UI asset.
 async function harness(browser, { legacy = false } = {}) {
-  let version = legacy ? V103 : RELEASE, down = false, redirect = null;
+  let version = legacy ? V103 : RELEASE, down = false, redirect = null, failWorker = false;
   const root = new URL('../', import.meta.url);
   const server = createServer(async (req, res) => {
     if (down) { req.socket.destroy(); return; }
     if (redirect) { res.writeHead(301, { Location: redirect + req.url }).end(); return; }
     const path = new URL(req.url, 'http://localhost').pathname.slice(1) || 'index.html';
+    if (failWorker && path === 'service-worker.js') { res.writeHead(503).end(); return; }
     const mime = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json' };
     try {
       let body;
@@ -39,7 +40,7 @@ async function harness(browser, { legacy = false } = {}) {
   await installLocalStorageFixture(page, 'blankJorge');
   await page.goto(origin);
   await controlled(page);
-  return { page, context, origin, deploy: value => { version = value; }, offline: value => { down = value; }, redirect: value => { redirect = value; },
+  return { page, context, origin, deploy: value => { version = value; }, offline: value => { down = value; }, redirect: value => { redirect = value; }, failWorker: value => { failWorker = value; },
     close: async () => { await context.close(); await new Promise(resolve => server.close(resolve)); } };
 }
 async function controlled(page) {
@@ -87,6 +88,25 @@ test('real active workout defers update; Later preserves session across backgrou
     h.offline(true); await h.page.reload();
     expect(await h.page.evaluate(() => JSON.parse(localStorage.getItem('big-gains-v2')).activeWorkout)).toEqual(before);
     await expect(h.page.locator('#activePanel')).toBeVisible();
+  } finally { await h.close(); }
+});
+
+test('new shell with older worker and failed install has no false restart offer; recovery updates normally', async ({ browser }) => {
+  const h = await harness(browser);
+  try {
+    h.deploy('v107-synthetic-update'); h.failWorker(true);
+    await h.page.reload();
+    await expect.poll(() => h.page.evaluate(() => window.bigGainsPwaUpdate?.status().workerRelease)).toBe(RELEASE);
+    expect(await h.page.evaluate(() => BIG_GAINS_ASSET_MANIFEST.release)).toBe('v107-synthetic-update');
+    await expect(h.page.locator('#pwaUpdate')).toBeHidden();
+    expect(await h.page.evaluate(() => bigGainsPwaUpdate.accept())).toBe(false);
+    h.failWorker(false);
+    await h.page.evaluate(() => bigGainsPwaUpdate.check(true));
+    await expect(h.page.locator('#pwaUpdate')).toBeVisible({ timeout: 15000 });
+    await Promise.all([h.page.waitForEvent('framenavigated', frame => frame === h.page.mainFrame()), h.page.locator('#pwaUpdateNow').click()]);
+    await h.page.waitForLoadState('load');
+    await expect.poll(() => h.page.evaluate(() => window.bigGainsPwaUpdate?.status().workerRelease)).toBe('v107-synthetic-update');
+    await expect(h.page.locator('#pwaUpdate')).toBeHidden();
   } finally { await h.close(); }
 });
 for (const [name, setup, cleanup, reason] of [
