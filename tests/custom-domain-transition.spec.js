@@ -1,4 +1,4 @@
-import { expect, test } from './support/service-worker-browser.js';
+import { expect, test } from '@playwright/test';
 import { createServer } from 'node:http';
 import { cp, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
@@ -11,7 +11,7 @@ import { installLocalStorageFixture } from './fixtures/local-storage.js';
 
 // Exercise real navigation redirects, service workers and origin boundaries.
 // No production network, credentials, or application data are used.
-test('installed legacy shell survives a Pages redirect without moving local state', async ({ serviceWorkerBrowser: browser, browserName }) => {
+test('installed legacy shell survives a Pages redirect without moving local state', async ({ browser, browserName }) => {
   let redirect = false;
   let networkDown = false;
   let target;
@@ -60,14 +60,15 @@ test('installed legacy shell survives a Pages redirect without moving local stat
     await expect(page.locator('#activePanel')).toBeVisible();
     expect(await page.evaluate(() => localStorage.getItem('migration-origin-sentinel'))).toBe('legacy-only');
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('big-gains-v2')).activeWorkout.id)).toBe(activeBefore.id);
-    networkDown = true;
+    const protocolOffline = process.env.PWA_PROTOCOL_OFFLINE === 'true' || browserName !== 'webkit';
+    networkDown = !protocolOffline;
     // Windows WebKit's context offline toggle fails before worker dispatch;
     // dropped real server connections exercise the worker's network fallback.
-    if (browserName !== 'webkit') await context.setOffline(true);
+    if (protocolOffline) await context.setOffline(true);
     await page.reload();
     await expect(page.locator('#activePanel')).toBeVisible();
     networkDown = false;
-    if (browserName !== 'webkit') await context.setOffline(false);
+    if (protocolOffline) await context.setOffline(false);
     const fresh = await context.newPage();
     await fresh.goto(target);
     expect(await fresh.evaluate(() => localStorage.getItem('migration-origin-sentinel'))).toBeNull();
@@ -78,7 +79,7 @@ test('installed legacy shell survives a Pages redirect without moving local stat
   }
 });
 
-test('exact generated deployment loads all assets, Auth URLs, manifest and offline shell at root', async ({ serviceWorkerBrowser: browser, browserName }) => {
+test('exact generated deployment loads all assets, Auth URLs, manifest and offline shell at root', async ({ browser, browserName }) => {
   const directory = await mkdtemp(join(tmpdir(), 'big-gains-domain-'));
   const repo = fileURLToPath(new URL('../', import.meta.url));
   let server;
@@ -131,8 +132,9 @@ test('exact generated deployment loads all assets, Auth URLs, manifest and offli
     expect(state.cached).toEqual(state.expected);
     expect(failures).toEqual([]);
     expect(requests.some(path => path.includes('/big-gains/'))).toBe(false);
-    networkDown = true;
-    if (browserName !== 'webkit') await context.setOffline(true);
+    const protocolOffline = process.env.PWA_PROTOCOL_OFFLINE === 'true' || browserName !== 'webkit';
+    networkDown = !protocolOffline;
+    if (protocolOffline) await context.setOffline(true);
     await page.reload();
     await expect(page).toHaveTitle('Big Gains');
     await expect(page.locator('#accountOnboardingCreate')).toBeVisible();

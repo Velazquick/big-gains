@@ -1,4 +1,4 @@
-name: PWA browser isolation experiment
+name: PWA offline simulation experiment
 on:
   push:
     branches: [hotfix/pwa-update-lifecycle]
@@ -11,11 +11,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mode: [shared, isolated]
+        mode: [dropped, protocol]
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ matrix.mode == 'shared' && '2313f431f32ed2b3dce4aba1f796bdf688023eef' || github.sha }}
+          ref: ${{ github.sha }}
       - uses: actions/setup-node@v7
         with:
           node-version: 22
@@ -25,10 +25,13 @@ jobs:
       - name: Compare five real-worker suites without retries
         env:
           BIG_GAINS_WEBKIT_QA: 'true'
-        run: npx playwright test --project=webkit --workers=1 --repeat-each=5 tests/custom-domain-transition.spec.js tests/pwa-update.spec.js
+          PWA_PROTOCOL_OFFLINE: ${{ matrix.mode == 'protocol' && 'true' || 'false' }}
+          DEBUG: pw:browser
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-webkit
+        run: npx playwright test --project=webkit --output=test-results-webkit --workers=1 --repeat-each=5 tests/custom-domain-transition.spec.js tests/pwa-update.spec.js
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: isolation-${{ matrix.mode }}
-          path: playwright-report/
+          name: offline-${{ matrix.mode }}
+          path: playwright-report-webkit/
           retention-days: 7
