@@ -48,6 +48,9 @@ jobs:
 
   playwright:
     needs: webkit
+    # A skipped required check can be accepted by branch protection. Report an
+    # explicit failure if the prerequisite fails, rather than skipping this job.
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     services:
@@ -62,6 +65,11 @@ jobs:
           --health-cmd pg_isready --health-interval 5s
           --health-timeout 5s --health-retries 10
     steps:
+      - name: Require successful WebKit validation
+        env:
+          PWA_WEBKIT_RESULT: ${{ needs.webkit.result }}
+        run: test "$PWA_WEBKIT_RESULT" = success
+
       - name: Check out repository
         uses: actions/checkout@v7
         with:
