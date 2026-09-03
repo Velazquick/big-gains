@@ -77,6 +77,7 @@ test('real active workout defers update; Later preserves session across backgrou
   const h = await harness(browser);
   try {
     await h.page.locator('#quickStartSession').click();
+    await expect.poll(() => h.page.evaluate(() => JSON.parse(localStorage.getItem('big-gains-v2')).activeWorkout?.id)).toBeTruthy();
     const before = await h.page.evaluate(() => JSON.parse(localStorage.getItem('big-gains-v2')).activeWorkout);
     await offer(h); await expect(h.page.locator('#pwaUpdateNow')).toBeDisabled();
     await h.page.locator('#pwaUpdateLater').click();
