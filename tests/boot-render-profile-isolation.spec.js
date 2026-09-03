@@ -106,7 +106,7 @@ async function installFixture(page, {
     window.__BIG_GAINS_CLOUD_CONFIG__ = {
       supabaseUrl: 'https://boot-isolation.supabase.co',
       supabasePublishableKey: 'sb_publishable_boot_isolation',
-      authRedirectUrl: 'https://velazquick.github.io/big-gains/'
+      authRedirectUrl: 'https://app.getbiggains.com/'
     };
     if (sessionStorage.getItem('boot-isolation-fixture') !== 'installed') {
       localStorage.clear();

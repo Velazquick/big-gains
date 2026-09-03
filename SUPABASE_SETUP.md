@@ -86,9 +86,9 @@ In Supabase Dashboard → Authentication:
 
 1. Create or invite only the intended Auth user. Do not create application account/profile/membership rows as part of Auth setup.
 2. Disable new-user signup and keep anonymous sign-in disabled. Browser Magic Link compatibility also sends `shouldCreateUser: false`.
-3. Set Site URL to exactly `https://velazquick.github.io/big-gains/`.
-4. Add both `https://velazquick.github.io/big-gains/` and `https://velazquick.github.io/big-gains/auth-setup.html` to Redirect URLs. Keep `http://127.0.0.1:4173/` only for local Auth testing.
-5. For every future trusted invitation call, set `redirectTo` to exactly `https://velazquick.github.io/big-gains/auth-setup.html`. This option belongs only in trusted operator/server tooling; never put an Admin or service-role key in Big Gains. A Dashboard invitation that lands on the configured root is compatibility-routed to the isolated setup page before the app starts.
+3. Set Site URL to exactly `https://app.getbiggains.com/`.
+4. Add both `https://app.getbiggains.com/` and `https://app.getbiggains.com/auth-setup.html` to Redirect URLs. Keep `http://127.0.0.1:4173/` only for local Auth testing.
+5. For every future trusted invitation call, set `redirectTo` to exactly `https://app.getbiggains.com/auth-setup.html`. This option belongs only in trusted operator/server tooling; never put an Admin or service-role key in Big Gains. A Dashboard invitation that lands on the configured root is compatibility-routed to the isolated setup page before the app starts.
 6. The user opens the one-time invitation in Safari, sets a password on `auth-setup.html`, closes that page, then signs in once inside the Home Screen app. A generic **Set or reset password** request uses the same page and a resend cooldown.
 
 This flow uses Supabase's supported invitation/recovery links and default hosted email. It does not require editing `{{ .Token }}`, customizing a hosted template, configuring custom SMTP, or upgrading the project. Magic Link is retained only for Safari/browser compatibility because Safari and an installed iOS Home Screen app do not share the same Auth storage.
@@ -153,7 +153,7 @@ Normal workout completion has no call to this API. Do not import a backup or sel
 
 ## 6. Jorge's remaining manual setup
 
-1. In Authentication → URL Configuration, set the Site URL and allowed production redirect to exactly `https://velazquick.github.io/big-gains/`.
+1. In Authentication → URL Configuration, set the Site URL and allowed production redirect to exactly `https://app.getbiggains.com/`.
 2. In Authentication settings, disable public email signup and anonymous sign-in.
 3. Create exactly one Auth user for Jorge. Do not create Alexa or friend users.
 4. Add `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` as GitHub Actions repository variables, not values embedded in source files.

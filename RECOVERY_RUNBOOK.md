@@ -1,11 +1,13 @@
 # Big Gains canonical recovery and rebuild runbook
 
+For the canonical **https://app.getbiggains.com/** origin, follow [CUSTOM_DOMAIN_MIGRATION.md](CUSTOM_DOMAIN_MIGRATION.md). Keep legacy root/callback Auth redirects during RC. An old GitHub Pages PWA retains separate local storage; sign in and recover cloud-backed training/preferences and the published Program graph before replacing it. Unsynced local state needs the existing backup/queue safeguards. Sender `Big Gains <no-reply@auth.getbiggains.com>` remains unchanged.
+
 This is the authoritative maintainer path for rebuilding, verifying, deploying, and recovering Big Gains. It does not authorize production data mutation. Use synthetic or disposable fixtures for destructive, sync, RLS, and recovery tests unless a separate operation explicitly approves a named production action.
 
 ## 1. Sources of truth and safety boundary
 
 - GitHub repository: `Velazquick/big-gains`; protected `main` is the release source.
-- Production Pages URL: `https://velazquick.github.io/big-gains/`.
+- Production Pages URL: `https://app.getbiggains.com/`.
 - Local profile documents remain schema v5 and are the immediate workout authority.
 - Supabase stores private account/profile-scoped rows behind RLS. The browser receives only `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`.
 - GitHub Actions repository variables provide browser-safe deployment configuration. Supabase Dashboard/CLI provides hosted project linking, function secrets, migrations, and advisors.

@@ -10,8 +10,8 @@ const AUTH_STORAGE_KEY = 'big-gains-supabase-auth-v1';
 const CONFIG = {
   supabaseUrl: SUPABASE_ORIGIN,
   supabasePublishableKey: 'sb_publishable_ios_auth_test',
-  authRedirectUrl: 'https://velazquick.github.io/big-gains/',
-  authSetupRedirectUrl: 'https://velazquick.github.io/big-gains/auth-setup.html'
+  authRedirectUrl: 'https://app.getbiggains.com/',
+  authSetupRedirectUrl: 'https://app.getbiggains.com/auth-setup.html'
 };
 
 function encode(value) {

@@ -1,8 +1,10 @@
 # RC-2 self-serve Auth readiness
 
+Custom-domain target: **https://app.getbiggains.com/**, release `v104-custom-domain-app`. Site URL and signup/Magic Link destination become that root; recovery/invite destination is `https://app.getbiggains.com/auth-setup.html`. Both exact legacy URLs remain allowed temporarily. See [CUSTOM_DOMAIN_MIGRATION.md](CUSTOM_DOMAIN_MIGRATION.md) for the guarded cutover, actual-verification requirement, and old-origin PWA recovery guidance. SMTP sender and signup security are unchanged. The activation evidence below is the historical pre-migration baseline.
+
 Status reviewed: 2026-09-02. Public signup is enabled. The disposable account completed confirmed password sign-in, independent bootstrap, welcome, Train now, reload, sign-out/sign-in, and isolation verification. The initial callback lookup error and test-harness retries are recorded below; this was not an uninterrupted first-attempt pass.
 
-## Current hosted state
+## Hosted state at signup activation (before domain migration)
 
 - Supabase project: `oogvndghbigxjkthzkdy` (`Big Gains`)
 - Hosted public signup: enabled (`disable_signup: false`) after the independent-bootstrap repair passed hosted verification

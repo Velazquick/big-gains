@@ -10,7 +10,7 @@
     programPortability: existing?.programPortability === true,
     programPortabilityVersion: existing?.programPortability === true
       && Number(existing?.programPortabilityVersion) === 1 ? 1 : null,
-    authRedirectUrl: 'https://velazquick.github.io/big-gains/',
-    authSetupRedirectUrl: 'https://velazquick.github.io/big-gains/auth-setup.html'
+    authRedirectUrl: 'https://app.getbiggains.com/',
+    authSetupRedirectUrl: 'https://app.getbiggains.com/auth-setup.html'
   });
 })();
