@@ -148,6 +148,7 @@
   scope.BigGainsPwaUpdate = Object.freeze({ create, safety });
   if (!scope.navigator?.serviceWorker || !scope.document) return;
   const el = id => document.getElementById(id);
+  const setText = (id, value) => { const node = el(id); if (node && node.textContent !== value) node.textContent = value; };
   const runtime = create({
     container: navigator.serviceWorker,
     register: () => navigator.serviceWorker.register('./service-worker.js', { updateViaCache: 'none', scope: './' }),
@@ -163,11 +164,11 @@
         : value.applying ? 'Restarting Big Gains…'
           : !value.safety.safe ? 'Finish your workout and let saved changes sync. Close any open editor before updating.'
             : value.error === 'activation-unavailable' ? 'Update could not start. Try again when connected.' : '';
-      el('pwaUpdateDetail').textContent = detail;
-      el('diagnosticWorkerVersion').textContent = value.workerRelease || (navigator.serviceWorker.controller ? 'Older worker / version unavailable' : 'Not controlled yet');
-      el('diagnosticUpdateState').textContent = value.waiting ? `Update waiting${value.waitingRelease ? ` (${value.waitingRelease})` : ''}`
-        : value.available ? 'Restart available' : value.error === 'check-unavailable' ? 'Check unavailable / offline' : 'No waiting update';
-      el('diagnosticAppOrigin').textContent = location.origin + new URL('./', location.href).pathname;
+      setText('pwaUpdateDetail', detail);
+      setText('diagnosticWorkerVersion', value.workerRelease || (navigator.serviceWorker.controller ? 'Older worker / version unavailable' : 'Not controlled yet'));
+      setText('diagnosticUpdateState', value.waiting ? `Update waiting${value.waitingRelease ? ` (${value.waitingRelease})` : ''}`
+        : value.available ? 'Restart available' : value.error === 'check-unavailable' ? 'Check unavailable / offline' : 'No waiting update');
+      setText('diagnosticAppOrigin', location.origin + new URL('./', location.href).pathname);
     }
   });
   scope.bigGainsPwaUpdate = runtime;
