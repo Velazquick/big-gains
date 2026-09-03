@@ -74,8 +74,8 @@ async function routeAuth(page, {
     const url = new URL(request.url());
     const headers = {
       'access-control-allow-origin': '*',
-      'access-control-allow-headers': 'apikey, authorization, content-type, x-client-info',
-      'access-control-allow-methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+      'access-control-allow-headers': request.headers()['access-control-request-headers'] || 'apikey, authorization, content-type, x-client-info, x-supabase-api-version',
+      'access-control-allow-methods': 'GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS',
       'content-type': 'application/json'
     };
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });

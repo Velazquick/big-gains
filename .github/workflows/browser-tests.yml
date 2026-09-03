@@ -27,11 +27,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+      - name: Install Chromium and WebKit
+        run: npx playwright install --with-deps chromium webkit
 
       - name: Run browser tests
         run: npm test
+
+      - name: Verify mobile custom-domain migration in WebKit
+        env:
+          BIG_GAINS_WEBKIT_QA: 'true'
+        run: npx playwright test --project=webkit tests/custom-domain-transition.spec.js tests/ios-home-screen-auth.spec.js tests/fresh-device-recovery.spec.js
 
       - name: Upload Playwright report
         if: always()

@@ -224,7 +224,13 @@ async function installCloud(page, identity, { malformed = false, slow = false } 
   await page.route('https://synthetic-phase4k.supabase.co/**', async route => {
     const request = route.request();
     const url = new URL(request.url());
-    const headers = { 'access-control-allow-origin': '*', 'content-type': 'application/json' };
+    const headers = {
+      'access-control-allow-origin': '*',
+      'access-control-allow-headers': request.headers()['access-control-request-headers'] || '*',
+      'access-control-allow-methods': 'GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS',
+      'access-control-expose-headers': 'content-range',
+      'content-type': 'application/json'
+    };
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
     if (url.pathname.endsWith('/auth/v1/user')) {
       return route.fulfill({ status: 200, headers, body: JSON.stringify({
