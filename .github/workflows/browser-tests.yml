@@ -52,6 +52,12 @@ jobs:
           PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-webkit
         run: npx playwright test --project=webkit --output=test-results-webkit tests/custom-domain-transition.spec.js tests/ios-home-screen-auth.spec.js tests/fresh-device-recovery.spec.js tests/pwa-update.spec.js
 
+      - name: Repeat WebKit update-to-offline transition
+        env:
+          BIG_GAINS_WEBKIT_QA: 'true'
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-pwa-repeat
+        run: npx playwright test --project=webkit --output=test-results-pwa-repeat tests/pwa-update.spec.js --grep 'real waiting worker: idle approval' --repeat-each=10
+
       - name: Run browser tests
         run: npm run test:pwa-update && npm test
 
@@ -63,6 +69,7 @@ jobs:
           path: |
             playwright-report/
             playwright-report-webkit/
+            playwright-report-pwa-repeat/
           if-no-files-found: ignore
           retention-days: 7
 
