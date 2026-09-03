@@ -57,6 +57,7 @@ const productionScriptOrder = [
   'cloud-sync.js',
   'migration-engine.js',
   'controlled-migration.js',
+  'pwa-update.js',
   'shell-init.js'
 ];
 

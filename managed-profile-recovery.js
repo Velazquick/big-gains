@@ -1202,6 +1202,7 @@
     adoptRemoteFastForward,
     adoptionKey: ADOPTION_KEY,
     adoptionRecoveryStatus: () => startupAdoptionRecovery,
+    updateSafety: () => !recoveryInFlight && !startupAdoptionRecovery?.blocked && !readStorage(ADOPTION_KEY),
     completedForCurrentRuntime,
     needsRecoveryForCurrentRuntime,
     suppressingLocalSave

@@ -37,24 +37,11 @@
       }));
     }
 
-    async function prune() {
+    async function activate() {
       const names = await cacheStorage.keys();
-      // CacheStorage order is creation order. Never delete a newer install that
-      // starts while cleanup is awaiting I/O; unknown ordering fails closed.
-      const currentIndex = names.indexOf(manifest.cacheName);
-      const older = currentIndex < 0 ? [] : names.slice(0, currentIndex);
-      await Promise.all(older
+      await Promise.all(names
         .filter(name => ownsCache(name) && name !== manifest.cacheName && name !== manifest.runtimeCacheName)
         .map(name => cacheStorage.delete(name)));
-    }
-
-    async function activate() {
-      // A guarded takeover may still have a live page on prior assets. Retain
-      // those caches until a client-free activation; never break its offline use.
-      const live = clientApi.matchAll
-        ? await clientApi.matchAll({ type: 'window', includeUncontrolled: true }) : [];
-      const hasLiveApp = live.some(client => client.url.startsWith(absoluteUrl('./')));
-      if (!hasLiveApp) await prune();
       await clientApi.claim();
     }
 
@@ -105,7 +92,7 @@
       return assetResponse(request);
     }
 
-    return Object.freeze({ activate, handle, ownsCache, precache, prune });
+    return Object.freeze({ activate, handle, ownsCache, precache });
   }
 
   Object.defineProperty(scope, 'BigGainsServiceWorkerCore', {

@@ -132,6 +132,7 @@
     apply(); void sync();
   }
   window.BigGainsAppearance = Object.freeze({ current, select, sync, storageKey: key, render,
+    updateSafety: () => !busy && !conflict && !read().pending,
     presentation: () => ({ ...PRESENTATION, accent: model.resolve(current()), accentVersion: current().version }) });
   apply();
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true }); else init();

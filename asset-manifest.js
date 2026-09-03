@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v105-appearance-v1';
+  const release = 'v106-safe-pwa-updates';
   const cloudConfigVersion = 'config-925e766c1b907250'; // BIG_GAINS_CLOUD_CONFIG_VERSION
   const deploymentVersion = `${release}-${cloudConfigVersion}`;
   const manifestAsset = `./asset-manifest.js?v=${encodeURIComponent(deploymentVersion)}`;
@@ -34,7 +34,8 @@
     './exercise-picker.css',
   './user-data-export.css',
   './settings.css',
-    './appearance.css'
+    './appearance.css',
+    './pwa-update.css'
   ];
   const scripts = [
     './boot-render-gate.js',
@@ -91,6 +92,7 @@
     './cloud-sync.js',
     './migration-engine.js',
     './controlled-migration.js',
+    './pwa-update.js',
     './shell-init.js'
   ];
   const optionalScriptPaths = new Set([
