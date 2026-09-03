@@ -15,6 +15,7 @@
     "test:program-domain-recovery": "node --test tests/program-domain-recovery.test.mjs",
     "test:program-domain-cutover": "node --test tests/program-domain-cutover.test.mjs",
     "test:program-portability-runtime": "node --test tests/program-portability-runtime.test.mjs",
+    "test:pwa-update": "node --test tests/pwa-update-unit.test.mjs",
     "test:browser": "playwright test",
     "test:browser:headed": "playwright test --headed",
     "test:browser:report": "playwright show-report",

@@ -386,11 +386,21 @@ bind('importData','change',async e=>{const file=e.target.files[0];if(!file)retur
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;$('installButton').classList.remove('hidden');});
 bind('installButton','click',async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;$('installButton').classList.add('hidden');});
 window.addEventListener('pagehide',saveState);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')saveState();});
-if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js',{updateViaCache:'none'}).catch(console.warn));
+// ./service-worker.js registration is owned by pwa-update.js, including late startup.
 notesApi.initialize({state,saveState});
 progressApi.initialize({getState:()=>state,getAnalyticsOptions:analyticsOptions,exercises:CATALOG_EXERCISES,analytics:analyticsApi,fmtDate,escapeHtml,workoutLabel:completionWorkoutLabel,openHistory,closeHistory,closeRoutineEditor});
 retrospectiveApi.initialize();
 document.addEventListener('big-gains-boot-authorized',renderAll);
-window.BigGainsAppRuntime=Object.freeze({initialized:true,profileId:PROFILE.id});
+window.BigGainsAppRuntime=Object.freeze({initialized:true,profileId:PROFILE.id,updateSafety:()=>{
+  if(active||state.activeWorkout)return {safe:false,reason:'workout'};
+  if(state.restTimerEndsAt||timerController.getStatus().deadline)return {safe:false,reason:'rest'};
+  for(const account of bigGainsAccounts.registry.accounts){
+    const snapshot=bigGainsStatePersistence.readProfileSnapshot(account.profileId);
+    if(!snapshot.ok&&snapshot.reason!=='missing-local-profile')return {safe:false,reason:'storage'};
+    if(snapshot.ok&&(!snapshot.value||snapshot.value.version!==5))return {safe:false,reason:'storage'};
+    if(snapshot.value?.activeWorkout||snapshot.value?.restTimerEndsAt)return {safe:false,reason:'workout'};
+  }
+  return {safe:true,reason:null};
+}});
 if(!window.BigGainsSupabase?.configured)window.BigGainsBootGate?.authorize('local-config-unavailable');
 else renderAll();

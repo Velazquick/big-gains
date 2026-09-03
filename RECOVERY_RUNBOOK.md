@@ -1,5 +1,9 @@
 # Big Gains canonical recovery and rebuild runbook
 
+Installed PWA stale/update investigations follow [PWA_UPDATE_LIFECYCLE.md](PWA_UPDATE_LIFECYCLE.md).
+Preserve stale physical installs; distinguish legacy origins from same-origin
+waiting workers before proposing any recovery or migration.
+
 For the canonical **https://app.getbiggains.com/** origin, follow [CUSTOM_DOMAIN_MIGRATION.md](CUSTOM_DOMAIN_MIGRATION.md). Keep legacy root/callback Auth redirects during RC. An old GitHub Pages PWA retains separate local storage; sign in and recover cloud-backed training/preferences and the published Program graph before replacing it. Unsynced local state needs the existing backup/queue safeguards. Sender `Big Gains <no-reply@auth.getbiggains.com>` remains unchanged.
 
 This is the authoritative maintainer path for rebuilding, verifying, deploying, and recovering Big Gains. It does not authorize production data mutation. Use synthetic or disposable fixtures for destructive, sync, RLS, and recovery tests unless a separate operation explicitly approves a named production action.

@@ -1327,6 +1327,7 @@
       baselineAdopted: Boolean(catalog),
       busy,
       capturePending,
+      comparing,
       localMutationGeneration,
       lifecycleGeneration,
       reconciliationInFlight: Boolean(reconciliationInFlight),

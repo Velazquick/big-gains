@@ -1,0 +1,6 @@
+.pwa-update { position: fixed; z-index: 500; left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); bottom: calc(80px + env(safe-area-inset-bottom)); max-width: 440px; margin-inline: auto; padding: 16px; border: 1px solid var(--accent-border, #888); border-radius: 16px; background: #14171d; color: #fff; box-shadow: 0 8px 36px #0009; }
+.pwa-update[hidden] { display: none; }
+.pwa-update p { margin: 8px 0; font-size: 14px; line-height: 1.4; }
+.pwa-update-actions { display: flex; gap: 10px; margin-top: 12px; }
+.pwa-update button { min-height: 44px; flex: 1; }
+.pwa-update button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }

@@ -122,6 +122,7 @@
 
   let initialized = false;
   let queue = null;
+  let updateCaptures = 0;
   let syncService = null;
   let cutoverService = null;
   let currentMapping = null;
@@ -477,8 +478,10 @@
 
   function captureLocalSnapshot(_profileId = null, { stateSnapshot = null } = {}) {
     const snapshot = clone(stateSnapshot || liveState());
+    updateCaptures += 1;
     captureChain = captureChain.then(() => captureOne(snapshot)).catch(error =>
-      summary({ status: STATUS.ERROR, reasonCode: error?.code || error?.message || 'PROGRAM_CAPTURE_FAILED' }));
+      summary({ status: STATUS.ERROR, reasonCode: error?.code || error?.message || 'PROGRAM_CAPTURE_FAILED' }))
+      .finally(() => { updateCaptures -= 1; });
     return captureChain;
   }
 
@@ -555,6 +558,8 @@
     retry,
     captureLocalSnapshot,
     status: () => currentSnapshot,
+    updateSafety: () => !busy && !updateCaptures && !(queue?.pending().length)
+      && [STATUS.OFF, STATUS.LOCAL_ONLY, STATUS.NO_PROGRAM, STATUS.IN_SYNC, STATUS.UPDATE_AVAILABLE].includes(currentSnapshot.status),
     queue: () => queue
   });
 })(typeof window === 'object' ? window : globalThis);

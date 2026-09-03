@@ -47,13 +47,13 @@ jobs:
         run: npx playwright install --with-deps chromium webkit
 
       - name: Run browser tests
-        run: npm test
+        run: npm run test:pwa-update && npm test
 
       - name: Verify mobile custom-domain migration in WebKit
         env:
           BIG_GAINS_WEBKIT_QA: 'true'
           PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-webkit
-        run: npx playwright test --project=webkit --output=test-results-webkit tests/custom-domain-transition.spec.js tests/ios-home-screen-auth.spec.js tests/fresh-device-recovery.spec.js
+        run: npx playwright test --project=webkit --output=test-results-webkit tests/custom-domain-transition.spec.js tests/ios-home-screen-auth.spec.js tests/fresh-device-recovery.spec.js tests/pwa-update.spec.js
 
       - name: Upload Playwright report
         if: always()

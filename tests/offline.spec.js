@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
 
-const CURRENT_RELEASE = 'v105-appearance-v1';
+const CURRENT_RELEASE = 'v106-safe-pwa-updates';
 const CURRENT_CONFIG_VERSION = 'config-925e766c1b907250';
 const CURRENT_CACHE = `big-gains-shell-${CURRENT_RELEASE}-${CURRENT_CONFIG_VERSION}`;
 const PREVIOUS_CACHE = 'big-gains-shell-v94-pe-1c-atomic-proposal-application-config-ab51ee79cd36825d';
@@ -60,7 +60,7 @@ test('first install precaches one complete, revision-consistent app shell', asyn
   expect(state.cachedUrls).toContain(new URL('/assets/timer-ready.wav', page.url()).href);
 });
 
-test('updates the previous Big Gains cache without deleting unrelated origin caches', async ({ page }) => {
+test('retires previous caches after current-client verification without deleting unrelated caches', async ({ page }) => {
   await page.goto('/manifest.webmanifest?prepare-cache-update');
   await page.evaluate(async ({ previousCache, previousConfigCache, unrelatedCache }) => {
     await (await caches.open(previousCache)).put('/old-shell', new Response('old'));
@@ -79,7 +79,7 @@ test('updates the previous Big Gains cache without deleting unrelated origin cac
   await expect.poll(() => page.evaluate(() => caches.keys())).toEqual(
     expect.arrayContaining([CURRENT_CACHE, 'analytics-library-cache-v1'])
   );
-  expect(await page.evaluate(() => caches.keys())).not.toContain(PREVIOUS_CACHE);
+  await expect.poll(() => page.evaluate(() => caches.keys())).not.toContain(PREVIOUS_CACHE);
   expect(await page.evaluate(() => caches.keys())).not.toContain(PREVIOUS_CONFIG_CACHE);
   expect(await page.evaluate(async () => Boolean(await caches.match('/keep-me')))).toBe(true);
 });
