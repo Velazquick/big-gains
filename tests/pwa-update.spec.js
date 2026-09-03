@@ -54,7 +54,7 @@ async function offer(h) {
   await h.page.evaluate(() => bigGainsPwaUpdate.check(true));
   await expect(h.page.locator('#pwaUpdate')).toBeVisible({ timeout: 15000 });
 }
-test('real waiting worker: idle approval updates once, preserves data and launches offline', async ({ browser }) => {
+test('real waiting worker: idle approval updates once, preserves data and launches offline', async ({ browser }, testInfo) => {
   const h = await harness(browser);
   try {
     await h.page.evaluate(() => localStorage.setItem('pwa-proof-sentinel', 'unchanged'));
@@ -72,6 +72,29 @@ test('real waiting worker: idle approval updates once, preserves data and launch
     h.offline(true); await h.page.reload();
     await expect(h.page.locator('#quickStartSession')).toBeVisible();
     expect(await h.page.evaluate(() => BIG_GAINS_ASSET_MANIFEST.release)).toBe('v107-synthetic-update');
+  } catch (error) {
+    // Failure-only, read-only evidence from this synthetic context. Do not warm
+    // caches before the offline assertion or turn a failed launch into a retry.
+    const evidence = await h.page.evaluate(async () => {
+      const registration = await navigator.serviceWorker.getRegistration();
+      const result = { controller: navigator.serviceWorker.controller?.scriptURL,
+        active: registration?.active?.state, waiting: registration?.waiting?.state, caches: [] };
+      for (const name of await caches.keys()) {
+        const cache = await caches.open(name), entries = [];
+        for (const request of await cache.keys()) {
+          try {
+            const response = await cache.match(request);
+            entries.push({ url: request.url, status: response?.status, type: response?.type,
+              bytes: response ? (await response.arrayBuffer()).byteLength : null });
+          } catch (failure) { entries.push({ url: request.url, error: String(failure) }); }
+        }
+        result.caches.push({ name, entries });
+      }
+      return result;
+    }).catch(failure => ({ diagnosticError: String(failure) }));
+    await testInfo.attach('offline-cache-evidence', { body: JSON.stringify(evidence, null, 2), contentType: 'application/json' });
+    console.log('PWA offline cache evidence:', JSON.stringify(evidence));
+    throw error;
   } finally { await h.close(); }
 });
 test('real active workout defers update; Later preserves session across background and offline reopen', async ({ browser }) => {
