@@ -42,7 +42,7 @@ async function install(page, remote, {independent=false, fresh=false}={}) {
     }
     if(!['GET','HEAD'].includes(request.method()))return send({message:'Unexpected write'},500);
     if(table==='accounts')return send([{id:remote.account,owner_user_id:remote.auth,display_name:'Fixture'}]);
-    if(table==='profiles')return send(remote.rows);
+    if(table==='profiles')return remote.failRead ? send({message:'Synthetic unavailable profile read'},503) : send(remote.rows);
     return send([]);
   });
   await openApp(page);
@@ -102,6 +102,25 @@ test('rapid selections retain the newest choice while a guarded write is in flig
   await expect.poll(()=>remote.rows[0].accent).toBe('ember');
   await expect(page.locator('#accentStatus')).toHaveText('Color synced.');
   expect(remote.writes).toHaveLength(2);
+});
+
+test('a choice without an accepted cloud baseline requires explicit conflict resolution',async({page})=>{
+  const remote=cloud();await install(page,remote);remote.failRead=true;
+  // Model an upgraded/cached runtime with no accepted Appearance row while reads are unavailable.
+  await page.evaluate(()=>localStorage.removeItem(BigGainsAppearance.storageKey));
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem(BigGainsAppearance.storageKey)||'null')?.accepted||null)).toBeNull();
+  await choose(page,'violet');await page.evaluate(()=>BigGainsAppearance.sync());
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem(BigGainsAppearance.storageKey)).pending.base)).toBeNull();
+  remote.rows[0].accent='cobalt';remote.rows[0].accent_version=1;remote.failRead=false;
+  await page.evaluate(()=>BigGainsAppearance.sync());
+  await expect(page.locator('#accentConflict')).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('data-accent','violet');
+  expect(remote.rows[0].accent).toBe('cobalt');expect(remote.writes).toEqual([]);
+  await page.locator('#accentKeepLocal').click();
+  await expect.poll(()=>remote.rows[0].accent).toBe('violet');
+  await expect(page.locator('#accentStatus')).toHaveText('Color synced.');
+  expect(remote.writes).toHaveLength(1);
+  expect(remote.writes[0].query).toMatchObject({accent:'eq.cobalt',accent_version:'eq.1'});
 });
 
 test('invalid preference and changed profile mapping cannot write another profile',async({page})=>{

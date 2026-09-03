@@ -82,7 +82,7 @@
       if (same(remote, operation.value)) {
         save({ accepted: remote, pending: null }); message = 'Color synced.'; conflict = false; apply(); return;
       }
-      if (operation.base && !same(remote, operation.base)) {
+      if (!operation.base || !same(remote, operation.base)) {
         save({ ...cache, accepted: remote });
         conflict = true; message = 'Your color changed on another device. Choose which color to keep.'; render(); return;
       }
