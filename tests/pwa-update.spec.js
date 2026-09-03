@@ -157,6 +157,19 @@ test('unsubmitted visible form input and unavailable safety state defer restart'
   await page.evaluate(() => { document.getElementById('draft-proof').remove(); window.BigGainsCloudSync = null; });
   expect(await page.evaluate(() => BigGainsPwaUpdate.safety().safe)).toBe(false);
 });
+test('a selected hidden restore file blocks restart until the existing writer clears it', async ({ page }) => {
+  await installLocalStorageFixture(page, 'blankJorge'); await page.goto('/');
+  await expect.poll(() => page.evaluate(() => BigGainsPwaUpdate.safety().safe)).toBe(true);
+  await page.evaluate(() => {
+    const input = document.getElementById('importData');
+    input.style.display = 'none';
+    const transfer = new DataTransfer(); transfer.items.add(new File(['{}'], 'pending-restore.json', { type: 'application/json' }));
+    input.files = transfer.files; // Do not dispatch change: no restore/data mutation in this test.
+  });
+  expect(await page.evaluate(() => BigGainsPwaUpdate.safety())).toEqual({ safe: false, reason: 'editor' });
+  await page.evaluate(() => { document.getElementById('importData').value = ''; });
+  expect(await page.evaluate(() => BigGainsPwaUpdate.safety().safe)).toBe(true);
+});
 test('v103 same-origin close/reopen permits natural activation without any skipWaiting message', async ({ browser }) => {
   const h = await harness(browser, { legacy: true });
   try {

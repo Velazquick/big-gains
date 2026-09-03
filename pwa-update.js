@@ -10,6 +10,9 @@
       const local = scope.BigGainsAppRuntime.updateSafety();
       if (!local.safe) return local;
       if (document.querySelector('dialog[open], [role="dialog"]:not([hidden])')) return blocked('editor');
+      // Restore reads File.text() asynchronously; the styled file input can be
+      // hidden while that mutation is pending. Its files clear in the writer's finally.
+      if ([...document.querySelectorAll('input[type="file"]')].some(el => el.files?.length)) return blocked('editor');
       // Form values not yet submitted are also unsaved work (including sign-in).
       if ([...document.querySelectorAll('input, textarea, [contenteditable="true"]')].some(el =>
         el.getClientRects().length && ((el.matches('input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]), textarea')

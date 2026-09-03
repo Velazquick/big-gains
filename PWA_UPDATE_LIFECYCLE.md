@@ -60,7 +60,7 @@ It blocks for:
 - Program capture, busy/queued work, checking/conflict/blocked/error states;
 - pending/in-flight/conflicting Appearance changes;
 - controlled migration in progress;
-- any open dialog or visible unsubmitted text input;
+- any open dialog, visible unsubmitted text input, or selected file awaiting restore;
 - nonempty or malformed durable queue envelopes, including sibling namespaces.
 
 Conservatism may defer an update even if a restart would be harmless. The user
