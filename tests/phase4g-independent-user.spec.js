@@ -279,6 +279,9 @@ test('independent logging stays local first, queues only into its account namesp
       ])) } }
     }));
   }, { catalogKey, cloudAccountId, cloudProfileId, authUserId, clientId });
+  // Finish first installation before this fixture's deliberate catalog reload.
+  // A navigation overlapping initial activation/claim may remain uncontrolled.
+  await page.evaluate(async () => { await navigator.serviceWorker.ready; });
   await page.reload();
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;
