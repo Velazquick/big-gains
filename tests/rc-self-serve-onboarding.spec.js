@@ -25,8 +25,8 @@ async function install(page, { signupAvailable = true } = {}) {
       supabaseUrl: origin,
       supabasePublishableKey: 'sb_publishable_self_serve_test',
       selfServeSignup: signupAvailable,
-      authRedirectUrl: 'https://velazquick.github.io/big-gains/',
-      authSetupRedirectUrl: 'https://velazquick.github.io/big-gains/auth-setup.html'
+      authRedirectUrl: 'https://app.getbiggains.com/',
+      authSetupRedirectUrl: 'https://app.getbiggains.com/auth-setup.html'
     };
     localStorage.clear();
     sessionStorage.clear();
@@ -87,7 +87,7 @@ test('fresh signup sends only email/password, requires matching confirmation, an
   expect(calls.signup).toHaveLength(1);
   expect(calls.signup[0]).toEqual({
     body: expect.objectContaining({ email: EMAIL, password: 'correct horse battery staple' }),
-    redirectTo: 'https://velazquick.github.io/big-gains/'
+    redirectTo: 'https://app.getbiggains.com/'
   });
   expect(calls.signup[0].body.data).toEqual({});
   expect(calls.signup[0].body.data).not.toHaveProperty('display_name');

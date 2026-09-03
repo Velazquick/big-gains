@@ -116,7 +116,7 @@ async function installCloudIdentityShape(page, profileClientId) {
     window.__BIG_GAINS_CLOUD_CONFIG__ = {
       supabaseUrl: 'https://synthetic-phase4g-shape.supabase.co',
       supabasePublishableKey: 'sb_publishable_phase4g_shape',
-      authRedirectUrl: 'https://velazquick.github.io/big-gains/'
+      authRedirectUrl: 'https://app.getbiggains.com/'
     };
     const encode = value => btoa(JSON.stringify(value)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
     const expiresAt = Math.floor(Date.now() / 1000) + 3600;
@@ -348,7 +348,7 @@ test('fresh invited Auth user sees onboarding, provisions once through RPC, and 
     window.__BIG_GAINS_CLOUD_CONFIG__ = {
       supabaseUrl: 'https://synthetic-phase4g.supabase.co',
       supabasePublishableKey: 'sb_publishable_phase4g',
-      authRedirectUrl: 'https://velazquick.github.io/big-gains/'
+      authRedirectUrl: 'https://app.getbiggains.com/'
     };
     const encode = value => btoa(JSON.stringify(value)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
     const expiresAt = Math.floor(Date.now() / 1000) + 3600;

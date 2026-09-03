@@ -183,7 +183,7 @@ For any production app-shell change:
 - Confirm the four browser runtime kinds remain explicit; Alexa member has one existing profile, no selector, verified rose/wellness presentation, and a noncolliding Auth/account/profile namespace.
 - Exercise clean recovery, malformed ownership blocking, non-empty namespace blocking, exact schema-v5 parity, tombstones, zero pending adoption, a later outbound edit, offline reload, Jorge owner regression, SZW independent regression, and v50.1 queue reconciliation.
 - Run all 176 Playwright tests in normal and single-worker modes with no skips or expected failures.
-- After review and deployment, provision through Auth Dashboard plus exactly one trusted membership insert; send the invitation with `redirectTo` set to `https://velazquick.github.io/big-gains/auth-setup.html`, and verify count-only that no application rows changed before Alexa opens it. She sets a password in Safari, then signs into the Home Screen app once.
+- After review and deployment, provision through Auth Dashboard plus exactly one trusted membership insert; send the invitation with `redirectTo` set to `https://app.getbiggains.com/auth-setup.html`, and verify count-only that no application rows changed before Alexa opens it. She sets a password in Safari, then signs into the Home Screen app once.
 
 # v70 iOS Home Screen Auth persistence
 
@@ -191,7 +191,7 @@ For any production app-shell change:
 - Confirm password sign-in is primary in standalone and Safari, while existing-user-only Magic Link appears only as browser compatibility.
 - Confirm password-reset responses remain generic, invitation/reset requests are cooldown-protected, and both target the isolated setup page.
 - Confirm every application session passes matching `getUser()` verification before the unchanged owner/member/profile-shape checks; mismatch and unexpected shape use local-scope sign-out without touching schema-v5 state.
-- Confirm future trusted invitations specify `redirectTo: https://velazquick.github.io/big-gains/auth-setup.html`; do not add Admin/service-role credentials to browser code.
+- Confirm future trusted invitations specify `redirectTo: https://app.getbiggains.com/auth-setup.html`; do not add Admin/service-role credentials to browser code.
 - Confirm the default hosted invitation/recovery templates work without `{{ .Token }}`, custom SMTP, or a plan upgrade.
 - Confirm Safari and Home Screen storage remain isolated, the Home Screen session persists after its own one-time password sign-in, and all managed-owner/member/independent recovery tests remain green.
 

@@ -64,7 +64,7 @@ Do these steps only after branch review, merge, v50 deployment, and a final Jorg
 1. Jorge provides the friend's exact email address to the operator; do not add it to source, SQL, or browser storage.
 2. In Supabase Authentication, confirm public email signup and anonymous sign-in are still disabled.
 3. Explicitly create or invite one Auth user for that email. Do not create an account/profile row manually and do not add the user to Jorge's account.
-4. Send the trusted invitation with `redirectTo: https://velazquick.github.io/big-gains/auth-setup.html`. The friend opens it in Safari and sets a password; no template customization or custom SMTP is required.
+4. Send the trusted invitation with `redirectTo: https://app.getbiggains.com/auth-setup.html`. The friend opens it in Safari and sets a password; no template customization or custom SMTP is required.
 5. Open the installed PWA, sign in once with that email/password, enter the display name, and choose **Create private profile** once. The RPC creates one owned account and one profile with cobalt/performance-dark and the companion off.
 6. Verify the shell shows only that display name, no Jorge/Alexa selector, an empty schema-v5 history, and a private-cloud card for one profile.
 7. Turn the device offline, log and complete a small real workout, reload offline, and confirm it remains present.

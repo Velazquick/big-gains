@@ -100,6 +100,8 @@ test('OFF, ON, and rollback OFF use deterministic payload versions and generated
     expect(unexpected.configUrl).toBe(off.configUrl);
 
     for (const result of [off, on, rollback, unexpected]) {
+      expect(result.config.authRedirectUrl).toBe('https://app.getbiggains.com/');
+      expect(result.config.authSetupRedirectUrl).toBe('https://app.getbiggains.com/auth-setup.html');
       expect(result.manifest.cloudConfigVersion).toBe(result.expectedVersion);
       expect(result.configUrl).toBe(`./cloud-config.js?v=${result.expectedVersion}`);
       expect(result.configUrl).not.toBe(`./cloud-config.js?v=${result.manifest.release}`);

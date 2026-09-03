@@ -127,7 +127,7 @@ async function installSession(page, { runtime = false, localState = null } = {})
     window.__BIG_GAINS_CLOUD_CONFIG__ = {
       supabaseUrl: 'https://synthetic-phase4h.supabase.co',
       supabasePublishableKey: 'sb_publishable_phase4h',
-      authRedirectUrl: 'https://velazquick.github.io/big-gains/'
+      authRedirectUrl: 'https://app.getbiggains.com/'
     };
     const encode = value => btoa(JSON.stringify(value)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
     const expiresAt = Math.floor(Date.now() / 1000) + 3600;

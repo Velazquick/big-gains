@@ -1,5 +1,7 @@
 # Big Gains Release Candidate Plan
 
+Custom-domain interval: canonical app **https://app.getbiggains.com/** on GitHub Pages, release `v104-custom-domain-app`. Follow [CUSTOM_DOMAIN_MIGRATION.md](CUSTOM_DOMAIN_MIGRATION.md) and its live execution evidence before cohort announcement. Legacy links remain allowed in Auth; old-origin PWA/local state is separate and requires sign-in plus cloud/Program recovery on the new origin. Physical iOS proof remains a separate evidence gate. Sender `auth.getbiggains.com` is unchanged.
+
 - Status: **Canonical RC execution plan**
 - Audit baseline: `origin/main` at `8ce0a52cf7441921533d957559ef7f4df1847e92`
 - Runtime marker: `v97-program-portability-convergence`

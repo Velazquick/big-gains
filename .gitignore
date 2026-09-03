@@ -1,5 +1,7 @@
 node_modules/
 playwright-report/
+playwright-report-webkit/
+test-results-webkit/
 test-results/
 blob-report/
 .env

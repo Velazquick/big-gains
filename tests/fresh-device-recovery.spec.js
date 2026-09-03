@@ -2,6 +2,10 @@ import { createHash } from 'node:crypto';
 import { expect, test } from '@playwright/test';
 import { openApp } from './helpers/app.js';
 
+// Keep synthetic cloud traffic inside Playwright routing in every browser.
+// Root-domain worker control/offline behavior has separate real-network tests.
+test.use({ serviceWorkers: async ({ browserName }, use) => use(browserName === 'webkit' ? 'block' : 'allow') });
+
 const NOW = '2026-08-09T12:00:00.000Z';
 const MANAGED_AUTH = '60000000-0000-0000-0000-000000000001';
 const MANAGED_ACCOUNT = '60000000-0000-0000-0000-000000000002';
@@ -160,7 +164,7 @@ async function installIdentity(page, identity, {
     window.__BIG_GAINS_CLOUD_CONFIG__ = {
       supabaseUrl: 'https://synthetic-phase4k.supabase.co',
       supabasePublishableKey: 'sb_publishable_phase4k',
-      authRedirectUrl: 'https://velazquick.github.io/big-gains/'
+      authRedirectUrl: 'https://app.getbiggains.com/'
     };
     const encode = value => btoa(JSON.stringify(value)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
     const expiresAt = Math.floor(Date.now() / 1000) + 3600;
@@ -224,7 +228,13 @@ async function installCloud(page, identity, { malformed = false, slow = false } 
   await page.route('https://synthetic-phase4k.supabase.co/**', async route => {
     const request = route.request();
     const url = new URL(request.url());
-    const headers = { 'access-control-allow-origin': '*', 'content-type': 'application/json' };
+    const headers = {
+      'access-control-allow-origin': '*',
+      'access-control-allow-headers': request.headers()['access-control-request-headers'] || '*',
+      'access-control-allow-methods': 'GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS',
+      'access-control-expose-headers': 'content-range',
+      'content-type': 'application/json'
+    };
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
     if (url.pathname.endsWith('/auth/v1/user')) {
       return route.fulfill({ status: 200, headers, body: JSON.stringify({
@@ -316,7 +326,7 @@ async function waitForManagedRestore(page, storage) {
       }), storage);
       return [restored.jorge?.workouts?.[0]?.id || null, restored.alexa?.workouts?.[0]?.id || null];
     } catch { return null; }
-  }).toEqual(['jorge-cloud-workout', 'alexa-cloud-workout']);
+  }, { timeout: 15_000 }).toEqual(['jorge-cloud-workout', 'alexa-cloud-workout']);
   return restored;
 }
 
@@ -585,7 +595,7 @@ test('changed owner profile mapping during the fresh read blocks partial-blank r
     session: await BigGainsSupabase.session()
   }), owner);
 
-  expect(result).toMatchObject({ ok: false, blocked: true, reason: 'owner-verification-changed' });
+  expect(result, JSON.stringify(result)).toMatchObject({ ok: false, blocked: true, reason: 'owner-verification-changed' });
   expect(await page.evaluate(keys => Object.values(keys.states).map(key => localStorage.getItem(key)), storage)).toEqual([null, null]);
   expect(await page.evaluate(key => localStorage.getItem(key), storage.recovery)).toBeNull();
   expect(cloud.writes).toEqual([]);
@@ -617,7 +627,7 @@ test('existing independent user restores over an exact blank startup artifact', 
   expect(cloud.writes).toEqual([]);
 });
 
-test('managed owner restores Jorge and Alexa from fresh cloud despite prior drift metadata', async ({ page, context }) => {
+test('managed owner restores Jorge and Alexa from fresh cloud despite prior drift metadata', async ({ page, context, browserName }) => {
   const storage = await installIdentity(page, managedIdentity, { driftMetadata: true });
   await page.addInitScript(() => {
     const rememberRecoveryCopy = () => {
@@ -635,7 +645,7 @@ test('managed owner restores Jorge and Alexa from fresh cloud despite prior drif
     try { return await page.evaluate(() => sessionStorage.getItem('big-gains-test-recovery-copy-seen')); }
     catch { return null; }
   }).toMatch(/Restoring your training to this device[\s\S]*verified private cloud copy/);
-  await expect(page.locator('#independentAccountOnboarding')).toBeHidden();
+  await expect(page.locator('#independentAccountOnboarding')).toBeHidden({ timeout: 15_000 });
   let restored = null;
   await expect.poll(async () => {
     try {
@@ -684,12 +694,17 @@ test('managed owner restores Jorge and Alexa from fresh cloud despite prior drif
   expect(cloud.writes).toEqual([]);
 
   await page.reload();
-  await page.evaluate(async () => {
-    await navigator.serviceWorker.ready;
-    if (!navigator.serviceWorker.controller) await new Promise(resolve => navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true }));
-  });
-  await context.setOffline(true);
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  if (browserName !== 'webkit') {
+    // Chromium retains the original recovered-state offline integration check.
+    // WebKit uses mocked cloud routing here and real network/worker fallback in
+    // custom-domain-transition.spec.js; these are separate evidence boundaries.
+    await page.evaluate(async () => {
+      await navigator.serviceWorker.ready;
+      if (!navigator.serviceWorker.controller) await new Promise(resolve => navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true }));
+    });
+    await context.setOffline(true);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+  }
   await expect(page.locator('#independentAccountOnboarding')).toBeHidden();
   await expect(page.locator('#history')).toContainText('Push');
   expect(await page.evaluate(() => BigGainsCloudSync.queue.pending().length)).toBe(0);

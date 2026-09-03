@@ -173,7 +173,7 @@ test('completed-workout transport rejects real operations before a client call',
   expect(result).toEqual({ response: { ok: false, rejected: true, reason: 'synthetic-only' }, calls: 0 });
 });
 
-test('Safari compatibility Magic Link disables signup and uses the GitHub Pages redirect', async ({ page }) => {
+test('Safari compatibility Magic Link disables signup and uses the canonical app redirect', async ({ page }) => {
   await page.addInitScript(value => { window.__BIG_GAINS_CLOUD_CONFIG__ = value; }, configured);
   let requestBody = null;
   let requestUrl = null;
@@ -197,5 +197,5 @@ test('Safari compatibility Magic Link disables signup and uses the GitHub Pages 
     email: 'jorge.synthetic@example.com',
     create_user: false
   });
-  expect(new URL(requestUrl).searchParams.get('redirect_to')).toBe('https://velazquick.github.io/big-gains/');
+  expect(new URL(requestUrl).searchParams.get('redirect_to')).toBe('https://app.getbiggains.com/');
 });

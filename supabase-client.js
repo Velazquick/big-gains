@@ -164,7 +164,7 @@
       const { data, error } = await current.auth.signUp({
         email: normalized,
         password: secret,
-        options: { emailRedirectTo: config.authRedirectUrl || 'https://velazquick.github.io/big-gains/' }
+        options: { emailRedirectTo: config.authRedirectUrl || 'https://app.getbiggains.com/' }
       });
       beginCooldown(SIGNUP_COOLDOWN_KEY);
       if (data?.session) await rejectSession();
@@ -205,7 +205,7 @@
       await current.auth.resend({
         type: 'signup',
         email: normalized,
-        options: { emailRedirectTo: config.authRedirectUrl || 'https://velazquick.github.io/big-gains/' }
+        options: { emailRedirectTo: config.authRedirectUrl || 'https://app.getbiggains.com/' }
       });
     } catch {}
     finally { signupBusy = false; }
@@ -253,7 +253,7 @@
     beginCooldown(RESET_COOLDOWN_KEY);
     try {
       await current.auth.resetPasswordForEmail(normalized, {
-        redirectTo: config.authSetupRedirectUrl || 'https://velazquick.github.io/big-gains/auth-setup.html'
+        redirectTo: config.authSetupRedirectUrl || 'https://app.getbiggains.com/auth-setup.html'
       });
     } catch {}
     finally { passwordResetBusy = false; }
@@ -274,7 +274,7 @@
         email: normalized,
         options: {
           shouldCreateUser: false,
-          emailRedirectTo: config.authRedirectUrl || 'https://velazquick.github.io/big-gains/'
+          emailRedirectTo: config.authRedirectUrl || 'https://app.getbiggains.com/'
         }
       });
       if (error) throw error;

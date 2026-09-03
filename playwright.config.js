@@ -25,7 +25,11 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         ...(chromiumExecutablePath ? { launchOptions: { executablePath: chromiumExecutablePath } } : {})
       }
-    }
+    },
+    ...(process.env.BIG_GAINS_WEBKIT_QA === 'true' ? [{
+      name: 'webkit',
+      use: { ...devices['iPhone 13'] }
+    }] : [])
   ],
   webServer: {
     command: 'node tests/support/static-server.cjs',

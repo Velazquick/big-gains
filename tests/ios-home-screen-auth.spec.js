@@ -2,6 +2,10 @@ import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture, STORAGE_KEYS } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
 
+// These Auth contracts use synthetic HTTP routes. Service-worker networking can
+// bypass those routes in WebKit; real workers are covered by domain/offline tests.
+test.use({ serviceWorkers: async ({ browserName }, use) => use(browserName === 'webkit' ? 'block' : 'allow') });
+
 const SUPABASE_ORIGIN = 'https://synthetic-ios-auth.supabase.co';
 const AUTH_USER_ID = '97000000-0000-0000-0000-000000000001';
 const OTHER_USER_ID = '97000000-0000-0000-0000-000000000002';
@@ -10,8 +14,8 @@ const AUTH_STORAGE_KEY = 'big-gains-supabase-auth-v1';
 const CONFIG = {
   supabaseUrl: SUPABASE_ORIGIN,
   supabasePublishableKey: 'sb_publishable_ios_auth_test',
-  authRedirectUrl: 'https://velazquick.github.io/big-gains/',
-  authSetupRedirectUrl: 'https://velazquick.github.io/big-gains/auth-setup.html'
+  authRedirectUrl: 'https://app.getbiggains.com/',
+  authSetupRedirectUrl: 'https://app.getbiggains.com/auth-setup.html'
 };
 
 function encode(value) {
@@ -74,8 +78,8 @@ async function routeAuth(page, {
     const url = new URL(request.url());
     const headers = {
       'access-control-allow-origin': '*',
-      'access-control-allow-headers': 'apikey, authorization, content-type, x-client-info',
-      'access-control-allow-methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+      'access-control-allow-headers': request.headers()['access-control-request-headers'] || 'apikey, authorization, content-type, x-client-info, x-supabase-api-version',
+      'access-control-allow-methods': 'GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS',
       'content-type': 'application/json'
     };
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });

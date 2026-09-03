@@ -1,5 +1,7 @@
 # big-gains
 
+Canonical app URL: **https://app.getbiggains.com/**, hosted by GitHub Pages. See [custom-domain migration](CUSTOM_DOMAIN_MIGRATION.md) for cutover evidence requirements, legacy-URL behavior, and rollback. Old-origin Home Screen/local state does not migrate automatically: sign in and recover cloud-backed data and the published Program graph before replacing an old installation. Transactional mail remains `Big Gains <no-reply@auth.getbiggains.com>`.
+
 Big Gains is a static, local-first strength-training PWA with the existing managed Jorge/Alexa account plus one-profile independent accounts, JSON backup and restore, private cloud synchronization, and a tested offline app shell.
 
 Maintainers should use [RECOVERY_RUNBOOK.md](RECOVERY_RUNBOOK.md) as the canonical clean rebuild, Supabase inventory, fresh-device/Program recovery, protected release, smoke, and rollback procedure.
