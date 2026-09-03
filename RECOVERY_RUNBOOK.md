@@ -4,6 +4,11 @@ Installed PWA stale/update investigations follow [PWA_UPDATE_LIFECYCLE.md](PWA_U
 Preserve stale physical installs; distinguish legacy origins from same-origin
 waiting workers before proposing any recovery or migration.
 
+For the preserved v103 installation, use the gated manual procedure in
+[LEGACY_ORIGIN_PWA_MIGRATION.md](LEGACY_ORIGIN_PWA_MIGRATION.md). An unobserved
+physical origin may be documented as probable, never confirmed. No old-icon
+removal is permitted until source/server and new-device parity are proven.
+
 For the canonical **https://app.getbiggains.com/** origin, follow [CUSTOM_DOMAIN_MIGRATION.md](CUSTOM_DOMAIN_MIGRATION.md). Keep legacy root/callback Auth redirects during RC. An old GitHub Pages PWA retains separate local storage; sign in and recover cloud-backed training/preferences and the published Program graph before replacing it. Unsynced local state needs the existing backup/queue safeguards. Sender `Big Gains <no-reply@auth.getbiggains.com>` remains unchanged.
 
 This is the authoritative maintainer path for rebuilding, verifying, deploying, and recovering Big Gains. It does not authorize production data mutation. Use synthetic or disposable fixtures for destructive, sync, RLS, and recovery tests unless a separate operation explicitly approves a named production action.
@@ -129,7 +134,7 @@ The deterministic proof is:
 npx playwright test tests/fresh-device-recovery.spec.js tests/cross-device-remote-fast-forward.spec.js tests/cloud-queue-reconciliation.spec.js
 ```
 
-For a user-held schema-v5 technical backup, switch to the matching profile before restore, use Settings → Support → Advanced diagnostics → Restore technical backup, and verify the preview/profile identity before confirming overwrite. Keep the original backup until the restored profile has been opened, reloaded, and exported again.
+For a user-held schema-v5 technical backup, the controls are in Settings → Cloud & backup → Your data → Technical backup & restore. Download technical backup is a local export, not a restore or cloud upload. Restore technical backup checks profile identity but then immediately replaces/saves the current profile; there is no separate preview/overwrite confirmation. Do not select a restore file during a legacy-origin migration audit. Any separately authorized restore requires confirming the matching profile and backup contents beforehand, and keeping the original file until restored data has been verified after reload and re-export.
 
 ## 6. Program recovery
 

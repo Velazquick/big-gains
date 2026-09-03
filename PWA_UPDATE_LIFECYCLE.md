@@ -133,3 +133,11 @@ deliberate data-preserving origin transition. Do not change Pages/DNS or transfe
 local data automatically. A new canonical-origin release cannot itself solve it.
 Keep the RC blocker open until the user's stale install has been characterized
 and real state preservation/update delivery has been proved.
+
+The approved manual origin-transition procedure is now documented in
+[LEGACY_ORIGIN_PWA_MIGRATION.md](LEGACY_ORIGIN_PWA_MIGRATION.md). v103 has no
+origin/worker diagnostics; if device inspection is unavailable, label its origin
+probable and keep the data gates mandatory. Source/server parity and fresh
+custom-domain recovery must be proven before optional manual old-icon removal.
+This procedure does not require a legacy-worker compatibility deployment and
+does not claim that the physical migration has already passed.
