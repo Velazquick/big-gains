@@ -3,7 +3,6 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname } from 'node:path';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
-import { offlineServer } from './support/offline-server.js';
 
 const RELEASE = 'v106-safe-pwa-updates';
 const V103 = 'v103-rc-hardening-pass-1';
@@ -36,16 +35,16 @@ async function harness(browser, { legacy = false } = {}) {
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const origin = `http://127.0.0.1:${server.address().port}`;
-  const setServerOffline = offlineServer(server);
   const context = await browser.newContext({ serviceWorkers: 'allow', viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   await installLocalStorageFixture(page, 'blankJorge');
   await page.goto(origin);
   await controlled(page);
-  return { page, context, origin, deploy: value => { version = value; }, offline: async value => {
-    if (process.env.PWA_REFUSE_CONNECTIONS === 'true') await setServerOffline(value);
-    else down = value;
-  }, redirect: value => { redirect = value; }, failWorker: value => { failWorker = value; },
+  // A controller can arrive while startup's explicit update check is still in
+  // flight. Finish that baseline check before mutating the synthetic deployment.
+  if (!legacy) await page.evaluate(() => bigGainsPwaUpdate.check(true));
+  return { page, context, origin, deploy: value => { version = value; }, offline: value => { down = value; },
+    redirect: value => { redirect = value; }, failWorker: value => { failWorker = value; },
     close: async () => { await context.close(); await new Promise(resolve => server.close(resolve)); } };
 }
 async function controlled(page) {
@@ -74,7 +73,7 @@ test('real waiting worker: idle approval updates once, preserves data and launch
     expect(await h.page.evaluate(() => localStorage.getItem('pwa-proof-sentinel'))).toBe('unchanged');
     expect(await h.page.evaluate(() => localStorage.getItem('big-gains-v2'))).toBe(before);
     await expect(h.page.locator('#pwaUpdate')).toBeHidden();
-    await h.offline(true); await h.page.reload();
+    h.offline(true); await h.page.reload();
     await expect(h.page.locator('#quickStartSession')).toBeVisible();
     expect(await h.page.evaluate(() => BIG_GAINS_ASSET_MANIFEST.release)).toBe('v107-synthetic-update');
   } catch (error) {
@@ -113,7 +112,7 @@ test('real active workout defers update; Later preserves session across backgrou
     await h.page.evaluate(() => { dispatchEvent(new Event('focus')); dispatchEvent(new Event('pageshow')); });
     await expect(h.page.locator('#pwaUpdate')).toBeHidden();
     expect(await h.page.evaluate(() => BIG_GAINS_ASSET_MANIFEST.release)).toBe(RELEASE);
-    await h.offline(true); await h.page.reload();
+    h.offline(true); await h.page.reload();
     expect(await h.page.evaluate(() => JSON.parse(localStorage.getItem('big-gains-v2')).activeWorkout)).toEqual(before);
     await expect(h.page.locator('#activePanel')).toBeVisible();
   } finally { await h.close(); }
@@ -124,6 +123,7 @@ test('new shell with older worker and failed install has no false restart offer;
   try {
     h.deploy('v107-synthetic-update'); h.failWorker(true);
     await h.page.reload();
+    await h.page.evaluate(() => bigGainsPwaUpdate.check(true));
     await expect.poll(() => h.page.evaluate(() => window.bigGainsPwaUpdate?.status().workerRelease)).toBe(RELEASE);
     expect(await h.page.evaluate(() => BIG_GAINS_ASSET_MANIFEST.release)).toBe('v107-synthetic-update');
     await expect(h.page.locator('#pwaUpdate')).toBeHidden();

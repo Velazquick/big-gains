@@ -96,8 +96,17 @@ close/reopen, and both legacy first-hop paths. Its historical fixture uses the
 exact v103 worker core, original load-only registration, and reduced shell/
 manifest, not the entire historical UI. Synthetic data only.
 
-The same file runs in protected Linux WebKit CI alongside custom-domain/Auth/
-recovery coverage. WebKit emulation is not an installed physical iOS test. Existing
+The same file runs in Apple-hosted WebKit CI alongside custom-domain/Auth/
+recovery coverage. The protected `playwright` job depends on that WebKit job;
+Pages remains downstream of green protected validation. Update-to-offline and
+failed-install transitions each run ten independent repetitions, with no retries.
+Linux comparison runs produced libsoup/GObject assertions and explicit internal
+WebKit failures during offline fallback. Apple-hosted comparison retained every
+offline/data assertion and passed all offline repetitions. The failed-install
+fixture now awaits its update-check completion before reading diagnostics.
+This changes the browser networking backend, not the application or offline
+strategy. The exact internal engine defect is not claimed to be proven.
+WebKit emulation is not an installed physical iOS test. Existing
 full Chromium, startup, offline, timer, storage, cloud/Program, and Appearance
 regression coverage remains required. Exact totals belong in the execution report.
 

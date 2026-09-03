@@ -8,7 +8,6 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { extname } from 'node:path';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
-import { offlineServer } from './support/offline-server.js';
 
 // Exercise real navigation redirects, service workers and origin boundaries.
 // No production network, credentials, or application data are used.
@@ -38,7 +37,6 @@ test('installed legacy shell survives a Pages redirect without moving local stat
   const listen = server => new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   await listen(legacyServer);
   await listen(newServer);
-  const setServersOffline = [legacyServer, newServer].map(offlineServer);
   const legacy = `http://127.0.0.1:${legacyServer.address().port}/big-gains/`;
   target = `http://127.0.0.1:${newServer.address().port}`;
   const context = await browser.newContext({ serviceWorkers: 'allow' });
@@ -62,18 +60,14 @@ test('installed legacy shell survives a Pages redirect without moving local stat
     await expect(page.locator('#activePanel')).toBeVisible();
     expect(await page.evaluate(() => localStorage.getItem('migration-origin-sentinel'))).toBe('legacy-only');
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('big-gains-v2')).activeWorkout.id)).toBe(activeBefore.id);
-    const protocolOffline = browserName !== 'webkit';
-    const refuseConnections = process.env.PWA_REFUSE_CONNECTIONS === 'true' && !protocolOffline;
-    networkDown = !protocolOffline && !refuseConnections;
+    networkDown = true;
     // Windows WebKit's context offline toggle fails before worker dispatch;
     // dropped real server connections exercise the worker's network fallback.
-    if (protocolOffline) await context.setOffline(true);
-    if (refuseConnections) await Promise.all(setServersOffline.map(setOffline => setOffline(true)));
+    if (browserName !== 'webkit') await context.setOffline(true);
     await page.reload();
     await expect(page.locator('#activePanel')).toBeVisible();
     networkDown = false;
-    if (protocolOffline) await context.setOffline(false);
-    if (refuseConnections) await Promise.all(setServersOffline.map(setOffline => setOffline(false)));
+    if (browserName !== 'webkit') await context.setOffline(false);
     const fresh = await context.newPage();
     await fresh.goto(target);
     expect(await fresh.evaluate(() => localStorage.getItem('migration-origin-sentinel'))).toBeNull();
@@ -110,7 +104,6 @@ test('exact generated deployment loads all assets, Auth URLs, manifest and offli
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     const origin = `http://127.0.0.1:${server.address().port}`;
-    const setServerOffline = offlineServer(server);
     context = await browser.newContext({ serviceWorkers: 'allow', viewport: { width: 390, height: 844 } });
     const page = await context.newPage();
     const failures = [];
@@ -138,11 +131,8 @@ test('exact generated deployment loads all assets, Auth URLs, manifest and offli
     expect(state.cached).toEqual(state.expected);
     expect(failures).toEqual([]);
     expect(requests.some(path => path.includes('/big-gains/'))).toBe(false);
-    const protocolOffline = browserName !== 'webkit';
-    const refuseConnections = process.env.PWA_REFUSE_CONNECTIONS === 'true' && !protocolOffline;
-    networkDown = !protocolOffline && !refuseConnections;
-    if (protocolOffline) await context.setOffline(true);
-    if (refuseConnections) await setServerOffline(true);
+    networkDown = true;
+    if (browserName !== 'webkit') await context.setOffline(true);
     await page.reload();
     await expect(page).toHaveTitle('Big Gains');
     await expect(page.locator('#accountOnboardingCreate')).toBeVisible();
