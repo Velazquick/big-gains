@@ -36,14 +36,20 @@ npx playwright install chromium
 
 Stop if the worktree is not clean, `main` is not identical to `origin/main`, or the intended release commit is not the checked-out `HEAD`.
 
-Run the protected corpus exactly as CI does:
+Run the Node/Chromium corpus:
 
 ```sh
+npm run test:pwa-update
 npm test
 git diff --check
 ```
 
 The known Windows EKF generated-artifact freshness warning is not a reason to regenerate or commit artifacts during unrelated work. Investigate any other failure.
+
+Release acceptance also requires the Apple-hosted WebKit suite and independent
+transition repetitions in `.github/workflows/browser-tests.yml`, plus its
+disposable PostgreSQL contract checks. A local `npm test` pass alone is not the
+complete protected release gate. See [PWA_UPDATE_LIFECYCLE.md](PWA_UPDATE_LIFECYCLE.md).
 
 For a local interactive launch:
 
@@ -71,7 +77,7 @@ Verify the shell and update boundary with:
 npx playwright test tests/cloud-config-generation.spec.js tests/offline.spec.js tests/startup-interactivity.spec.js
 ```
 
-`asset-manifest.js` owns the release marker, deployment version, precache list, and cache names. `service-worker.js` imports the exact versioned manifest. `service-worker-core.js` installs complete core assets before publishing a cache, serves navigation from the shell cache while offline, and deletes obsolete Big Gains caches on activation. A release is invalid if the marker or generated manifest references disagree.
+`asset-manifest.js` owns the release marker, deployment version, precache list, and cache names. `service-worker.js` imports the exact versioned manifest. Required precache fetch/write failures reject installation. `service-worker-core.js` serves navigation from the shell cache while offline. It retains old caches while live clients may need them; only client-free activation or a verified sole, safely idle current client may prune older owned caches. It never wipes localStorage or IndexedDB. A release is invalid if the marker or generated manifest references disagree.
 
 ## 4. Supabase inventory and verification
 

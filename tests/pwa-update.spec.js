@@ -40,7 +40,11 @@ async function harness(browser, { legacy = false } = {}) {
   await installLocalStorageFixture(page, 'blankJorge');
   await page.goto(origin);
   await controlled(page);
-  return { page, context, origin, deploy: value => { version = value; }, offline: value => { down = value; }, redirect: value => { redirect = value; }, failWorker: value => { failWorker = value; },
+  // A controller can arrive while startup's explicit update check is still in
+  // flight. Finish that baseline check before mutating the synthetic deployment.
+  if (!legacy) await page.evaluate(() => bigGainsPwaUpdate.check(true));
+  return { page, context, origin, deploy: value => { version = value; }, offline: value => { down = value; },
+    redirect: value => { redirect = value; }, failWorker: value => { failWorker = value; },
     close: async () => { await context.close(); await new Promise(resolve => server.close(resolve)); } };
 }
 async function controlled(page) {
@@ -119,6 +123,7 @@ test('new shell with older worker and failed install has no false restart offer;
   try {
     h.deploy('v107-synthetic-update'); h.failWorker(true);
     await h.page.reload();
+    await h.page.evaluate(() => bigGainsPwaUpdate.check(true));
     await expect.poll(() => h.page.evaluate(() => window.bigGainsPwaUpdate?.status().workerRelease)).toBe(RELEASE);
     expect(await h.page.evaluate(() => BIG_GAINS_ASSET_MANIFEST.release)).toBe('v107-synthetic-update');
     await expect(h.page.locator('#pwaUpdate')).toBeHidden();

@@ -9,7 +9,48 @@ permissions:
   contents: read
 
 jobs:
+  webkit:
+    # Linux libsoup emitted internal WebKit errors during genuine offline
+    # fallback. Keep identical assertions on Apple's networking backend; the
+    # protected playwright job cannot succeed unless this job succeeds.
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps webkit
+      - name: Verify mobile update, custom-domain, Auth and recovery in WebKit
+        env:
+          BIG_GAINS_WEBKIT_QA: 'true'
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-webkit
+        run: npx playwright test --project=webkit --output=test-results-webkit tests/custom-domain-transition.spec.js tests/ios-home-screen-auth.spec.js tests/fresh-device-recovery.spec.js tests/pwa-update.spec.js
+      - name: Repeat WebKit update-to-offline and failed-install transitions
+        env:
+          BIG_GAINS_WEBKIT_QA: 'true'
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-pwa-repeat
+        run: |
+          npx playwright test --project=webkit --output=test-results-pwa-repeat tests/pwa-update.spec.js --grep 'real waiting worker: idle approval|new shell with older worker' --repeat-each=10
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: playwright-report-webkit
+          path: |
+            playwright-report-webkit/
+            playwright-report-pwa-repeat/
+          if-no-files-found: ignore
+          retention-days: 7
+
   playwright:
+    needs: webkit
+    # A skipped required check can be accepted by branch protection. Report an
+    # explicit failure if the prerequisite fails, rather than skipping this job.
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     services:
@@ -24,6 +65,11 @@ jobs:
           --health-cmd pg_isready --health-interval 5s
           --health-timeout 5s --health-retries 10
     steps:
+      - name: Require successful WebKit validation
+        env:
+          PWA_WEBKIT_RESULT: ${{ needs.webkit.result }}
+        run: test "$PWA_WEBKIT_RESULT" = success
+
       - name: Check out repository
         uses: actions/checkout@v7
         with:
@@ -43,21 +89,8 @@ jobs:
           PGPASSWORD: synthetic-appearance-ci
         run: psql -h localhost -U postgres -d appearance_test -f tests/appearance-contract.sql
 
-      - name: Install Chromium and WebKit
-        run: npx playwright install --with-deps chromium webkit
-
-      - name: Verify mobile custom-domain migration in WebKit
-        env:
-          BIG_GAINS_WEBKIT_QA: 'true'
-          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-webkit
-        run: npx playwright test --project=webkit --output=test-results-webkit tests/custom-domain-transition.spec.js tests/ios-home-screen-auth.spec.js tests/fresh-device-recovery.spec.js tests/pwa-update.spec.js
-
-      - name: Repeat WebKit update-to-offline transition
-        env:
-          BIG_GAINS_WEBKIT_QA: 'true'
-          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-pwa-repeat
-        run: |
-          npx playwright test --project=webkit --output=test-results-pwa-repeat tests/pwa-update.spec.js --grep 'real waiting worker: idle approval' --repeat-each=10
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
 
       - name: Run browser tests
         run: npm run test:pwa-update && npm test
@@ -69,8 +102,6 @@ jobs:
           name: playwright-report
           path: |
             playwright-report/
-            playwright-report-webkit/
-            playwright-report-pwa-repeat/
           if-no-files-found: ignore
           retention-days: 7
 
