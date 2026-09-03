@@ -285,6 +285,12 @@
             <p>Your workouts, preferences, and recovery state remain isolated to this profile.</p>
           </section>
 
+          <section class="panel settings-section" aria-labelledby="settingsAppearanceTitle">
+            <div class="settings-section-head"><div><span class="label">Appearance</span><h2 id="settingsAppearanceTitle">Your color</h2></div></div>
+            <fieldset id="accentChoice" class="accent-choice"></fieldset>
+            <p id="accentStatus" role="status">Choose a color for this profile.</p>
+            <div id="accentConflict" hidden><button id="accentKeepLocal" class="secondary" type="button">Keep this color</button> <button id="accentUseCloud" class="secondary" type="button">Use synced color</button></div>
+          </section>
           <section class="panel settings-section" aria-labelledby="settingsUnitsTitle">
             <div class="settings-section-head"><div><span class="label">Units</span><h2 id="settingsUnitsTitle">Weight units</h2></div></div>
             <fieldset class="unit-choice" id="weightUnitChoice">
@@ -415,7 +421,7 @@
   </div></dialog>
 
   <dialog id="exercisePickerDialog" class="exercise-picker-dialog" aria-labelledby="exercisePickerTitle" aria-describedby="exercisePickerPrompt"><div class="exercise-picker-shell"><header class="exercise-picker-head"><div><span class="label">Exercise Library</span><h2 id="exercisePickerTitle">Choose an exercise</h2><p id="exercisePickerPrompt">Search the local exercise catalog.</p></div><button id="closeExercisePicker" class="ghost compact" type="button" aria-label="Cancel exercise selection">Cancel</button></header><div class="exercise-picker-controls"><label class="exercise-picker-search"><span>Search exercises</span><input id="exercisePickerSearch" type="search" placeholder="Name, alias, muscle, or equipment" autocomplete="off" enterkeyhint="search"></label><div class="exercise-picker-filter-row"><label class="exercise-picker-filter"><span>Muscle</span><select id="exercisePickerMuscle" aria-label="Filter exercises by muscle"></select></label><label class="exercise-picker-filter"><span>Equipment</span><select id="exercisePickerEquipment" aria-label="Filter exercises by equipment"></select></label><button id="exercisePickerClearFilters" class="ghost compact" type="button" hidden>Clear</button></div></div><div id="exercisePickerResults" class="exercise-picker-results" aria-live="polite"></div></div></dialog>
-  <script src="asset-manifest.js?v=v104-custom-domain-app-config-925e766c1b907250" data-big-gains-manifest></script>
+  <script src="asset-manifest.js?v=v105-appearance-v1-config-925e766c1b907250" data-big-gains-manifest></script>
   <script src="asset-loader.js"></script>
 </body>
 </html>

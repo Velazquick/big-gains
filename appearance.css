@@ -1,0 +1,30 @@
+.accent-choice{border:0;padding:0;margin:18px 0 0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.accent-choice legend{font-weight:850;margin-bottom:12px}
+.accent-choice label{position:relative;cursor:pointer;min-width:0}
+.accent-choice input{position:absolute;width:1px;height:1px;opacity:0;margin:0;padding:0}
+.accent-choice span{display:flex;align-items:center;gap:8px;min-height:54px;padding:10px;border:1px solid var(--line);border-radius:14px;background:var(--panel3)}
+.accent-choice i{width:20px;height:20px;border-radius:50%;flex:none;border:1px solid rgba(255,255,255,.25)}
+.accent-choice b{font-size:.82rem}
+.accent-choice em{margin-left:auto;font-size:1rem;font-style:normal;visibility:hidden}
+.accent-choice input:checked+span{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.accent-choice input:checked+span em{visibility:visible}
+.accent-choice input:focus-visible+span{outline:3px solid var(--accent);outline-offset:3px}
+#accentStatus{font-size:.8rem;line-height:1.5;color:var(--muted)}
+#accentConflict button{min-height:44px;margin-top:8px}
+@media(max-width:560px){.accent-choice{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Only opt-in profiles use this layer. Theme surfaces and legacy accents stay
+   in their existing stylesheets. Text ink and filled controls have distinct tokens. */
+html[data-appearance-version="1"] :is(.primary:not(.danger),.day-tabs button.active,.bottom-nav button.active,.set-line.is-current .set-done,.pr-badge,.history-record-pill,.record-chip,.progress-window-toggle button.active,.active-workout-unit-choice button[aria-pressed="true"]){background:var(--accent-primary)!important;border-color:var(--accent-primary)!important;color:var(--on-accent)!important}
+html[data-appearance-version="1"] .primary.danger{background:var(--danger)!important;border-color:var(--danger)!important;color:#111!important}
+html[data-appearance-version="1"][data-theme="wellness-light"] .primary.danger{color:#fff!important}
+html[data-appearance-version="1"] :is(.eyebrow,.label,.exercise-muscle,.add-set,.exercise-delta,.exercise-target,.goal-target,.calendar-date[aria-selected="true"]){color:var(--accent)}
+html[data-appearance-version="1"] :is(.hero-card,#viewToday .hero-card){border-color:var(--accent-border-soft);background:linear-gradient(135deg,var(--accent-soft),transparent)}
+html[data-appearance-version="1"] .hero-card::before{background:linear-gradient(180deg,var(--accent),transparent)}
+html[data-appearance-version="1"] :is(input,select,button,a):focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+html[data-appearance-version="1"] .progress-line{stroke:var(--accent-chart)!important}
+html[data-appearance-version="1"] .progress-dot{fill:var(--accent-chart)!important}
+html[data-appearance-version="1"] :is(.set-line.completed,.set-line.completed .set-done,.timer-presets button[aria-pressed="true"],.unit-choice input:checked+span){border-color:var(--accent-border);background:var(--accent-soft);color:var(--accent)}
+html[data-appearance-version="1"] .set-line[data-set-state="current"] .set-done{background:var(--accent-primary)!important;border-color:var(--accent-primary)!important;color:var(--on-accent)!important}
+html[data-appearance-version="1"] body{background:radial-gradient(circle at 84% -8%,rgba(var(--accent-rgb),.075),transparent 28rem),var(--bg)}
+html[data-appearance-version="1"] .program-setup-dialog{--accent:var(--accent-dark-ink)}

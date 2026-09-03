@@ -16,7 +16,7 @@
 .progress-overview-grid small{color:#697382;font-size:.7rem}
 .progress-training-workload-card,.progress-workload-card,.progress-strength-card{padding:20px;border:1px solid var(--progress-line);border-radius:22px;background:linear-gradient(180deg,rgba(15,20,26,.98),rgba(9,12,16,.98))}
 .progress-training-workload-card{border-color:rgba(240,163,107,.18);background:radial-gradient(circle at 88% 0,rgba(240,163,107,.055),transparent 22rem),linear-gradient(180deg,rgba(15,20,26,.98),rgba(9,12,16,.98))}
-.progress-workload-card{border-color:rgba(216,255,62,.14);background:radial-gradient(circle at 12% 8%,rgba(216,255,62,.045),transparent 24rem),linear-gradient(180deg,rgba(15,20,26,.98),rgba(9,12,16,.98))}
+.progress-workload-card{border-color:rgba(var(--accent-rgb,216,255,62),.14);background:radial-gradient(circle at 12% 8%,rgba(var(--accent-rgb,216,255,62),.045),transparent 24rem),linear-gradient(180deg,rgba(15,20,26,.98),rgba(9,12,16,.98))}
 .progress-section-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:14px}
 .progress-section-head h3{margin:4px 0 5px;font-size:1.25rem;letter-spacing:-.035em}
 .progress-window-caption{flex:none;padding:6px 9px;border:1px solid var(--progress-line);border-radius:999px;color:#aeb7c3;font-size:.7rem;font-weight:800}
@@ -38,12 +38,12 @@
 .body-outline{fill:#111820;stroke:#2a333e;stroke-width:2}
 .muscle-zone{stroke:rgba(255,255,255,.12);stroke-width:1;cursor:pointer;transition:filter .15s ease,opacity .15s ease,stroke .15s ease}
 .muscle-zone:hover,.muscle-zone:focus{stroke:var(--accent);filter:brightness(1.12);outline:none}
-.muscle-zone.is-selected{stroke:var(--accent);stroke-width:3;filter:brightness(1.14) drop-shadow(0 0 5px rgba(216,255,62,.24))}
+.muscle-zone.is-selected{stroke:var(--accent);stroke-width:3;filter:brightness(1.14) drop-shadow(0 0 5px rgba(var(--accent-rgb,216,255,62),.24))}
 .muscle-zone.heat-0{fill:#1a222b;opacity:.48}
 .muscle-zone.heat-1{fill:#3c471e;opacity:.82}
 .muscle-zone.heat-2{fill:#667527;opacity:.88}
 .muscle-zone.heat-3{fill:#98ad30;opacity:.94}
-.muscle-zone.heat-4{fill:var(--accent);opacity:1;filter:drop-shadow(0 0 7px rgba(216,255,62,.18))}
+.muscle-zone.heat-4{fill:var(--accent);opacity:1;filter:drop-shadow(0 0 7px rgba(var(--accent-rgb,216,255,62),.18))}
 #progressMuscleDetail{display:flex}
 .muscle-detail{width:100%;padding:18px;border:1px solid var(--progress-line);border-radius:18px;background:rgba(19,25,32,.74)}
 .muscle-detail.empty{display:flex;flex-direction:column;justify-content:center}
@@ -122,8 +122,8 @@ html[data-profile="alexa"] .progress-strength-card,
 html[data-profile="alexa"] .muscle-detail,
 html[data-profile="alexa"] #viewProgress .progress-preview,
 html[data-profile="alexa"] #viewProgress .progress-preview-stats>div{background:#fffefd;border-color:#e2c7d6;color:var(--text);box-shadow:0 10px 28px rgba(119,66,96,.06)}
-html[data-profile="alexa"] .progress-workload-card{background:radial-gradient(circle at 12% 8%,rgba(200,95,152,.08),transparent 24rem),linear-gradient(180deg,#fffefd,#fff7fb)}
-html[data-profile="alexa"] .progress-training-workload-card{background:radial-gradient(circle at 88% 0,rgba(200,95,152,.07),transparent 22rem),linear-gradient(180deg,#fffefd,#fff7fb)}
+html[data-profile="alexa"] .progress-workload-card{background:radial-gradient(circle at 12% 8%,rgba(var(--accent-rgb,200,95,152),.08),transparent 24rem),linear-gradient(180deg,#fffefd,#fff7fb)}
+html[data-profile="alexa"] .progress-training-workload-card{background:radial-gradient(circle at 88% 0,rgba(var(--accent-rgb,200,95,152),.07),transparent 22rem),linear-gradient(180deg,#fffefd,#fff7fb)}
 html[data-profile="alexa"] .training-workload-list,
 html[data-profile="alexa"] .training-workload-empty,
 html[data-profile="alexa"] #progressDialog .progress-chart-empty{background:#fff8fb;border-color:#ead5e1}
@@ -134,8 +134,8 @@ html[data-profile="alexa"] .muscle-zone.heat-0{fill:#ead8e2;opacity:.6}
 html[data-profile="alexa"] .muscle-zone.heat-1{fill:#efc8dc}
 html[data-profile="alexa"] .muscle-zone.heat-2{fill:#e39abe}
 html[data-profile="alexa"] .muscle-zone.heat-3{fill:#d875a7}
-html[data-profile="alexa"] .muscle-zone.heat-4{fill:var(--accent);filter:drop-shadow(0 0 7px rgba(200,95,152,.18))}
-html[data-profile="alexa"] .muscle-zone.is-selected{stroke:#b94d86;filter:brightness(1.06) drop-shadow(0 0 5px rgba(200,95,152,.22))}
+html[data-profile="alexa"] .muscle-zone.heat-4{fill:var(--accent);filter:drop-shadow(0 0 7px rgba(var(--accent-rgb,200,95,152),.18))}
+html[data-profile="alexa"] .muscle-zone.is-selected{stroke:#b94d86;filter:brightness(1.06) drop-shadow(0 0 5px rgba(var(--accent-rgb,200,95,152),.22))}
 html[data-profile="alexa"] .muscle-detail-metrics>div{background:#fff8fb;border-color:#ead5e1}
 html[data-profile="alexa"] .muscle-contributors>div span{color:#5d3d50}
 html[data-profile="alexa"] .progress-window-caption{color:#745467;border-color:#dfc4d3;background:#fff8fb}

@@ -1,5 +1,7 @@
 # Big Gains Release Candidate Plan
 
+Appearance v1: [six curated profile accent colors](APPEARANCE_V1.md), versioned profile-row presentation with legacy defaults preserved. Accent only; Performance/Soft styles remain parked. No schema-v5 workout, Auth, RLS, Program, PE, or History changes.
+
 Custom-domain interval: canonical app **https://app.getbiggains.com/** on GitHub Pages, release `v104-custom-domain-app`. Follow [CUSTOM_DOMAIN_MIGRATION.md](CUSTOM_DOMAIN_MIGRATION.md) and its live execution evidence before cohort announcement. Legacy links remain allowed in Auth; old-origin PWA/local state is separate and requires sign-in plus cloud/Program recovery on the new origin. Physical iOS proof remains a separate evidence gate. Sender `auth.getbiggains.com` is unchanged.
 
 - Status: **Canonical RC execution plan**

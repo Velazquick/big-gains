@@ -1,4 +1,4 @@
-importScripts('./asset-manifest.js?v=v104-custom-domain-app-config-925e766c1b907250', './service-worker-core.js');
+importScripts('./asset-manifest.js?v=v105-appearance-v1-config-925e766c1b907250', './service-worker-core.js');
 
 const runtime = BigGainsServiceWorkerCore.createRuntime({
   manifest: BIG_GAINS_ASSET_MANIFEST,

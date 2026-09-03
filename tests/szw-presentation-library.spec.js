@@ -243,7 +243,7 @@ test('SZW renders merlot on slate with the pet off and no routine or schema-v5 m
     panel: '#11151a', muted: '#929ba8', line: '#2a313b'
   });
   expect(result.allowlist).toEqual({
-    accents: ['ember', 'rose', 'cobalt', 'merlot'],
+    accents: ['volt', 'cobalt', 'merlot', 'rose', 'violet', 'ember'],
     themes: ['performance-dark', 'wellness-light', 'slate-dark']
   });
   expect(result.fallbacks).toEqual({ petEnabled: false, accent: 'cobalt', theme: 'performance-dark' });

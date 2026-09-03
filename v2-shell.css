@@ -31,7 +31,7 @@ main{display:block}
 .bottom-nav button[data-view="train"]::before{content:'↑'}
 .bottom-nav button[data-view="progress"]::before{content:'↗'}
 .bottom-nav button[data-view="library"]::before{content:'▦'}
-.bottom-nav button.active{color:var(--accent);background:rgba(216,255,62,.08)}
+.bottom-nav button.active{color:var(--accent);background:rgba(var(--accent-rgb,216,255,62),.08)}
 body.workout-focus #viewTrain .v2-page-head{display:none}
 body.workout-focus #viewTrain{padding-top:4px}
 body.workout-focus .topbar{display:none}
