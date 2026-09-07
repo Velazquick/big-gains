@@ -11,8 +11,8 @@
     weightUnit: UNITS.has(value?.weightUnit) ? value.weightUnit : 'lb'
   });
   const unitFor = state => preference(state?.unitPreferences).weightUnit;
-  const effectiveUnitFor = (activeWorkout, state) => UNITS.has(activeWorkout?.displayUnitOverride)
-    ? activeWorkout.displayUnitOverride
+  const effectiveUnitFor = (activeExercise, state) => UNITS.has(activeExercise?.displayUnitOverride)
+    ? activeExercise.displayUnitOverride
     : unitFor(state);
   const displayUnit = (state, override) => UNITS.has(override) ? override : unitFor(state);
   const round = (value, digits) => {
