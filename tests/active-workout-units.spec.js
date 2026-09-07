@@ -415,3 +415,17 @@ test('only load-bearing measurement families expose unit controls', async ({ pag
     await expect(page.locator(`.active-exercise-unit-choice [data-ei="${index}"]`)).toHaveCount(family.load ? 2 : 0);
   }
 });
+
+test('unit rerender disarms set removal so the fresh icon still requires confirmation', async ({ page }) => {
+  await installState(page, { ...blankState('jorge'), activeWorkout: activeWorkout() });
+  const remove = page.locator('[data-remove-set][data-ei="0"][data-si="1"]');
+  await remove.click();
+  await expect(remove).toHaveText('Sure?');
+  await chooseExerciseUnit(page, 'kg');
+  await expect(remove).not.toHaveText('Sure?');
+  await remove.click();
+  await expect(remove).toHaveText('Sure?');
+  expect((await readStoredJson(page, STORAGE_KEYS.jorge)).activeWorkout.exercises[0].sets).toHaveLength(4);
+  await remove.click();
+  expect((await readStoredJson(page, STORAGE_KEYS.jorge)).activeWorkout.exercises[0].sets).toHaveLength(3);
+});

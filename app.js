@@ -326,6 +326,7 @@ bind('activeExercises','click',e=>{
     exercise.displayUnitOverride=unit;
     // Rerender replaces buttons: retain keyboard focus and disarm stale removal confirmation.
     exerciseRemovalArmed=null;clearTimeout(exerciseRemovalTimer);
+    setRemovalArmed=null;clearTimeout(setRemovalTimer);
     saveState();renderActive();
     document.querySelector(`[data-exercise-unit="${unit}"][data-ei="${index}"]`)?.focus({preventScroll:true});
     return;
