@@ -194,7 +194,7 @@
         <section class="panel active-panel hidden" id="activePanel">
           <div class="section-heading active-heading">
             <div><span class="label">Active workout</span><h2 id="activeWorkoutTitle">Push</h2><p class="active-workout-meta" id="activeWorkoutMeta">Workout in progress</p></div>
-            <div class="active-heading-actions"><div class="active-workout-unit-choice" id="activeWorkoutUnitChoice" role="group" aria-label="Workout weight unit"><button type="button" data-workout-unit="lb" aria-pressed="true">lb</button><button type="button" data-workout-unit="kg" aria-pressed="false">kg</button></div><div class="workout-clock" id="workoutClock">00:00</div><button id="cancelWorkout" class="ghost compact hidden" type="button">Cancel</button></div>
+            <div class="active-heading-actions"><div class="workout-clock" id="workoutClock">00:00</div><button id="cancelWorkout" class="ghost compact hidden" type="button">Cancel</button></div>
           </div>
           <div class="workout-mode-toolbar" id="workoutModeToolbar">
             <button id="exitWorkoutMode" class="ghost compact" type="button">Exit Workout Mode</button>
@@ -298,7 +298,7 @@
               <label><input type="radio" name="weightUnit" value="lb"><span>Pounds <small>lb</small></span></label>
               <label><input type="radio" name="weightUnit" value="kg"><span>Kilograms <small>kg</small></span></label>
             </fieldset>
-            <p>Changes how weights are entered and displayed. Existing workout history is preserved.</p>
+            <p>Your default for entering and displaying weights. During a workout, each exercise can temporarily use lb or kg. Existing workout history is preserved.</p>
           </section>
 
           <section class="panel settings-section" aria-labelledby="settingsTrainingTitle">
@@ -431,7 +431,7 @@
     <div class="pwa-update-actions"><button id="pwaUpdateNow" type="button" class="primary">Update now</button>
       <button id="pwaUpdateLater" type="button" class="secondary">Later</button></div>
   </aside>
-  <script src="asset-manifest.js?v=v106-safe-pwa-updates-config-925e766c1b907250" data-big-gains-manifest></script>
+  <script src="asset-manifest.js?v=v107-active-exercise-units-config-925e766c1b907250" data-big-gains-manifest></script>
   <script src="asset-loader.js"></script>
 </body>
 </html>

@@ -127,6 +127,7 @@
       else delete workout.entryMethod;
       // Active-workout display choice is session UI state, never History data.
       delete workout.displayUnitOverride;
+      workout.exercises.forEach(exercise => { delete exercise.displayUnitOverride; });
       const programOrigin = normalizeProgramOrigin(value.programOrigin);
       if (programOrigin) workout.programOrigin = programOrigin;
       else delete workout.programOrigin;
@@ -148,7 +149,15 @@
       const programOrigin = normalizeProgramOrigin(value.programOrigin);
       if (programOrigin) workout.programOrigin = programOrigin;
       else delete workout.programOrigin;
-      if (!['lb', 'kg'].includes(value.displayUnitOverride)) delete workout.displayUnitOverride;
+      // Resume v102 sessions without changing their displayed units. A valid
+      // exercise choice wins if a mixed-version payload contains both fields.
+      const legacyUnit = ['lb', 'kg'].includes(value.displayUnitOverride) ? value.displayUnitOverride : null;
+      workout.exercises.forEach(exercise => {
+        if (['lb', 'kg'].includes(exercise.displayUnitOverride)) return;
+        if (legacyUnit) exercise.displayUnitOverride = legacyUnit;
+        else delete exercise.displayUnitOverride;
+      });
+      delete workout.displayUnitOverride;
       return workout;
     }
 

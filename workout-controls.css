@@ -66,3 +66,10 @@
   .set-done{width:44px}
   .set-remove{width:44px}
 }
+
+/* A separate compact row under the title keeps units clear of card controls. */
+.active-exercise-unit-choice{display:inline-grid;grid-template-columns:repeat(2,52px);padding:2px;margin:8px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel3)}
+.active-exercise-unit-choice button{min-width:52px;min-height:44px;padding:0 5px;border-radius:9px;background:transparent;color:var(--muted);font-size:.72rem;touch-action:manipulation}
+.active-exercise-unit-choice button[aria-pressed="true"]{background:var(--accent);color:#111}
+.active-exercise-unit-choice button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.unit-selected-mark{display:inline-block;width:12px;margin-right:3px}

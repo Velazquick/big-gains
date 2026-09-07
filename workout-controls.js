@@ -70,7 +70,7 @@
     return `Set ${position} of ${working.length}`;
   }
 
-  function renderActive({ activeWorkout, box, finishButton, lastPerformance, performanceDelta, estimate1RM, escapeHtml, stepper, loadModeFor = exercise => exercise?.equipment === 'Bodyweight' ? 'bodyweight' : 'external', inputFieldsFor = () => null, setSummaryFor = null, formatLoad = value => String(Number(value)), formatWorkload = null, guidanceMarkupFor = () => '' }) {
+  function renderActive({ activeWorkout, box, finishButton, lastPerformance, performanceDelta, estimate1RM, escapeHtml, stepper, loadModeFor = exercise => exercise?.equipment === 'Bodyweight' ? 'bodyweight' : 'external', inputFieldsFor = () => null, setSummaryFor = null, formatLoad = value => String(Number(value)), formatWorkload = null, guidanceMarkupFor = () => '', unitFor = () => 'lb' }) {
     if (!activeWorkout) return;
     if (!activeWorkout.exercises.length) {
       box.innerHTML = '<div class="empty">Choose a routine or an exercise above.</div>';
@@ -86,13 +86,19 @@
         { name: 'weight', label: loadMode === 'bodyweight' ? 'Added weight' : 'Weight', unit: 'lb', step: 5, mayBeZero: loadMode === 'bodyweight' },
         { name: 'reps', label: 'Reps', unit: '', step: 1, mayBeZero: false }
       ];
+      const exerciseLoad = value => formatLoad(value, exercise);
+      const exerciseWorkload = formatWorkload ? (value, kind) => formatWorkload(value, kind, exercise) : undefined;
+      const unit = unitFor(exercise);
+      const unitChoice = inputFields.some(field => field.name === 'weight')
+        ? `<div class="active-exercise-unit-choice" role="group" aria-label="${escapeHtml(exercise.name)} weight unit">${['lb', 'kg'].map(choice => `<button type="button" data-exercise-unit="${choice}" data-ei="${exerciseIndex}" aria-pressed="${choice === unit}" aria-label="${choice === 'lb' ? 'Pounds' : 'Kilograms'}${choice === unit ? ' selected' : ''}"><span aria-hidden="true" class="unit-selected-mark">${choice === unit ? '✓' : ''}</span>${choice}</button>`).join('')}</div>`
+        : '';
       const last = lastPerformance(exercise.id);
-      const previous = last ? `${formatLoad(last.bestWorkingSet.weight)} × ${last.bestWorkingSet.reps}` : 'First time logged';
+      const previous = last ? `${exerciseLoad(last.bestWorkingSet.weight)} × ${last.bestWorkingSet.reps}` : 'First time logged';
       const previousSets = last?.workingSets?.length > 1
-        ? last.workingSets.map(set => `${formatLoad(set.weight)} × ${set.reps}`).join(' · ')
+        ? last.workingSets.map(set => `${exerciseLoad(set.weight)} × ${set.reps}`).join(' · ')
         : '';
       const improvement = performanceDelta(exercise, last)?.improvement || null;
-      const summary = summaryFor(exercise, estimate1RM, setSummaryFor, formatLoad, formatWorkload || undefined);
+      const summary = summaryFor(exercise, estimate1RM, setSummaryFor, exerciseLoad, exerciseWorkload);
       const hasPersistedFocus = activeWorkout.focusedExerciseId === activeWorkout.exercises[activeIndex]?.id;
       const collapsed = exerciseIndex === activeIndex && !hasPersistedFocus ? false : isCollapsed(exercise);
       const isActive = exerciseIndex === activeIndex;
@@ -139,6 +145,7 @@
               <button type="button" class="remove-exercise" data-remove-exercise="${exerciseIndex}" aria-label="Remove ${escapeHtml(exercise.name)}">✕</button>
             </div>
           </div>
+          ${unitChoice}
           <div class="active-exercise-body" id="exercise-body-${exerciseIndex}">
             ${guidanceMarkupFor(exercise)}
             <div class="exercise-context"><span>Last</span><strong data-previous-performance="${escapeHtml(exercise.id)}">${escapeHtml(previous)}</strong>${exercise.targetReps ? `<em class="exercise-target" data-target-reps="${escapeHtml(exercise.targetReps)}">Target ${escapeHtml(exercise.targetReps)}</em>` : ''}${improvement ? `<em class="exercise-delta" data-improvement-delta="${escapeHtml(improvement.kind)}">${escapeHtml(improvement.label)}</em>` : ''}${previousSets ? `<small>${escapeHtml(previousSets)}</small>` : ''}</div>

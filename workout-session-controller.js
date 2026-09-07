@@ -460,7 +460,7 @@
       const current = getActiveWorkout();
       if (!current) return false;
       const completed = current.exercises
-        .map(exercise => ({ ...exercise, sets: exercise.sets.filter(set => set.completed) }))
+        .map(({ displayUnitOverride: ignoredExerciseUnit, ...exercise }) => ({ ...exercise, sets: exercise.sets.filter(set => set.completed) }))
         .filter(exercise => exercise.sets.length);
       if (!completed.length) return false;
       const completedAt = new Date(now()).toISOString();
