@@ -22,7 +22,7 @@ async function openExercise(page, exerciseId) {
 test('EKF-4.4: canonical exercise selection drives compact fields and exposes no semantic override', async ({ page }) => {
   let card = await openExercise(page, 'incline-dumbbell-press');
   await expect(card.locator('.exercise-head p')).toContainText('Weight per dumbbell');
-  await expect(card.locator('input[data-field="weight"]').first()).toHaveAttribute('aria-label', 'Weight per dumbbell');
+  await expect(card.locator('input[data-field="weight"]').first()).toHaveAttribute('aria-label', 'Weight per dumbbell (lb)');
 
   card = await openExercise(page, 'seated-iso-lateral-bench-press');
   await expect(card.locator('.exercise-head p')).toContainText('Weight per side');
@@ -50,7 +50,7 @@ test('EKF-T09/T11: reps-only, duration, and carry cards render only their canoni
   card = await openExercise(page, 'farmer-carry');
   await expect(card.locator('.exercise-head p')).toContainText('Weight per hand');
   await expect(card.locator('input[data-field="weight"]')).toHaveCount(3);
-  for(const field of await card.locator('input[data-field="weight"]').all()) await expect(field).toHaveAttribute('aria-label','Weight per hand');
+  for(const field of await card.locator('input[data-field="weight"]').all()) await expect(field).toHaveAttribute('aria-label','Weight per hand (lb)');
   await expect(card.locator('input[data-field="distance"]')).toHaveCount(3);
   await expect(card.locator('input[data-field="reps"]')).toHaveCount(0);
 });
