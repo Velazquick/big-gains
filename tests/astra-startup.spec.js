@@ -1,3 +1,4 @@
+import {writeFile} from 'node:fs/promises';
 import {test,expect} from '@playwright/test';
 import {installLocalStorageFixture} from './fixtures/local-storage.js';
 for(const accent of ['volt','rose','violet'])test(`cold start ${accent} covers real composition and disappears without delay`,async({page},info)=>{
@@ -6,10 +7,19 @@ for(const accent of ['volt','rose','violet'])test(`cold start ${accent} covers r
  await page.route('**/program-setup.js?*',async route=>{requested();await gate;await route.continue();});
  const navigation=page.goto('/',{waitUntil:'domcontentloaded'});await observed;
  try{
+  await page.waitForFunction(()=>Boolean(window.BigGainsAppearance));
   await page.evaluate(accent=>BigGainsAppearance.select(accent),accent);
   await expect(page.locator('#bootShell')).toBeVisible();await expect(page.locator('#bootLaunchMessage')).not.toBeEmpty();
   await expect(page.locator('#bootShell')).not.toContainText('VERIFIED');await expect(page.locator('#bootRetry')).toBeHidden();
-  await page.screenshot({path:info.outputPath(`startup-${accent}.png`)});
+  // A screenshot during deliberately parser-blocked navigation can wait on
+  // WebKit's navigation completion. Keep its real readiness assertions; capture
+  // Chromium's actual painted startup directly without waiting for navigation.
+  if(info.project.name==='chromium'){
+   const session=await page.context().newCDPSession(page);
+   const shot=await session.send('Page.captureScreenshot',{format:'png'});
+   await writeFile(info.outputPath(`startup-${accent}.png`),Buffer.from(shot.data,'base64'));
+   await session.detach();
+  }
  }finally{release();}await navigation;
  await expect(page.locator('html')).toHaveAttribute('data-runtime-state','interactive');await expect(page.locator('#bootShell')).toBeHidden();await expect(page.locator('#bootLaunchMessage')).toHaveCount(0);
  const message=await page.evaluate(()=>localStorage.getItem('big-gains-launch-message-v1'));

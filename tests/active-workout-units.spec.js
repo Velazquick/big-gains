@@ -1,3 +1,4 @@
+import { waitForControlledAppShell } from './helpers/app.js';
 import { expect, test } from '@playwright/test';
 import { activeWorkout, blankState, completedWorkout, readStoredJson, STORAGE_KEYS } from './fixtures/local-storage.js';
 import { openApp, openExerciseOptions } from './helpers/app.js';
@@ -240,7 +241,7 @@ test('completed History and retrospective editing ignore any legacy-looking work
 
 test('active override and canonical edits survive an offline reload', async ({ page, context }) => {
   await installState(page, { ...blankState('jorge'), activeWorkout: activeWorkout() });
-  await page.evaluate(() => navigator.serviceWorker.ready);
+  await waitForControlledAppShell(page);
   await chooseExerciseUnit(page, 'kg');
   await weightInput(page, 0, 1).fill('100');
   await context.setOffline(true);

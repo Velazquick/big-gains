@@ -1,3 +1,4 @@
+import { waitForControlledAppShell } from './helpers/app.js';
 import { expect, test } from '@playwright/test';
 import { blankState, installLocalStorageFixture, readStoredJson, STORAGE_KEYS } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
@@ -82,7 +83,7 @@ test('retrospective warm-up and working-set removal confirms, recomputes workloa
 test('active removal remains local-first while offline and survives an offline reload', async ({ page, context }) => {
   await installLocalStorageFixture(page, 'activeWorkoutWithExercises');
   await openApp(page);
-  await page.evaluate(() => navigator.serviceWorker.ready);
+  await waitForControlledAppShell(page);
   await context.setOffline(true);
   try {
     const remove = page.getByRole('button', { name: 'Remove Set 3 of 3' });

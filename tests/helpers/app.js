@@ -41,3 +41,10 @@ export async function openLibraryFromMore(page) {
   await page.locator('#moreLibrary').click();
   await expect(page.locator('body')).toHaveAttribute('data-view','library');
 }
+
+export async function waitForControlledAppShell(page) {
+  await page.evaluate(async()=>{
+    await navigator.serviceWorker.ready;
+    if(!navigator.serviceWorker.controller)await new Promise(resolve=>navigator.serviceWorker.addEventListener('controllerchange',resolve,{once:true}));
+  });
+}
