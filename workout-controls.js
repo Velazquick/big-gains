@@ -170,7 +170,7 @@
               <button type="button" class="remove-exercise" data-remove-exercise="${exerciseIndex}" aria-label="Remove ${escapeHtml(exercise.name)}">✕</button></details>
           </div>
           <div class="collapsed-summary">
-            <div><strong>${escapeHtml(summary.status)}</strong><small>${escapeHtml(summary.best === 'Tap to open and start' ? `Last ${previous}` : summary.best)}</small></div>
+            <div><strong>${escapeHtml(summary.status)}</strong><small>${escapeHtml(summary.best)}</small></div>
             <span>${summary.complete ? 'Complete' : 'Open →'}<small>${escapeHtml(summary.volume)}</small></span>
           </div>
         </article>
