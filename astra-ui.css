@@ -137,3 +137,5 @@ html[data-theme][data-train-presentation] #activeExercises .compact-set .stepper
 
 html[data-theme][data-train-presentation] #activeExercises .collapsed-summary>span small { display:block; white-space:normal; text-align:end; }
 html[data-theme][data-train-presentation] body #timerCard :is(.timer-actions,.timer-preferences,.timer-presets) button { min-height:44px; min-width:44px; }
+
+html[data-theme][data-train-presentation] #activeExercises .compact-set:not(:first-child) .stepper-label { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); }

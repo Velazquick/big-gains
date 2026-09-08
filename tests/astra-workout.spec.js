@@ -18,7 +18,9 @@ for(const width of [375,390]) test(`warmup-only addition and compact direct entr
   await openSetAdjustments(page,0,2);await page.locator('[data-adjust="5"][data-field="weight"][data-ei="0"][data-si="2"]').click();
   expect((await jorgeState(page)).activeWorkout.exercises[0].sets[2].weight).toBeGreaterThan(canonical);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-  await page.screenshot({path:info.outputPath(`train-${width}.png`),fullPage:true});
+  await page.screenshot({path:info.outputPath(`train-${width}-full.png`),fullPage:true});
+  await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));
+  await page.screenshot({path:info.outputPath(`train-${width}.png`)});
 });
 test('warmup deletion preserves working prescription and unsupported models cannot add warmups',async({page})=>{
   await installLocalStorageFixture(page,'activeWorkoutWithTwoExercises');await openApp(page);

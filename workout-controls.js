@@ -22,7 +22,7 @@
     const className = `stepper ${field}-stepper`;
     return `
       <div class="${className}">
-        <span class="stepper-label">${label}${options.compact ? ` ${unit}` : ''}</span>
+        <span class="stepper-label">${options.compact ? controlLabel(field) : label}${options.compact ? ` ${unit}` : ''}</span>
         <div class="stepper-control">
           ${options.compact ? '' : `<button type="button" data-adjust="-${options.adjustStep ?? step}" data-field="${field}" data-ei="${exerciseIndex}" data-si="${setIndex}" aria-label="Decrease ${label}">−</button>`}
           <div class="stepper-value">
@@ -150,7 +150,7 @@
             <div>
               <div class="exercise-kickers"><span class="exercise-state-label">${exerciseState === 'current' ? 'Current' : exerciseState === 'completed' ? 'Completed' : 'Up next'}</span><span class="exercise-muscle">${escapeHtml(exercise.muscle)}</span></div>
               <h3>${escapeHtml(exercise.name)}</h3>
-              <p>${escapeHtml(exercise.equipment)} · ${escapeHtml(summary.complete ? `${summary.completed} of ${summary.total} complete` : summary.progress)}</p>
+              <p>${escapeHtml(exercise.equipment)}${inputFields.find(field => field.name === 'weight')?.label ? ` · ${escapeHtml(inputFields.find(field => field.name === 'weight').label)}` : ''} · ${escapeHtml(summary.complete ? `${summary.completed} of ${summary.total} complete` : summary.progress)}</p>
             </div>
             <div class="exercise-head-actions">
                 <button type="button" class="exercise-toggle" data-toggle-exercise="${exerciseIndex}" aria-expanded="${!collapsed}" aria-controls="exercise-body-${exerciseIndex}" aria-label="${collapsed ? 'Expand' : 'Collapse'} ${escapeHtml(exercise.name)}"><span class="exercise-toggle-chevron" aria-hidden="true">⌄</span></button>
