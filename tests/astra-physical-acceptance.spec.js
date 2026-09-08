@@ -21,7 +21,7 @@ test('inactive summaries surround the unchanged working card at 390px',async({pa
     extra.forEach(e=>workoutSessionController.addExercise(e.id,{scroll:false}));
     active.exercises[0].sets.forEach(set=>{set.completed=true;});
     active.exercises.forEach(e=>{e.collapsed=true;});
-    workoutSessionController.focusExercise(1);saveState();renderActive();
+    workoutSessionController.focusExercise(1);active.startedAt=new Date().toISOString();saveState();showActive(false);
   });
   const inactive=page.locator('#activeExercises .is-collapsed');await expect(inactive).toHaveCount(4);
   for(const card of await inactive.all()){

@@ -225,12 +225,12 @@ html[data-theme][data-train-presentation] #activeExercises .is-collapsed .exerci
 html[data-theme][data-train-presentation] #activeExercises .is-collapsed .exercise-state-label { padding:0; border:0; background:transparent; color:var(--ui-secondary); font-size:.6875rem; }
 html[data-theme][data-train-presentation] #activeExercises .is-collapsed .exercise-muscle { display:none; }
 html[data-theme][data-train-presentation] #activeExercises .is-collapsed .exercise-head p { margin:2px 0 0; font-size:.6875rem; }
-html[data-theme][data-train-presentation] #activeExercises .is-collapsed .exercise-toggle { border:0; background:transparent; color:var(--ui-secondary); }
+html[data-theme][data-train-presentation] #activeExercises .is-collapsed .exercise-toggle { width:44px; min-width:44px!important; min-height:44px!important; border:0; background:transparent; color:var(--ui-secondary); }
 html[data-theme][data-train-presentation] #activeExercises .is-collapsed .collapsed-summary { display:block; grid-column:1; grid-row:2; align-self:center; padding:0; }
 html[data-theme][data-train-presentation] #activeExercises .is-collapsed .collapsed-summary strong { font-size:.8125rem; font-weight:600; }
 html[data-theme][data-train-presentation] #activeExercises .is-collapsed .collapsed-summary small { margin:0; font-size:.75rem; }
 html[data-theme][data-train-presentation] #activeExercises .is-collapsed .collapsed-summary>span { display:none; }
-html[data-theme][data-train-presentation] #activeExercises .is-collapsed .active-exercise-unit-choice { grid-column:2; grid-row:2; align-self:center; margin:0; gap:0; }
+html[data-theme][data-train-presentation] #activeExercises .is-collapsed .active-exercise-unit-choice { grid-column:2; grid-row:2; grid-template-columns:repeat(2,44px); align-self:center; margin:0; padding:0; border:0; background:transparent; gap:0; }
 html[data-theme][data-train-presentation] #activeExercises .is-collapsed .active-exercise-unit-choice button { min-width:44px; padding:0; background:transparent; color:var(--ui-secondary); border:1px solid transparent; border-radius:8px; }
-html[data-theme][data-train-presentation] #activeExercises .is-collapsed .active-exercise-unit-choice button[aria-pressed="true"] { background:var(--ui-surface-raised); color:var(--ui-text); border-color:var(--line); }
+html[data-theme][data-train-presentation] #activeExercises .is-collapsed .active-exercise-unit-choice button[aria-pressed="true"] { background:var(--ui-surface-raised)!important; color:var(--ui-text)!important; border-color:var(--line)!important; }
 html[data-theme][data-train-presentation] #activeExercises .is-collapsed .unit-selected-mark { display:none; }

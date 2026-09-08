@@ -97,7 +97,9 @@
       const target = row?.getClientRects().length ? row : card.querySelector('.exercise-head') || card;
       if (!target.getClientRects().length) return;
       const viewport = host.visualViewport;
-      const top = (viewport?.offsetTop || 0) + (root.querySelector('#activePanel>.active-heading')?.getBoundingClientRect().height || 0) + 12;
+      const heading = root.querySelector('#activePanel>.active-heading');
+      const stickyInset = heading ? Math.max(0, parseFloat(host.getComputedStyle?.(heading)?.top) || 0) : 0;
+      const top = (viewport?.offsetTop || 0) + (heading?.getBoundingClientRect().height || 0) + stickyInset + 12;
       let bottom = (viewport?.offsetTop || 0) + (viewport?.height || host.innerHeight) - 12;
       const timer = root.getElementById('timerCard');
       if (timer?.getClientRects().length) {

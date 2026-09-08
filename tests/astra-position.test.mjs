@@ -75,3 +75,9 @@ test('header interaction preserves the last meaningful set within that exercise'
   const h=harness();h.api.capture('a','a2');h.api.capture('a');
   assert.equal(JSON.parse([...h.values.values()][0]).setId,'a2');
 });
+
+test('restoration clears the sticky heading safe-area inset',()=>{
+  const h=harness();h.root.querySelector=()=>({getBoundingClientRect:()=>({height:80})});
+  h.host.getComputedStyle=()=>({top:'47px'});h.api.capture('a','a2');
+  h.api.requestRestore({fallback:true});h.flush();assert.equal(900-h.scrolls[0].top,139);
+});
