@@ -206,3 +206,5 @@ html[data-theme] #viewToday #todayGoalsHeadline { font-size:18px; line-height:1.
 html[data-theme] #viewToday #todayGoalsDetail { font-size:13px; line-height:1.4; }
 html[data-theme] #viewToday .today-goals-copy .label,html[data-theme] #viewToday #todayGoalsStatus { color:var(--ui-secondary); font-size:11px; }
 html[data-theme] #viewToday #selectedSessionLabel { font-size:22px; line-height:1.2; }
+
+html[data-theme][data-train-presentation] #activeExercises .set-line.completed .set-done { background:var(--ui-surface-raised)!important; color:var(--ui-success)!important; border-color:var(--ui-success)!important; }

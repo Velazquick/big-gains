@@ -32,6 +32,7 @@
     const actionTokens = model.tokens(model.resolve(value), PRESENTATION.theme === 'wellness-light');
     root.style.setProperty('--ui-action-fill', actionTokens.primary);
     root.style.setProperty('--ui-action-text', actionTokens.on);
+    root.style.setProperty('--ui-accent-ink', actionTokens.ink);
     // Legacy CSS remains byte-for-byte in effect until an explicit v1 choice.
     if (value.version === 1) {
       const tokens = model.tokens(value.accent, PRESENTATION.theme === 'wellness-light');
