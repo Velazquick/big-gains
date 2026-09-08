@@ -35,7 +35,8 @@
   './user-data-export.css',
   './settings.css',
     './appearance.css',
-    './pwa-update.css'
+    './pwa-update.css',
+    './astra-ui.css'
   ];
   const scripts = [
     './boot-render-gate.js',

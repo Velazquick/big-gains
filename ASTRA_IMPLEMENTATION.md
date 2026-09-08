@@ -18,3 +18,7 @@
 ## Execution judgment and gates
 
 Current source, successful signed-in read-only inspection and the reported physical issue support isolated presentation and ID-bookmark work without production mutation. Slice 0 is reconciled for that work with the above limits; it is not a claim that physical/mobile validation is closed. Physical iPhone proof of keyboard, foreground return, OS recreation and PWA lifecycle remains a merge gate. Preserve frozen controllers, data contracts and protected CI; do not merge on automation alone when that physical proof is outstanding.
+
+## Slice 1 — visual foundation (under validation)
+
+Shared spacing/surface/control/status roles now sit in `astra-ui.css`, loaded after existing feature styles. Inactive/completed exercises and sets retain full opacity and saturation; hierarchy uses surfaces, a focus border and labeled semantic state. Numeric text is at least 16 px, with meaningful controls at least 44 px. The focused Train presentation applies independent of profile identity; profile capabilities, routine selection and Appearance state remain unchanged. Existing dark/light and all-six-accent tests remain in the protected corpus.
