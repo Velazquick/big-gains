@@ -34,8 +34,8 @@
     }
     const savedView = historyView === 'calendar' ? 'calendar' : historyView === 'list' ? 'history' : viewName;
     try { sessionStorage.setItem('big-gains-view', savedView); } catch {}
-    const trainPositionOwned = window.bigGainsTrainPosition?.viewChanged(options);
-    if (options.scroll !== false && !options.resume && !trainPositionOwned) window.scrollTo({ top: 0, behavior: options.instant ? 'auto' : 'smooth' });
+    window.bigGainsTrainPosition?.viewChanged(options);
+    if (options.scroll !== false && !options.resume) window.scrollTo({ top: 0, behavior: options.instant ? 'auto' : 'smooth' });
   }
 
   function initialize() {

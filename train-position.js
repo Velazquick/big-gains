@@ -25,7 +25,6 @@
     let record = null, scope = null, pending = null, epoch = 0, background = false;
     let scheduled = false, coldChecked = false;
     const interactive = () => root.documentElement.dataset.runtimeState === 'interactive';
-    const laidOut = () => interactive() && root.documentElement.dataset.bootState !== 'unresolved' && root.documentElement.dataset.bootState !== 'recovery';
     const onTrain = () => root.body.dataset.view === 'train';
     const visible = () => root.visibilityState === 'visible';
     function write() {
@@ -58,10 +57,8 @@
       const current = context();
       const exercise = current?.workout.exercises.find(item => item.id === exerciseId);
       if (!exercise) return false;
-      const meaningfulSetId = setId || (record?.exerciseId === exerciseId ? record.setId : null)
-        || exercise.sets.find(set => !set.completed)?.id || null;
       record = { version: 1, workoutId: current.workout.id, exerciseId,
-        setId: exercise.sets.some(set => set.id === meaningfulSetId) ? meaningfulSetId : null,
+        setId: exercise.sets.some(set => set.id === setId) ? setId : null,
         exerciseOrder: ids(current.workout.exercises), setOrder: ids(exercise.sets), eligible: false };
       write();
       return true;
@@ -82,11 +79,7 @@
       const request = pending;
       if (!request || request.epoch !== epoch) return;
       const current = context();
-      // Identity verification removes the shell from layout. It is a readiness
-      // boundary, not user navigation: retain the request until authorization.
-      if (!visible() || !laidOut()) return;
-      if (!current) return;
-      if (!onTrain() || !pending || scope.key !== request.key || scope.workoutId !== request.workoutId) { cancel(); return; }
+      if (!current || !visible() || !onTrain() || !pending || scope.key !== request.key || scope.workoutId !== request.workoutId) { cancel(); return; }
       // A surviving dialog owns its viewport and focus, including the picker.
       if ([...root.querySelectorAll('dialog[open],[role="dialog"]')].some(node => node.getClientRects().length)) { cancel(); return; }
       const anchor = resolve(record, current.workout);
@@ -95,11 +88,8 @@
       if (!card) return; // Existing render/runtime events retry readiness, not a timer loop.
       const row = [...card.querySelectorAll('[data-set-id]')].find(node => node.dataset.setId === anchor.setId);
       const target = row?.getClientRects().length ? row : card.querySelector('.exercise-head') || card;
-      if (!target.getClientRects().length) return;
       const viewport = host.visualViewport;
-      const heading = root.querySelector('#activePanel>.active-heading');
-      const stickyInset = heading ? Math.max(0, parseFloat(host.getComputedStyle?.(heading)?.top) || 0) : 0;
-      const top = (viewport?.offsetTop || 0) + (heading?.getBoundingClientRect().height || 0) + stickyInset + 12;
+      const top = (viewport?.offsetTop || 0) + (root.querySelector('#activePanel>.active-heading')?.getBoundingClientRect().height || 0) + 12;
       let bottom = (viewport?.offsetTop || 0) + (viewport?.height || host.innerHeight) - 12;
       const timer = root.getElementById('timerCard');
       if (timer?.getClientRects().length) {
@@ -107,10 +97,9 @@
         if (timerTop > top && timerTop < bottom) bottom = timerTop - 12;
       }
       const rect = target.getBoundingClientRect();
-      coldChecked = true;
       cancel(); // Consume before any scroll/render callback. Never focus an input.
-      if (request.align || rect.top < top || rect.bottom > bottom) {
-        const delta = request.align || rect.height > bottom - top || rect.top < top ? rect.top - top : rect.bottom - bottom;
+      if (rect.top < top || rect.bottom > bottom) {
+        const delta = rect.height > bottom - top || rect.top < top ? rect.top - top : rect.bottom - bottom;
         host.scrollBy({ top: delta, behavior: 'instant' });
       }
       capture(anchor.exerciseId, anchor.setId);
@@ -120,19 +109,10 @@
       scheduled = true;
       host.requestAnimationFrame(() => host.requestAnimationFrame(restore));
     }
-    function requestRestore({ fallback = false } = {}) {
+    function requestRestore() {
       const current = context();
-      if (!current || !onTrain()) return false;
-      if (!record && fallback) {
-        // Read the existing rendered/controller focus; never set a training cursor.
-        const renderedId = root.querySelector('#activeExercises .is-active')?.dataset.exerciseId;
-        const exercise = current.workout.exercises.find(item => item.id === renderedId)
-          || current.workout.exercises.find(item => item.id === current.workout.focusedExerciseId)
-          || current.workout.exercises[0];
-        if (exercise) capture(exercise.id, exercise.sets.find(set => !set.completed)?.id || null);
-      }
-      if (!record) return false;
-      pending = { epoch: ++epoch, key: scope.key, workoutId: scope.workoutId, align: fallback };
+      if (!current || !record || !onTrain()) return false;
+      pending = { epoch: ++epoch, key: scope.key, workoutId: scope.workoutId };
       schedule();
       return true;
     }
@@ -145,27 +125,23 @@
     function foreground() {
       if (!background || !visible()) return;
       background = false;
-      if (record?.eligible === true && onTrain() && scope) {
-        pending = { epoch: ++epoch, key: scope.key, workoutId: scope.workoutId };
-        schedule();
-      }
+      if (record?.eligible === true && onTrain()) requestRestore();
     }
     function afterRender() {
       const current = context();
-      if (!current) return;
-      if (!coldChecked || (!record && onTrain() && current.workout.exercises.length)) {
+      if (!current) { cancel(); return; }
+      if (!coldChecked) {
         coldChecked = true;
-        if (onTrain()) requestRestore({ fallback: true });
+        if (record?.eligible === true && onTrain()) requestRestore();
       }
       schedule();
     }
     function viewChanged({ initial = false, resume = false } = {}) {
-      if (initial) { afterRender(); return onTrain() && Boolean(pending); }
+      if (initial) { afterRender(); return; }
       cancel();
       context();
       if (record) { record.eligible = false; write(); }
-      if (onTrain()) return requestRestore({ fallback: true });
-      return false;
+      if (resume && onTrain() && !requestRestore()) host.scrollTo({ top: 0, behavior: 'instant' });
     }
     root.addEventListener('pointerdown', interaction, true);
     root.addEventListener('input', interaction, true);
@@ -177,14 +153,7 @@
     host.addEventListener('pagehide', beforeBackground);
     host.addEventListener('pageshow', foreground);
     root.addEventListener('big-gains-runtime-state-changed', afterRender);
-    root.addEventListener('big-gains-boot-concealed', () => {
-      // The Auth callback may run before OR after visibilitychange and after an
-      // earlier restore. Concealment itself collapses document scroll height.
-      // Preserve only the current scope, and revalidate it before any DOM scroll.
-      if (onTrain() && record && scope) {
-        pending = { epoch: ++epoch, key: scope.key, workoutId: scope.workoutId };
-      } else cancel();
-    });
+    root.addEventListener('big-gains-boot-concealed', cancel);
     root.addEventListener('big-gains-boot-authorized', afterRender);
     return Object.freeze({ capture, clear, afterRender, requestRestore, viewChanged });
   }

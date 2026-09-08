@@ -58,26 +58,3 @@ test('restoration fits the visual viewport when the software keyboard reduces us
   const h=harness();h.host.visualViewport={offsetTop:100,height:360};h.api.capture('a','a2');h.visibility('hidden');h.visibility('visible');h.flush();
   const delta=h.scrolls[0].top;assert.equal(944-delta,448);assert.ok(900-delta>=112);assert.equal(h.scrolls.length,1);
 });
-
-test('same-owner authorization resumes a pending foreground request instead of dropping it',()=>{
-  const h=harness();h.api.capture('a','a2');h.visibility('hidden');
-  h.root.documentElement.dataset.bootState='unresolved';h.events.get('big-gains-boot-concealed')();
-  h.visibility('visible');h.flush();assert.equal(h.scrolls.length,0);
-  h.root.documentElement.dataset.bootState='verified';h.events.get('big-gains-boot-authorized')();h.flush();
-  assert.equal(h.scrolls.length,1);h.api.afterRender();h.flush();assert.equal(h.scrolls.length,1);
-});
-test('navigation while concealed cancels restoration even when authorization completes later',()=>{
-  const h=harness();h.api.capture('a','a2');h.events.get('big-gains-boot-concealed')();
-  h.root.body.dataset.view='progress';h.api.viewChanged();h.events.get('big-gains-boot-authorized')();h.flush();
-  assert.equal(h.scrolls.length,0);
-});
-test('header interaction preserves the last meaningful set within that exercise',()=>{
-  const h=harness();h.api.capture('a','a2');h.api.capture('a');
-  assert.equal(JSON.parse([...h.values.values()][0]).setId,'a2');
-});
-
-test('restoration clears the sticky heading safe-area inset',()=>{
-  const h=harness();h.root.querySelector=()=>({getBoundingClientRect:()=>({height:80})});
-  h.host.getComputedStyle=()=>({top:'47px'});h.api.capture('a','a2');
-  h.api.requestRestore({fallback:true});h.flush();assert.equal(900-h.scrolls[0].top,139);
-});
