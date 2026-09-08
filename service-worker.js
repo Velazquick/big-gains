@@ -1,4 +1,4 @@
-importScripts('./asset-manifest.js?v=v107-active-exercise-units-config-925e766c1b907250', './service-worker-core.js');
+importScripts('./asset-manifest.js?v=v108-astra-training-first-config-925e766c1b907250', './service-worker-core.js');
 
 const runtime = BigGainsServiceWorkerCore.createRuntime({
   manifest: BIG_GAINS_ASSET_MANIFEST,

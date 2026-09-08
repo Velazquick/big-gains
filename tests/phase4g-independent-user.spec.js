@@ -49,6 +49,7 @@ test('new independent profile sees welcome once and can finish a blank first wor
   await installIndependentRuntime(page, { includeState: false, newlyProvisioned: true });
   await openApp(page);
 
+  await expect(page.locator('.today-stage')).toHaveAttribute('data-priority','freeform');
   await expect(page.locator('#firstRunOnboarding')).toBeVisible();
   await expect(page.locator('#firstRunOnboarding')).toContainText('Private training');
   await page.reload();

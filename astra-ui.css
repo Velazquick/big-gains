@@ -195,3 +195,6 @@ html[data-theme] #viewToday #todayBlankCard[hidden],html[data-theme] #todayPlanA
 html[data-theme] body:not([data-view="today"]):not([data-view="train"]) .topbar h1 { display:none; }
 html[data-theme] #exerciseLibrary .exercise-card-actions { display:flex; flex-direction:row; gap:8px; align-items:center; }
 html[data-theme] #exerciseLibrary .exercise-card-actions button { padding:8px; }
+html[data-theme] :is(.plan-peer-card,.plan-cycle-slot,.history-archive-card,.routine-prescription-row) { background:var(--ui-surface); border:1px solid var(--line); border-radius:var(--ui-radius-card); box-shadow:none; }
+html[data-theme] :is(.plan-cycle-slot,.routine-prescription-row) summary { min-height:44px; }
+html[data-theme] :is(.routine-row-actions,.program-row-actions) button { min-width:44px; min-height:44px; }

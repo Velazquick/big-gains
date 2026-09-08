@@ -331,7 +331,7 @@ function renderTodayPriority(){
   $('todayBlankCard').hidden=priority!=='freeform';
   const primary=priority==='program'?$('todayPlanCard'):priority==='freeform'?$('todayBlankCard'):$('sessionTypeSelector');
   stage.querySelectorAll('.is-priority').forEach(card=>card.classList.remove('is-priority'));
-  primary.classList.add('is-priority');stage.prepend(primary);
+  primary.classList.add('is-priority');if(stage.firstElementChild!==primary)stage.prepend(primary);
   const start=$('todayPlanActions')?.querySelector('[data-start-program-session]');if(start)start.hidden=Boolean(active);
 }
 window.renderTodayPriority=renderTodayPriority;
