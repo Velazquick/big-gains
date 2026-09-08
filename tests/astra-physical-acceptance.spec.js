@@ -19,7 +19,8 @@ test('blank workout gets its first stable anchor when the first exercise is adde
   await page.locator('.bottom-nav [data-view="train"]').click();await page.locator('#trainBlankStart').click();
   await expect(page.locator('#exercisePickerDialog')).toBeVisible();
   const choice=page.locator('.exercise-picker-all [data-exercise-picker-select]').first();
-  const selectedId=await choice.getAttribute('data-exercise-picker-select');await choice.click();
+  const canonicalId=await choice.getAttribute('data-exercise-picker-select');
+  const selectedId=await page.evaluate(id=>BigGainsExerciseCatalog.exercises.find(e=>e.canonicalId===id).id,canonicalId);await choice.click();
   await expect(page.locator('#exercisePickerDialog')).toBeHidden();await frames(page);
   const card=page.locator('#activeExercises .is-active');await expect(card).toHaveAttribute('data-exercise-id',selectedId);
   await expect(card.locator('.set-line').first()).toBeInViewport({ratio:1});
