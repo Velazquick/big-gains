@@ -102,19 +102,18 @@ test('Exit Workout Mode preserves the session and timer, survives reload, and ex
   await expect(page.locator('#workoutReturnBar')).toBeHidden();
 });
 
-test('Library access adds through the session controller and returns without resetting session timing', async ({ page }) => {
+test('direct Train picker adds through the session controller without resetting session timing', async ({ page }) => {
   await installLocalStorageFixture(page, 'activeWorkoutWithExercises');
   await openApp(page);
   await page.getByRole('button', { name: 'Complete Set 1 of 3' }).click();
   const before = await jorgeState(page);
 
   await page.locator('#browseWorkoutLibrary').click();
-  await expect(page.locator('body')).toHaveAttribute('data-view', 'library');
-  await expect(page.locator('#workoutReturnBar')).toBeVisible();
-  await page.locator('#viewLibrary details').evaluate(details => { details.open = true; });
-  await page.locator('#exerciseSearch').fill('Incline Iso Machine Press');
-  await page.locator('[data-add="incline-iso-machine-press"]').click();
-  await expect(page.locator('[data-add="incline-iso-machine-press"]')).toHaveText('Added');
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'train');
+  await expect(page.locator('#exercisePickerDialog')).toBeVisible();
+  await page.locator('#exercisePickerSearch').fill('Incline Iso Machine Press');
+  await page.locator('.exercise-picker-all [data-exercise-picker-select]').filter({hasText:'Incline Iso Machine Press'}).click();
+  await expect(page.locator('#exercisePickerDialog')).toBeHidden();
 
   const afterAdd = await jorgeState(page);
   expect(afterAdd.activeWorkout.id).toBe(before.activeWorkout.id);
@@ -122,7 +121,6 @@ test('Library access adds through the session controller and returns without res
   expect(afterAdd.restTimerEndsAt).toBe(before.restTimerEndsAt);
   expect(afterAdd.activeWorkout.exercises.map(exercise => exercise.id)).toContain('incline-iso-machine-press');
 
-  await page.locator('#returnToWorkout').click();
   await expect(page.locator('body')).toHaveClass(/workout-mode/);
   await expect(page.locator('#activeExercises')).toContainText('Incline Iso Machine Press');
 });

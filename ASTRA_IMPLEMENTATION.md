@@ -40,3 +40,9 @@ The trailing Warmup + is independently named for its exercise, restricted to exi
 Rows retain direct numeric inputs, completion and removal; a 44 px ± disclosure exposes adjustment buttons. The disclosure is keyed by workout/exercise/set IDs. Reorder/remove-exercise and exercise Progress move under Exercise options. Opening a completed exercise collapses the other presentation cards without selecting a new domain focus. Inactive cards retain full contrast and visible exercise unit controls with a quieter selected treatment. Existing browser tests use the new disclosures while preserving their data assertions.
 
 The first workout-focused run passed 89/91 checks. It caught missing per-field unit labels (restored in the next commit) and an omitted indicated-workload summary. The existing formatted workload summary is retained with its unit/measurement qualification; no analytics math or assertions were weakened.
+
+## Slice 4 — direct picker and inventory (under validation)
+
+Train's existing Add Exercise action now opens the existing picker over Train. It captures the originating owner/workout, preserves canonical eligibility/exclusions and returns to that workout's bookmark after selection/cancel. An old picker cannot add into a replacement workout. The picker continues to own its dialog/Back/focus lifecycle; routine editing retains its separate draft callbacks.
+
+Library search/filters and flat inventory rows are immediately visible. Sticky Exercises/Saved routines jump actions keep routine browsing direct without inventing another mutation owner. Saved routine load/replace and edit actions remain unchanged. Shared row markup keeps muscle, equipment and measurement context; theme/accent tokens replace picker-specific palette literals. The protected picker tests retain all canonical identity and eligibility assertions.

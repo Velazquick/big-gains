@@ -136,7 +136,28 @@ function renderSelectors(){const tabs=$('dayTabs');tabs.innerHTML=LIBRARY_ROUTIN
 function renderEquipment(){const equipment=$('equipmentFilter'),muscle=$('muscleFilter');if(equipment.options.length===1)[...new Set(CATALOG_EXERCISES.map(e=>e.equipment))].sort().forEach(value=>equipment.add(new Option(value,value)));if(muscle.options.length===1)[...new Set(CATALOG_EXERCISES.map(e=>e.muscle))].sort().forEach(value=>muscle.add(new Option(value,value)));}
 function renderLibrary(){renderSelectors();const list=BigGainsExercisePicker.filterExercises({catalog:exerciseCatalog,exercises:libraryEligibleExercises(),term:$('exerciseSearch').value,muscle:$('muscleFilter').value,equipment:$('equipmentFilter').value});$('exerciseLibrary').innerHTML=list.length?list.map(exercise=>BigGainsExercisePicker.resultMarkup(exercise,{mode:'library',added:Boolean(active?.exercises.some(item=>item.id===exercise.id))})).join(''):'<div class="no-results">No matching exercises.</div>';$('clearLibraryFilters').hidden=!$('exerciseSearch').value&&$('muscleFilter').value==='all'&&$('equipmentFilter').value==='all';progressApi.afterLibraryRender();}
 function suggestionIdsForDay(day){return BigGainsExercisePicker.sortExercises(CATALOG_EXERCISES.filter(exercise=>exercise.day===day)).slice(0,10).map(exercise=>exercise.canonicalId);}
-function openLibraryExercisePicker(){const eligible=new Set(libraryEligibleExercises().map(exercise=>exercise.canonicalId));return exercisePicker.open({title:active?'Add exercise to workout':'Choose an exercise',prompt:active?'Choose one local EKF exercise to add to the workout in progress.':'Choosing an exercise starts a workout only after you confirm the exact movement.',excludedExerciseIds:active?.exercises.map(exercise=>exercise.id)||[],eligibilityPredicate:exercise=>eligible.has(exercise.canonicalId),suggestionIds:suggestionIdsForDay(selectedDay),suggestionLabel:`Suggested for ${displayWorkout(selectedDay)}`,returnFocus:()=>$('addSelectedExercise'),onSelect:canonicalId=>{const definition=exerciseCatalog.getById(canonicalId);if(definition){workoutSessionController.addExercise(definition.id,{scroll:true});window.bigGainsViewShell?.showView('train');}}});}
+function openLibraryExercisePicker({fromTrain=false}={}){
+  const eligible=new Set(libraryEligibleExercises().map(exercise=>exercise.canonicalId));
+  const owner=fromTrain&&active?{namespace:ACCOUNT.storageNamespace,workoutId:active.id}:null;
+  const sameOwner=()=>owner&&owner.namespace===ACCOUNT.storageNamespace&&owner.workoutId===active?.id;
+  return exercisePicker.open({
+    title:active?'Add exercise to workout':'Choose an exercise',
+    prompt:active?'Choose an exercise for this workout.':'Choose the exact movement to start your workout.',
+    excludedExerciseIds:active?.exercises.map(exercise=>exercise.id)||[],
+    eligibilityPredicate:exercise=>eligible.has(exercise.canonicalId),
+    suggestionIds:suggestionIdsForDay(selectedDay),suggestionLabel:`Suggested for ${displayWorkout(selectedDay)}`,
+    returnFocus:()=>$(owner?'browseWorkoutLibrary':'addSelectedExercise'),
+    onCancel:()=>{if(sameOwner())window.bigGainsTrainPosition?.requestRestore();},
+    onSelect:canonicalId=>{
+      if(owner&&!sameOwner())return;
+      const definition=exerciseCatalog.getById(canonicalId);
+      if(!definition)return;
+      workoutSessionController.addExercise(definition.id,{scroll:!owner});
+      window.bigGainsViewShell?.showView('train',{scroll:!owner});
+      if(owner)window.bigGainsTrainPosition?.requestRestore();
+    }
+  });
+}
 function lastPerformance(exerciseId){return analyticsApi.previousPerformance(state.workouts,exerciseId,analyticsOptions());}
 function renderActiveSession(scroll=true){if(!active)return;selectedDay=active.type;$('activePanel').classList.remove('hidden');$('cancelWorkout').classList.remove('hidden');$('cancelWorkout').textContent='Cancel';$('activeWorkoutTitle').textContent=displayWorkout(active.type);if($('activeWorkoutMeta'))$('activeWorkoutMeta').textContent=`${active.exercises.length} movement${active.exercises.length===1?'':'s'} · In progress`;if($('firstWorkoutGuidance'))$('firstWorkoutGuidance').hidden=!(state.onboarding&&state.workouts.length===0);clearInterval(workoutTicker);workoutTicker=setInterval(renderWorkoutClock,1000);renderWorkoutClock();renderActive();renderLibrary();timerController.renderPreferences();timerController.reconcile();if(scroll)$('activePanel').scrollIntoView({behavior:'smooth',block:'start'});}
 function renderCompletion(workout){
@@ -312,6 +333,7 @@ bind('loadRoutine','click',()=>workoutSessionController.replace(selectedDay,{loa
 bind('editRoutine','click',openRoutineEditor);
 bind('quickExerciseSelect','change',e=>{quickCompatExerciseId=e.target.value;});
 bind('addSelectedExercise','click',()=>{if(quickCompatExerciseId){const id=quickCompatExerciseId;quickCompatExerciseId=null;workoutSessionController.addExercise(id,{scroll:true});window.bigGainsViewShell?.showView('train');return;}openLibraryExercisePicker();});
+bind('librarySections','click',event=>{const target=event.target.closest('[data-library-jump]')?.dataset.libraryJump;if(['libraryInventory','workoutPanel'].includes(target))$(target)?.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});});
 bind('exerciseSearch','input',renderLibrary);bind('muscleFilter','change',renderLibrary);bind('equipmentFilter','change',renderLibrary);bind('clearLibraryFilters','click',()=>{$('exerciseSearch').value='';$('muscleFilter').value='all';$('equipmentFilter').value='all';renderLibrary();$('exerciseSearch').focus();});bind('exerciseLibrary','click',e=>{const b=e.target.closest('[data-add]');if(b)workoutSessionController.addExercise(b.dataset.add,{scroll:true});});
 bind('cancelWorkout','click',()=>{const now=Date.now();if(now<cancelArmedUntil){workoutSessionController.discard();return;}cancelArmedUntil=now+2500;$('cancelWorkout').textContent='Tap again to discard';setTimeout(()=>{if(active&&Date.now()>=cancelArmedUntil)$('cancelWorkout').textContent='Cancel';},2600);});
 function focusActiveExercise(index){return workoutSessionController.focusExercise(index);}

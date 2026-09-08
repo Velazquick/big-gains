@@ -78,7 +78,9 @@ test('resumes implicitly and replaces only through the explicit Library action',
   expect(resumed.id).toBe(original.id);
   expect(resumed.startedAt).toBe(original.startedAt);
 
-  await page.locator('#browseWorkoutLibrary').click();
+  await page.locator('#exitWorkoutMode').click();
+  await page.locator('.bottom-nav [data-view="library"]').click();
+  await page.getByRole('button',{name:'Saved routines',exact:true}).click();
   await page.locator('#dayTabs [data-day="Pull"]').click();
   await expect(page.locator('#routineSelect')).toHaveValue('Pull');
   await page.locator('#loadRoutine').click();

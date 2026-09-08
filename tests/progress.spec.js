@@ -7,7 +7,7 @@ test('decorates the exercise library after a library render', async ({ page }) =
   await openApp(page);
 
   await page.locator('.bottom-nav button[data-view="library"]').click();
-  await page.getByText('Browse full exercise library').click();
+  await expect(page.locator('#libraryInventory')).toBeVisible();
   await page.locator('#exerciseLibrary [data-progress-exercise]').evaluateAll(buttons => buttons.forEach(button => button.remove()));
   await page.evaluate(() => window.renderLibrary());
 

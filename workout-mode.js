@@ -98,10 +98,7 @@
 
   function browse() {
     if (!session()) return false;
-    suspend();
-    window.bigGainsViewShell?.showView('library', { workout: false });
-    window.setTimeout(() => document.getElementById('workoutPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
-    return true;
+    return window.openLibraryExercisePicker?.({ fromTrain: true }) || false;
   }
 
   function returnToWorkout() {

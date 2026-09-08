@@ -139,3 +139,31 @@ html[data-theme][data-train-presentation] #activeExercises .collapsed-summary>sp
 html[data-theme][data-train-presentation] body #timerCard :is(.timer-actions,.timer-preferences,.timer-presets) button { min-height:44px; min-width:44px; }
 
 html[data-theme][data-train-presentation] #activeExercises .compact-set:not(:first-child) .stepper-label { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); }
+
+/* Inventory presentation is shared; each caller retains selection ownership. */
+html[data-theme] :is(.exercise-picker-dialog,.exercise-picker-controls,.exercise-picker-result,.exercise-result-row,.exercise-picker-trigger) { background:var(--ui-surface); color:var(--ui-text); border-color:var(--line); box-shadow:none; }
+html[data-theme] :is(.exercise-picker-head,.exercise-picker-controls,.exercise-picker-section+.exercise-picker-section) { border-color:var(--line); }
+html[data-theme] :is(.exercise-picker-head p,.exercise-picker-search span,.exercise-picker-filter span,.exercise-result-copy p,.exercise-picker-section-head span,.exercise-picker-empty p) { color:var(--ui-secondary); }
+html[data-theme] :is(.exercise-picker-search input,.exercise-picker-filter select) { min-height:44px; font-size:1rem; color:var(--ui-text); background:var(--ui-canvas); border-color:var(--ui-control-border); }
+html[data-theme] :is(.exercise-picker-result-state,.exercise-picker-trigger small) { color:var(--accent); }
+html[data-theme] .exercise-picker-result.is-current { border-color:var(--accent); background:var(--accent-soft,var(--ui-surface-raised)); }
+html[data-theme] .exercise-picker-result.is-current .exercise-picker-result-state { color:var(--accent); }
+html[data-theme] .exercise-picker-result:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-color:var(--accent); }
+html[data-theme] .exercise-picker-result:hover { background:var(--ui-surface-raised); border-color:var(--accent); }
+html[data-theme] :is(.exercise-picker-result,.exercise-result-row) { min-height:72px; padding:12px 0; border:0; border-bottom:1px solid var(--line); border-radius:0; gap:12px; }
+html[data-theme] :is(.exercise-picker-list,.exercise-library) { display:grid; grid-template-columns:minmax(0,1fr); gap:0; }
+html[data-theme] .exercise-result-copy h3 { font-size:1rem; line-height:1.3; margin:0 0 4px; }
+html[data-theme] .exercise-result-copy p { font-size:.8125rem; line-height:1.4; }
+html[data-theme] .exercise-card-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:4px; max-width:116px; }
+html[data-theme] .exercise-card-actions button { min-height:44px; min-width:44px; padding:8px; font-size:.8125rem; background:var(--ui-surface-raised); color:var(--ui-text); border:1px solid var(--line); }
+html[data-theme] .exercise-card-actions .add-exercise { color:var(--accent); }
+html[data-theme] #libraryInventory { padding:0; background:transparent; border:0; }
+html[data-theme] #libraryInventory .library-toolbar { margin-top:0; }
+html[data-theme] .library-exercise-filters { grid-template-columns:1fr 1fr; gap:12px; }
+html[data-theme] .library-exercise-filters .search-box { grid-column:1/-1; }
+html[data-theme] .exercise-picker-filter-row>button { min-height:44px; }
+
+html[data-theme] #exerciseLibrary .exercise-result-row { display:grid; grid-template-columns:minmax(0,1fr) auto; background:transparent; border:0; border-bottom:1px solid var(--line); border-radius:0; box-shadow:none; color:var(--ui-text); }
+html[data-theme] .library-sections { position:sticky; top:0; z-index:8; display:flex; gap:8px; padding:8px 0; margin-bottom:12px; background:var(--ui-canvas); }
+html[data-theme] .library-sections button { min-height:44px; flex:1; color:var(--ui-text); background:var(--ui-surface-raised); border:1px solid var(--line); border-radius:10px; }
+html[data-theme] :is(#libraryInventory,#workoutPanel) { scroll-margin-top:72px; }
