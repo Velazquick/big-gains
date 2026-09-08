@@ -46,3 +46,11 @@ The first workout-focused run passed 89/91 checks. It caught missing per-field u
 Train's existing Add Exercise action now opens the existing picker over Train. It captures the originating owner/workout, preserves canonical eligibility/exclusions and returns to that workout's bookmark after selection/cancel. An old picker cannot add into a replacement workout. The picker continues to own its dialog/Back/focus lifecycle; routine editing retains its separate draft callbacks.
 
 Library search/filters and flat inventory rows are immediately visible. Sticky Exercises/Saved routines jump actions keep routine browsing direct without inventing another mutation owner. Saved routine load/replace and edit actions remain unchanged. Shared row markup keeps muscle, equipment and measurement context; theme/accent tokens replace picker-specific palette literals. The protected picker tests retain all canonical identity and eligibility assertions.
+
+### Slice 5 — approved IA and contextual Today
+
+More owns Library and Settings, including direct navigation to existing backup/export and Support sections. Existing Library/Settings/History/Calendar aliases remain supported. Train navigation never starts a session. History has a prominent Progress entry using the existing List/Calendar controller.
+
+Today reads the current Program context and routine catalog through small read-only presentation facades. Priority is active Resume, authoritative next Program, valid selected routine, then blank workout. The primary card is moved first in DOM as well as visually; secondary actions remain available. The existing explicit cloud Program adoption path is untouched. Today omits the Program version suffix; Program detail retains it. Shared shells no longer rename Library to Garden or alter training copy based on profile identity; the existing garden and profile capabilities remain available.
+
+Slice 4 focused validation: 127/128 passed initially; the remaining assertion expected the obsolete Library navigation from Train. It now asserts direct picker visibility, unchanged Train route, and the same workout ID. No data assertion was relaxed. The prior full return-position run passed 584/585, with the sole failure being the harness script-order fixture; the new module is now included in that exact-order fixture.

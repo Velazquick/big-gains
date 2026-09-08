@@ -167,3 +167,31 @@ html[data-theme] #exerciseLibrary .exercise-result-row { display:grid; grid-temp
 html[data-theme] .library-sections { position:sticky; top:0; z-index:8; display:flex; gap:8px; padding:8px 0; margin-bottom:12px; background:var(--ui-canvas); }
 html[data-theme] .library-sections button { min-height:44px; flex:1; color:var(--ui-text); background:var(--ui-surface-raised); border:1px solid var(--line); border-radius:10px; }
 html[data-theme] :is(#libraryInventory,#workoutPanel) { scroll-margin-top:72px; }
+
+/* One card language; the next action leads and supporting context follows. */
+html[data-theme] #viewToday .today-stage { display:flex; flex-direction:column; gap:16px; }
+html[data-theme] #viewToday .today-stage > * { width:100%; box-sizing:border-box; }
+html[data-theme] #viewToday :is(.session-selector-card,.today-plan-card,#todayBlankCard),
+html[data-theme] :is(.plan-overview-card,.history-item,.routine-editor-item) { background:var(--ui-surface); border:1px solid var(--line); border-radius:16px; box-shadow:none; }
+html[data-theme] #viewToday .today-stage > .is-priority { border-color:var(--accent-primary); padding:16px; }
+html[data-theme] #viewToday .today-stage > #sessionTypeSelector.is-priority { padding:8px; }
+html[data-theme] #viewToday .today-stage > :not(.is-priority) .primary { background:var(--ui-surface-raised)!important; color:var(--text)!important; border-color:var(--line)!important; }
+html[data-theme] #viewToday .today-plan-card { margin:0; padding:16px; }
+html[data-theme] #viewToday .today-plan-card h2 { font-size:22px; letter-spacing:-.025em; }
+html[data-theme] #viewToday .today-plan-actions { display:flex; flex-wrap:wrap; gap:8px; }
+html[data-theme] #viewToday .today-plan-actions button { min-height:44px; }
+html[data-theme] #viewToday .today-plan-actions .primary { width:100%; }
+html[data-theme] .more-inventory { border:1px solid var(--line); border-radius:16px; overflow:hidden; }
+html[data-theme] .more-inventory button { display:flex; align-items:center; justify-content:space-between; text-align:left; width:100%; min-height:84px; padding:16px; border:0; border-radius:0; border-bottom:1px solid var(--line); background:var(--ui-surface); color:var(--text); }
+html[data-theme] .more-inventory button:last-child { border-bottom:0; }
+html[data-theme] .more-inventory strong { display:block; font-size:17px; }
+html[data-theme] .more-inventory small { display:block; margin-top:4px; color:var(--ui-secondary); font-size:13px; line-height:1.4; }
+html[data-theme][data-appearance-version] .bottom-nav button.active:not([data-view="train"]) { background:var(--ui-surface-raised)!important; color:var(--text)!important; border-color:var(--line)!important; }
+html[data-theme][data-appearance-version] .bottom-nav button[data-view="train"] { background:var(--accent-primary)!important; color:var(--on-accent)!important; border-color:var(--accent-primary)!important; }
+html[data-theme] .bottom-nav button[data-view="more"]::before { content:'⋯'; }
+html[data-theme] #progressOverviewSurface > .v2-page-head { display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between; }
+html[data-theme] #progressOverviewSurface > .v2-page-head button { min-height:44px; }
+html[data-theme] #viewToday #todayBlankCard[hidden],html[data-theme] #todayPlanActions button[hidden] { display:none!important; }
+html[data-theme] body:not([data-view="today"]):not([data-view="train"]) .topbar h1 { display:none; }
+html[data-theme] #exerciseLibrary .exercise-card-actions { display:flex; flex-direction:row; gap:8px; align-items:center; }
+html[data-theme] #exerciseLibrary .exercise-card-actions button { padding:8px; }

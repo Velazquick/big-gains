@@ -1,3 +1,4 @@
+import { openLibraryFromMore } from './helpers/app.js';
 import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp, openExerciseOptions } from './helpers/app.js';
@@ -6,7 +7,7 @@ test('decorates the exercise library after a library render', async ({ page }) =
   await installLocalStorageFixture(page, 'blankJorge');
   await openApp(page);
 
-  await page.locator('.bottom-nav button[data-view="library"]').click();
+  await openLibraryFromMore(page);
   await expect(page.locator('#libraryInventory')).toBeVisible();
   await page.locator('#exerciseLibrary [data-progress-exercise]').evaluateAll(buttons => buttons.forEach(button => button.remove()));
   await page.evaluate(() => window.renderLibrary());

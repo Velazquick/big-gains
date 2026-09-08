@@ -35,3 +35,9 @@ export async function openSetAdjustments(page, exerciseIndex, setIndex) {
   const toggle=page.locator(`[data-set-adjustments="${setIndex}"][data-ei="${exerciseIndex}"]`);
   if(await toggle.getAttribute('aria-expanded')!=='true') await toggle.click();
 }
+
+export async function openLibraryFromMore(page) {
+  await page.locator('.bottom-nav [data-view="more"]').click();
+  await page.locator('#moreLibrary').click();
+  await expect(page.locator('body')).toHaveAttribute('data-view','library');
+}

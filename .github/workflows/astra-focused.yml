@@ -22,7 +22,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: node --test tests/astra-*.test.mjs
       - name: Check training presentation, units, and all accents
-        run: npx playwright test tests/astra-*.spec.js tests/appearance-v1.spec.js tests/active-workout-units.spec.js tests/workout-controls.spec.js tests/jorge-train-ui-refresh.spec.js tests/phase3-workout-hierarchy.spec.js tests/workout-session-controller.spec.js tests/settings-units.spec.js tests/set-removal.spec.js tests/progress.spec.js tests/exercise-picker.spec.js tests/workout-mode.spec.js tests/routines.spec.js
+        run: npx playwright test tests/astra-*.spec.js tests/appearance-v1.spec.js tests/active-workout-units.spec.js tests/workout-controls.spec.js tests/jorge-train-ui-refresh.spec.js tests/phase3-workout-hierarchy.spec.js tests/workout-session-controller.spec.js tests/settings-units.spec.js tests/set-removal.spec.js tests/progress.spec.js tests/exercise-picker.spec.js tests/workout-mode.spec.js tests/routines.spec.js tests/program-plan-bridge.spec.js tests/history-plan-nav-migration.spec.js tests/shells.spec.js tests/phase4g-independent-user.spec.js
       - uses: actions/upload-artifact@v7
         if: always()
         with:

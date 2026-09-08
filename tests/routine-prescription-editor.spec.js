@@ -1,3 +1,4 @@
+import { openLibraryFromMore } from './helpers/app.js';
 import { expect, test } from '@playwright/test';
 import { activeWorkout, blankState, completedWorkout, installLocalStorageFixture, readStoredJson, STORAGE_KEYS } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
@@ -147,7 +148,7 @@ test('custom loading generates warm-up plus exact working sets and keeps previou
     localStorage.setItem(storageKey, JSON.stringify(customized));
   }, { activeKey: STORAGE_KEYS.activeProfile, storageKey: STORAGE_KEYS.jorge, customized });
   await openApp(page);
-  await page.locator('.bottom-nav [data-view="library"]').click();
+  await openLibraryFromMore(page);
   await page.locator('#dayTabs [data-day="Push"]').click();
   await expect(page.locator('#dayTabs [data-day="Push"]')).toHaveClass(/active/);
   await page.locator('#loadRoutine').click();
@@ -217,7 +218,7 @@ test('Jorge and Alexa retain their existing presentation tokens and routine edit
   await installLocalStorageFixture(page, ['blankJorge', 'blankAlexa'], { activeProfile: 'jorge' });
   await openApp(page);
   expect(await page.locator('html').evaluate(element => getComputedStyle(element).getPropertyValue('--accent').trim())).not.toBe('#801616');
-  await page.locator('.bottom-nav [data-view="library"]').click();
+  await openLibraryFromMore(page);
   await page.locator('#dayTabs [data-day="Push"]').click();
   await page.locator('#editRoutine').click();
   await expect(page.locator('[data-routine-index]')).toHaveCount(6);
@@ -226,7 +227,7 @@ test('Jorge and Alexa retain their existing presentation tokens and routine edit
   await expect(page.locator('#sessionTypeSelector')).toBeAttached();
   await expect(page.locator('html')).toHaveAttribute('data-profile', 'alexa');
   expect(await page.locator('html').evaluate(element => getComputedStyle(element).getPropertyValue('--accent').trim())).toBe('#c85f98');
-  await page.locator('.bottom-nav [data-view="library"]').click();
+  await openLibraryFromMore(page);
   await page.locator('#editRoutine').click();
   await expect(page.locator('[data-routine-index]').first()).toBeVisible();
 });

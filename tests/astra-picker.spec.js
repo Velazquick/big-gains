@@ -1,3 +1,4 @@
+import { openLibraryFromMore } from './helpers/app.js';
 import {test,expect} from '@playwright/test';
 import {installLocalStorageFixture} from './fixtures/local-storage.js';
 import {openApp,jorgeState} from './helpers/app.js';
@@ -17,7 +18,7 @@ test('direct picker preserves originating exercise, timing and canonical identit
 for(const [profile,accent] of [['jorge','volt'],['alexa','rose'],['jorge','violet']])test(`inventory and picker ${profile} ${accent}`,async({page},info)=>{
   await page.setViewportSize({width:390,height:844});await installLocalStorageFixture(page,profile==='alexa'?'blankAlexa':'blankJorge');await openApp(page);
   await page.evaluate(accent=>BigGainsAppearance.select(accent),accent);
-  await page.locator('.bottom-nav [data-view="library"]').click();await expect(page.locator('#exerciseSearch')).toBeVisible();
+  await openLibraryFromMore(page);await expect(page.locator('#exerciseSearch')).toBeVisible();
   await page.screenshot({path:info.outputPath(`library-${profile}-${accent}.png`)});
   await page.getByRole('button',{name:'Saved routines',exact:true}).click();await expect(page.locator('#routineSelect')).toBeInViewport();
   await page.locator('#addSelectedExercise').click();await expect(page.locator('#exercisePickerDialog')).toBeVisible();

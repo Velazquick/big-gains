@@ -54,6 +54,7 @@
         <div class="v2-page-head"><div><span class="label">Today</span><h2>Ready when you are.</h2><p>Strength first. Everything else gets layered on top.</p></div></div>
 
         <div class="today-stage">
+          <section class="panel" id="todayBlankCard" hidden><span class="label">Your session</span><h2>Start with a blank workout.</h2><p>Add the exercises you want, as you go.</p><button id="todayBlankStart" class="primary" type="button">Start blank workout</button></section>
           <section class="session-selector-card" id="sessionTypeSelector" aria-label="Workout session selector">
             <div class="session-selector-bar">
               <button class="session-selector-toggle" id="sessionSelectorToggle" type="button" aria-expanded="false" aria-controls="sessionSelectorBody">
@@ -227,7 +228,7 @@
 
       <section class="view" id="viewProgress">
         <div id="progressOverviewSurface">
-          <div class="v2-page-head"><div><span class="label">Progress</span><h2>The evidence.</h2><p>Strength, consistency, bodyweight, and the sessions behind them.</p></div></div>
+          <div class="v2-page-head"><div><span class="label">Progress</span><h2>The evidence.</h2><p>Strength, consistency, bodyweight, and the sessions behind them.</p></div><button class="secondary" type="button" data-open-history-archive>Open History</button></div>
           <section class="panel progress-panel" id="progressPanel">
             <div class="section-heading"><div><span class="label">Momentum</span><h2>Exercise progress</h2></div></div>
             <div class="progress-picker"><label class="search-box"><span>Logged movement</span><select id="progressExerciseSelect" aria-label="Choose exercise progress"></select></label><button id="openSelectedProgress" class="primary" type="button">View progress</button></div>
@@ -346,6 +347,15 @@
           </section>
         </div>
       </section>
+      <section class="view" id="viewMore">
+        <div class="v2-page-head"><div><span class="label">More</span><h2>Your training toolkit.</h2><p>Exercises, preferences, and your private files.</p></div></div>
+        <div class="more-inventory">
+          <button id="moreLibrary" data-more-view="library" type="button"><span><strong>Library</strong><small>Exercises and saved routines</small></span><span aria-hidden="true">→</span></button>
+          <button data-more-view="settings" type="button"><span><strong>Settings</strong><small>Profile, Appearance, units, and training</small></span><span aria-hidden="true">→</span></button>
+          <button data-more-view="settings" data-more-section="settingsBackupTitle" type="button"><span><strong>Cloud &amp; backup</strong><small>Sync, recovery, and export</small></span><span aria-hidden="true">→</span></button>
+          <button data-more-view="settings" data-more-section="settingsSupportTitle" type="button"><span><strong>Support</strong><small>Help and app information</small></span><span aria-hidden="true">→</span></button>
+        </div>
+      </section>
     </main>
 
     <section id="workoutCompletion" class="workout-completion hidden" aria-labelledby="workoutCompletionTitle">
@@ -400,7 +410,7 @@
       <button data-view="plan" type="button">Plan</button>
       <button data-view="train" type="button">Train</button>
       <button data-view="progress" type="button">Progress</button>
-      <button data-view="library" type="button">Library</button>
+      <button data-view="more" type="button">More</button>
     </nav>
   </div>
 

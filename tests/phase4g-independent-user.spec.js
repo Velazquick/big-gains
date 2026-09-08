@@ -1,3 +1,4 @@
+import { openLibraryFromMore } from './helpers/app.js';
 import { expect, test } from '@playwright/test';
 import { openApp } from './helpers/app.js';
 
@@ -250,7 +251,7 @@ test('independent runtime renders one identity with cobalt performance tokens an
   await expect(page.locator('#trainingPetCard')).toBeHidden();
   await expect(page.locator('#firstRunOnboarding')).toBeHidden();
   expect(await page.locator('[data-profile-only="alexa"]').evaluateAll(elements => elements.every(element => element.hidden))).toBe(true);
-  await page.locator('.bottom-nav [data-view="library"]').click();
+  await openLibraryFromMore(page);
   await expect(page.locator('#routineSelect')).not.toContainText('Jorge');
   expect(await page.evaluate(() => ({
     managed: localStorage.getItem('big-gains-v2'),

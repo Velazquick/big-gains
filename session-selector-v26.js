@@ -49,7 +49,7 @@
   }
 
   function goTo(view) {
-    document.querySelector(`.bottom-nav [data-view="${view}"]`)?.click();
+    window.bigGainsViewShell?.showView(view);
   }
 
   function setExpanded(next) {
@@ -212,6 +212,7 @@
       if (quickButton) quickButton.textContent = 'Start';
     }
     renderTrainPreview({ session, plannedType });
+    window.renderTodayPriority?.();
   }
 
   function initialize() {
@@ -261,5 +262,5 @@
     return true;
   }
 
-  window.sessionSelector = Object.freeze({ initialize, render });
+  window.sessionSelector = Object.freeze({ initialize, render, selection: () => ({ selectedType, count: (window.workoutRoutineEngine?.getRoutine(selectedType) || []).filter(id => window.BigGainsExerciseCatalog?.getById(id)).length }) });
 })();

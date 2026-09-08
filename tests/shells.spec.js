@@ -16,7 +16,7 @@ test('Alexa shell and sync snapshot retain their profile behavior', async ({ pag
   await installLocalStorageFixture(page, 'blankAlexa');
   await openApp(page);
 
-  await expect(page.locator('.bottom-nav [data-view="library"]')).toHaveText('Garden');
+  await expect(page.locator('.bottom-nav [data-view="more"]')).toHaveText('More');
   await expect(page.locator('#gardenPanel')).toContainText('Consistency garden');
   await expect(page.locator('#trainingPetCard')).toHaveAttribute('data-profile', 'alexa');
 

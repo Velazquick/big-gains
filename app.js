@@ -318,13 +318,31 @@ function closeRoutineEditor(){const d=$('routineDialog');if(d.close)d.close();el
 function saveRoutine(){state.customRoutines[routineDraftDay]=routineDraft.map(entry=>({exerciseId:entry.exerciseId,workingSets:Math.min(12,Math.max(1,Math.round(Number(entry.workingSets)||3))),targetReps:String(entry.targetReps||'').trim().slice(0,20)}));saveState();renderLibrary();closeRoutineEditor();}
 function resetRoutine(){const button=$('resetRoutine'),now=Date.now(),customized=Object.hasOwn(state.customRoutines||{},routineDraftDay);if(customized&&now>=routineResetArmedUntil){routineResetArmedUntil=now+3500;button.textContent='Tap again to restore';button.classList.add('danger','is-confirming');button.setAttribute('aria-label',`Confirm: Restore the original ${displayWorkout(routineDraftDay)} routine?`);clearTimeout(routineResetTimer);routineResetTimer=setTimeout(()=>{if(Date.now()>=routineResetArmedUntil){routineResetArmedUntil=0;button.textContent='Restore original';button.classList.remove('danger','is-confirming');button.removeAttribute('aria-label');}},3600);return false;}routineResetArmedUntil=0;clearTimeout(routineResetTimer);delete state.customRoutines[routineDraftDay];delete routineVariantSelections[routineDraftDay];routineDraft=routineEngine.getDraft(routineDraftDay);saveState();renderRoutineEditor();renderLibrary();button.textContent='Restore original';button.classList.remove('danger','is-confirming');button.removeAttribute('aria-label');return true;}
 function renderWeights(){const box=$('weightHistory');if(!state.weights.length){box.className='mini-list empty';box.textContent='No weigh-ins yet.';return;}box.className='mini-list';box.innerHTML=state.weights.slice(0,5).map(x=>`<div class="weight-row"><strong>${unitsApi.formatBodyweight(x.weight,state)}</strong><small>${fmtDate(x.date)}</small></div>`).join('');}
-function renderAll(){if(window.BigGainsBootGate&&!window.BigGainsBootGate.canRender())return false;renderGreeting();renderHero();renderStats();renderEquipment();renderLibrary();renderHistory();renderCalendar();renderWeights();renderSettings();goalsApi.render();window.BigGainsProgramSetup?.render();timerController.renderPreferences();if(active)showActive(false);else timerController.deactivate();progressApi.afterFullRender({activeWorkout:active});renderFirstRunOnboarding();return true;}
+// Presentation priority reads the existing authorities; it never materializes a session.
+function renderTodayPriority(){
+  const stage=document.querySelector('.today-stage');if(!stage)return;
+  const next=window.BigGainsProgramSetup?.nextSessionPresentation();
+  const selection=window.sessionSelector?.selection();
+  const priority=active?'resume':next?'program':selection?.count?'routine':'freeform';
+  stage.dataset.priority=priority;
+  const head=document.querySelector('#viewToday .v2-page-head');
+  head.querySelector('h2').textContent=active?'Your workout is waiting.':next?'Your next session.':'Ready when you are.';
+  head.querySelector('p').textContent=active?'Pick up where you left off.':next?next.sessionName:'Choose your structure. Make it your session.';
+  $('todayBlankCard').hidden=priority!=='freeform';
+  const primary=priority==='program'?$('todayPlanCard'):priority==='freeform'?$('todayBlankCard'):$('sessionTypeSelector');
+  stage.querySelectorAll('.is-priority').forEach(card=>card.classList.remove('is-priority'));
+  primary.classList.add('is-priority');stage.prepend(primary);
+  const start=$('todayPlanActions')?.querySelector('[data-start-program-session]');if(start)start.hidden=Boolean(active);
+}
+window.renderTodayPriority=renderTodayPriority;
+function renderAll(){if(window.BigGainsBootGate&&!window.BigGainsBootGate.canRender())return false;renderGreeting();renderHero();renderStats();renderEquipment();renderLibrary();renderHistory();renderCalendar();renderWeights();renderSettings();goalsApi.render();window.BigGainsProgramSetup?.render();timerController.renderPreferences();if(active)showActive(false);else timerController.deactivate();progressApi.afterFullRender({activeWorkout:active});renderFirstRunOnboarding();renderTodayPriority();return true;}
 function bind(id,event,handler){const el=$(id);if(el)el.addEventListener(event,handler);}
 timerController.initialize();
 goalsApi.initialize();
 bind('dayTabs','click',e=>{const b=e.target.closest('[data-day]');if(!b)return;selectedDay=b.dataset.day;$('muscleFilter').value='all';$('equipmentFilter').value='all';$('exerciseSearch').value='';renderLibrary();});
 bind('startWorkout','click',()=>{const today=todaysWorkout();if(active)workoutSessionController.resume(true);else if(today!=='Rest')workoutSessionController.start(today,{loadRoutine:true,scroll:true});});
 bind('trainBlankStart','click',startBlankWorkout);
+bind('todayBlankStart','click',startBlankWorkout);
 bind('firstRunTrain','click',()=>{updateOnboarding('completed','train');startBlankWorkout();});
 bind('firstRunExplore','click',()=>{updateOnboarding('skipped','explore');window.bigGainsViewShell?.showView('today',{workout:false});});
 bind('profileSelect','change',e=>switchProfile(e.target.value));
