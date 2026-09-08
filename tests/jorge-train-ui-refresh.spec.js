@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
-import { jorgeState, openApp } from './helpers/app.js';
+import { jorgeState, openApp, openSetAdjustments } from './helpers/app.js';
 
 const SZW_AUTH_USER_ID = '85000000-0000-0000-0000-000000000001';
 const SZW_ACCOUNT_ID = '85a00000-0000-0000-0000-000000000001';
@@ -141,6 +141,7 @@ test('set controls remain touch-sized, persist edits, and keep rest-timer semant
   const weight = page.locator('input[data-field="weight"][data-ei="0"][data-si="1"]');
   const minus = page.locator('button[data-adjust="-5"][data-field="weight"][data-ei="0"][data-si="1"]');
   const done = page.getByRole('button', { name: 'Complete Set 1 of 3' });
+  await openSetAdjustments(page, 0, 1);
   const sizes = await Promise.all([weight, minus, done].map(async locator => locator.boundingBox()));
   for (const box of sizes) {
     expect(box.height).toBeGreaterThanOrEqual(44);
@@ -176,10 +177,10 @@ test('Exit Workout Mode and resume preserve the same local workout', async ({ pa
   expect((await jorgeState(page)).activeWorkout).toEqual(before.activeWorkout);
 });
 
-test('Jorge styling is isolated from Alexa and SZW presentation tokens', async ({ browser }) => {
+test('shared Train ergonomics preserve independent profile appearance and capabilities', async ({ browser }) => {
   const cases = [
-    { fixture: 'blankJorge', accent: 'ember', theme: 'performance-dark', refresh: 'enabled', preview: true },
-    { fixture: 'blankAlexa', accent: 'rose', theme: 'wellness-light', refresh: '', preview: false }
+    { fixture: 'blankJorge', accent: 'ember', theme: 'performance-dark' },
+    { fixture: 'blankAlexa', accent: 'rose', theme: 'wellness-light' }
   ];
 
   for (const item of cases) {
@@ -190,9 +191,8 @@ test('Jorge styling is isolated from Alexa and SZW presentation tokens', async (
     await openTrain(page);
     await expect(page.locator('html')).toHaveAttribute('data-accent', item.accent);
     await expect(page.locator('html')).toHaveAttribute('data-theme', item.theme);
-    expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--jorge-train-refresh').trim())).toBe(item.refresh);
-    if (item.preview) await expect(page.locator('#trainPreview')).toBeVisible();
-    else await expect(page.locator('#trainPreview')).toBeHidden();
+    await expect(page.locator('html')).toHaveAttribute('data-train-presentation', 'focused');
+    await expect(page.locator('#trainPreview')).toBeVisible();
     await context.close();
   }
 
@@ -204,7 +204,7 @@ test('Jorge styling is isolated from Alexa and SZW presentation tokens', async (
   await expect(page.locator('html')).toHaveAttribute('data-accent', 'merlot');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'slate-dark');
   await expect(page.locator('html')).toHaveAttribute('data-pet-enabled', 'false');
-  expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--jorge-train-refresh').trim())).toBe('');
-  await expect(page.locator('#trainPreview')).toBeHidden();
+  await expect(page.locator('html')).toHaveAttribute('data-train-presentation', 'focused');
+  await expect(page.locator('#trainPreview')).toBeVisible();
   await context.close();
 });

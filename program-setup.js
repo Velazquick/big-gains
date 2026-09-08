@@ -553,8 +553,8 @@
 
   function startNextProgramSession() {
     if (active) {
-      window.workoutSessionController?.resume(true);
-      window.bigGainsViewShell?.showView('train');
+      window.workoutSessionController?.resume(false);
+      window.bigGainsViewShell?.showView('train', { resume: true, scroll: false });
       return active;
     }
     try {
@@ -708,7 +708,7 @@
       if (!card.hidden) {
         el('todayPlanHeadline').textContent = 'Build your training route';
         el('todayPlanDetail').textContent = 'Plan connects your Goals to a reviewed rolling Program.';
-        el('todayPlanMeta').innerHTML = '<span>No Program yet</span>';
+        el('todayPlanMeta').innerHTML = '<span>Program options</span>';
         el('todayPlanActions').innerHTML = '<button type="button" class="primary compact" data-today-plan>Open Plan</button>';
       }
       return;
@@ -718,7 +718,7 @@
     const nextSlot = nextIndex === null ? null : version.slots[nextIndex];
     const linked = activeGoals().filter(goal => version.priorityGoalIds.includes(goal.goalId));
     card.hidden = false;
-    el('todayPlanHeadline').textContent = `${version.name} · v${version.versionNumber}`;
+    el('todayPlanHeadline').textContent = version.name;
     el('todayPlanDetail').textContent = nextSlot ? `Next in the rolling route: ${nextSlot.label}.` : `${context.status === 'active' ? 'Active' : 'Draft'} Program context is ready in Plan.`;
     el('todayPlanMeta').innerHTML = `<span>${context.status === 'active' ? 'Active Program' : 'Draft Program'}</span>${linked[0] ? `<span>${escapeHtml(goalName(linked[0]))} priority</span>` : '<span>No linked Goal priority</span>'}`;
     el('todayPlanActions').innerHTML = `${context.status === 'active' ? `<button type="button" class="primary compact" data-start-program-session>${active ? 'Resume workout' : 'Start next Program session'}</button>` : ''}<button type="button" class="secondary compact" data-today-plan>Open Plan</button><button type="button" class="ghost compact" data-today-program>View Program</button>${linked[0] ? `<button type="button" class="ghost compact" data-today-goal="${escapeHtml(linked[0].goalId)}">View Goal</button>` : ''}`;
@@ -943,6 +943,7 @@
     const supported = PROFILE.id === 'jorge' && ROUTINES.every(config => routineEngine.hasRoutine(config.routineType));
     renderPlanOverview();
     renderTodayPlan();
+    window.renderTodayPriority?.();
     if (!supported) return false;
     const stored = capture();
     const activeVersion = stored.programVersions.find(version => version.programVersionId === stored.activeProgramVersionId) || null;
@@ -1003,6 +1004,12 @@
   }
 
   window.BigGainsProgramSetup = Object.freeze({
+    nextSessionPresentation: () => {
+      const context = currentProgramContext();
+      const index = Number(context.stored.sequenceState?.nextSlotIndex);
+      const slot = context.status === 'active' && Number.isInteger(index) ? context.programVersion?.slots[index] : null;
+      return slot ? Object.freeze({ programName: context.programVersion.name, sessionName: slot.label }) : null;
+    },
     analyzeCurrent: () => analyzeContext(currentProgramContext()),
     evaluateProgrammingCurrent: () => evaluateProgrammingSnapshot(state),
     close,

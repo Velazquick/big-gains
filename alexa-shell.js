@@ -6,18 +6,12 @@
 
   function renderProfileShell() {
     const isAlexa = PROFILE.id === 'alexa';
-    document.querySelector('.eyebrow').textContent = isAlexa ? 'BIG GAINS · WELLNESS' : 'BIG GAINS';
-    document.querySelector('.bottom-nav [data-view="library"]').textContent = isAlexa ? 'Garden' : 'Library';
-    document.querySelector('#viewLibrary .v2-page-head .label').textContent = isAlexa ? 'Garden' : 'Library';
-    document.querySelector('#viewLibrary .v2-page-head h2').textContent = isAlexa ? 'Your care, growing.' : 'Build the work.';
-    document.querySelector('#viewLibrary .v2-page-head p').textContent = isAlexa ? 'Every completed session adds life. Rest never takes anything away.' : 'Choose routines, edit your lineup, or find a movement.';
+    document.querySelector('.eyebrow').textContent = 'BIG GAINS';
+    document.querySelector('#viewLibrary .v2-page-head .label').textContent = 'Library';
+    document.querySelector('#viewLibrary .v2-page-head h2').textContent = 'Find your next movement.';
+    document.querySelector('#viewLibrary .v2-page-head p').textContent = 'Search exercises or open your saved routines.';
+    window.renderTodayPriority?.();
     if (!isAlexa) return;
-    document.querySelector('#viewToday .v2-page-head h2').textContent = 'A little care for today.';
-    document.querySelector('#viewToday .v2-page-head p').textContent = 'Show up gently. Momentum will do the rest.';
-    document.querySelector('#viewTrain .v2-page-head h2').textContent = 'Move with intention.';
-    document.querySelector('#viewTrain .v2-page-head p').textContent = 'One movement at a time. You can return whenever you’re ready.';
-    document.querySelector('#viewProgress .v2-page-head h2').textContent = 'Notice what is changing.';
-    document.querySelector('#viewProgress .v2-page-head p').textContent = 'Strength, consistency, and wellbeing—not perfection.';
     const tabs = document.getElementById('dayTabs');
     tabs.innerHTML = alexaDays.map(day => `<button data-day="${day}" type="button">${DEFAULT_ROUTINES[day]?.label || day}</button>`).join('');
     renderGarden();

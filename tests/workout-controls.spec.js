@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
-import { jorgeState, openApp } from './helpers/app.js';
+import { jorgeState, openApp, openExerciseOptions, openSetAdjustments } from './helpers/app.js';
 
 test.beforeEach(async ({ page }) => {
   await installLocalStorageFixture(page, 'activeWorkoutWithTwoExercises');
@@ -19,6 +19,7 @@ test('renders the active exercise expanded with upcoming work collapsed', async 
 
 test('reorders and removes exercises without changing selector compatibility', async ({ page }) => {
   const cards = page.locator('#activeExercises .active-exercise');
+  await openExerciseOptions(page, 'Lat Pulldown');
   await page.getByRole('button', { name: 'Move Lat Pulldown up', exact: true }).click();
 
   await expect(cards.locator('h3')).toHaveText(['Lat Pulldown', 'Seated Machine Chest Press']);
@@ -26,6 +27,7 @@ test('reorders and removes exercises without changing selector compatibility', a
     'lat-pulldown', 'seated-machine-chest-press'
   ]);
 
+  await openExerciseOptions(page, 'Seated Machine Chest Press');
   const remove = page.getByRole('button', { name: 'Remove Seated Machine Chest Press' });
   await remove.click();
   await expect(cards).toHaveCount(2);
@@ -48,6 +50,7 @@ test('an exercise without entered set data removes immediately', async ({ page }
     renderActive();
   });
 
+  await openExerciseOptions(page, 'Lat Pulldown');
   await page.getByRole('button', { name: 'Remove Lat Pulldown' }).click();
   await expect(page.locator('#activeExercises .active-exercise')).toHaveCount(1);
   expect((await jorgeState(page)).activeWorkout.exercises.map(exercise => exercise.id)).toEqual(['seated-machine-chest-press']);
@@ -57,6 +60,7 @@ test('edits set values through inputs and steppers', async ({ page }) => {
   const weight = page.locator('input[data-field="weight"][data-ei="0"][data-si="1"]');
   const reps = page.locator('input[data-field="reps"][data-ei="0"][data-si="1"]');
   await weight.fill('125');
+  await openSetAdjustments(page, 0, 1);
   await page.locator('button[data-adjust="1"][data-field="reps"][data-ei="0"][data-si="1"]').click();
 
   const set = (await jorgeState(page)).activeWorkout.exercises[0].sets[1];
@@ -97,7 +101,7 @@ test('chevron collapse respects a manual active-card choice without losing focus
 });
 
 test('Add set inherits the latest working values once, persists, and updates progress', async ({ page }) => {
-  const add = page.getByRole('button', { name: '+ Add set' }).first();
+  const add = page.getByRole('button', { name: '+ Add working set' }).first();
   await expect(add).toBeVisible();
   await add.click();
   let stored = await jorgeState(page);

@@ -1,3 +1,4 @@
+import { openLibraryFromMore } from './helpers/app.js';
 import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { chooseSession, jorgeState, openApp, startSelectedSession } from './helpers/app.js';
@@ -22,7 +23,7 @@ test('Today uses the shared saved-routine start semantics', async ({ page }) => 
 
   expect(await page.evaluate(() => Object.keys(window.workoutSessionController))).toEqual([
     'start', 'startProgram', 'resume', 'replace', 'loadRoutine', 'repairEmpty', 'addExercise',
-    'focusExercise', 'moveExercise', 'toggleExercise', 'removeExercise', 'addSet',
+    'focusExercise', 'moveExercise', 'toggleExercise', 'removeExercise', 'addSet', 'addWarmupSet',
     'removeSet', 'updateSet', 'adjustSet', 'toggleSetCompleted', 'complete', 'discard'
   ]);
   await page.locator('#startWorkout').evaluate(button => button.click());
@@ -42,7 +43,7 @@ test('the session selector uses the shared saved-routine start semantics', async
 test('Library Load Routine uses the shared saved-routine start semantics', async ({ page }) => {
   await installLocalStorageFixture(page, 'blankJorge');
   await openApp(page);
-  await page.locator('.bottom-nav [data-view="library"]').click();
+  await openLibraryFromMore(page);
   await page.locator('#dayTabs [data-day="FullBody"]').click();
   await page.locator('#loadRoutine').click();
 
@@ -52,7 +53,7 @@ test('Library Load Routine uses the shared saved-routine start semantics', async
 test('Add Exercise creates a valid session through the controller', async ({ page }) => {
   await installLocalStorageFixture(page, 'blankJorge');
   await openApp(page);
-  await page.locator('.bottom-nav [data-view="library"]').click();
+  await openLibraryFromMore(page);
   await page.locator('#dayTabs [data-day="Other"]').click();
   await page.locator('#quickExerciseSelect').selectOption('seated-machine-chest-press');
   await page.locator('#addSelectedExercise').click();

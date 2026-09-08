@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v107-active-exercise-units';
+  const release = 'v108-astra-training-first';
   const cloudConfigVersion = 'config-925e766c1b907250'; // BIG_GAINS_CLOUD_CONFIG_VERSION
   const deploymentVersion = `${release}-${cloudConfigVersion}`;
   const manifestAsset = `./asset-manifest.js?v=${encodeURIComponent(deploymentVersion)}`;
@@ -35,7 +35,8 @@
   './user-data-export.css',
   './settings.css',
     './appearance.css',
-    './pwa-update.css'
+    './pwa-update.css',
+    './astra-ui.css'
   ];
   const scripts = [
     './boot-render-gate.js',
@@ -71,6 +72,7 @@
     './goals-train-guidance.js',
     './workout-session-controller.js',
     './workout-controls.js',
+    './train-position.js',
     './notes.js',
     './timer-controller.js',
     './progress.js',

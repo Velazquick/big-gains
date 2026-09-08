@@ -1,3 +1,4 @@
+import { openLibraryFromMore } from './helpers/app.js';
 import { expect, test } from '@playwright/test';
 import { openApp } from './helpers/app.js';
 
@@ -48,6 +49,7 @@ test('new independent profile sees welcome once and can finish a blank first wor
   await installIndependentRuntime(page, { includeState: false, newlyProvisioned: true });
   await openApp(page);
 
+  await expect(page.locator('.today-stage')).toHaveAttribute('data-priority','freeform');
   await expect(page.locator('#firstRunOnboarding')).toBeVisible();
   await expect(page.locator('#firstRunOnboarding')).toContainText('Private training');
   await page.reload();
@@ -250,7 +252,7 @@ test('independent runtime renders one identity with cobalt performance tokens an
   await expect(page.locator('#trainingPetCard')).toBeHidden();
   await expect(page.locator('#firstRunOnboarding')).toBeHidden();
   expect(await page.locator('[data-profile-only="alexa"]').evaluateAll(elements => elements.every(element => element.hidden))).toBe(true);
-  await page.locator('.bottom-nav [data-view="library"]').click();
+  await openLibraryFromMore(page);
   await expect(page.locator('#routineSelect')).not.toContainText('Jorge');
   expect(await page.evaluate(() => ({
     managed: localStorage.getItem('big-gains-v2'),
@@ -506,4 +508,12 @@ test('independent production transport recovers a lost ACK and preserves friend 
   expect(result.deleted.ok).toBe(true);
   expect(result.deleteRetry).toMatchObject({ ok: true, duplicate: true, remoteVersion: 2 });
   expect(result).toMatchObject({ workoutRows: 1, tombstones: 1, current: 0 });
+});
+
+test('independent Today distinguishes available default routines from a deliberate selection',async({page})=>{
+ await installIndependentRuntime(page);await openApp(page);
+ await expect(page.locator('.today-stage')).toHaveAttribute('data-priority','freeform');
+ await page.locator('#sessionSelectorToggle').click();await page.locator('[data-session-type="Core"]').click();
+ await expect(page.locator('.today-stage')).toHaveAttribute('data-priority','routine');await expect(page.locator('#selectedSessionLabel')).toHaveText('Core');
+ expect(await page.evaluate(()=>active)).toBe(null);
 });

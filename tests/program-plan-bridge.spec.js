@@ -11,7 +11,7 @@ test.beforeEach(async ({ page }) => {
 
 test('Plan empty state is understandable and opens from its promoted primary destination', async ({ page }) => {
   await expect(page.locator('.bottom-nav button')).toHaveCount(5);
-  await expect(page.locator('.bottom-nav button')).toHaveText(['Today', 'Plan', 'Train', 'Progress', 'Library']);
+  await expect(page.locator('.bottom-nav button')).toHaveText(['Today', 'Plan', 'Train', 'Progress', 'More']);
   await expect(page.locator('.bottom-nav [data-view="calendar"]')).toHaveCount(0);
   await expect(page.locator('#todayPlanCard')).toBeVisible();
   await page.locator('.bottom-nav [data-view="plan"]').click();
@@ -51,7 +51,9 @@ test('Today, Goal, Program, and Analyzer traverse canonical Plan surfaces withou
   const { goalId } = await createProgramFixture(page, { name: 'Linked Plan Program' });
   const before = await readStoredJson(page, STORAGE_KEYS.jorge);
 
-  await expect(page.locator('#todayPlanCard')).toContainText('Linked Plan Program · v1');
+  await expect(page.locator('.today-stage')).toHaveAttribute('data-priority','program');
+  await expect(page.locator('.today-stage > :first-child')).toHaveAttribute('id','todayPlanCard');
+  await expect(page.locator('#todayPlanCard')).toContainText('Linked Plan Program');
   await expect(page.locator('#todayPlanCard')).toContainText('Next in the rolling route: Push');
   await expect(page.locator('#todayPlanCard')).toContainText('Barbell Bench Press priority');
   await page.locator('[data-today-plan]').click();
@@ -97,7 +99,7 @@ test('Today, Goal, Program, and Analyzer traverse canonical Plan surfaces withou
 test('Library stays building blocks while Plan owns setup, staged review, shared picker, and trap-free Back behavior', async ({ page }) => {
   await page.evaluate(() => bigGainsViewShell.showView('library', { workout: false }));
   await expect(page.locator('#programSetupPanel')).toHaveCount(0);
-  await expect(page.locator('#workoutPanel')).toContainText('Workout builder');
+  await expect(page.locator('#workoutPanel')).toContainText('Saved routines');
   await page.locator('.bottom-nav [data-view="plan"]').click();
   await expect(page.locator('body')).toHaveAttribute('data-view', 'plan');
   await expect(page.locator('#programSetupDialog')).toBeHidden();

@@ -1,4 +1,6 @@
-import { expect, test } from '@playwright/test';
+import { waitForControlledAppShell } from './helpers/app.js';
+import { expect } from '@playwright/test';
+import { test } from './helpers/network-outage.js';
 import { blankState, installLocalStorageFixture, readStoredJson, STORAGE_KEYS } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
 
@@ -79,11 +81,11 @@ test('retrospective warm-up and working-set removal confirms, recomputes workloa
   expect(exportedSets[0].entered).toMatchObject({ load: 90, reps: 8 });
 });
 
-test('active removal remains local-first while offline and survives an offline reload', async ({ page, context }) => {
+test('active removal remains local-first while offline and survives an offline reload', async ({ page, context, setAppNetworkUnavailable }) => {
   await installLocalStorageFixture(page, 'activeWorkoutWithExercises');
   await openApp(page);
-  await page.evaluate(() => navigator.serviceWorker.ready);
-  await context.setOffline(true);
+  await waitForControlledAppShell(page);
+  await setAppNetworkUnavailable(true);
   try {
     const remove = page.getByRole('button', { name: 'Remove Set 3 of 3' });
     await remove.click();
@@ -93,6 +95,6 @@ test('active removal remains local-first while offline and survives an offline r
     await expect(page.getByRole('button', { name: 'Remove Set 2 of 2' })).toBeVisible();
     expect((await readStoredJson(page, STORAGE_KEYS.jorge)).activeWorkout.exercises[0].sets.filter(set => !set.warmup)).toHaveLength(2);
   } finally {
-    await context.setOffline(false);
+    await setAppNetworkUnavailable(false);
   }
 });

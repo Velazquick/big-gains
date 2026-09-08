@@ -23,10 +23,10 @@ async function showFixtureMonth(page) {
   throw new Error('Could not navigate History calendar to August 2026.');
 }
 
-test('primary navigation remains exactly Today, Plan, Train, Progress, and Library', async ({ page }) => {
+test('primary navigation remains exactly Today, Plan, Train, Progress, and More', async ({ page }) => {
   const nav = page.locator('.bottom-nav');
   await expect(nav.locator('button')).toHaveCount(5);
-  await expect(nav.locator('button')).toHaveText(['Today', 'Plan', 'Train', 'Progress', 'Library']);
+  await expect(nav.locator('button')).toHaveText(['Today', 'Plan', 'Train', 'Progress', 'More']);
   await expect(nav.locator('[data-view="calendar"]')).toHaveCount(0);
 
   await nav.locator('[data-view="plan"]').click();

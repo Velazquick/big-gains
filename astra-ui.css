@@ -1,0 +1,213 @@
+/* Shared presentation roles. Appearance v1 owns accent resolution and storage. */
+html[data-theme] {
+  --ui-space-1:4px; --ui-space-2:8px; --ui-space-3:12px; --ui-space-4:16px; --ui-space-6:24px;
+  --ui-radius-control:10px; --ui-radius-card:16px;
+  --ui-surface:var(--panel); --ui-surface-raised:var(--panel2); --ui-canvas:var(--bg);
+  --ui-text:var(--text); --ui-secondary:#aab5c3; --ui-control-border:#718295;
+  --ui-success:#9bc6a7; --ui-warning:#f2cc80; --ui-error:var(--danger);
+}
+html[data-theme="wellness-light"] {
+  --ui-secondary:#536173; --ui-control-border:#68778a;
+  --ui-success:#356448; --ui-warning:#805b0c;
+}
+html[data-theme] body { background:var(--ui-canvas); }
+html[data-theme] :is(.panel,.active-exercise,.history-item,.train-preview,.program-setup-card) {
+  border-radius:var(--ui-radius-card); box-shadow:none;
+}
+html[data-theme] :is(.primary,.secondary,.ghost,.file-button,.exercise-picker-trigger) {
+  min-height:44px; border-radius:var(--ui-radius-control); box-shadow:none;
+}
+html[data-theme] :is(input,select,textarea) { font-size:1rem; }
+html[data-theme] :is(button,input,select,textarea,a):focus-visible {
+  outline:2px solid var(--accent); outline-offset:3px;
+}
+html[data-theme] :is(.v2-page-head h2,.section-heading h2) { letter-spacing:-.025em; line-height:1.15; }
+html[data-theme] :is(.exercise-head h3,.exercise-result-copy h3) { overflow-wrap:anywhere; line-height:1.3; }
+html[data-theme][data-train-presentation] #activeExercises .active-exercise[data-exercise-state] {
+  opacity:1; filter:none; background:var(--ui-surface); border:1px solid var(--line);
+  padding:16px; box-shadow:none;
+}
+html[data-theme][data-train-presentation] #activeExercises .active-exercise.is-active {
+  border-inline-start:3px solid var(--accent);
+}
+html[data-theme][data-train-presentation] #activeExercises .active-exercise.is-collapsed {
+  padding:12px 16px; min-height:76px;
+}
+html[data-theme][data-train-presentation] #activeExercises :is(.exercise-head h3,.collapsed-summary strong) {
+  color:var(--ui-text); font-size:1rem; line-height:1.3;
+}
+html[data-theme][data-train-presentation] #activeExercises .active-exercise.is-active:not(.is-collapsed) h3 {
+  font-size:1.375rem;
+}
+html[data-theme][data-train-presentation] #activeExercises :is(.exercise-head p,.collapsed-summary small,.exercise-muscle,.exercise-context,.exercise-context strong,.stepper-label,.stepper-unit) {
+  color:var(--ui-secondary); font-size:.8125rem; line-height:1.4;
+}
+html[data-theme][data-train-presentation] #activeExercises .exercise-state-label {
+  font-size:.75rem; letter-spacing:.03em; color:var(--ui-secondary);
+}
+html[data-theme][data-train-presentation] #activeExercises .is-active .exercise-state-label { color:var(--accent); }
+html[data-theme][data-train-presentation] #activeExercises .is-complete .exercise-state-label { color:var(--ui-success); }
+html[data-theme][data-train-presentation] #activeExercises .set-line {
+  opacity:1; filter:none; background:transparent; box-shadow:none; transform:none;
+}
+html[data-theme][data-train-presentation] #activeExercises .set-line.is-current {
+  background:var(--ui-surface-raised); border-color:var(--accent-border,var(--accent));
+}
+html[data-theme][data-train-presentation] #activeExercises :is(.stepper button,.stepper input,.set-done,.set-remove,.exercise-head button) {
+  min-width:44px; min-height:44px; height:44px; opacity:1;
+  border-radius:var(--ui-radius-control); box-shadow:none;
+}
+html[data-theme][data-train-presentation] #activeExercises .stepper-control { grid-template-columns:44px minmax(0,1fr) 44px; }
+html[data-theme][data-train-presentation] #activeExercises .stepper input {
+  background:var(--ui-canvas); color:var(--ui-text); border-color:var(--ui-control-border);
+}
+html[data-theme][data-train-presentation] #activeExercises .stepper button {
+  background:var(--ui-surface-raised); color:var(--ui-text); width:44px;
+}
+html[data-theme][data-train-presentation] #activeExercises .set-line.completed .set-done {
+  background:var(--ui-surface-raised); color:var(--ui-success); border-color:var(--ui-control-border);
+}
+html[data-theme][data-train-presentation] #activeExercises .set-remove { background:var(--ui-surface-raised); color:var(--ui-secondary); }
+html[data-theme][data-train-presentation] #activeExercises .set-remove.is-confirming { color:var(--ui-error); border-color:var(--ui-error); }
+html[data-theme][data-train-presentation] :is(.active-exercise-unit-choice button,.exercise-notes summary,#timerCard button) { min-height:44px; }
+html[data-theme][data-train-presentation] #timerCard { background:var(--ui-surface); color:var(--ui-text); box-shadow:none; }
+html[data-theme][data-train-presentation] #timerCard :is(strong,#timerNext,.timer-context) { color:var(--ui-text); }
+html[data-theme][data-train-presentation] .train-preview:not([hidden]) { display:block; }
+html[data-theme][data-train-presentation] #viewTrain>.train-empty { display:none; }
+html[data-theme][data-train-presentation] :is(.train-preview-row strong,.train-preview-header h2) { color:var(--ui-text); }
+html[data-theme][data-train-presentation] :is(.train-preview-row small,.train-preview-header p,.train-preview-action p) { color:var(--ui-secondary); }
+html[data-theme][data-train-presentation] :is(.train-preview-action,.train-plan-picker button) { background:var(--ui-surface); border-color:var(--line); }
+html[data-theme][data-train-presentation] .train-plan-picker button { color:var(--ui-secondary); }
+html[data-theme][data-train-presentation] .train-plan-picker button[aria-pressed="true"] { color:var(--accent); border-color:var(--accent); }
+@media(max-width:600px) {
+  html[data-theme] .app-shell { padding-inline:16px; }
+  html[data-theme] .panel { padding:16px; }
+  html[data-theme][data-train-presentation] .exercise-head { gap:8px; }
+  html[data-theme][data-train-presentation] .exercise-head>div:first-child { min-width:0; }
+}
+@media(min-width:390px) and (max-width:600px) { html[data-theme] .app-shell { padding-inline:20px; } }
+@media(prefers-reduced-motion:reduce) { html[data-theme] *,html[data-theme] *::before,html[data-theme] *::after { scroll-behavior:auto; transition:none; } }
+
+/* Workout interaction layer: one enclosing surface, direct entries, disclosed adjustments. */
+html[data-theme][data-train-presentation] #activeExercises .exercise-head { padding:0; display:grid; grid-template-columns:minmax(0,1fr) 48px; align-items:start; }
+html[data-theme][data-train-presentation] #activeExercises .exercise-head-actions { display:flex; flex-wrap:wrap; gap:8px; }
+html[data-theme][data-train-presentation] #activeExercises .active-exercise-body { padding:0; }
+html[data-theme][data-train-presentation] #activeExercises .active-exercise-unit-choice { margin:12px 0; }
+html[data-theme][data-train-presentation] #activeExercises .is-collapsed .active-exercise-unit-choice { margin:8px 0 0; }
+html[data-theme][data-train-presentation] #activeExercises .is-collapsed .active-exercise-unit-choice button[aria-pressed="true"] { background:var(--ui-surface-raised); color:var(--accent); border:1px solid var(--accent); }
+html[data-theme][data-train-presentation] #activeExercises .is-collapsed { cursor:pointer; }
+html[data-theme][data-train-presentation] #activeExercises .collapsed-summary { padding:8px 0 0; margin:0; border:0; background:transparent; gap:8px; }
+html[data-theme][data-train-presentation] #activeExercises .collapsed-summary span { color:var(--ui-secondary); font-size:.8125rem; white-space:nowrap; }
+html[data-theme][data-train-presentation] #activeExercises .exercise-context { padding:0 0 12px; margin:0; border:0; background:transparent; box-shadow:none; }
+html[data-theme][data-train-presentation] #activeExercises .set-section { border:0; border-top:1px solid var(--line); padding:0; margin:0; background:transparent; }
+html[data-theme][data-train-presentation] #activeExercises .set-section-heading { display:flex; align-items:center; justify-content:space-between; min-height:44px; }
+html[data-theme][data-train-presentation] #activeExercises .set-section-heading h4 { margin:0; color:var(--ui-text); font-size:.875rem; font-weight:700; }
+html[data-theme][data-train-presentation] #activeExercises .set-section-heading button { width:44px; height:44px; min-width:44px; min-height:44px; padding:0; background:var(--ui-surface-raised); color:var(--accent); border:1px solid var(--line); border-radius:10px; font-size:1.5rem; }
+html[data-theme][data-train-presentation] #activeExercises .set-grid { margin:0 0 8px; gap:6px; }
+html[data-theme][data-train-presentation] #activeExercises .compact-set {
+  display:grid; grid-template-columns:18px minmax(64px,1.3fr) minmax(44px,1fr) 44px 44px 44px;
+  gap:4px; align-items:end; padding:6px 0; border:0; border-radius:8px;
+}
+html[data-theme][data-train-presentation] #activeExercises .compact-set .set-row-meta { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+html[data-theme][data-train-presentation] #activeExercises .compact-set .set-number { grid-column:1; grid-row:1; width:18px; min-width:0; height:44px; align-self:end; border:0; background:transparent; font-size:.8125rem; }
+html[data-theme][data-train-presentation] #activeExercises .compact-set .stepper { grid-column:auto; grid-row:1; margin:0; gap:4px; }
+html[data-theme][data-train-presentation] #activeExercises .compact-set .stepper-control { display:block; }
+html[data-theme][data-train-presentation] #activeExercises .compact-set .stepper-label { display:block; font-size:.75rem; letter-spacing:0; text-transform:none; padding:0; overflow-wrap:anywhere; }
+html[data-theme][data-train-presentation] #activeExercises .compact-set .stepper input { width:100%; padding:0 4px; font-size:1rem; font-variant-numeric:tabular-nums; }
+html[data-theme][data-train-presentation] #activeExercises .compact-set :is(.set-done,.set-remove,.set-adjustment-toggle) { grid-column:auto; grid-row:1; align-self:end; width:44px; height:44px; min-width:44px; min-height:44px; padding:0; border-radius:10px; }
+html[data-theme][data-train-presentation] #activeExercises .compact-set .set-done-text { display:none; }
+html[data-theme][data-train-presentation] #activeExercises .set-adjustment-toggle { border:1px solid var(--ui-control-border); background:var(--ui-surface-raised); color:var(--ui-text); font-size:1.125rem; }
+html[data-theme][data-train-presentation] #activeExercises .set-adjustment-toggle[aria-expanded="true"] { border-color:var(--accent); color:var(--accent); }
+html[data-theme][data-train-presentation] #activeExercises .set-adjustments:not([hidden]) { grid-column:1/-1; display:grid; gap:6px; padding:8px 0; }
+html[data-theme][data-train-presentation] #activeExercises .set-adjustments[hidden] { display:none; }
+html[data-theme][data-train-presentation] #activeExercises .set-adjustments>div { display:grid; grid-template-columns:minmax(0,1fr) 44px 44px; align-items:center; gap:8px; }
+html[data-theme][data-train-presentation] #activeExercises .set-adjustments button { min-width:44px; min-height:44px; padding:0; border:1px solid var(--ui-control-border); background:var(--ui-surface-raised); color:var(--ui-text); border-radius:10px; }
+html[data-theme][data-train-presentation] #activeExercises :is(.add-set,.exercise-management summary,.exercise-notes summary) { min-height:44px; padding:12px 0; font-size:.875rem; }
+html[data-theme][data-train-presentation] #activeExercises .add-set { width:100%; justify-content:center; margin:0 0 8px; padding:10px; border:1px solid var(--line); color:var(--accent); background:transparent; }
+html[data-theme][data-train-presentation] #activeExercises :is(.exercise-management,.exercise-notes) { border:0; border-top:1px solid var(--line); border-radius:0; background:transparent; margin:0; padding:0; }
+html[data-theme][data-train-presentation] #activeExercises .exercise-management button { min-width:44px; min-height:44px; }
+html[data-theme][data-train-presentation] #activeExercises .exercise-management button:disabled { color:var(--ui-secondary); border-style:dashed; cursor:default; }
+@media(max-width:374px) {
+  html[data-theme][data-train-presentation] #activeExercises .compact-set { grid-template-columns:18px minmax(64px,1.3fr) minmax(44px,1fr) 44px; }
+  html[data-theme][data-train-presentation] #activeExercises .compact-set .set-adjustment-toggle { grid-row:2; grid-column:3; }
+  html[data-theme][data-train-presentation] #activeExercises .compact-set .set-remove { grid-row:2; grid-column:4; }
+}
+
+html[data-theme][data-train-presentation] #activeExercises .compact-set .stepper-unit { position:static; transform:none; font-size:.75rem; }
+
+html[data-theme][data-train-presentation] #activeExercises .collapsed-summary>span small { display:block; white-space:normal; text-align:end; }
+html[data-theme][data-train-presentation] body #timerCard :is(.timer-actions,.timer-preferences,.timer-presets) button { min-height:44px; min-width:44px; }
+
+html[data-theme][data-train-presentation] #activeExercises .compact-set:not(:first-child) .stepper-label { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); }
+
+/* Inventory presentation is shared; each caller retains selection ownership. */
+html[data-theme] :is(.exercise-picker-dialog,.exercise-picker-controls,.exercise-picker-result,.exercise-result-row,.exercise-picker-trigger) { background:var(--ui-surface); color:var(--ui-text); border-color:var(--line); box-shadow:none; }
+html[data-theme] :is(.exercise-picker-head,.exercise-picker-controls,.exercise-picker-section+.exercise-picker-section) { border-color:var(--line); }
+html[data-theme] :is(.exercise-picker-head p,.exercise-picker-search span,.exercise-picker-filter span,.exercise-result-copy p,.exercise-picker-section-head span,.exercise-picker-empty p) { color:var(--ui-secondary); }
+html[data-theme] :is(.exercise-picker-search input,.exercise-picker-filter select) { min-height:44px; font-size:1rem; color:var(--ui-text); background:var(--ui-canvas); border-color:var(--ui-control-border); }
+html[data-theme] :is(.exercise-picker-result-state,.exercise-picker-trigger small) { color:var(--accent); }
+html[data-theme] .exercise-picker-result.is-current { border-color:var(--accent); background:var(--accent-soft,var(--ui-surface-raised)); }
+html[data-theme] .exercise-picker-result.is-current .exercise-picker-result-state { color:var(--accent); }
+html[data-theme] .exercise-picker-result:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-color:var(--accent); }
+html[data-theme] .exercise-picker-result:hover { background:var(--ui-surface-raised); border-color:var(--accent); }
+html[data-theme] :is(.exercise-picker-result,.exercise-result-row) { min-height:72px; padding:12px 0; border:0; border-bottom:1px solid var(--line); border-radius:0; gap:12px; }
+html[data-theme] :is(.exercise-picker-list,.exercise-library) { display:grid; grid-template-columns:minmax(0,1fr); gap:0; }
+html[data-theme] .exercise-result-copy h3 { font-size:1rem; line-height:1.3; margin:0 0 4px; }
+html[data-theme] .exercise-result-copy p { font-size:.8125rem; line-height:1.4; }
+html[data-theme] .exercise-card-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:4px; max-width:116px; }
+html[data-theme] .exercise-card-actions button { min-height:44px; min-width:44px; padding:8px; font-size:.8125rem; background:var(--ui-surface-raised); color:var(--ui-text); border:1px solid var(--line); }
+html[data-theme] .exercise-card-actions .add-exercise { color:var(--accent); }
+html[data-theme] #libraryInventory { padding:0; background:transparent; border:0; }
+html[data-theme] #libraryInventory .library-toolbar { margin-top:0; }
+html[data-theme] .library-exercise-filters { grid-template-columns:1fr 1fr; gap:12px; }
+html[data-theme] .library-exercise-filters .search-box { grid-column:1/-1; }
+html[data-theme] .exercise-picker-filter-row>button { min-height:44px; }
+
+html[data-theme] #exerciseLibrary .exercise-result-row { display:grid; grid-template-columns:minmax(0,1fr) auto; background:transparent; border:0; border-bottom:1px solid var(--line); border-radius:0; box-shadow:none; color:var(--ui-text); }
+html[data-theme] .library-sections { position:sticky; top:0; z-index:8; display:flex; gap:8px; padding:8px 0; margin-bottom:12px; background:var(--ui-canvas); }
+html[data-theme] .library-sections button { min-height:44px; flex:1; color:var(--ui-text); background:var(--ui-surface-raised); border:1px solid var(--line); border-radius:10px; }
+html[data-theme] :is(#libraryInventory,#workoutPanel) { scroll-margin-top:72px; }
+
+/* One card language; the next action leads and supporting context follows. */
+html[data-theme] #viewToday .today-stage { display:flex; flex-direction:column; gap:16px; }
+html[data-theme] #viewToday .today-stage > * { width:100%; box-sizing:border-box; }
+html[data-theme] #viewToday :is(.session-selector-card,.today-plan-card,#todayBlankCard),
+html[data-theme] :is(.plan-overview-card,.history-item,.routine-editor-item) { background:var(--ui-surface); border:1px solid var(--line); border-radius:16px; box-shadow:none; }
+html[data-theme] #viewToday .today-stage > .is-priority { border-color:var(--ui-action-fill,var(--accent)); padding:16px; }
+html[data-theme] #viewToday .today-stage > #sessionTypeSelector.is-priority { padding:8px; }
+html[data-theme] #viewToday .today-stage > :not(.is-priority) .primary { background:var(--ui-surface-raised)!important; color:var(--text)!important; border-color:var(--line)!important; }
+html[data-theme] #viewToday .today-plan-card { margin:0; padding:16px; }
+html[data-theme] #viewToday .today-plan-card h2 { font-size:22px; letter-spacing:-.025em; }
+html[data-theme] #viewToday .today-plan-actions { display:flex; flex-wrap:wrap; gap:8px; }
+html[data-theme] #viewToday .today-plan-actions button { min-height:44px; }
+html[data-theme] #viewToday .today-plan-actions .primary { width:100%; }
+html[data-theme] .more-inventory { border:1px solid var(--line); border-radius:16px; overflow:hidden; }
+html[data-theme] .more-inventory button { display:flex; align-items:center; justify-content:space-between; text-align:left; width:100%; min-height:84px; padding:16px; border:0; border-radius:0; border-bottom:1px solid var(--line); background:var(--ui-surface); color:var(--text); }
+html[data-theme] .more-inventory button:last-child { border-bottom:0; }
+html[data-theme] .more-inventory strong { display:block; font-size:17px; }
+html[data-theme] .more-inventory small { display:block; margin-top:4px; color:var(--ui-secondary); font-size:13px; line-height:1.4; }
+html[data-theme][data-appearance-version] .bottom-nav button.active:not([data-view="train"]) { background:var(--ui-surface-raised)!important; color:var(--text)!important; border-color:var(--line)!important; }
+html[data-theme][data-appearance-version] .bottom-nav button[data-view="train"] { background:var(--ui-action-fill)!important; color:var(--ui-action-text)!important; border-color:var(--ui-action-fill)!important; }
+html[data-theme] .bottom-nav button[data-view="more"]::before { content:'⋯'; }
+html[data-theme] #progressOverviewSurface > .v2-page-head { display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between; }
+html[data-theme] #progressOverviewSurface > .v2-page-head button { min-height:44px; }
+html[data-theme] #viewToday #todayBlankCard[hidden],html[data-theme] #todayPlanActions button[hidden] { display:none!important; }
+html[data-theme] body:not([data-view="today"]):not([data-view="train"]) .topbar h1 { display:none; }
+html[data-theme] #exerciseLibrary .exercise-card-actions { display:flex; flex-direction:row; gap:8px; align-items:center; }
+html[data-theme] #exerciseLibrary .exercise-card-actions button { padding:8px; }
+html[data-theme] :is(.plan-peer-card,.plan-cycle-slot,.history-archive-card,.routine-prescription-row) { background:var(--ui-surface); border:1px solid var(--line); border-radius:var(--ui-radius-card); box-shadow:none; }
+html[data-theme] :is(.plan-cycle-slot,.routine-prescription-row) summary { min-height:44px; }
+html[data-theme] :is(.routine-row-actions,.program-row-actions) button { min-width:44px; min-height:44px; }
+
+html[data-theme] #exerciseLibrary .exercise-card-actions { flex-wrap:nowrap; flex-shrink:0; max-width:none; }
+html[data-theme] #viewToday .today-goals-card { background:var(--ui-surface); border:1px solid var(--line); padding:12px; }
+html[data-theme] #viewToday .today-goals-open { background:transparent; border:0; padding:4px; box-shadow:none; }
+html[data-theme] #viewToday #todayGoalsHeadline { font-size:18px; line-height:1.3; }
+html[data-theme] #viewToday #todayGoalsDetail { font-size:13px; line-height:1.4; }
+html[data-theme] #viewToday .today-goals-copy .label,html[data-theme] #viewToday #todayGoalsStatus { color:var(--ui-secondary); font-size:11px; }
+html[data-theme] #viewToday #selectedSessionLabel { font-size:22px; line-height:1.2; }
+
+html[data-theme][data-train-presentation] #activeExercises .set-line.completed .set-done { background:var(--ui-surface-raised)!important; color:var(--ui-success)!important; border-color:var(--ui-success)!important; }
+
+html[data-theme] .library-az-label { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+html[data-theme] #libraryScopeLabel { flex:1; min-width:130px; }

@@ -1,6 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { waitForControlledAppShell } from './helpers/app.js';
+import { expect } from '@playwright/test';
+import { test } from './helpers/network-outage.js';
 import { activeWorkout, blankState, completedWorkout, readStoredJson, STORAGE_KEYS } from './fixtures/local-storage.js';
-import { openApp } from './helpers/app.js';
+import { openApp, openExerciseOptions } from './helpers/app.js';
 
 const unitPreference = weightUnit => ({ contractVersion: 1, weightUnit });
 
@@ -238,12 +240,12 @@ test('completed History and retrospective editing ignore any legacy-looking work
   expect(await page.evaluate(() => JSON.stringify(state.workouts).includes('displayUnitOverride'))).toBe(false);
 });
 
-test('active override and canonical edits survive an offline reload', async ({ page, context }) => {
+test('active override and canonical edits survive an offline reload', async ({ page, context, setAppNetworkUnavailable }) => {
   await installState(page, { ...blankState('jorge'), activeWorkout: activeWorkout() });
-  await page.evaluate(() => navigator.serviceWorker.ready);
+  await waitForControlledAppShell(page);
   await chooseExerciseUnit(page, 'kg');
   await weightInput(page, 0, 1).fill('100');
-  await context.setOffline(true);
+  await setAppNetworkUnavailable(true);
   try {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await expect(page).toHaveTitle('Big Gains');
@@ -251,7 +253,7 @@ test('active override and canonical edits survive an offline reload', async ({ p
     await expect(weightInput(page, 0, 1)).toHaveValue('100');
     expect((await readStoredJson(page, STORAGE_KEYS.jorge)).activeWorkout.exercises[0].sets[1].weight).toBeCloseTo(220.46226218, 8);
   } finally {
-    await context.setOffline(false);
+    await setAppNetworkUnavailable(false);
   }
 });
 
@@ -390,12 +392,15 @@ test('real Program materialization and Routine versions remain identical through
 test('reorder keeps choices with exercise identity and unit toggle disarms removal confirmation', async ({ page }) => {
   await installState(page, { ...blankState('jorge'), activeWorkout: semanticActiveWorkout() });
   await chooseExerciseUnit(page, 'kg', 0);
+  await openExerciseOptions(page, 'Seated Machine Chest Press');
   await page.locator('[data-move-exercise="down"][data-index="0"]').click();
   await expect(unitButton(page, 'kg', 1)).toHaveAttribute('aria-pressed', 'true');
   await expect(unitButton(page, 'lb', 0)).toHaveAttribute('aria-pressed', 'true');
+  await openExerciseOptions(page, 'Seated Machine Chest Press');
   await page.locator('[data-remove-exercise="1"]').click();
   await expect(page.locator('[data-remove-exercise="1"]')).toHaveText('Sure?');
   await chooseExerciseUnit(page, 'lb', 1);
+  await openExerciseOptions(page, 'Seated Machine Chest Press');
   await page.locator('[data-remove-exercise="1"]').click();
   await expect(page.locator('[data-remove-exercise="1"]')).toHaveText('Sure?');
   expect((await readStoredJson(page, STORAGE_KEYS.jorge)).activeWorkout.exercises).toHaveLength(3);

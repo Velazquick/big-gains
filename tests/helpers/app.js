@@ -24,3 +24,27 @@ export async function startSelectedSession(page) {
 export async function jorgeState(page) {
   return readStoredJson(page, STORAGE_KEYS.jorge);
 }
+
+export async function openExerciseOptions(page, name) {
+  const card=page.locator('#activeExercises .active-exercise').filter({has:page.getByRole('heading',{name,exact:true})});
+  if(await card.evaluate(e=>e.classList.contains('is-collapsed'))) await card.locator('.exercise-toggle').click();
+  const details=card.locator('.exercise-management');
+  if(!await details.evaluate(e=>e.open)) await details.locator('summary').click();
+}
+export async function openSetAdjustments(page, exerciseIndex, setIndex) {
+  const toggle=page.locator(`[data-set-adjustments="${setIndex}"][data-ei="${exerciseIndex}"]`);
+  if(await toggle.getAttribute('aria-expanded')!=='true') await toggle.click();
+}
+
+export async function openLibraryFromMore(page) {
+  await page.locator('.bottom-nav [data-view="more"]').click();
+  await page.locator('#moreLibrary').click();
+  await expect(page.locator('body')).toHaveAttribute('data-view','library');
+}
+
+export async function waitForControlledAppShell(page) {
+  await page.evaluate(async()=>{
+    await navigator.serviceWorker.ready;
+    if(!navigator.serviceWorker.controller)await new Promise(resolve=>navigator.serviceWorker.addEventListener('controllerchange',resolve,{once:true}));
+  });
+}

@@ -1,3 +1,4 @@
+import { openLibraryFromMore } from './helpers/app.js';
 import { createHash } from 'node:crypto';
 import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
@@ -339,7 +340,7 @@ test('Jorge stays day-filtered while Alexa retains the full managed library', as
   await page.clock.setFixedTime(new Date('2026-08-10T12:00:00.000Z'));
   await installLocalStorageFixture(page, ['blankJorge', 'blankAlexa'], { activeProfile: 'jorge' });
   await openApp(page);
-  await page.locator('.bottom-nav [data-view="library"]').click();
+  await openLibraryFromMore(page);
 
   const jorgeRows = await page.locator('#exerciseLibrary .exercise-card').evaluateAll(cards => cards.map(card => ({ id: card.querySelector('[data-add]').dataset.add, name: card.querySelector('h3').textContent })));
   const jorgeIds = jorgeRows.map(row => row.id);
@@ -348,7 +349,7 @@ test('Jorge stays day-filtered while Alexa retains the full managed library', as
   expect(jorgeIds).toEqual(expect.arrayContaining(['cable-chest-press', 'dip-machine', 'machine-lateral-raise']));
 
   await Promise.all([page.waitForNavigation(), page.locator('#profileSelect').selectOption('alexa')]);
-  await page.locator('.bottom-nav [data-view="library"]').click();
+  await openLibraryFromMore(page);
   const alexaRows = await page.locator('#exerciseLibrary .exercise-card').evaluateAll(cards => cards.map(card => ({ id: card.querySelector('[data-add]').dataset.add, name: card.querySelector('h3').textContent })));
   expect(new Set(alexaRows.map(row => row.id))).toEqual(new Set(ALL_CANONICAL_IDS));
   expect(alexaRows.map(row => row.name)).toEqual(alexaRows.map(row => row.name).sort((left, right) => left.localeCompare(right, 'en', { numeric: true, sensitivity: 'base' })));
@@ -358,7 +359,7 @@ test('SZW retains the full library and every six-day routine entry resolves cano
   await page.clock.setFixedTime(new Date('2026-08-10T12:00:00.000Z'));
   await installSzwRuntime(page);
   await openApp(page);
-  await page.locator('.bottom-nav [data-view="library"]').click();
+  await openLibraryFromMore(page);
 
   const result = await page.evaluate(() => {
     const catalog = window.BigGainsExerciseCatalog;

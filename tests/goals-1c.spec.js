@@ -108,7 +108,8 @@ test('G1-4.8/G1-4.9/G1-5.3: baseline copy is honest, editable, and stable across
   await expect(page.locator('[data-goal-guidance-status="available"]')).toContainText('Today: 190 lb × 5 · 4 sets');
   await expect(page.locator('[data-goal-guidance-status="available"]')).toContainText('Using your recent working load');
 
-  const workingInputs = page.locator('.active-exercise').first().locator('.set-line:not(:first-child)');
+  const workingInputs = page.locator('.active-exercise').first().locator('.set-section[aria-label="Working sets"] .set-line');
+  const editedSetId = await workingInputs.first().getAttribute('data-set-id');
   await workingInputs.first().locator('input[data-field="weight"]').fill('185');
   await workingInputs.first().locator('input[data-field="reps"]').fill('4');
   await page.evaluate(newExposure => {
@@ -116,8 +117,8 @@ test('G1-4.8/G1-4.9/G1-5.3: baseline copy is honest, editable, and stable across
     saveState();
   }, exposure({ id: 'remote-history-after-session', completedAt: '2026-08-19T17:00:00.000Z', load: 205, reps: [6, 6, 6, 6] }));
   await page.reload();
-  await expect(page.locator('.active-exercise').first().locator('input[data-field="weight"]').nth(1)).toHaveValue('185');
-  await expect(page.locator('.active-exercise').first().locator('input[data-field="reps"]').nth(1)).toHaveValue('4');
+  await expect(page.locator(`[data-set-id="${editedSetId}"] input[data-field="weight"]`)).toHaveValue('185');
+  await expect(page.locator(`[data-set-id="${editedSetId}"] input[data-field="reps"]`)).toHaveValue('4');
   await expect(page.locator('[data-goal-guidance-status="available"]')).toContainText('Today: 190 lb × 5 · 4 sets');
   expect((await readStoredJson(page, STORAGE_KEYS.jorge)).version).toBe(5);
 });

@@ -66,7 +66,7 @@
     const canonicalId = exercise.canonicalId;
     const semantics = measurementLabel(exercise);
     const metadata = [exercise.muscle, exercise.equipment, semantics].filter(Boolean);
-    const content = `<div class="exercise-result-copy"><span class="exercise-muscle">${escapeHtml(exercise.muscle || 'Exercise')}</span><h3>${escapeHtml(exercise.name)}</h3><p>${metadata.slice(1).map(escapeHtml).join(' <span aria-hidden="true">·</span> ')}</p></div>`;
+    const content = `<div class="exercise-result-copy"><h3>${escapeHtml(exercise.name)}</h3><p>${metadata.map(escapeHtml).join(' <span aria-hidden="true">·</span> ')}</p></div>`;
     if (mode === 'library') {
       return `<article class="exercise-card exercise-result-row ${added ? 'added' : ''}" data-exercise-canonical-id="${escapeHtml(canonicalId)}">${content}<button type="button" class="add-exercise primary compact" data-add="${escapeHtml(exercise.id)}">${escapeHtml(added ? 'Added' : actionLabel)}</button></article>`;
     }
