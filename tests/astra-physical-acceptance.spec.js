@@ -14,6 +14,16 @@ async function instrument(page) {
   });
 }
 const frames=page=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))));
+test('blank workout gets its first stable anchor when the first exercise is added',async({page})=>{
+  await instrument(page);await installLocalStorageFixture(page,'blankJorge');await openApp(page);
+  await page.locator('.bottom-nav [data-view="train"]').click();await page.locator('#trainBlankStart').click();
+  await expect(page.locator('#exercisePickerDialog')).toBeVisible();await page.locator('#exercisePickerSearch').fill('Incline Iso Machine Press');
+  await page.locator('.exercise-picker-all [data-exercise-picker-select]').filter({hasText:'Incline Iso Machine Press'}).click();
+  await expect(page.locator('#exercisePickerDialog')).toBeHidden();await frames(page);
+  const card=page.locator('#activeExercises .is-active');await expect(card).toHaveAttribute('data-exercise-id','incline-iso-machine-press');
+  await expect(card.locator('.set-line').first()).toBeInViewport({ratio:1});
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k=>k.startsWith('big-gains-train-position')))).exerciseId)).toBe('incline-iso-machine-press');
+});
 test('inactive summaries surround the unchanged working card at 390px',async({page},info)=>{
   await instrument(page);await installLocalStorageFixture(page,'activeWorkoutWithTwoExercises');await openApp(page);
   await page.evaluate(()=>{

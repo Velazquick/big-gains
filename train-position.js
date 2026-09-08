@@ -153,7 +153,7 @@
     function afterRender() {
       const current = context();
       if (!current) return;
-      if (!coldChecked) {
+      if (!coldChecked || (!record && onTrain() && current.workout.exercises.length)) {
         coldChecked = true;
         if (onTrain()) requestRestore({ fallback: true });
       }
