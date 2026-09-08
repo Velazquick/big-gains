@@ -162,7 +162,8 @@ test('bottom Add Exercise action stays separate from the timer and meets the mob
 
   const workoutId = (await jorgeState(page)).activeWorkout.id;
   await action.click();
-  await expect(page.locator('body')).toHaveAttribute('data-view', 'library');
+  await expect(page.locator('#exercisePickerDialog')).toBeVisible();
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'train');
   expect((await jorgeState(page)).activeWorkout.id).toBe(workoutId);
 });
 

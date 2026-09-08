@@ -36,6 +36,7 @@ const productionScriptOrder = [
   'goals-train-guidance.js',
   'workout-session-controller.js',
   'workout-controls.js',
+  'train-position.js',
   'notes.js',
   'timer-controller.js',
   'progress.js',
