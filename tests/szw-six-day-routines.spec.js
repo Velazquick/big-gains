@@ -264,7 +264,7 @@ test('Dips and Pull-Up complete at zero load while weighted movements still requ
     }, { type, exerciseName });
     await page.evaluate(() => window.bigGainsViewShell.showView('train'));
     const card = page.locator('.active-exercise').filter({ has: page.getByRole('heading', { name: exerciseName }) });
-    await expect(card.locator('.weight-stepper .stepper-label').first()).toHaveText('Added weight');
+    await expect(card.locator('.exercise-head p')).toContainText('Added weight');
     await expect(card.locator('.weight-stepper input').first()).toHaveAttribute('aria-label', 'Added weight');
     await card.locator('.set-line').nth(1).locator('[data-complete-set]').click();
     const stored = await storedSzwState(page);

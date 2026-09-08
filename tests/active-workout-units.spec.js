@@ -1,5 +1,6 @@
 import { waitForControlledAppShell } from './helpers/app.js';
-import { expect, test } from '@playwright/test';
+import { expect } from '@playwright/test';
+import { test } from './helpers/network-outage.js';
 import { activeWorkout, blankState, completedWorkout, readStoredJson, STORAGE_KEYS } from './fixtures/local-storage.js';
 import { openApp, openExerciseOptions } from './helpers/app.js';
 
@@ -239,12 +240,12 @@ test('completed History and retrospective editing ignore any legacy-looking work
   expect(await page.evaluate(() => JSON.stringify(state.workouts).includes('displayUnitOverride'))).toBe(false);
 });
 
-test('active override and canonical edits survive an offline reload', async ({ page, context }) => {
+test('active override and canonical edits survive an offline reload', async ({ page, context, setAppNetworkUnavailable }) => {
   await installState(page, { ...blankState('jorge'), activeWorkout: activeWorkout() });
   await waitForControlledAppShell(page);
   await chooseExerciseUnit(page, 'kg');
   await weightInput(page, 0, 1).fill('100');
-  await context.setOffline(true);
+  await setAppNetworkUnavailable(true);
   try {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await expect(page).toHaveTitle('Big Gains');
@@ -252,7 +253,7 @@ test('active override and canonical edits survive an offline reload', async ({ p
     await expect(weightInput(page, 0, 1)).toHaveValue('100');
     expect((await readStoredJson(page, STORAGE_KEYS.jorge)).activeWorkout.exercises[0].sets[1].weight).toBeCloseTo(220.46226218, 8);
   } finally {
-    await context.setOffline(false);
+    await setAppNetworkUnavailable(false);
   }
 });
 
