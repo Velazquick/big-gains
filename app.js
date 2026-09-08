@@ -323,7 +323,7 @@ function renderTodayPriority(){
   const stage=document.querySelector('.today-stage');if(!stage)return;
   const next=window.BigGainsProgramSetup?.nextSessionPresentation();
   const selection=window.sessionSelector?.selection();
-  const priority=active?'resume':next?'program':selection?.count?'routine':'freeform';
+  const priority=active?'resume':next?'program':selection?.isSelected&&selection.count?'routine':'freeform';
   stage.dataset.priority=priority;
   const head=document.querySelector('#viewToday .v2-page-head');
   head.querySelector('h2').textContent=active?'Your workout is waiting.':next?'Your next session.':'Ready when you are.';

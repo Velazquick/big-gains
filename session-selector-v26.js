@@ -13,6 +13,7 @@
   const SESSION_TYPES = (PROFILE.sessionTypes || DEFAULT_SESSION_TYPES).map(type => ({ ...type }));
 
   let selectedType = 'Push';
+  let explicitlySelected = false;
   let expanded = false;
   let initialized = false;
 
@@ -82,6 +83,7 @@
     }
     if (!SESSION_TYPES.some(item => item.key === key)) return;
     selectedType = key;
+    explicitlySelected = true;
     if (typeof selectedDay !== 'undefined') selectedDay = key;
     render();
     setExpanded(false);
@@ -247,6 +249,7 @@
       const normalized = normalizeType(event.target.closest('[data-day]')?.dataset.day);
       if (normalized) {
         selectedType = normalized;
+        explicitlySelected = true;
         window.setTimeout(render, 0);
       }
     });
@@ -262,5 +265,5 @@
     return true;
   }
 
-  window.sessionSelector = Object.freeze({ initialize, render, selection: () => ({ selectedType, count: (window.workoutRoutineEngine?.getRoutine(selectedType) || []).filter(id => window.BigGainsExerciseCatalog?.getById(id)).length }) });
+  window.sessionSelector = Object.freeze({ initialize, render, selection: () => ({ selectedType, isSelected: window.bigGainsAccounts?.runtime.kind !== 'independent' || explicitlySelected || Array.isArray(state.customRoutines?.[selectedType]), count: (window.workoutRoutineEngine?.getRoutine(selectedType) || []).filter(id => window.BigGainsExerciseCatalog?.getById(id)).length }) });
 })();

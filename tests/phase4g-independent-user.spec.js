@@ -509,3 +509,11 @@ test('independent production transport recovers a lost ACK and preserves friend 
   expect(result.deleteRetry).toMatchObject({ ok: true, duplicate: true, remoteVersion: 2 });
   expect(result).toMatchObject({ workoutRows: 1, tombstones: 1, current: 0 });
 });
+
+test('independent Today distinguishes available default routines from a deliberate selection',async({page})=>{
+ await installIndependentRuntime(page);await openApp(page);
+ await expect(page.locator('.today-stage')).toHaveAttribute('data-priority','freeform');
+ await page.locator('#sessionSelectorToggle').click();await page.locator('[data-session-type="Core"]').click();
+ await expect(page.locator('.today-stage')).toHaveAttribute('data-priority','routine');await expect(page.locator('#selectedSessionLabel')).toHaveText('Core');
+ expect(await page.evaluate(()=>active)).toBe(null);
+});
