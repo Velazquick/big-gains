@@ -34,9 +34,7 @@
       card.dataset.notesReady = '1';
       const controls = noteControls({ exercise, index, state, defaultRest, escapeHtml });
       const addSet = card.querySelector('[data-add-set]');
-      const management = card.querySelector('.exercise-management');
-      if (management) management.insertAdjacentHTML('beforebegin', controls);
-      else if (addSet) addSet.insertAdjacentHTML('beforebegin', controls);
+      if (addSet) addSet.insertAdjacentHTML('beforebegin', controls);
       else card.insertAdjacentHTML('beforeend', controls);
     });
   }

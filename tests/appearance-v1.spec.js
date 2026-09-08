@@ -1,4 +1,3 @@
-import { openLibraryFromMore } from './helpers/app.js';
 import { expect, test } from '@playwright/test';
 import { blankState, completedWorkout, installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
@@ -80,7 +79,7 @@ for (const profile of ['jorge','alexa']) for (const name of names) {
     await page.locator('#cancelDeleteCompletedWorkout').click();
     await page.locator('#closeHistoryDialog').click();
     for(const view of ['plan','library','today']) {
-      if(view==='library') await openLibraryFromMore(page); else await page.locator(`.bottom-nav [data-view="${view}"]`).click();
+      await page.locator(`.bottom-nav [data-view="${view}"]`).click();
       await expect(page.locator(`#view${title(view)}`)).toBeVisible();
     }
     await page.reload();

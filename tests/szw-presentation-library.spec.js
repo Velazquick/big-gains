@@ -1,4 +1,3 @@
-import { openLibraryFromMore } from './helpers/app.js';
 import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
@@ -264,11 +263,9 @@ test('Jorge keeps his deployed presentation and day-filtered library behavior', 
 
   await expect(page.locator('html')).toHaveAttribute('data-accent', 'ember');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'performance-dark');
-  await openLibraryFromMore(page);
+  await page.locator('.bottom-nav [data-view="library"]').click();
   await page.locator('#dayTabs [data-day="Push"]').click();
-  await expect(page.locator('#libraryScopeLabel')).toContainText('Push');
-  await expect(page.locator('#libraryScopeChange')).toBeVisible();
-  await expect(page.locator('#libraryInventory')).toBeVisible();
+  await page.locator('#viewLibrary details summary').click();
   await page.locator('#exerciseSearch').fill('Single Leg Press');
   await expect(page.locator('#exerciseLibrary')).toContainText('No matching exercises');
   await page.locator('#dayTabs [data-day="Legs"]').click();
@@ -282,10 +279,8 @@ test('Alexa keeps her deployed presentation and all-exercise library behavior', 
 
   await expect(page.locator('html')).toHaveAttribute('data-accent', 'rose');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'wellness-light');
-  await openLibraryFromMore(page);
-  await expect(page.locator('#libraryScopeLabel')).toHaveText('All exercises A–Z');
-  await expect(page.locator('#libraryScopeChange')).toBeHidden();
-  await expect(page.locator('#libraryInventory')).toBeVisible();
+  await page.locator('.bottom-nav [data-view="library"]').click();
+  await page.locator('#viewLibrary details summary').click();
   await page.locator('#exerciseSearch').fill('Single Leg Press');
   await expect(page.locator('#exerciseLibrary h3')).toHaveText('Single-Leg Press');
 });

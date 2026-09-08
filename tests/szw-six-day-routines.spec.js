@@ -1,4 +1,3 @@
-import { openLibraryFromMore } from './helpers/app.js';
 import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
@@ -176,7 +175,7 @@ test('all six routines map exactly and create one warm-up plus the prescribed wo
 test('Library exposes six one-click routines and loads the selected SZW workout type', async ({ page }) => {
   await installIndependentRuntime(page);
   await openApp(page);
-  await openLibraryFromMore(page);
+  await page.locator('.bottom-nav [data-view="library"]').click();
 
   await expect(page.locator('#dayTabs button')).toHaveCount(6);
   await expect(page.locator('#dayTabs button')).toHaveText(['Push 1', 'Pull 1', 'Legs 1', 'Push 2', 'Pull 2', 'Legs 2']);
@@ -194,7 +193,7 @@ test('Library exposes six one-click routines and loads the selected SZW workout 
 test('Legs 2 defaults to Hack Squat and offers both rotation alternatives before loading', async ({ page }) => {
   await installIndependentRuntime(page);
   await openApp(page);
-  await openLibraryFromMore(page);
+  await page.locator('.bottom-nav [data-view="library"]').click();
   await page.locator('#dayTabs [data-day="SzwLegs2"]').click();
 
   await expect(page.locator('#routineSelect option')).toHaveText([
@@ -209,7 +208,7 @@ test('Legs 2 defaults to Hack Squat and offers both rotation alternatives before
     .toEqual(['front-squat', 'bulgarian-split-squat', 'leg-extension', 'standing-calf-raise']);
 
   await page.evaluate(() => workoutSessionController.discard());
-  await openLibraryFromMore(page);
+  await page.locator('.bottom-nav [data-view="library"]').click();
   await page.locator('#dayTabs [data-day="SzwLegs2"]').click();
   await page.locator('#routineSelect').selectOption('single-leg-press');
   await page.locator('#loadRoutine').click();
@@ -264,8 +263,8 @@ test('Dips and Pull-Up complete at zero load while weighted movements still requ
     }, { type, exerciseName });
     await page.evaluate(() => window.bigGainsViewShell.showView('train'));
     const card = page.locator('.active-exercise').filter({ has: page.getByRole('heading', { name: exerciseName }) });
-    await expect(card.locator('.exercise-head p')).toContainText('Added weight');
-    await expect(card.locator('.weight-stepper input').first()).toHaveAttribute('aria-label', 'Added weight (lb)');
+    await expect(card.locator('.weight-stepper .stepper-label').first()).toHaveText('Added weight');
+    await expect(card.locator('.weight-stepper input').first()).toHaveAttribute('aria-label', 'Added weight');
     await card.locator('.set-line').nth(1).locator('[data-complete-set]').click();
     const stored = await storedSzwState(page);
     expect(stored.activeWorkout.exercises.find(exercise => exercise.name === exerciseName).sets.find(set => !set.warmup).completed).toBe(true);
@@ -291,7 +290,7 @@ test('Dips and Pull-Up complete at zero load while weighted movements still requ
 test('custom routine ordering preserves known SZW prescriptions', async ({ page }) => {
   await installIndependentRuntime(page);
   await openApp(page);
-  await openLibraryFromMore(page);
+  await page.locator('.bottom-nav [data-view="library"]').click();
   await page.locator('#dayTabs [data-day="SzwPush1"]').click();
   await page.locator('#editRoutine').click();
   await page.locator('#routineEditorList [data-routine-move="down"]').first().click();

@@ -13,7 +13,6 @@
   const SESSION_TYPES = (PROFILE.sessionTypes || DEFAULT_SESSION_TYPES).map(type => ({ ...type }));
 
   let selectedType = 'Push';
-  let explicitlySelected = false;
   let expanded = false;
   let initialized = false;
 
@@ -50,7 +49,7 @@
   }
 
   function goTo(view) {
-    window.bigGainsViewShell?.showView(view);
+    document.querySelector(`.bottom-nav [data-view="${view}"]`)?.click();
   }
 
   function setExpanded(next) {
@@ -83,7 +82,6 @@
     }
     if (!SESSION_TYPES.some(item => item.key === key)) return;
     selectedType = key;
-    explicitlySelected = true;
     if (typeof selectedDay !== 'undefined') selectedDay = key;
     render();
     setExpanded(false);
@@ -95,9 +93,10 @@
 
     if (session) {
       repairEmptySession(session);
-      window.bigGainsViewShell?.showView('train', { scroll: false });
-      if (typeof showActive === 'function') showActive(false);
-      window.bigGainsTrainPosition?.viewChanged({ resume: true });
+      goTo('train');
+      window.setTimeout(() => {
+        if (typeof showActive === 'function') showActive(true);
+      }, 30);
       return;
     }
 
@@ -214,7 +213,6 @@
       if (quickButton) quickButton.textContent = 'Start';
     }
     renderTrainPreview({ session, plannedType });
-    window.renderTodayPriority?.();
   }
 
   function initialize() {
@@ -249,7 +247,6 @@
       const normalized = normalizeType(event.target.closest('[data-day]')?.dataset.day);
       if (normalized) {
         selectedType = normalized;
-        explicitlySelected = true;
         window.setTimeout(render, 0);
       }
     });
@@ -265,5 +262,5 @@
     return true;
   }
 
-  window.sessionSelector = Object.freeze({ initialize, render, selection: () => ({ selectedType, isSelected: window.bigGainsAccounts?.runtime.kind !== 'independent' || explicitlySelected || Array.isArray(state.customRoutines?.[selectedType]), count: (window.workoutRoutineEngine?.getRoutine(selectedType) || []).filter(id => window.BigGainsExerciseCatalog?.getById(id)).length }) });
+  window.sessionSelector = Object.freeze({ initialize, render });
 })();

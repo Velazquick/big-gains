@@ -98,13 +98,16 @@
 
   function browse() {
     if (!session()) return false;
-    return window.openLibraryExercisePicker?.({ fromTrain: true }) || false;
+    suspend();
+    window.bigGainsViewShell?.showView('library', { workout: false });
+    window.setTimeout(() => document.getElementById('workoutPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+    return true;
   }
 
   function returnToWorkout() {
     if (!session()) return false;
     clearExplicitExit();
-    window.bigGainsViewShell?.showView('train', { workout: false, resume: true, scroll: false });
+    window.bigGainsViewShell?.showView('train', { workout: false });
     enter({ clearExit: false, showView: false });
     return true;
   }
