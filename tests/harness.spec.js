@@ -241,7 +241,7 @@ test('workout controls expose explicit hooks without replacing app globals', asy
   await openApp(page);
 
   expect(await page.evaluate(() => Object.keys(window.workoutControls))).toEqual([
-    'advanceAfterCompletion', 'moveExercise', 'renderActive', 'renderStepper', 'toggleExercise'
+    'advanceAfterCompletion', 'moveExercise', 'renderActive', 'renderStepper', 'toggleAdjustments', 'toggleExercise'
   ]);
 
   const source = await (await request.get('/workout-controls.js')).text();

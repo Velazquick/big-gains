@@ -132,3 +132,5 @@ html[data-theme][data-train-presentation] #activeExercises .exercise-management 
   html[data-theme][data-train-presentation] #activeExercises .compact-set .set-adjustment-toggle { grid-row:2; grid-column:3; }
   html[data-theme][data-train-presentation] #activeExercises .compact-set .set-remove { grid-row:2; grid-column:4; }
 }
+
+html[data-theme][data-train-presentation] #activeExercises .compact-set .stepper-unit { position:static; transform:none; font-size:.75rem; }

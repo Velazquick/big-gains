@@ -18,16 +18,16 @@
   function renderStepper(field, exerciseIndex, setIndex, value, step, options = {}) {
     const safeValue = value === '' ? '' : Number(value);
     const label = controlLabel(field, options);
-    const unit = options.unit && !options.compact ? `<span class="stepper-unit">${options.unit}</span>` : '';
+    const unit = options.unit ? `<span class="stepper-unit">${options.unit}</span>` : '';
     const className = `stepper ${field}-stepper`;
     return `
       <div class="${className}">
-        <span class="stepper-label">${label}</span>
+        <span class="stepper-label">${label}${options.compact ? ` ${unit}` : ''}</span>
         <div class="stepper-control">
           ${options.compact ? '' : `<button type="button" data-adjust="-${options.adjustStep ?? step}" data-field="${field}" data-ei="${exerciseIndex}" data-si="${setIndex}" aria-label="Decrease ${label}">−</button>`}
           <div class="stepper-value">
             <input data-field="${field}" data-ei="${exerciseIndex}" data-si="${setIndex}" type="number" min="0" step="${step}" inputmode="decimal" value="${safeValue}" placeholder="${options.mayBeZero ? '0' : '—'}" aria-label="${label}${options.compact && options.unit ? ` (${options.unit})` : ''}">
-            ${unit}
+            ${options.compact ? '' : unit}
           </div>
           ${options.compact ? '' : `<button type="button" data-adjust="${options.adjustStep ?? step}" data-field="${field}" data-ei="${exerciseIndex}" data-si="${setIndex}" aria-label="Increase ${label}">+</button>`}
         </div>
