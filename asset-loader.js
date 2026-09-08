@@ -1,28 +1,6 @@
 (() => {
   'use strict';
 
-  // Decorative cold-document copy only. Existing identity/runtime gates own
-  // all visibility, readiness, retry, and PWA update decisions.
-  const launchMessage = document.getElementById('bootLaunchMessage');
-  const messages = ['THE WEIGHTS REMEMBER.', 'GRAVITY REMAINS UNPATCHED.', 'MAKE ROOM FOR THE NEXT SET.'];
-  if (launchMessage) {
-    let previous = -1;
-    try { previous = Number(localStorage.getItem('big-gains-launch-message-v1') ?? -1); } catch {}
-    const eligible = messages.map((_, index) => index).filter(index => index !== previous);
-    const choice = eligible[Math.floor(Math.random() * eligible.length)];
-    launchMessage.textContent = messages[choice];
-    try { localStorage.setItem('big-gains-launch-message-v1', String(choice)); } catch {}
-    const retire = () => {
-      const root = document.documentElement;
-      if (root.dataset.runtimeState === 'interactive' || root.dataset.runtimeState === 'recovery' || root.dataset.bootState === 'recovery') {
-        launchMessage.remove(); observer.disconnect();
-      }
-    };
-    const observer = new MutationObserver(retire);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-runtime-state', 'data-boot-state'] });
-    retire();
-  }
-
   const manifest = window.BIG_GAINS_ASSET_MANIFEST;
   if (!manifest) throw new Error('Big Gains asset manifest did not load.');
 

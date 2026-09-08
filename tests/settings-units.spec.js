@@ -1,4 +1,3 @@
-import { openSetAdjustments } from './helpers/app.js';
 import { expect, test } from '@playwright/test';
 import { activeWorkout, blankState, completedWorkout, installLocalStorageFixture, readStoredJson, STORAGE_KEYS } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
@@ -110,7 +109,6 @@ test('Train warm-up and working inputs prefill in kg and commit only once to can
   await expect(working).toHaveValue('45.359');
   await working.fill('100');
   await expect.poll(() => page.evaluate(() => state.activeWorkout.exercises[0].sets[1].weight)).toBeCloseTo(220.46226218, 8);
-  await openSetAdjustments(page, 0, 1);
   await page.locator('button[data-adjust="5"][data-field="weight"][data-si="1"]').click();
   expect(await page.evaluate(() => state.activeWorkout.exercises[0].sets[1].weight)).toBeCloseTo(225.46226218, 8);
 });

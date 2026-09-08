@@ -200,7 +200,7 @@ test('Library reuses search/filter/result metadata and the picker remains local 
   await openApp(page);
   await openLibrary(page);
   await page.locator('#dayTabs [data-day="Push"]').click();
-  await expect(page.locator('#libraryInventory')).toBeVisible();
+  await page.locator('#viewLibrary details').evaluate(details => { details.open = true; });
   const initialNames = await page.locator('#exerciseLibrary h3').allTextContents();
   expect(initialNames).toEqual(initialNames.slice().sort((left, right) => left.localeCompare(right, 'en', { numeric: true, sensitivity: 'base' })));
   await page.locator('#exerciseSearch').fill('DB Bench');

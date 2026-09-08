@@ -11,15 +11,13 @@
   <title>Big Gains</title>
   <style data-big-gains-critical-boot>
     :root { color-scheme: dark; background: #080a0d; }
-    body { margin: 0; min-height: 100vh; min-height: 100dvh; background: var(--bg, #080a0d); color: var(--text, #f4f1ea); }
+    body { margin: 0; min-height: 100vh; min-height: 100dvh; background: #080a0d; color: #f4f1ea; }
     #bootShell { box-sizing: border-box; min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 24px; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
     #bootShell[hidden], html[data-boot-state="verified"][data-runtime-state="interactive"] #bootShell { display: none; }
-    .boot-shell-card { width: min(100%, 420px); padding: 28px; box-sizing: border-box; border: 1px solid var(--line, #39414c); border-top: 3px solid var(--accent-primary, var(--accent, #aeb5bf)); border-radius: 12px; background: var(--panel, #101318); }
-    .boot-shell-mark { display: inline-block; margin-bottom: 18px; color: var(--ui-accent-ink, var(--accent, #f4f1ea)); font-size: 12px; font-weight: 800; letter-spacing: .18em; }
-    .boot-shell-card .boot-launch-message { margin: 8px 0 28px; color: var(--ui-accent-ink, var(--accent, #f4f1ea)); font: 700 24px/1.25 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: -.025em; }
-    .boot-shell-card .boot-launch-message:empty { display:none; }
-    .boot-shell-card h1 { margin: 0 0 10px; font-size: 20px; line-height: 1.05; }
-    .boot-shell-card p { margin: 0; color: var(--ui-secondary, #aeb5bf); font-size: 15px; line-height: 1.55; }
+    .boot-shell-card { width: min(100%, 420px); padding: 28px; border: 1px solid #242a31; border-radius: 22px; background: #101318; box-shadow: 0 18px 60px rgb(0 0 0 / 35%); }
+    .boot-shell-mark { display: inline-block; margin-bottom: 18px; color: #f0a36b; font-size: 12px; font-weight: 800; letter-spacing: .18em; }
+    .boot-shell-card h1 { margin: 0 0 10px; font-size: clamp(24px, 7vw, 34px); line-height: 1.05; }
+    .boot-shell-card p { margin: 0; color: #aeb5bf; font-size: 15px; line-height: 1.55; }
     #bootRetry { margin-top: 18px; border: 1px solid #39414c; border-radius: 12px; padding: 11px 15px; background: #1b2129; color: #f4f1ea; font: 800 14px/1 Inter, ui-sans-serif, system-ui, sans-serif; }
     html:not([data-boot-state="verified"]) body > .app-shell,
     html:not([data-boot-state="verified"]) body > dialog,
@@ -39,7 +37,6 @@
   <section id="bootShell" role="status" aria-live="polite" aria-label="Big Gains is starting">
     <div class="boot-shell-card">
       <span class="boot-shell-mark">BIG GAINS</span>
-      <p id="bootLaunchMessage" class="boot-launch-message" aria-hidden="true"></p>
       <h1>Preparing your training space.</h1>
       <p id="bootShellDetail">Checking this device before showing private training data.</p>
       <button id="bootRetry" type="button" hidden>Reload app</button>
@@ -57,7 +54,6 @@
         <div class="v2-page-head"><div><span class="label">Today</span><h2>Ready when you are.</h2><p>Strength first. Everything else gets layered on top.</p></div></div>
 
         <div class="today-stage">
-          <section class="panel" id="todayBlankCard" hidden><span class="label">Your session</span><h2>Start with a blank workout.</h2><p>Add the exercises you want, as you go.</p><button id="todayBlankStart" class="primary" type="button">Start blank workout</button></section>
           <section class="session-selector-card" id="sessionTypeSelector" aria-label="Workout session selector">
             <div class="session-selector-bar">
               <button class="session-selector-toggle" id="sessionSelectorToggle" type="button" aria-expanded="false" aria-controls="sessionSelectorBody">
@@ -231,7 +227,7 @@
 
       <section class="view" id="viewProgress">
         <div id="progressOverviewSurface">
-          <div class="v2-page-head"><div><span class="label">Progress</span><h2>The evidence.</h2><p>Strength, consistency, bodyweight, and the sessions behind them.</p></div><button class="secondary" type="button" data-open-history-archive>Open History</button></div>
+          <div class="v2-page-head"><div><span class="label">Progress</span><h2>The evidence.</h2><p>Strength, consistency, bodyweight, and the sessions behind them.</p></div></div>
           <section class="panel progress-panel" id="progressPanel">
             <div class="section-heading"><div><span class="label">Momentum</span><h2>Exercise progress</h2></div></div>
             <div class="progress-picker"><label class="search-box"><span>Logged movement</span><select id="progressExerciseSelect" aria-label="Choose exercise progress"></select></label><button id="openSelectedProgress" class="primary" type="button">View progress</button></div>
@@ -269,17 +265,15 @@
       </section>
 
       <section class="view" id="viewLibrary">
-        <div class="v2-page-head"><div><span class="label">Library</span><h2>Exercise library</h2><p>Find a movement, check its equipment, and add it.</p></div></div>
-        <nav id="librarySections" class="library-sections" aria-label="Library sections"><button type="button" data-library-jump="libraryInventory">Exercises</button><button type="button" data-library-jump="workoutPanel">Saved routines</button></nav>
-        <section class="panel library-inventory" id="libraryInventory" aria-label="Exercise inventory"><div class="library-toolbar library-exercise-filters"><label class="search-box"><span>Find an exercise</span><input id="exerciseSearch" type="search" placeholder="Search chest press, cable row, squat…" autocomplete="off" /></label><label><span>Muscle</span><select id="muscleFilter" aria-label="Filter by muscle"><option value="all">All muscles</option></select></label><label><span>Equipment</span><select id="equipmentFilter" aria-label="Filter by equipment"><option value="all">All equipment</option></select></label></div><div class="library-az-label"><strong id="libraryScopeLabel">All exercises A–Z</strong><button id="libraryScopeChange" class="ghost compact" type="button" hidden>Change routine</button><button id="clearLibraryFilters" class="ghost compact" type="button" hidden>Clear filters</button></div><div id="exerciseLibrary" class="exercise-library"></div></section>
+        <div class="v2-page-head"><div><span class="label">Library</span><h2>Build the work.</h2><p>Choose routines, edit your lineup, or find a movement.</p></div></div>
         <section class="panel garden-panel" id="gardenPanel" data-profile-only="alexa" hidden></section>
         <section class="panel weekly-plan" data-profile-only="alexa" hidden><div class="section-heading"><div><span class="label">Weekly rhythm</span><h2>A plan with room to breathe.</h2></div></div><div class="week-plan-grid"><div><strong>Mon</strong><span>Pilates + Pull</span></div><div><strong>Tue</strong><span>Legs + low-impact class</span></div><div><strong>Wed</strong><span>Rest</span></div><div><strong>Thu</strong><span>Pilates + cardio + accessories</span></div><div><strong>Fri</strong><span>Optional / rest</span></div><div><strong>Sat</strong><span>Full Body</span></div><div><strong>Sun</strong><span>Rest</span></div></div></section>
         <section class="panel workout-builder" id="workoutPanel">
-          <div class="section-heading"><div><span class="label">Saved routines</span><h2>Choose your workout</h2></div></div>
+          <div class="section-heading"><div><span class="label">Workout builder</span><h2>Choose your workout</h2></div></div>
           <div class="day-tabs" id="dayTabs" role="tablist"><button data-day="Push" type="button">Push</button><button data-day="Pull" type="button">Pull</button><button data-day="Legs" type="button">Legs</button><button data-day="Core" type="button">Core</button><button data-day="FullBody" type="button">Full Body</button><button data-day="Cardio" type="button">Conditioning</button><button data-day="Other" type="button">Other</button></div>
           <div class="library-toolbar"><label class="search-box"><span>Routine</span><select id="routineSelect" aria-label="Choose workout routine"></select></label><div class="routine-actions"><button id="editRoutine" class="secondary" type="button">Edit routine</button><button id="loadRoutine" class="primary" type="button">Load routine</button></div></div>
           <div class="library-toolbar"><select id="quickExerciseSelect" class="exercise-picker-compat" aria-hidden="true" tabindex="-1"></select><button id="addSelectedExercise" class="secondary wide" type="button">Choose an exercise</button></div>
-
+          <details><summary class="secondary wide">Browse full exercise library</summary><div class="library-toolbar library-exercise-filters"><label class="search-box"><span>Find an exercise</span><input id="exerciseSearch" type="search" placeholder="Search chest press, cable row, squat…" autocomplete="off" /></label><label><span>Muscle</span><select id="muscleFilter" aria-label="Filter by muscle"><option value="all">All muscles</option></select></label><label><span>Equipment</span><select id="equipmentFilter" aria-label="Filter by equipment"><option value="all">All equipment</option></select></label></div><div class="library-az-label"><strong>All exercises A–Z</strong><button id="clearLibraryFilters" class="ghost compact" type="button" hidden>Clear filters</button></div><div id="exerciseLibrary" class="exercise-library"></div></details>
         </section>
       </section>
 
@@ -350,15 +344,6 @@
           </section>
         </div>
       </section>
-      <section class="view" id="viewMore">
-        <div class="v2-page-head"><div><span class="label">More</span><h2>Your training toolkit.</h2><p>Exercises, preferences, and your private files.</p></div></div>
-        <div class="more-inventory">
-          <button id="moreLibrary" data-more-view="library" type="button"><span><strong>Library</strong><small>Exercises and saved routines</small></span><span aria-hidden="true">→</span></button>
-          <button data-more-view="settings" type="button"><span><strong>Settings</strong><small>Profile, Appearance, units, and training</small></span><span aria-hidden="true">→</span></button>
-          <button data-more-view="settings" data-more-section="settingsBackupTitle" type="button"><span><strong>Cloud &amp; backup</strong><small>Sync, recovery, and export</small></span><span aria-hidden="true">→</span></button>
-          <button data-more-view="settings" data-more-section="settingsSupportTitle" type="button"><span><strong>Support</strong><small>Help and app information</small></span><span aria-hidden="true">→</span></button>
-        </div>
-      </section>
     </main>
 
     <section id="workoutCompletion" class="workout-completion hidden" aria-labelledby="workoutCompletionTitle">
@@ -413,7 +398,7 @@
       <button data-view="plan" type="button">Plan</button>
       <button data-view="train" type="button">Train</button>
       <button data-view="progress" type="button">Progress</button>
-      <button data-view="more" type="button">More</button>
+      <button data-view="library" type="button">Library</button>
     </nav>
   </div>
 
@@ -446,7 +431,7 @@
     <div class="pwa-update-actions"><button id="pwaUpdateNow" type="button" class="primary">Update now</button>
       <button id="pwaUpdateLater" type="button" class="secondary">Later</button></div>
   </aside>
-  <script src="asset-manifest.js?v=v108-astra-training-first-config-925e766c1b907250" data-big-gains-manifest></script>
+  <script src="asset-manifest.js?v=v107-active-exercise-units-config-925e766c1b907250" data-big-gains-manifest></script>
   <script src="asset-loader.js"></script>
 </body>
 </html>

@@ -4,7 +4,7 @@
   const views = [...document.querySelectorAll('.view')];
   const navButtons = [...document.querySelectorAll('.bottom-nav [data-view]')];
   const activePanel = document.getElementById('activePanel');
-  const validViews = new Set(['today', 'plan', 'goals', 'train', 'history', 'calendar', 'progress', 'library', 'settings', 'more']);
+  const validViews = new Set(['today', 'plan', 'goals', 'train', 'history', 'calendar', 'progress', 'library', 'settings']);
   let initialized = false;
 
   function showView(name, options = {}) {
@@ -13,7 +13,7 @@
     const target = document.getElementById(`view${viewName[0].toUpperCase()}${viewName.slice(1)}`);
     if (!target) return;
     views.forEach(view => view.classList.toggle('is-active', view === target));
-    const ownerView = viewName === 'goals' ? 'plan' : ['library', 'settings'].includes(viewName) ? 'more' : viewName;
+    const ownerView = viewName === 'goals' ? 'plan' : viewName;
     navButtons.forEach(button => {
       const active = button.dataset.view === ownerView;
       button.classList.toggle('active', active);
@@ -34,8 +34,7 @@
     }
     const savedView = historyView === 'calendar' ? 'calendar' : historyView === 'list' ? 'history' : viewName;
     try { sessionStorage.setItem('big-gains-view', savedView); } catch {}
-    window.bigGainsTrainPosition?.viewChanged(options);
-    if (options.scroll !== false && !options.resume) window.scrollTo({ top: 0, behavior: options.instant ? 'auto' : 'smooth' });
+    if (options.scroll !== false) window.scrollTo({ top: 0, behavior: options.instant ? 'auto' : 'smooth' });
   }
 
   function initialize() {
@@ -47,11 +46,6 @@
       event.stopImmediatePropagation();
       showView(button.dataset.view);
     }, true));
-
-    document.querySelectorAll('[data-more-view]').forEach(button => button.addEventListener('click', () => {
-      showView(button.dataset.moreView, { scroll: !button.dataset.moreSection });
-      if (button.dataset.moreSection) document.getElementById(button.dataset.moreSection)?.scrollIntoView({ block: 'start' });
-    }));
 
     document.getElementById('openSettings')?.addEventListener('click', () => showView('settings'));
 
@@ -92,7 +86,7 @@
     const initial = validViews.has(requested)
       ? requested
       : (hasActiveWorkout && !explicitlyExited ? 'train' : (validViews.has(saved) ? saved : 'today'));
-    showView(initial, { initial: true, instant: true, scroll: false, workout: !explicitlyExited });
+    showView(initial, { instant: true, scroll: false, workout: !explicitlyExited });
     return true;
   }
 

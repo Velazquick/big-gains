@@ -116,11 +116,7 @@
   function toggleExerciseState(activeWorkout, index) {
     const exercise = activeWorkout?.exercises?.[index];
     if (!exercise) return false;
-    if (!incompleteWorking(exercise)) {
-      const expanding = isCollapsed(exercise);
-      if (expanding) activeWorkout.exercises.forEach(item => { item.collapsed = true; });
-      exercise.collapsed = !expanding;
-    }
+    if (!incompleteWorking(exercise)) exercise.collapsed = !isCollapsed(exercise);
     else if (isCollapsed(exercise)) openOnly(activeWorkout, index);
     else exercise.collapsed = true;
     return true;
@@ -391,22 +387,6 @@
       return set;
     }
 
-    // Session-only addition: never read or write Routine/Program prescription.
-    function addWarmupSet(exerciseIndex) {
-      const exercise = getActiveWorkout()?.exercises?.[exerciseIndex];
-      if (!exercise || !['load_reps', 'assistance_reps'].includes(measurementFor(exercise, resolveMeasurement(exercise)).trackingModel)) return null;
-      const previous = exercise.sets.filter(set => set.warmup).at(-1);
-      const copy = value => value !== '' && value != null && Number.isFinite(Number(value)) && Number(value) >= 0 ? Number(value) : '';
-      const set = { id: createId(), weight: copy(previous?.weight), reps: copy(previous?.reps), warmup: true, completed: false };
-      const lastWarmup = exercise.sets.findLastIndex(item => item.warmup);
-      exercise.sets.splice(lastWarmup + 1, 0, set);
-      focusExercise(exerciseIndex);
-      acknowledgeTimerReady();
-      persistActiveMutation();
-      renderActiveMutation();
-      return set;
-    }
-
     function setHasEnteredData(set) {
       return set?.completed === true || ['weight', 'reps', 'distance', 'duration', 'durationSeconds']
         .some(field => set?.[field] !== '' && set?.[field] != null && Number(set[field]) !== 0);
@@ -565,7 +545,6 @@
       toggleExercise,
       removeExercise,
       addSet,
-      addWarmupSet,
       removeSet,
       updateSet,
       adjustSet,

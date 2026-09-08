@@ -1,4 +1,3 @@
-import { openLibraryFromMore } from './helpers/app.js';
 import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { chooseSession, jorgeState, openApp, startSelectedSession } from './helpers/app.js';
@@ -79,9 +78,7 @@ test('resumes implicitly and replaces only through the explicit Library action',
   expect(resumed.id).toBe(original.id);
   expect(resumed.startedAt).toBe(original.startedAt);
 
-  await page.locator('#exitWorkoutMode').click();
-  await openLibraryFromMore(page);
-  await page.getByRole('button',{name:'Saved routines',exact:true}).click();
+  await page.locator('#browseWorkoutLibrary').click();
   await page.locator('#dayTabs [data-day="Pull"]').click();
   await expect(page.locator('#routineSelect')).toHaveValue('Pull');
   await page.locator('#loadRoutine').click();
