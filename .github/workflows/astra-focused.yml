@@ -1,0 +1,32 @@
+name: Astra focused mobile checks
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+# Supplementary slice feedback. The full protected Browser tests workflow
+# remains unchanged and authoritative for merge and deployment.
+jobs:
+  astra-mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Check training presentation, units, and all accents
+        run: npx playwright test tests/astra-*.spec.js tests/appearance-v1.spec.js tests/active-workout-units.spec.js tests/workout-controls.spec.js
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: astra-focused-mobile
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
