@@ -38,7 +38,7 @@ function harness() {
   const api=window.BigGainsTrainPosition.create({getContext:()=>current,root,host,storage:()=>storage});
   const flush=()=>{while(frames.length)frames.shift()();};
   const visibility=value=>{root.visibilityState=value;events.get('visibilitychange')();};
-  return {api,root,values,scrolls,flush,visibility,events,setContext:value=>{current=value;}};
+  return {api,root,host,values,scrolls,flush,visibility,events,setContext:value=>{current=value;}};
 }
 test('one foreground restore is consumed before later renders and respects navigation',()=>{
   const h=harness();h.api.capture('a','a2');h.visibility('hidden');h.visibility('visible');h.flush();assert.equal(h.scrolls.length,1);
@@ -52,4 +52,9 @@ test('user input cancels a pending restoration and completion bookmark wins',()=
 test('unresolved identity and replacement owner cannot restore a prior owner anchor',()=>{
   const h=harness();h.api.capture('a','a2');h.visibility('hidden');h.setContext(null);h.visibility('visible');h.flush();assert.equal(h.scrolls.length,0);
   h.setContext({namespace:'owner-b',accountId:'b',profileId:'p',workout:structuredClone(workout)});assert.equal(h.api.requestRestore(),false);h.flush();assert.equal(h.scrolls.length,0);
+});
+
+test('restoration fits the visual viewport when the software keyboard reduces usable height',()=>{
+  const h=harness();h.host.visualViewport={offsetTop:100,height:360};h.api.capture('a','a2');h.visibility('hidden');h.visibility('visible');h.flush();
+  const delta=h.scrolls[0].top;assert.equal(944-delta,448);assert.ok(900-delta>=112);assert.equal(h.scrolls.length,1);
 });

@@ -45,3 +45,13 @@ test('profile switch never borrows the previous owner bookmark',async({page})=>{
   await expect(page.locator('#activePanel')).toBeHidden();
   expect(await page.evaluate(()=>Object.keys(localStorage).filter(key=>key.startsWith('big-gains-train-position-v1:')&&key.includes('alexa')))).toEqual([]);
 });
+test('completion-driven advancement replaces the old presentation bookmark',async({page})=>{
+ await page.setViewportSize({width:390,height:844});await installLocalStorageFixture(page,'activeWorkoutWithTwoExercises');await openApp(page);
+ for(const number of [1,2,3])await page.getByRole('button',{name:`Complete Set ${number} of 3`,exact:true}).click();
+ await expect(page.locator('#activeExercises .active-exercise').nth(1)).not.toHaveClass(/is-collapsed/);
+ const before=(await jorgeState(page)).activeWorkout;
+ await visibility(page,'hidden');await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));await visibility(page,'visible');await settled(page);
+ const record=await page.evaluate(()=>JSON.parse(localStorage.getItem(Object.keys(localStorage).find(key=>key.startsWith('big-gains-train-position-v1:')))));
+ expect(record.exerciseId).toBe('lat-pulldown');expect((await jorgeState(page)).activeWorkout).toEqual(before);
+ await expect(page.locator('#activeExercises .active-exercise').nth(1).locator('.exercise-head')).toBeInViewport();
+});

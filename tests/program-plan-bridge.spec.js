@@ -99,7 +99,7 @@ test('Today, Goal, Program, and Analyzer traverse canonical Plan surfaces withou
 test('Library stays building blocks while Plan owns setup, staged review, shared picker, and trap-free Back behavior', async ({ page }) => {
   await page.evaluate(() => bigGainsViewShell.showView('library', { workout: false }));
   await expect(page.locator('#programSetupPanel')).toHaveCount(0);
-  await expect(page.locator('#workoutPanel')).toContainText('Workout builder');
+  await expect(page.locator('#workoutPanel')).toContainText('Saved routines');
   await page.locator('.bottom-nav [data-view="plan"]').click();
   await expect(page.locator('body')).toHaveAttribute('data-view', 'plan');
   await expect(page.locator('#programSetupDialog')).toBeHidden();

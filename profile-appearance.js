@@ -28,6 +28,10 @@
     const variableNames = ['accent','appearance-ink','accent-dark-ink','accent-dark-rgb','accent-primary','accent2','accent-bright','accent-rgb','accent-soft','accent-border','accent-border-soft','on-accent','accent-chart','accent-glow','accent-wash','accent-wash-strong'];
     variableNames.forEach(name => root.style.removeProperty(`--${name}`));
     root.dataset.accent = value.accent;
+    // New shared controls also need contrast-safe roles before an explicit v1 choice.
+    const actionTokens = model.tokens(model.resolve(value), PRESENTATION.theme === 'wellness-light');
+    root.style.setProperty('--ui-action-fill', actionTokens.primary);
+    root.style.setProperty('--ui-action-text', actionTokens.on);
     // Legacy CSS remains byte-for-byte in effect until an explicit v1 choice.
     if (value.version === 1) {
       const tokens = model.tokens(value.accent, PRESENTATION.theme === 'wellness-light');
