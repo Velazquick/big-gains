@@ -134,3 +134,6 @@ html[data-theme][data-train-presentation] #activeExercises .exercise-management 
 }
 
 html[data-theme][data-train-presentation] #activeExercises .compact-set .stepper-unit { position:static; transform:none; font-size:.75rem; }
+
+html[data-theme][data-train-presentation] #activeExercises .collapsed-summary>span small { display:block; white-space:normal; text-align:end; }
+html[data-theme][data-train-presentation] body #timerCard :is(.timer-actions,.timer-preferences,.timer-presets) button { min-height:44px; min-width:44px; }

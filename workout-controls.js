@@ -171,7 +171,7 @@
           </div>
           <div class="collapsed-summary">
             <div><strong>${escapeHtml(summary.status)}</strong><small>${escapeHtml(summary.best)}</small></div>
-            <span>${escapeHtml(unit)} · ${summary.complete ? 'Complete' : 'Open →'}</span>
+            <span>${summary.complete ? 'Complete' : 'Open →'}<small>${escapeHtml(summary.volume)}</small></span>
           </div>
         </article>
       `;
