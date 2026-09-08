@@ -23,7 +23,7 @@ html[data-theme] :is(button,input,select,textarea,a):focus-visible {
 }
 html[data-theme] :is(.v2-page-head h2,.section-heading h2) { letter-spacing:-.025em; line-height:1.15; }
 html[data-theme] :is(.exercise-head h3,.exercise-result-copy h3) { overflow-wrap:anywhere; line-height:1.3; }
-html[data-theme][data-train-presentation] #activeExercises .active-exercise {
+html[data-theme][data-train-presentation] #activeExercises .active-exercise[data-exercise-state] {
   opacity:1; filter:none; background:var(--ui-surface); border:1px solid var(--line);
   padding:16px; box-shadow:none;
 }
