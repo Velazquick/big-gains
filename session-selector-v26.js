@@ -93,10 +93,9 @@
 
     if (session) {
       repairEmptySession(session);
-      goTo('train');
-      window.setTimeout(() => {
-        if (typeof showActive === 'function') showActive(true);
-      }, 30);
+      window.bigGainsViewShell?.showView('train', { scroll: false });
+      if (typeof showActive === 'function') showActive(false);
+      window.bigGainsTrainPosition?.viewChanged({ resume: true });
       return;
     }
 

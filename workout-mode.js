@@ -107,7 +107,7 @@
   function returnToWorkout() {
     if (!session()) return false;
     clearExplicitExit();
-    window.bigGainsViewShell?.showView('train', { workout: false });
+    window.bigGainsViewShell?.showView('train', { workout: false, resume: true, scroll: false });
     enter({ clearExit: false, showView: false });
     return true;
   }

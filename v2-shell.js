@@ -34,7 +34,8 @@
     }
     const savedView = historyView === 'calendar' ? 'calendar' : historyView === 'list' ? 'history' : viewName;
     try { sessionStorage.setItem('big-gains-view', savedView); } catch {}
-    if (options.scroll !== false) window.scrollTo({ top: 0, behavior: options.instant ? 'auto' : 'smooth' });
+    window.bigGainsTrainPosition?.viewChanged(options);
+    if (options.scroll !== false && !options.resume) window.scrollTo({ top: 0, behavior: options.instant ? 'auto' : 'smooth' });
   }
 
   function initialize() {
@@ -86,7 +87,7 @@
     const initial = validViews.has(requested)
       ? requested
       : (hasActiveWorkout && !explicitlyExited ? 'train' : (validViews.has(saved) ? saved : 'today'));
-    showView(initial, { instant: true, scroll: false, workout: !explicitlyExited });
+    showView(initial, { initial: true, instant: true, scroll: false, workout: !explicitlyExited });
     return true;
   }
 

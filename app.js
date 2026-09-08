@@ -206,7 +206,7 @@ const workoutSessionController=BigGainsWorkoutSessionController.create({
   deactivateTimer:()=>timerController.deactivate(),
   clearWorkoutTicker:()=>clearInterval(workoutTicker),
   setPetState:setWorkoutPetState,
-  onRuntimeCleared:({hideActive})=>{if(hideActive)$('activePanel').classList.add('hidden');$('cancelWorkout').classList.add('hidden');$('cancelWorkout').textContent='Cancel';cancelArmedUntil=0;setRemovalArmed=null;clearTimeout(setRemovalTimer);},
+  onRuntimeCleared:({hideActive})=>{window.bigGainsTrainPosition?.clear();if(hideActive)$('activePanel').classList.add('hidden');$('cancelWorkout').classList.add('hidden');$('cancelWorkout').textContent='Cancel';cancelArmedUntil=0;setRemovalArmed=null;clearTimeout(setRemovalTimer);},
   renderActiveSession,
   renderLoadedSession:scroll=>{renderActive();renderLibrary();if(scroll)$('activePanel').scrollIntoView({behavior:'smooth',block:'start'});},
   renderActiveMutation:renderActive,
@@ -217,11 +217,12 @@ const workoutSessionController=BigGainsWorkoutSessionController.create({
   startRestTimer:exerciseIndex=>timerController.start(exerciseIndex),
   scheduleAfterCompletion:callback=>requestAnimationFrame(callback),
   advanceProgramSequence:({activeWorkout,completedAt})=>activeWorkout?.programOrigin?BigGainsProgramOrigin.advanceCaptureForCompletion({capture:state.programCapture,programOrigin:activeWorkout.programOrigin,workoutId:activeWorkout.id,accountId:ACCOUNT.accountId,profileId:PROFILE.id,catalog:exerciseCatalog,completedAt}):null,
-  onCompletionAdvanced:({nextIndex})=>{if(nextIndex>=0&&!matchMedia('(prefers-reduced-motion: reduce)').matches)requestAnimationFrame(()=>document.querySelectorAll('#activeExercises .active-exercise')[nextIndex]?.scrollIntoView({behavior:'smooth',block:'nearest'}));},
+  onCompletionAdvanced:({nextIndex})=>{const next=active?.exercises?.[nextIndex];if(next)window.bigGainsTrainPosition?.capture(next.id,next.sets.find(set=>!set.completed)?.id||null);if(nextIndex>=0&&!matchMedia('(prefers-reduced-motion: reduce)').matches)requestAnimationFrame(()=>document.querySelectorAll('#activeExercises .active-exercise')[nextIndex]?.scrollIntoView({behavior:'smooth',block:'nearest'}));},
   onCompleted:({workout,newPRs})=>{updateOnboarding('completed','first_success');$('heroNote').textContent=`Workout saved${newPRs?` · ${newPRs} new record${newPRs===1?'':'s'}`:''}.`;renderAll();renderCompletion(workout);},
   onDiscarded:()=>{renderHero();renderLibrary();$('workoutPanel').scrollIntoView({behavior:'smooth'});}
 });
 window.workoutSessionController=workoutSessionController;
+window.bigGainsTrainPosition=BigGainsTrainPosition.create({getContext:()=>window.BigGainsBootGate.canRender()?({namespace:ACCOUNT.storageNamespace,accountId:ACCOUNT.accountId,profileId:PROFILE.id,workout:active}):null});
 function showActive(scroll=true){return workoutSessionController.resume(scroll,{enterMode:false});}
 function startWorkout(day=selectedDay,load=true){return workoutSessionController.start(day,{loadRoutine:load,scroll:true});}
 function addExercise(id,scroll=true){return workoutSessionController.addExercise(id,{scroll});}
@@ -230,7 +231,7 @@ function renderWorkoutClock(){if(active)$('workoutClock').textContent=fmtTime((D
 function stepper(field,ei,si,value,step,options){return workoutControlsApi.renderStepper(field,ei,si,value,step,options);}
 function unitStepper(field,exerciseIndex,setIndex,value,step,options={}){if(field!=='weight')return stepper(field,exerciseIndex,setIndex,value,step,options);const unit=effectiveExerciseUnit(active?.exercises?.[exerciseIndex]);return stepper(field,exerciseIndex,setIndex,unitsApi.inputValue(value,state,{unit}),unitsApi.inputStep(step,state,{unit}),{...options,unit,adjustStep:step});}
 function performanceDeltaForDisplay(current,previous){const result=analyticsApi.performanceDelta(current,previous,analyticsOptions());if(result?.improvement?.kind!=='weight')return result;return {...result,improvement:{...result.improvement,label:`+${unitsApi.formatLoad(result.improvement.value,state,{unit:effectiveExerciseUnit(current)})}`}};}
-function renderActive(){const result=workoutControlsApi.renderActive({activeWorkout:active,box:$('activeExercises'),finishButton:$('finishWorkout'),lastPerformance,performanceDelta:performanceDeltaForDisplay,estimate1RM,escapeHtml,stepper:unitStepper,loadModeFor:exerciseCatalog.loadModeFor,inputFieldsFor:exerciseCatalog.inputFieldsFor,setSummaryFor:exercise=>analyticsApi.setSummary(exercise,analyticsOptions()),unitFor:effectiveExerciseUnit,formatLoad:(value,exercise)=>unitsApi.formatLoad(value,state,{unit:effectiveExerciseUnit(exercise)}),formatWorkload:(value,kind,exercise)=>unitsApi.formatWorkload(value,state,{kind,unit:effectiveExerciseUnit(exercise)}),guidanceMarkupFor:exercise=>goalsTrainGuidance.render(exercise,escapeHtml,effectiveExerciseUnit(exercise))});notesApi.renderActiveNotes({activeWorkout:active,box:$('activeExercises'),state,defaultRest:DEFAULT_REST,escapeHtml});progressApi.afterActiveRender({activeWorkout:active});return result;}
+function renderActive(){const result=workoutControlsApi.renderActive({activeWorkout:active,box:$('activeExercises'),finishButton:$('finishWorkout'),lastPerformance,performanceDelta:performanceDeltaForDisplay,estimate1RM,escapeHtml,stepper:unitStepper,loadModeFor:exerciseCatalog.loadModeFor,inputFieldsFor:exerciseCatalog.inputFieldsFor,setSummaryFor:exercise=>analyticsApi.setSummary(exercise,analyticsOptions()),unitFor:effectiveExerciseUnit,formatLoad:(value,exercise)=>unitsApi.formatLoad(value,state,{unit:effectiveExerciseUnit(exercise)}),formatWorkload:(value,kind,exercise)=>unitsApi.formatWorkload(value,state,{kind,unit:effectiveExerciseUnit(exercise)}),guidanceMarkupFor:exercise=>goalsTrainGuidance.render(exercise,escapeHtml,effectiveExerciseUnit(exercise))});notesApi.renderActiveNotes({activeWorkout:active,box:$('activeExercises'),state,defaultRest:DEFAULT_REST,escapeHtml});progressApi.afterActiveRender({activeWorkout:active});window.bigGainsTrainPosition?.afterRender();return result;}
 function startRestTimer(exerciseIndex){return timerController.start(exerciseIndex);}
 function acknowledgeTimerReady(){return timerController.acknowledgeReady();}
 function discardWorkout(){return workoutSessionController.discard();}

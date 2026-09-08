@@ -112,7 +112,7 @@
         const setState = set.completed ? 'completed' : current ? 'current' : 'upcoming';
         const label = setPosition(exercise, set);
         return `
-          <div class="set-line ${set.completed ? 'completed' : ''} ${current ? 'is-current' : ''} ${upcoming ? 'is-upcoming' : ''}" data-set-state="${setState}">
+          <div class="set-line ${set.completed ? 'completed' : ''} ${current ? 'is-current' : ''} ${upcoming ? 'is-upcoming' : ''}" data-set-state="${setState}" data-set-id="${escapeHtml(set.id || '')}">
             <div class="set-row-meta">
               <span>${set.completed ? 'Logged' : current ? 'Current set' : 'Up next'}</span>
               <strong>${label}</strong>
@@ -129,7 +129,7 @@
       }).join('');
 
       return `
-        <article class="active-exercise ${collapsed ? 'is-collapsed' : ''} ${summary.complete ? 'is-complete' : ''} ${isActive ? 'is-active' : 'is-upcoming'}" data-exercise-state="${exerciseState}" aria-current="${isActive ? 'step' : 'false'}">
+        <article class="active-exercise ${collapsed ? 'is-collapsed' : ''} ${summary.complete ? 'is-complete' : ''} ${isActive ? 'is-active' : 'is-upcoming'}" data-exercise-state="${exerciseState}" data-exercise-id="${escapeHtml(exercise.id)}" aria-current="${isActive ? 'step' : 'false'}">
           <div class="exercise-head" data-exercise-head="${exerciseIndex}">
             <div>
               <div class="exercise-kickers"><span class="exercise-state-label">${exerciseState === 'current' ? 'Current' : exerciseState === 'completed' ? 'Completed' : 'Up next'}</span><span class="exercise-muscle">${escapeHtml(exercise.muscle)}</span></div>
