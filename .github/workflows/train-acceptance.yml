@@ -21,4 +21,6 @@ jobs:
         if: always()
         with:
           name: train-acceptance-evidence
-          path: test-results/
+          path: |
+            test-results/
+            playwright-report/
