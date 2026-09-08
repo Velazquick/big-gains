@@ -17,12 +17,13 @@ const frames=page=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(
 test('blank workout gets its first stable anchor when the first exercise is added',async({page})=>{
   await instrument(page);await installLocalStorageFixture(page,'blankJorge');await openApp(page);
   await page.locator('.bottom-nav [data-view="train"]').click();await page.locator('#trainBlankStart').click();
-  await expect(page.locator('#exercisePickerDialog')).toBeVisible();await page.locator('#exercisePickerSearch').fill('Incline Iso Machine Press');
-  await page.locator('.exercise-picker-all [data-exercise-picker-select]').filter({hasText:'Incline Iso Machine Press'}).click();
+  await expect(page.locator('#exercisePickerDialog')).toBeVisible();
+  const choice=page.locator('.exercise-picker-all [data-exercise-picker-select]').first();
+  const selectedId=await choice.getAttribute('data-exercise-picker-select');await choice.click();
   await expect(page.locator('#exercisePickerDialog')).toBeHidden();await frames(page);
-  const card=page.locator('#activeExercises .is-active');await expect(card).toHaveAttribute('data-exercise-id','incline-iso-machine-press');
+  const card=page.locator('#activeExercises .is-active');await expect(card).toHaveAttribute('data-exercise-id',selectedId);
   await expect(card.locator('.set-line').first()).toBeInViewport({ratio:1});
-  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k=>k.startsWith('big-gains-train-position')))).exerciseId)).toBe('incline-iso-machine-press');
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k=>k.startsWith('big-gains-train-position')))).exerciseId)).toBe(selectedId);
 });
 test('inactive summaries surround the unchanged working card at 390px',async({page},info)=>{
   await instrument(page);await installLocalStorageFixture(page,'activeWorkoutWithTwoExercises');await openApp(page);
@@ -42,7 +43,7 @@ test('inactive summaries surround the unchanged working card at 390px',async({pa
       const box=await button.boundingBox();expect(box.width).toBeGreaterThanOrEqual(44);expect(box.height).toBeGreaterThanOrEqual(44);
     }
   }
-  await page.locator('#activeExercises').evaluate(e=>e.scrollIntoView({block:'start',behavior:'instant'}));
+  await page.locator('#activeExercises').evaluate(e=>window.scrollBy({top:e.getBoundingClientRect().top-document.querySelector('.active-heading').getBoundingClientRect().height-16,behavior:'instant'}));
   await page.screenshot({path:info.outputPath('train-inactive-surrounding-390.png')});
   await page.screenshot({path:info.outputPath('train-inactive-full-390.png'),fullPage:true});
   const next=inactive.last();const id=await next.getAttribute('data-exercise-id');await next.locator('h3').click();
