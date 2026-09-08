@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
-import { openApp } from './helpers/app.js';
+import { openApp, openExerciseOptions } from './helpers/app.js';
 
 test('decorates the exercise library after a library render', async ({ page }) => {
   await installLocalStorageFixture(page, 'blankJorge');
@@ -23,6 +23,7 @@ test('decorates the active session after an active render', async ({ page }) => 
   await page.locator('#activeExercises [data-progress-exercise]').evaluateAll(buttons => buttons.forEach(button => button.remove()));
   await page.evaluate(() => window.renderActive());
 
+  await openExerciseOptions(page, 'Seated Machine Chest Press');
   const activeExercise = page.locator('#activeExercises .active-exercise').first();
   await expect(activeExercise.getByRole('button', { name: 'Progress' })).toBeVisible();
   await expect(activeExercise.locator('[data-remove-exercise]')).toBeVisible();

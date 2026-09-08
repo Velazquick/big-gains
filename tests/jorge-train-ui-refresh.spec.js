@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
-import { jorgeState, openApp } from './helpers/app.js';
+import { jorgeState, openApp, openSetAdjustments } from './helpers/app.js';
 
 const SZW_AUTH_USER_ID = '85000000-0000-0000-0000-000000000001';
 const SZW_ACCOUNT_ID = '85a00000-0000-0000-0000-000000000001';
@@ -141,6 +141,7 @@ test('set controls remain touch-sized, persist edits, and keep rest-timer semant
   const weight = page.locator('input[data-field="weight"][data-ei="0"][data-si="1"]');
   const minus = page.locator('button[data-adjust="-5"][data-field="weight"][data-ei="0"][data-si="1"]');
   const done = page.getByRole('button', { name: 'Complete Set 1 of 3' });
+  await openSetAdjustments(page, 0, 1);
   const sizes = await Promise.all([weight, minus, done].map(async locator => locator.boundingBox()));
   for (const box of sizes) {
     expect(box.height).toBeGreaterThanOrEqual(44);

@@ -87,3 +87,48 @@ html[data-theme][data-train-presentation] .train-plan-picker button[aria-pressed
 }
 @media(min-width:390px) and (max-width:600px) { html[data-theme] .app-shell { padding-inline:20px; } }
 @media(prefers-reduced-motion:reduce) { html[data-theme] *,html[data-theme] *::before,html[data-theme] *::after { scroll-behavior:auto; transition:none; } }
+
+/* Workout interaction layer: one enclosing surface, direct entries, disclosed adjustments. */
+html[data-theme][data-train-presentation] #activeExercises .exercise-head { padding:0; display:grid; grid-template-columns:minmax(0,1fr) 48px; align-items:start; }
+html[data-theme][data-train-presentation] #activeExercises .exercise-head-actions { display:flex; flex-wrap:wrap; gap:8px; }
+html[data-theme][data-train-presentation] #activeExercises .active-exercise-body { padding:0; }
+html[data-theme][data-train-presentation] #activeExercises .active-exercise-unit-choice { margin:12px 0; }
+html[data-theme][data-train-presentation] #activeExercises .is-collapsed .active-exercise-unit-choice { margin:8px 0 0; }
+html[data-theme][data-train-presentation] #activeExercises .is-collapsed .active-exercise-unit-choice button[aria-pressed="true"] { background:var(--ui-surface-raised); color:var(--accent); border:1px solid var(--accent); }
+html[data-theme][data-train-presentation] #activeExercises .is-collapsed { cursor:pointer; }
+html[data-theme][data-train-presentation] #activeExercises .collapsed-summary { padding:8px 0 0; margin:0; border:0; background:transparent; gap:8px; }
+html[data-theme][data-train-presentation] #activeExercises .collapsed-summary span { color:var(--ui-secondary); font-size:.8125rem; white-space:nowrap; }
+html[data-theme][data-train-presentation] #activeExercises .exercise-context { padding:0 0 12px; margin:0; border:0; background:transparent; box-shadow:none; }
+html[data-theme][data-train-presentation] #activeExercises .set-section { border:0; border-top:1px solid var(--line); padding:0; margin:0; background:transparent; }
+html[data-theme][data-train-presentation] #activeExercises .set-section-heading { display:flex; align-items:center; justify-content:space-between; min-height:44px; }
+html[data-theme][data-train-presentation] #activeExercises .set-section-heading h4 { margin:0; color:var(--ui-text); font-size:.875rem; font-weight:700; }
+html[data-theme][data-train-presentation] #activeExercises .set-section-heading button { width:44px; height:44px; min-width:44px; min-height:44px; padding:0; background:var(--ui-surface-raised); color:var(--accent); border:1px solid var(--line); border-radius:10px; font-size:1.5rem; }
+html[data-theme][data-train-presentation] #activeExercises .set-grid { margin:0 0 8px; gap:6px; }
+html[data-theme][data-train-presentation] #activeExercises .compact-set {
+  display:grid; grid-template-columns:18px minmax(64px,1.3fr) minmax(44px,1fr) 44px 44px 44px;
+  gap:4px; align-items:end; padding:6px 0; border:0; border-radius:8px;
+}
+html[data-theme][data-train-presentation] #activeExercises .compact-set .set-row-meta { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+html[data-theme][data-train-presentation] #activeExercises .compact-set .set-number { grid-column:1; grid-row:1; width:18px; min-width:0; height:44px; align-self:end; border:0; background:transparent; font-size:.8125rem; }
+html[data-theme][data-train-presentation] #activeExercises .compact-set .stepper { grid-column:auto; grid-row:1; margin:0; gap:4px; }
+html[data-theme][data-train-presentation] #activeExercises .compact-set .stepper-control { display:block; }
+html[data-theme][data-train-presentation] #activeExercises .compact-set .stepper-label { display:block; font-size:.75rem; letter-spacing:0; text-transform:none; padding:0; overflow-wrap:anywhere; }
+html[data-theme][data-train-presentation] #activeExercises .compact-set .stepper input { width:100%; padding:0 4px; font-size:1rem; font-variant-numeric:tabular-nums; }
+html[data-theme][data-train-presentation] #activeExercises .compact-set :is(.set-done,.set-remove,.set-adjustment-toggle) { grid-column:auto; grid-row:1; align-self:end; width:44px; height:44px; min-width:44px; min-height:44px; padding:0; border-radius:10px; }
+html[data-theme][data-train-presentation] #activeExercises .compact-set .set-done-text { display:none; }
+html[data-theme][data-train-presentation] #activeExercises .set-adjustment-toggle { border:1px solid var(--ui-control-border); background:var(--ui-surface-raised); color:var(--ui-text); font-size:1.125rem; }
+html[data-theme][data-train-presentation] #activeExercises .set-adjustment-toggle[aria-expanded="true"] { border-color:var(--accent); color:var(--accent); }
+html[data-theme][data-train-presentation] #activeExercises .set-adjustments:not([hidden]) { grid-column:1/-1; display:grid; gap:6px; padding:8px 0; }
+html[data-theme][data-train-presentation] #activeExercises .set-adjustments[hidden] { display:none; }
+html[data-theme][data-train-presentation] #activeExercises .set-adjustments>div { display:grid; grid-template-columns:minmax(0,1fr) 44px 44px; align-items:center; gap:8px; }
+html[data-theme][data-train-presentation] #activeExercises .set-adjustments button { min-width:44px; min-height:44px; padding:0; border:1px solid var(--ui-control-border); background:var(--ui-surface-raised); color:var(--ui-text); border-radius:10px; }
+html[data-theme][data-train-presentation] #activeExercises :is(.add-set,.exercise-management summary,.exercise-notes summary) { min-height:44px; padding:12px 0; font-size:.875rem; }
+html[data-theme][data-train-presentation] #activeExercises .add-set { width:100%; justify-content:center; margin:0 0 8px; padding:10px; border:1px solid var(--line); color:var(--accent); background:transparent; }
+html[data-theme][data-train-presentation] #activeExercises :is(.exercise-management,.exercise-notes) { border:0; border-top:1px solid var(--line); border-radius:0; background:transparent; margin:0; padding:0; }
+html[data-theme][data-train-presentation] #activeExercises .exercise-management button { min-width:44px; min-height:44px; }
+html[data-theme][data-train-presentation] #activeExercises .exercise-management button:disabled { color:var(--ui-secondary); border-style:dashed; cursor:default; }
+@media(max-width:374px) {
+  html[data-theme][data-train-presentation] #activeExercises .compact-set { grid-template-columns:18px minmax(64px,1.3fr) minmax(44px,1fr) 44px; }
+  html[data-theme][data-train-presentation] #activeExercises .compact-set .set-adjustment-toggle { grid-row:2; grid-column:3; }
+  html[data-theme][data-train-presentation] #activeExercises .compact-set .set-remove { grid-row:2; grid-column:4; }
+}

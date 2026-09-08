@@ -24,3 +24,14 @@ export async function startSelectedSession(page) {
 export async function jorgeState(page) {
   return readStoredJson(page, STORAGE_KEYS.jorge);
 }
+
+export async function openExerciseOptions(page, name) {
+  const card=page.locator('#activeExercises .active-exercise').filter({has:page.getByRole('heading',{name,exact:true})});
+  if(await card.evaluate(e=>e.classList.contains('is-collapsed'))) await card.locator('.exercise-toggle').click();
+  const details=card.locator('.exercise-management');
+  if(!await details.evaluate(e=>e.open)) await details.locator('summary').click();
+}
+export async function openSetAdjustments(page, exerciseIndex, setIndex) {
+  const toggle=page.locator(`[data-set-adjustments="${setIndex}"][data-ei="${exerciseIndex}"]`);
+  if(await toggle.getAttribute('aria-expanded')!=='true') await toggle.click();
+}

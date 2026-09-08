@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { activeWorkout, blankState, completedWorkout, readStoredJson, STORAGE_KEYS } from './fixtures/local-storage.js';
-import { openApp } from './helpers/app.js';
+import { openApp, openExerciseOptions } from './helpers/app.js';
 
 const unitPreference = weightUnit => ({ contractVersion: 1, weightUnit });
 
@@ -390,12 +390,15 @@ test('real Program materialization and Routine versions remain identical through
 test('reorder keeps choices with exercise identity and unit toggle disarms removal confirmation', async ({ page }) => {
   await installState(page, { ...blankState('jorge'), activeWorkout: semanticActiveWorkout() });
   await chooseExerciseUnit(page, 'kg', 0);
+  await openExerciseOptions(page, 'Seated Machine Chest Press');
   await page.locator('[data-move-exercise="down"][data-index="0"]').click();
   await expect(unitButton(page, 'kg', 1)).toHaveAttribute('aria-pressed', 'true');
   await expect(unitButton(page, 'lb', 0)).toHaveAttribute('aria-pressed', 'true');
+  await openExerciseOptions(page, 'Seated Machine Chest Press');
   await page.locator('[data-remove-exercise="1"]').click();
   await expect(page.locator('[data-remove-exercise="1"]')).toHaveText('Sure?');
   await chooseExerciseUnit(page, 'lb', 1);
+  await openExerciseOptions(page, 'Seated Machine Chest Press');
   await page.locator('[data-remove-exercise="1"]').click();
   await expect(page.locator('[data-remove-exercise="1"]')).toHaveText('Sure?');
   expect((await readStoredJson(page, STORAGE_KEYS.jorge)).activeWorkout.exercises).toHaveLength(3);
