@@ -176,10 +176,10 @@ test('Exit Workout Mode and resume preserve the same local workout', async ({ pa
   expect((await jorgeState(page)).activeWorkout).toEqual(before.activeWorkout);
 });
 
-test('Jorge styling is isolated from Alexa and SZW presentation tokens', async ({ browser }) => {
+test('shared Train ergonomics preserve independent profile appearance and capabilities', async ({ browser }) => {
   const cases = [
-    { fixture: 'blankJorge', accent: 'ember', theme: 'performance-dark', refresh: 'enabled', preview: true },
-    { fixture: 'blankAlexa', accent: 'rose', theme: 'wellness-light', refresh: '', preview: false }
+    { fixture: 'blankJorge', accent: 'ember', theme: 'performance-dark' },
+    { fixture: 'blankAlexa', accent: 'rose', theme: 'wellness-light' }
   ];
 
   for (const item of cases) {
@@ -190,9 +190,8 @@ test('Jorge styling is isolated from Alexa and SZW presentation tokens', async (
     await openTrain(page);
     await expect(page.locator('html')).toHaveAttribute('data-accent', item.accent);
     await expect(page.locator('html')).toHaveAttribute('data-theme', item.theme);
-    expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--jorge-train-refresh').trim())).toBe(item.refresh);
-    if (item.preview) await expect(page.locator('#trainPreview')).toBeVisible();
-    else await expect(page.locator('#trainPreview')).toBeHidden();
+    await expect(page.locator('html')).toHaveAttribute('data-train-presentation', 'focused');
+    await expect(page.locator('#trainPreview')).toBeVisible();
     await context.close();
   }
 
@@ -204,7 +203,7 @@ test('Jorge styling is isolated from Alexa and SZW presentation tokens', async (
   await expect(page.locator('html')).toHaveAttribute('data-accent', 'merlot');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'slate-dark');
   await expect(page.locator('html')).toHaveAttribute('data-pet-enabled', 'false');
-  expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--jorge-train-refresh').trim())).toBe('');
-  await expect(page.locator('#trainPreview')).toBeHidden();
+  await expect(page.locator('html')).toHaveAttribute('data-train-presentation', 'focused');
+  await expect(page.locator('#trainPreview')).toBeVisible();
   await context.close();
 });
