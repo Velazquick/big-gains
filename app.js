@@ -30,6 +30,45 @@ let workoutTicker=null,deferredPrompt=null,cancelArmedUntil=0,setRemovalArmed=nu
 let routineDraftDay=selectedDay,routineDraft=[];
 let quickCompatExerciseId=null,routineCompatExerciseId=null;
 let completionReceipt=null;
+// v110 persists only session start, not set completion/activity time. Never backdate.
+const staleSessionHours=6;
+let staleResume=null,staleDiscardOwner=null;
+function staleSessionCondition(workout,now=Date.now()){
+  const start=Date.parse(workout?.startedAt);
+  if(!workout||workout.completedAt||!Number.isFinite(start)||start>now)return false;
+  const day=value=>{const date=new Date(value);return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;};
+  return day(start)!==day(now)||now-start>=staleSessionHours*3600000;
+}
+function staleRecoveryWritable(){
+  try{
+    const sync=window.BigGainsCloudSync?.status();
+    return Boolean(window.BigGainsRuntimeGate?.canInteract()&&window.BigGainsBootGate?.canRender()
+      &&sync&&!sync.pending&&!sync.busy&&!sync.comparing&&!sync.capturePending&&!sync.reconciliationInFlight
+      &&!sync.sameEntityConflict?.eligible&&!sync.remoteFastForward?.conflict&&!sync.lastResult?.blocked
+      &&!sync.lastResult?.conflict&&sync.lastComparison?.parity!==false
+      &&window.BigGainsManagedProfileRecovery?.updateSafety?.()===true
+      &&window.BigGainsProgramPortability?.updateSafety?.()===true
+      &&!window.BigGainsControlledMigration?.status?.().busy);
+  }catch{return false;}
+}
+function renderStaleRecovery(){
+  const card=$('staleWorkoutRecovery');if(!card)return;
+  const now=Date.now(),owner=active?`${ACCOUNT.storageNamespace}:${active.id}`:null;
+  const stale=staleSessionCondition(active,now),writable=!stale||staleRecoveryWritable();
+  $('cancelWorkout').disabled=!writable;
+  $('finishWorkout').disabled=!writable||!active?.exercises.some(exercise=>exercise.sets.some(set=>set.completed));
+  const acknowledged=staleResume?.owner===owner&&now>=staleResume.at&&now-staleResume.at<staleSessionHours*3600000;
+  card.hidden=!stale||(acknowledged&&writable);
+  if(card.hidden){staleDiscardOwner=null;return;}
+  const start=new Date(active.startedAt),yesterday=new Date(now);yesterday.setDate(yesterday.getDate()-1);
+  const day=start.toDateString()===new Date(now).toDateString()?'today':start.toDateString()===yesterday.toDateString()?'yesterday':start.toLocaleDateString();
+  $('staleWorkoutContext').textContent=`${displayWorkout(active.type)} started ${day} at ${start.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}.`;
+  $('staleWorkoutFinish').hidden=!active.exercises.some(exercise=>exercise.sets.some(set=>set.completed));
+  $('staleWorkoutFinish').disabled=!writable;
+  $('staleWorkoutDiscard').disabled=!writable;
+  $('staleWorkoutGuard').hidden=writable;
+  $('staleWorkoutDiscard').textContent=staleDiscardOwner===owner&&now<cancelArmedUntil?'Tap again to discard':'Discard workout';
+}
 let preparedUserExport=null;
 const exercisePicker=BigGainsExercisePicker.create({catalog:exerciseCatalog,getState:()=>state,getProfileId:()=>PROFILE.id});
 window.bigGainsExercisePicker=exercisePicker;
@@ -115,7 +154,7 @@ function fmtWorkoutContext(iso){return new Intl.DateTimeFormat('en-US',{weekday:
 function displayWorkout(day){return day==='Legs'?'Legs + Core':(DEFAULT_ROUTINES[day]?.label||day);}
 function completionWorkoutLabel(day){return PROFILE.routines?.[day]?.label||({Legs:'Legs + Core',FullBody:'Full Body',Cardio:'Conditioning',PilatesPull:'Pilates + Pull',LegsLowImpact:'Legs + Low-Impact Class',PilatesCardioAccessory:'Pilates + Cardio + Accessories',Optional:'Optional Movement'})[day]||day;}
 function renderGreeting(){const h=new Date().getHours(),selector=$('profileSelect'),switcher=selector?.closest('.profile-switcher');$('greeting').textContent=bigGainsAccounts.runtime.kind==='guest'?'Welcome to Big Gains.':`Good ${h<12?'morning':h<18?'afternoon':'evening'}, ${ACCOUNT.displayName}.`;if(selector){selector.innerHTML=bigGainsAccounts.registry.accounts.map(account=>`<option value="${escapeHtml(account.profileId)}">${escapeHtml(account.displayName)}</option>`).join('');selector.value=PROFILE.id;}if(switcher)switcher.hidden=!bigGainsAccounts.runtime.switcherVisible;const today=todaysWorkout();$('nextWorkout').textContent=displayWorkout(today);document.body.classList.toggle('alexa-mode',PROFILE.capabilities.wellnessPresentation);document.querySelectorAll('[data-profile-only]').forEach(el=>el.hidden=el.dataset.profileOnly!==PROFILE.id);}
-function renderHero(){const button=$('startWorkout'),note=$('heroNote'),today=todaysWorkout(),wellness=PROFILE.capabilities.wellnessPresentation;if(active){button.disabled=false;button.textContent=`Resume ${displayWorkout(active.type)}`;note.textContent=`Workout in progress · ${active.exercises.length} exercises saved`;return;}if(today==='Rest'){button.disabled=true;button.textContent='Recovery day';note.textContent=wellness?'Rest is part of your plan. Your garden is still safe.':'Recovery supports the work.';return;}button.disabled=false;button.textContent=wellness?'Begin today’s movement':'Start planned workout';note.textContent=wellness?'A gentle plan is ready whenever you are.':'Your plan is ready. Tap once and train.';}
+function renderHero(){renderStaleRecovery();const button=$('startWorkout'),note=$('heroNote'),today=todaysWorkout(),wellness=PROFILE.capabilities.wellnessPresentation;if(active){button.disabled=false;button.textContent=`Resume ${displayWorkout(active.type)}`;note.textContent=`Workout in progress · ${active.exercises.length} exercises saved`;return;}if(today==='Rest'){button.disabled=true;button.textContent='Recovery day';note.textContent=wellness?'Rest is part of your plan. Your garden is still safe.':'Recovery supports the work.';return;}button.disabled=false;button.textContent=wellness?'Begin today’s movement':'Start planned workout';note.textContent=wellness?'A gentle plan is ready whenever you are.':'Your plan is ready. Tap once and train.';}
 function renderStats(){$('weeklyWorkouts').textContent=state.workouts.filter(w=>new Date(w.completedAt)>=startOfWeek()).length;$('trainingVolume').innerHTML=progressApi.workloadFamiliesMarkup(state.workouts);$('prCount').textContent=currentPerformanceRecordCount();$('latestWeight').textContent=state.weights[0]?unitsApi.formatBodyweight(state.weights[0].weight,state):'—';}
 
 function renderSettings(){
@@ -209,6 +248,7 @@ function startBlankWorkout(){window.bigGainsViewShell?.showView('train',{workout
 const workoutSessionController=BigGainsWorkoutSessionController.create({
   getState:()=>state,
   getActiveWorkout:()=>active,
+  canResolveSession:()=>!staleSessionCondition(active)||staleRecoveryWritable(),
   setActiveWorkout:next=>{active=next;state.activeWorkout=next;},
   getSelectedDay:()=>selectedDay,
   setSelectedDay:next=>{selectedDay=next;},
@@ -247,11 +287,11 @@ function showActive(scroll=true){return workoutSessionController.resume(scroll,{
 function startWorkout(day=selectedDay,load=true){return workoutSessionController.start(day,{loadRoutine:load,scroll:true});}
 function addExercise(id,scroll=true){return workoutSessionController.addExercise(id,{scroll});}
 function loadRoutine(day=selectedDay,scroll=true){if(active&&active.type===day&&active.exercises.length===0&&workoutSessionController.repairEmpty(active,{scroll}))return active;return workoutSessionController.loadRoutine(day,{scroll});}
-function renderWorkoutClock(){if(active)$('workoutClock').textContent=fmtTime((Date.now()-new Date(active.startedAt))/1000);}
+function renderWorkoutClock(){renderStaleRecovery();if(active)$('workoutClock').textContent=fmtTime((Date.now()-new Date(active.startedAt))/1000);}
 function stepper(field,ei,si,value,step,options){return workoutControlsApi.renderStepper(field,ei,si,value,step,options);}
 function unitStepper(field,exerciseIndex,setIndex,value,step,options={}){if(field!=='weight')return stepper(field,exerciseIndex,setIndex,value,step,options);const unit=effectiveExerciseUnit(active?.exercises?.[exerciseIndex]);return stepper(field,exerciseIndex,setIndex,unitsApi.inputValue(value,state,{unit}),unitsApi.inputStep(step,state,{unit}),{...options,unit,adjustStep:step});}
 function performanceDeltaForDisplay(current,previous){const result=analyticsApi.performanceDelta(current,previous,analyticsOptions());if(result?.improvement?.kind!=='weight')return result;return {...result,improvement:{...result.improvement,label:`+${unitsApi.formatLoad(result.improvement.value,state,{unit:effectiveExerciseUnit(current)})}`}};}
-function renderActive(){const result=workoutControlsApi.renderActive({activeWorkout:active,box:$('activeExercises'),finishButton:$('finishWorkout'),lastPerformance,performanceDelta:performanceDeltaForDisplay,estimate1RM,escapeHtml,stepper:unitStepper,loadModeFor:exerciseCatalog.loadModeFor,inputFieldsFor:exerciseCatalog.inputFieldsFor,setSummaryFor:exercise=>analyticsApi.setSummary(exercise,analyticsOptions()),unitFor:effectiveExerciseUnit,supportsWarmup:exercise=>['load_reps','assistance_reps'].includes(exerciseCatalog.measurementFor(exercise)?.trackingModel),formatLoad:(value,exercise)=>unitsApi.formatLoad(value,state,{unit:effectiveExerciseUnit(exercise)}),formatWorkload:(value,kind,exercise)=>unitsApi.formatWorkload(value,state,{kind,unit:effectiveExerciseUnit(exercise)}),guidanceMarkupFor:exercise=>goalsTrainGuidance.render(exercise,escapeHtml,effectiveExerciseUnit(exercise))});notesApi.renderActiveNotes({activeWorkout:active,box:$('activeExercises'),state,defaultRest:DEFAULT_REST,escapeHtml});progressApi.afterActiveRender({activeWorkout:active});window.bigGainsTrainPosition?.afterRender();return result;}
+function renderActive(){const result=workoutControlsApi.renderActive({activeWorkout:active,box:$('activeExercises'),finishButton:$('finishWorkout'),lastPerformance,performanceDelta:performanceDeltaForDisplay,estimate1RM,escapeHtml,stepper:unitStepper,loadModeFor:exerciseCatalog.loadModeFor,inputFieldsFor:exerciseCatalog.inputFieldsFor,setSummaryFor:exercise=>analyticsApi.setSummary(exercise,analyticsOptions()),unitFor:effectiveExerciseUnit,supportsWarmup:exercise=>['load_reps','assistance_reps'].includes(exerciseCatalog.measurementFor(exercise)?.trackingModel),formatLoad:(value,exercise)=>unitsApi.formatLoad(value,state,{unit:effectiveExerciseUnit(exercise)}),formatWorkload:(value,kind,exercise)=>unitsApi.formatWorkload(value,state,{kind,unit:effectiveExerciseUnit(exercise)}),guidanceMarkupFor:exercise=>goalsTrainGuidance.render(exercise,escapeHtml,effectiveExerciseUnit(exercise))});notesApi.renderActiveNotes({activeWorkout:active,box:$('activeExercises'),state,defaultRest:DEFAULT_REST,escapeHtml});progressApi.afterActiveRender({activeWorkout:active});window.bigGainsTrainPosition?.afterRender();renderStaleRecovery();return result;}
 function startRestTimer(exerciseIndex){return timerController.start(exerciseIndex);}
 function acknowledgeTimerReady(){return timerController.acknowledgeReady();}
 function discardWorkout(){return workoutSessionController.discard();}
@@ -407,6 +447,27 @@ bind('activeExercises','click',e=>{
   if(t.dataset.completeSet)workoutSessionController.toggleSetCompleted(Number(t.dataset.ei),Number(t.dataset.si));
 });
 bind('finishWorkout','click',()=>workoutSessionController.complete());
+bind('staleWorkoutResume','click',()=>{
+  if(!active||!staleSessionCondition(active))return;
+  staleResume={owner:`${ACCOUNT.storageNamespace}:${active.id}`,at:Date.now()};
+  staleDiscardOwner=null;cancelArmedUntil=0;
+  renderStaleRecovery();workoutSessionController.resume();
+});
+bind('staleWorkoutFinish','click',()=>{
+  if(!active||!staleSessionCondition(active)||!staleRecoveryWritable()){renderStaleRecovery();return;}
+  workoutSessionController.complete();renderStaleRecovery();
+});
+bind('staleWorkoutDiscard','click',()=>{
+  if(!active||!staleSessionCondition(active)||!staleRecoveryWritable()){staleDiscardOwner=null;cancelArmedUntil=0;renderStaleRecovery();return;}
+  const owner=`${ACCOUNT.storageNamespace}:${active.id}`;
+  if(staleDiscardOwner!==owner)cancelArmedUntil=0;
+  staleDiscardOwner=owner;
+  // Reuse the existing two-tap confirmation and discard path.
+  $('cancelWorkout').click();renderStaleRecovery();
+});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')renderStaleRecovery();});
+window.addEventListener('pageshow',renderStaleRecovery);
+document.addEventListener('big-gains-runtime-state-changed',renderStaleRecovery);
 bind('history','click',e=>{const b=e.target.closest('[data-history-id]');if(b)openHistory(b.dataset.historyId);});
 bind('calendarDayWorkouts','click',e=>{const b=e.target.closest('[data-history-id]');if(b)openHistory(b.dataset.historyId,'calendar');});
 bind('logRetrospectiveWorkout','click',()=>retrospectiveApi.open());

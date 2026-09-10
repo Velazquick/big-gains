@@ -596,7 +596,39 @@ window.workoutProgress = (() => {
     if (historyDialog?.open) context.closeHistory();
 
     elements().dialog.dataset.exerciseId = exercise.canonicalId || exercise.id;
-    document.getElementById('progressDialogTitle').textContent = exercise.name;
+    const title = document.getElementById('progressDialogTitle');
+    title.innerHTML = `<button type="button" id="chooseProgressMovement" aria-expanded="false" aria-controls="progressMovementPicker">${context.escapeHtml(exercise.name)}</button>`;
+    let picker = document.getElementById('progressMovementPicker');
+    if (!picker) {
+      picker = document.createElement('div');
+      picker.id = 'progressMovementPicker';
+      title.closest('.history-dialog-head').after(picker);
+    }
+    picker.hidden = true;
+    picker.innerHTML = '<label class="search-box">Search logged movements<input id="progressMovementSearch" type="search" autocomplete="off" aria-controls="progressMovementResults"></label><div id="progressMovementResults" aria-label="Logged movements"></div><p id="progressMovementCount" role="status"></p>';
+    const renderChoices = () => {
+      const choices = window.BigGainsExercisePicker.filterExercises({catalog:window.BigGainsExerciseCatalog,exercises:loggedExercises(),term:document.getElementById('progressMovementSearch').value});
+      document.getElementById('progressMovementResults').innerHTML = choices.map(item => `<button type="button" data-metrics-choice="${context.escapeHtml(item.canonicalId || item.id)}" aria-pressed="${(item.canonicalId || item.id) === (exercise.canonicalId || exercise.id)}">${context.escapeHtml(item.name)}</button>`).join('');
+      document.getElementById('progressMovementCount').textContent = choices.length ? `${choices.length} logged movements` : 'No matching logged movements.';
+    };
+    document.getElementById('chooseProgressMovement').onclick = event => {
+      picker.hidden = !picker.hidden;
+      event.currentTarget.setAttribute('aria-expanded', String(!picker.hidden));
+      if (!picker.hidden) { renderChoices(); document.getElementById('progressMovementSearch').focus(); }
+    };
+    document.getElementById('progressMovementSearch').oninput = renderChoices;
+    picker.onclick = event => {
+      const choice = event.target.closest('[data-metrics-choice]');
+      if (!choice || !loggedExercises().some(item => (item.canonicalId || item.id) === choice.dataset.metricsChoice)) return;
+      openExerciseProgress(choice.dataset.metricsChoice);
+      document.getElementById('chooseProgressMovement').focus();
+    };
+    picker.onkeydown = event => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault(); event.stopPropagation(); picker.hidden = true;
+      document.getElementById('chooseProgressMovement').setAttribute('aria-expanded','false');
+      document.getElementById('chooseProgressMovement').focus();
+    };
     document.getElementById('progressDialogMeta').textContent = `${exercise.muscle} · ${exercise.equipment}`;
     const content = document.getElementById('progressDialogContent');
 
@@ -629,7 +661,7 @@ window.workoutProgress = (() => {
     }
 
     const { dialog } = elements();
-    if (dialog?.showModal) dialog.showModal();
+    if (dialog?.showModal) { if (!dialog.open) dialog.showModal(); }
     else dialog?.setAttribute('open', '');
     const shell = dialog?.querySelector('.history-dialog-shell');
     if (shell) shell.scrollTop = 0;

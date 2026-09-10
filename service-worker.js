@@ -1,4 +1,4 @@
-importScripts('./asset-manifest.js?v=v110-ui-acceptance-pass3-config-925e766c1b907250', './service-worker-core.js');
+importScripts('./asset-manifest.js?v=v111-exercise-metrics-session-recovery-config-925e766c1b907250', './service-worker-core.js');
 
 const runtime = BigGainsServiceWorkerCore.createRuntime({
   manifest: BIG_GAINS_ASSET_MANIFEST,

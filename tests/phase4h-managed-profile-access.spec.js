@@ -373,6 +373,9 @@ test('managed-member active session upsert then delete adopts the higher tombsto
   await expect(page.locator('#activeExercises input[data-field="weight"]').first()).toBeVisible();
   expect(await page.evaluate(storageKey => JSON.parse(localStorage.getItem(storageKey))?.activeWorkout?.id || null, storageKey)).toBe('alexa-active');
 
+  // Exercise ordinary offline queue semantics, not stale-session recovery.
+  // The upcoming set edit persists this recent start in the same queued mutation.
+  await page.evaluate(() => { active.startedAt = new Date().toISOString(); });
   await context.setOffline(true);
   await page.locator('#activeExercises input[data-field="weight"]').first().fill('95');
   await expect.poll(() => page.evaluate(() => BigGainsCloudSync.queue.pending().length)).toBe(1);
