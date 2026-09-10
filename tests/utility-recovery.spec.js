@@ -97,6 +97,14 @@ for(const status of [{pending:1},{lastResult:{conflict:true}},{reconciliationInF
   await page.evaluate(status=>{window.BigGainsCloudSync={status:()=>status};renderStaleRecovery();},status);
   await expect(page.locator('#staleWorkoutFinish')).toBeDisabled();await expect(page.locator('#staleWorkoutDiscard')).toBeDisabled();
   await expect(page.locator('#staleWorkoutGuard')).toBeVisible();expect((await jorgeState(page)).workouts).toEqual(before.workouts);
+  await page.locator('#staleWorkoutResume').click();
+  await expect(page.locator('#cancelWorkout')).toBeDisabled();
+  await expect(page.locator('#finishWorkout')).toBeDisabled();
+  expect(await page.evaluate(()=>workoutSessionController.complete())).toBe(false);
+  expect(await page.evaluate(()=>workoutSessionController.discard())).toBe(false);
+  expect((await jorgeState(page)).activeWorkout.id).toBe(before.activeWorkout.id);
+  await page.evaluate(()=>{window.BigGainsCloudSync={status:()=>({})};renderStaleRecovery();});
+  await expect(page.locator('#finishWorkout')).toBeEnabled();await expect(page.locator('#cancelWorkout')).toBeEnabled();
 });
 for(const width of [375,390])test(`metrics selector exact variants, search, same surface and mobile ${width}`,async({page},info)=>{
   await page.setViewportSize({width,height:844});await seed(page,{history:true});const before=await jorgeState(page);

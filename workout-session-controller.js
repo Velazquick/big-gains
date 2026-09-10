@@ -149,6 +149,7 @@
   function create({
     getState,
     getActiveWorkout,
+    canResolveSession = () => true,
     setActiveWorkout,
     getSelectedDay,
     setSelectedDay,
@@ -478,7 +479,7 @@
 
     function complete() {
       const current = getActiveWorkout();
-      if (!current) return false;
+      if (!current || !canResolveSession()) return false;
       const completed = current.exercises
         .map(({ displayUnitOverride: ignoredExerciseUnit, ...exercise }) => ({ ...exercise, sets: exercise.sets.filter(set => set.completed) }))
         .filter(exercise => exercise.sets.length);
@@ -545,7 +546,7 @@
     }
 
     function discard() {
-      if (!getActiveWorkout()) return false;
+      if (!getActiveWorkout() || !canResolveSession()) return false;
       clearRuntime();
       persist();
       onDiscarded();

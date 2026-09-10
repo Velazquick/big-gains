@@ -54,13 +54,15 @@ function staleRecoveryWritable(){
 function renderStaleRecovery(){
   const card=$('staleWorkoutRecovery');if(!card)return;
   const now=Date.now(),owner=active?`${ACCOUNT.storageNamespace}:${active.id}`:null;
+  const stale=staleSessionCondition(active,now),writable=!stale||staleRecoveryWritable();
+  $('cancelWorkout').disabled=!writable;
+  $('finishWorkout').disabled=!writable||!active?.exercises.some(exercise=>exercise.sets.some(set=>set.completed));
   const acknowledged=staleResume?.owner===owner&&now>=staleResume.at&&now-staleResume.at<staleSessionHours*3600000;
-  card.hidden=!staleSessionCondition(active,now)||acknowledged;
+  card.hidden=!stale||(acknowledged&&writable);
   if(card.hidden){staleDiscardOwner=null;return;}
   const start=new Date(active.startedAt),yesterday=new Date(now);yesterday.setDate(yesterday.getDate()-1);
   const day=start.toDateString()===new Date(now).toDateString()?'today':start.toDateString()===yesterday.toDateString()?'yesterday':start.toLocaleDateString();
   $('staleWorkoutContext').textContent=`${displayWorkout(active.type)} started ${day} at ${start.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}.`;
-  const writable=staleRecoveryWritable();
   $('staleWorkoutFinish').hidden=!active.exercises.some(exercise=>exercise.sets.some(set=>set.completed));
   $('staleWorkoutFinish').disabled=!writable;
   $('staleWorkoutDiscard').disabled=!writable;
@@ -246,6 +248,7 @@ function startBlankWorkout(){window.bigGainsViewShell?.showView('train',{workout
 const workoutSessionController=BigGainsWorkoutSessionController.create({
   getState:()=>state,
   getActiveWorkout:()=>active,
+  canResolveSession:()=>!staleSessionCondition(active)||staleRecoveryWritable(),
   setActiveWorkout:next=>{active=next;state.activeWorkout=next;},
   getSelectedDay:()=>selectedDay,
   setSelectedDay:next=>{selectedDay=next;},
@@ -288,7 +291,7 @@ function renderWorkoutClock(){renderStaleRecovery();if(active)$('workoutClock').
 function stepper(field,ei,si,value,step,options){return workoutControlsApi.renderStepper(field,ei,si,value,step,options);}
 function unitStepper(field,exerciseIndex,setIndex,value,step,options={}){if(field!=='weight')return stepper(field,exerciseIndex,setIndex,value,step,options);const unit=effectiveExerciseUnit(active?.exercises?.[exerciseIndex]);return stepper(field,exerciseIndex,setIndex,unitsApi.inputValue(value,state,{unit}),unitsApi.inputStep(step,state,{unit}),{...options,unit,adjustStep:step});}
 function performanceDeltaForDisplay(current,previous){const result=analyticsApi.performanceDelta(current,previous,analyticsOptions());if(result?.improvement?.kind!=='weight')return result;return {...result,improvement:{...result.improvement,label:`+${unitsApi.formatLoad(result.improvement.value,state,{unit:effectiveExerciseUnit(current)})}`}};}
-function renderActive(){const result=workoutControlsApi.renderActive({activeWorkout:active,box:$('activeExercises'),finishButton:$('finishWorkout'),lastPerformance,performanceDelta:performanceDeltaForDisplay,estimate1RM,escapeHtml,stepper:unitStepper,loadModeFor:exerciseCatalog.loadModeFor,inputFieldsFor:exerciseCatalog.inputFieldsFor,setSummaryFor:exercise=>analyticsApi.setSummary(exercise,analyticsOptions()),unitFor:effectiveExerciseUnit,supportsWarmup:exercise=>['load_reps','assistance_reps'].includes(exerciseCatalog.measurementFor(exercise)?.trackingModel),formatLoad:(value,exercise)=>unitsApi.formatLoad(value,state,{unit:effectiveExerciseUnit(exercise)}),formatWorkload:(value,kind,exercise)=>unitsApi.formatWorkload(value,state,{kind,unit:effectiveExerciseUnit(exercise)}),guidanceMarkupFor:exercise=>goalsTrainGuidance.render(exercise,escapeHtml,effectiveExerciseUnit(exercise))});notesApi.renderActiveNotes({activeWorkout:active,box:$('activeExercises'),state,defaultRest:DEFAULT_REST,escapeHtml});progressApi.afterActiveRender({activeWorkout:active});window.bigGainsTrainPosition?.afterRender();return result;}
+function renderActive(){const result=workoutControlsApi.renderActive({activeWorkout:active,box:$('activeExercises'),finishButton:$('finishWorkout'),lastPerformance,performanceDelta:performanceDeltaForDisplay,estimate1RM,escapeHtml,stepper:unitStepper,loadModeFor:exerciseCatalog.loadModeFor,inputFieldsFor:exerciseCatalog.inputFieldsFor,setSummaryFor:exercise=>analyticsApi.setSummary(exercise,analyticsOptions()),unitFor:effectiveExerciseUnit,supportsWarmup:exercise=>['load_reps','assistance_reps'].includes(exerciseCatalog.measurementFor(exercise)?.trackingModel),formatLoad:(value,exercise)=>unitsApi.formatLoad(value,state,{unit:effectiveExerciseUnit(exercise)}),formatWorkload:(value,kind,exercise)=>unitsApi.formatWorkload(value,state,{kind,unit:effectiveExerciseUnit(exercise)}),guidanceMarkupFor:exercise=>goalsTrainGuidance.render(exercise,escapeHtml,effectiveExerciseUnit(exercise))});notesApi.renderActiveNotes({activeWorkout:active,box:$('activeExercises'),state,defaultRest:DEFAULT_REST,escapeHtml});progressApi.afterActiveRender({activeWorkout:active});window.bigGainsTrainPosition?.afterRender();renderStaleRecovery();return result;}
 function startRestTimer(exerciseIndex){return timerController.start(exerciseIndex);}
 function acknowledgeTimerReady(){return timerController.acknowledgeReady();}
 function discardWorkout(){return workoutSessionController.discard();}

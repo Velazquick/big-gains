@@ -329,6 +329,8 @@ test('discard atomically clears the live session and timer without creating hist
   await openApp(page);
 
   const result = await page.evaluate(() => {
+    // This test covers ordinary discard; stale sessions now fail closed while capture is pending.
+    active.startedAt = new Date().toISOString();
     state.restTimerEndsAt = Date.now() + 60_000;
     saveState();
     workoutTimerController.reconcile();
