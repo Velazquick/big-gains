@@ -139,6 +139,8 @@ test('active swap preserves source data, units and rest; persists offline and su
   // Existing blank warm-up templates count as entered data under the accepted safeguard.
   if(!await page.locator('#exercisePickerDialog').isVisible()) await page.locator('[data-swap-exercise="0"]').click();
   await expect(page.locator('#exercisePickerSearch')).toBeHidden();
+  await expect(page.locator('#exercisePickerDialog')).toHaveClass(/is-compact/);
+  expect(await page.locator('#exercisePickerDialog').evaluate(e=>e.getBoundingClientRect().height/innerHeight)).toBeLessThanOrEqual(.86);
   await expect(page.locator('.exercise-picker-suggested [data-exercise-picker-select] h3')).toHaveText(['Cable Lateral Raise','Machine Lateral Raise']);
   await page.locator('.exercise-picker-suggested [data-exercise-picker-select]',{hasText:'Cable Lateral Raise'}).click();
   const after=await readStoredJson(page,STORAGE_KEYS.jorge);
@@ -195,6 +197,7 @@ test('swap safeguards entered/completed sets and rejects stale slot callbacks; C
   await page.locator('[data-swap-exercise="0"]').click();
   await expect(page.locator('#exercisePickerDialog')).toBeVisible();
   await page.locator('[data-exercise-picker-browse]').click();
+  await expect(page.locator('#exercisePickerDialog')).not.toHaveClass(/is-compact/);
   await expect(page.locator('#exercisePickerSearch')).toBeVisible();
   await page.locator('#closeExercisePicker').click();
   await expect(page.locator('[data-swap-exercise="0"]')).toBeFocused();

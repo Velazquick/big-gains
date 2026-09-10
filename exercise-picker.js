@@ -199,6 +199,7 @@
       const recent = filteredOrderedIds(active.recentExerciseIds, allById);
       const suggested = filteredOrderedIds(active.suggestionIds, allById);
       const compact = !active.browseAll;
+      dialog.classList.toggle('is-compact', compact);
       const compactEmpty = '<div class="exercise-picker-empty"><strong>No close alternatives yet.</strong><p>Browse all exercises to choose a replacement.</p></div>';
       results.innerHTML = compact
         ? [sectionMarkup(active.suggestionLabel, suggested, 'exercise-picker-suggested') || compactEmpty,
