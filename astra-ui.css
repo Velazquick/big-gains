@@ -186,8 +186,8 @@ html[data-theme] .more-inventory button { display:flex; align-items:center; just
 html[data-theme] .more-inventory button:last-child { border-bottom:0; }
 html[data-theme] .more-inventory strong { display:block; font-size:17px; }
 html[data-theme] .more-inventory small { display:block; margin-top:4px; color:var(--ui-secondary); font-size:13px; line-height:1.4; }
-html[data-theme][data-appearance-version] .bottom-nav button.active:not([data-view="train"]) { background:var(--ui-surface-raised)!important; color:var(--text)!important; border-color:var(--line)!important; }
-html[data-theme][data-appearance-version] .bottom-nav button[data-view="train"] { background:var(--ui-action-fill)!important; color:var(--ui-action-text)!important; border-color:var(--ui-action-fill)!important; }
+html[data-theme][data-appearance-version] .bottom-nav button { background:transparent!important; color:var(--ui-secondary)!important; border-color:transparent!important; box-shadow:none!important; }
+html[data-theme][data-appearance-version] .bottom-nav button.active { background:var(--ui-action-fill)!important; color:var(--ui-action-text)!important; border-color:var(--ui-action-fill)!important; }
 html[data-theme] .bottom-nav button[data-view="more"]::before { content:'⋯'; }
 html[data-theme] #progressOverviewSurface > .v2-page-head { display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between; }
 html[data-theme] #progressOverviewSurface > .v2-page-head button { min-height:44px; }
@@ -234,3 +234,53 @@ html[data-theme][data-train-presentation] #activeExercises .is-collapsed .active
 html[data-theme][data-train-presentation] #activeExercises .is-collapsed .active-exercise-unit-choice button { min-width:44px; padding:0; background:transparent; color:var(--ui-secondary); border:1px solid transparent; border-radius:8px; }
 html[data-theme][data-train-presentation] #activeExercises .is-collapsed .active-exercise-unit-choice button[aria-pressed="true"] { background:var(--ui-surface-raised)!important; color:var(--ui-text)!important; border-color:var(--line)!important; }
 html[data-theme][data-train-presentation] #activeExercises .is-collapsed .unit-selected-mark { display:none; }
+
+/* Pass 3: completed is a semantic state, independent of the chosen accent. */
+html[data-theme][data-train-presentation] #activeExercises .set-line.completed:not(.is-current) {
+  background:color-mix(in srgb,var(--ui-success) 12%,var(--ui-surface));
+  border-color:color-mix(in srgb,var(--ui-success) 42%,var(--line));
+  border-inline-start:3px solid var(--ui-success); color:var(--ui-text);
+}
+html[data-theme][data-train-presentation] #activeExercises .set-line.completed .set-done {
+  background:color-mix(in srgb,var(--ui-success) 18%,var(--ui-surface))!important;
+}
+html[data-theme] .workload-family-list { display:grid; gap:10px; min-width:0; }
+html[data-theme] .workload-family-read { display:grid; gap:3px; }
+html[data-theme] .workload-family-read strong { font-size:1rem; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+html[data-theme] .workload-family-read small { font-size:.8125rem; color:var(--ui-secondary); line-height:1.4; }
+html[data-theme] .today-movement-slot { margin:16px 0; }
+html[data-theme] .movement-metric { display:grid; grid-template-columns:minmax(0,1fr) 96px; gap:8px 16px; width:min(100%,360px); padding:16px; text-align:left; border:1px solid var(--line); border-radius:var(--ui-radius-card); background:var(--ui-surface); color:var(--ui-text); box-shadow:none; }
+html[data-theme] .movement-metric .movement-name { grid-column:1/-1; font-size:.875rem; line-height:1.4; overflow-wrap:anywhere; }
+html[data-theme] .movement-metric .movement-value { font-size:1.5rem; font-variant-numeric:tabular-nums; }
+html[data-theme] .movement-metric small { font-size:.8125rem; line-height:1.4; color:var(--ui-secondary); }
+html[data-theme] .movement-metric .movement-change { grid-column:1/-1; }
+html[data-theme] .movement-spark { width:96px; height:40px; color:var(--ui-secondary); align-self:center; }
+html[data-theme] .exercise-workload-read { padding:16px 0; border-block:1px solid var(--line); margin:16px 0; }
+html[data-theme] .exercise-workload-read h3 { margin:0 0 12px; font-size:1rem; }
+html[data-theme] .exercise-workload-values { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+html[data-theme] .exercise-workload-values strong { display:block; font-size:1.375rem; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+html[data-theme] .exercise-workload-values small { font-size:.8125rem; color:var(--ui-secondary); }
+html[data-theme] .exercise-workload-change { margin:12px 0 0; font-size:.875rem; }
+html[data-theme] .progress-session { flex-wrap:wrap; gap:12px; }
+html[data-theme] .progress-session details { width:100%; border-top:1px solid var(--line); }
+html[data-theme] .progress-session summary { min-height:44px; display:flex; align-items:center; cursor:pointer; font-size:.875rem; }
+html[data-theme] .progress-session ul { padding-left:20px; font-size:.875rem; line-height:1.7; }
+html[data-theme] .session-workload-detail { margin:16px 0; padding-block:16px; border-block:1px solid var(--line); }
+html[data-theme] .more-inventory button { min-height:76px; }
+
+html[data-theme] #progressDialog :is(.history-summary-grid>div,.progress-trend-note,.progress-chart,.progress-session) { background:var(--ui-surface); border-color:var(--line); box-shadow:none; }
+html[data-theme] #progressDialog .progress-session { border:0; border-bottom:1px solid var(--line); border-radius:0; padding:16px 0; }
+html[data-theme] #progressDialog .progress-session small { font-size:.8125rem; color:var(--ui-secondary); }
+html[data-theme] #progressDialog .progress-session-meta { text-align:left; flex-wrap:wrap; }
+html[data-theme] #progressDialog .progress-session summary::after { content:' +'; margin-left:auto; }
+html[data-theme] #progressDialog .progress-session details[open] summary::after { content:' −'; }
+html[data-theme] #progressDialog .record-qualification { font-size:.8125rem; color:var(--ui-secondary); line-height:1.5; }
+html[data-theme] .today-movement-slot { scroll-margin-bottom:100px; }
+
+html[data-theme] #progressDialog :is(.history-dialog-shell,.history-dialog-head) { background:var(--ui-surface); border-color:var(--line); box-shadow:none; }
+html[data-theme] #progressDialog .progress-summary-grid { grid-template-columns:repeat(auto-fit,minmax(min(100%,9rem),1fr)); }
+html[data-theme] #progressDialog .progress-summary-grid strong { overflow-wrap:anywhere; }
+
+html[data-theme] #progressDialog { position:fixed; inset:0; margin:auto; max-height:calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overflow:hidden; }
+html[data-theme] #progressDialog .history-dialog-shell { box-sizing:border-box; max-height:calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overscroll-behavior:contain; }
+html[data-theme][data-train-presentation] #activeExercises .set-line.completed .set-number { color:var(--ui-success); background:transparent; border-color:transparent; }

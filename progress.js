@@ -50,7 +50,7 @@ window.workoutProgress = (() => {
   };
   const completedAt = workout => new Date(workout?.completedAt || 0).getTime();
   const analyticsOptions = () => context.getAnalyticsOptions?.() || {};
-  const formatLoadVolume = value => value === null ? '—' : units.formatWorkload(value, state(), { compact: true });
+  const formatLoadVolume = (value, unit = null) => value === null ? '—' : units.formatWorkload(value, state(), { compact: true, unit });
   const formatVolume = (value, kind = null) => value === null ? '—' : units.formatWorkload(value, state(), { kind, compact: true });
   const workloadLabel = kind => kind === 'indicated_load' ? 'indicated workload' : kind === 'modeled_system_load' ? 'modeled system volume' : kind === 'external_load' ? 'external-load volume' : 'comparable workload';
   const formatMonthHeading = iso => new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(new Date(iso)).toUpperCase();
@@ -111,7 +111,8 @@ window.workoutProgress = (() => {
       volume: session.workingSetVolume,
       volumeKind: session.workingSetVolumeKind,
       workload: session.workload,
-      workloadFamily: session.workloadFamily
+      workloadFamily: session.workloadFamily,
+      displayUnitOverride: session.displayUnitOverride
     }));
   }
 
@@ -168,11 +169,67 @@ window.workoutProgress = (() => {
     return `<div class="progress-chart"><div class="progress-chart-title"><strong>Estimated 1RM trend</strong><span>Last ${data.length} session${data.length === 1 ? '' : 's'}</span></div><svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Estimated one rep max trend">${grid}<polyline class="progress-line" points="${points}"></polyline>${dots}<text class="progress-date-label" x="${padX}" y="${height - 7}">${context.escapeHtml(formatMonthDay(data[0].date))}</text><text class="progress-date-label" text-anchor="end" x="${width - padX}" y="${height - 7}">${context.escapeHtml(formatMonthDay(data[data.length - 1].date))}</text></svg></div>`;
   }
 
+  function workloadFamiliesMarkup(workouts) {
+    const totals = context.analytics.lifetimeWorkload(workouts, analyticsOptions());
+    const rows = Object.entries(totals.families).filter(([, value]) => value.workingSetCount || value.gapCount).map(([family, value]) => {
+      const label = WORKLOAD_FAMILY_META[family].label.replace('volume', 'workload');
+      const amount = value.workingSetCount ? units.formatWorkload(value.total, state()) : 'Unavailable';
+      const gap = value.gapCount ? ` · ${value.gapCount} set${value.gapCount === 1 ? '' : 's'} missing bodyweight${value.workingSetCount ? ' (known subtotal)' : ''}` : '';
+      return `<div class="workload-family-read" data-workload-family="${family}"><strong>${amount}</strong><small>${label}${gap}</small></div>`;
+    });
+    return `<div class="workload-family-list">${rows.join('') || '<div class="workload-family-read"><strong>No eligible workload yet</strong><small>Completed load × rep work appears here.</small></div>'}</div>`;
+  }
+
+  function workloadChangeText(trend) {
+    if (trend.change === null) return 'No previous comparable workload';
+    if (trend.change === 0) return '→ Workload unchanged vs previous';
+    const direction = trend.change > 0 ? '↑' : '↓';
+    const signed = trend.change > 0 ? '+' : '−';
+    const value = trend.percentage === null
+      ? units.formatWorkload(Math.abs(trend.change), state(), { unit: trend.current.displayUnitOverride })
+      : `${Math.abs(trend.percentage).toFixed(1)}%`;
+    return `${direction} Workload ${signed}${value} vs previous`;
+  }
+
+  function movementSpark(trend) {
+    const data = trend.sessions.slice(0, 8).reverse();
+    const values = data.filter(item => item.workloadFamily === trend.current.workloadFamily && Number.isFinite(item.workload)).map(item => item.workload);
+    const max = Math.max(...values, 1);
+    // Discrete observations, zero-based scale, no invented interpolation across gaps.
+    const marks = data.map((item, index) => {
+      const x = data.length === 1 ? 48 : 5 + index * 86 / (data.length - 1);
+      if (item.workloadFamily !== trend.current.workloadFamily || !Number.isFinite(item.workload)) return `<text x="${x}" y="37" text-anchor="middle" fill="currentColor">×</text>`;
+      const y = 35 - item.workload / max * 28;
+      return `<circle cx="${x}" cy="${y}" r="3" fill="currentColor"><title>${context.fmtDate(item.date)}: ${units.formatWorkload(item.workload, state(), { unit: trend.current.displayUnitOverride })}</title></circle>`;
+    }).join('');
+    return `<svg class="movement-spark" viewBox="0 0 96 40" role="img" aria-label="Last ${data.length} completed sessions, oldest to newest; dots show workload, crosses mark unavailable values"><path d="M2 38H94" stroke="currentColor" opacity=".3"/>${marks}</svg>`;
+  }
+
+  function renderTodayMovement() {
+    const target = document.getElementById('todayMovementMetric');
+    if (!target) return;
+    const trend = context.analytics.recentWorkloadMovement(state().workouts, analyticsOptions());
+    if (!trend) {
+      target.innerHTML = '<div class="movement-metric"><strong class="movement-name">Recent movement</strong><small class="movement-change">Complete a movement with load × rep workload to see its trend here.</small></div>';
+      return;
+    }
+    const current = trend.current;
+    target.innerHTML = `<button type="button" class="movement-metric" data-today-progress-exercise="${context.escapeHtml(trend.exerciseId)}" aria-label="Open ${context.escapeHtml(current.exerciseName)} metrics in Progress"><strong class="movement-name">${context.escapeHtml(current.exerciseName)}</strong><strong class="movement-value">${units.formatWorkload(current.workload, state(), { unit: current.displayUnitOverride })}</strong>${movementSpark(trend)}<small class="movement-change">${workloadChangeText(trend)}</small><small class="movement-change">${WORKLOAD_FAMILY_META[current.workloadFamily].label.replace('volume', 'workload')}${current.workloadFamily === 'machine_indicated' ? ' · limited comparison' : ''} · ${context.fmtDate(current.date)}</small></button>`;
+  }
+
+  function exerciseWorkloadMarkup(exerciseId) {
+    const trend = context.analytics.exerciseWorkloadTrend(state().workouts, exerciseId, analyticsOptions());
+    if (!trend.current?.workloadFamily) return '';
+    const format = session => session && Number.isFinite(session.workload) && session.workloadFamily === trend.current.workloadFamily
+      ? units.formatWorkload(session.workload, state(), { unit: trend.current.displayUnitOverride }) : 'Unavailable';
+    return `<section class="exercise-workload-read" aria-label="Exercise workload comparison"><h3>${WORKLOAD_FAMILY_META[trend.current.workloadFamily].label.replace('volume', 'workload')}</h3><div class="exercise-workload-values"><div><small>Latest · ${context.fmtDate(trend.current.date)}</small><strong>${format(trend.current)}</strong></div><div><small>${trend.previous ? `Previous · ${context.fmtDate(trend.previous.date)}` : 'Previous'}</small><strong>${trend.previous ? format(trend.previous) : 'First session'}</strong></div></div><p class="exercise-workload-change">${workloadChangeText(trend)}</p></section>`;
+  }
+
   function workloadChart(sessions, family) {
     const meta = WORKLOAD_FAMILY_META[family];
     if (!meta) return '<div class="progress-chart-empty"><strong>No load-volume trend</strong><span>This movement’s measurement contract does not produce load × rep-event volume.</span></div>';
-    const data = sessions.slice(0, 10).reverse();
-    const known = data.filter(session => session.workload !== null);
+    const data = sessions.slice(0, 10).reverse().map(session => session.workloadFamily === family ? session : { ...session, workload: null });
+    const known = data.filter(session => session.workloadFamily === family && session.workload !== null);
     if (!known.length) {
       const detail = family === 'modeled_system_load'
         ? 'No bodyweight was logged on or before these workout dates, so modeled workload is unavailable.'
@@ -210,9 +267,9 @@ window.workoutProgress = (() => {
       : '').join('');
     const dots = data.map((session, index) => session.workload === null
       ? `<line class="progress-gap-marker" x1="${xFor(index)}" y1="${padY}" x2="${xFor(index)}" y2="${height - padY}"><title>${context.fmtDate(session.date)}: workload unavailable</title></line>`
-      : `<circle class="progress-dot progress-workload-dot" cx="${xFor(index)}" cy="${yFor(session.workload)}" r="5"><title>${context.fmtDate(session.date)}: ${formatLoadVolume(session.workload)} ${meta.label.toLowerCase()}</title></circle>`).join('');
+      : `<circle class="progress-dot progress-workload-dot" cx="${xFor(index)}" cy="${yFor(session.workload)}" r="5"><title>${context.fmtDate(session.date)}: ${formatLoadVolume(session.workload, sessions[0]?.displayUnitOverride)} ${meta.label.toLowerCase()}</title></circle>`).join('');
     const gapNote = data.some(session => session.workload === null)
-      ? '<p class="progress-chart-gap-note">Gaps are sessions with unavailable modeled bodyweight, not zero workload.</p>'
+      ? '<p class="progress-chart-gap-note">Gaps are sessions without comparable workload, not zero workload.</p>'
       : '';
     return `<div class="progress-chart progress-workload-chart"><div class="progress-chart-title"><strong>${meta.label} trend</strong><span>Last ${data.length} session${data.length === 1 ? '' : 's'}</span></div><svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${meta.label} session trend">${grid}${lines}${dots}<text class="progress-date-label" x="${padX}" y="${height - 7}">${context.escapeHtml(formatMonthDay(data[0].date))}</text><text class="progress-date-label" text-anchor="end" x="${width - padX}" y="${height - 7}">${context.escapeHtml(formatMonthDay(data[data.length - 1].date))}</text></svg>${gapNote}</div>`;
   }
@@ -359,7 +416,7 @@ window.workoutProgress = (() => {
   function renderProgressPreview(exerciseId) {
     const { preview } = elements();
     if (!preview) return;
-    const exercise = context.exercises.find(item => item.id === exerciseId);
+    const exercise = context.exercises.find(item => item.id === exerciseId || item.canonicalId === exerciseId);
     const sessions = sessionHistoryFor(exerciseId);
     if (!exercise || !sessions.length) {
       preview.className = 'progress-preview empty';
@@ -532,12 +589,13 @@ window.workoutProgress = (() => {
   }
 
   function openExerciseProgress(exerciseId) {
-    const exercise = context.exercises.find(item => item.id === exerciseId);
+    const exercise = context.exercises.find(item => item.id === exerciseId || item.canonicalId === exerciseId);
     const sessions = sessionHistoryFor(exerciseId);
     if (!exercise) return;
     const historyDialog = document.getElementById('historyDialog');
     if (historyDialog?.open) context.closeHistory();
 
+    elements().dialog.dataset.exerciseId = exercise.canonicalId || exercise.id;
     document.getElementById('progressDialogTitle').textContent = exercise.name;
     document.getElementById('progressDialogMeta').textContent = `${exercise.muscle} · ${exercise.equipment}`;
     const content = document.getElementById('progressDialogContent');
@@ -550,28 +608,31 @@ window.workoutProgress = (() => {
       const record = currentRecordFor(exercise);
       const workloadFamily = sessions.find(session => session.workloadFamily)?.workloadFamily || null;
       const workloadMeta = WORKLOAD_FAMILY_META[workloadFamily];
-      const totalWorkload = workloadFamily && sessions.every(session => session.workload !== null)
+      const totalWorkload = workloadFamily && sessions.every(session => session.workload !== null && session.workloadFamily === workloadFamily)
         ? sessions.reduce((total, session) => total + session.workload, 0)
         : null;
       const recent = sessions.slice(0, 8).map(session => {
-        const sessionWorkload = !workloadMeta
+        const sessionMeta = WORKLOAD_FAMILY_META[session.workloadFamily];
+        const sessionWorkload = !sessionMeta
           ? 'No load-volume trend for this measurement contract'
           : session.workload === null
-            ? `${workloadMeta.label} unavailable · no bodyweight at workout`
-            : `${formatLoadVolume(session.workload)} ${workloadMeta.label.toLowerCase()}`;
-        return `<article class="progress-session"><div><strong>${context.fmtDate(session.date)}</strong><small>${session.sets.length} working set${session.sets.length === 1 ? '' : 's'} · ${sessionWorkload}</small></div><div class="progress-session-meta"><strong>${context.escapeHtml(setLoadLabel(session.best))} × ${session.best.reps}</strong><small>${session.estimated1RM === null ? 'e1RM unavailable for this measurement contract or session context' : `${units.formatLoad(session.estimated1RM, state())} e1RM`}</small></div><div class="progress-session-sets">${session.sets.map(set => `<span>${context.escapeHtml(setLoadLabel(set))} × ${Number(set.reps)}</span>`).join('')}</div></article>`;
+            ? `${sessionMeta.label} unavailable · no bodyweight at workout`
+            : `${formatLoadVolume(session.workload)} ${sessionMeta.label.toLowerCase()}`;
+        return `<article class="progress-session"><div><strong>${context.fmtDate(session.date)}</strong><small>${session.sets.length} working set${session.sets.length === 1 ? '' : 's'} · ${sessionWorkload}</small></div><div class="progress-session-meta"><strong>${context.escapeHtml(setLoadLabel(session.best))} × ${session.best.reps}</strong><small>${session.estimated1RM === null ? 'e1RM unavailable for this measurement contract or session context' : `${units.formatLoad(session.estimated1RM, state())} e1RM`}</small></div><details><summary>View ${session.sets.length} working sets</summary><ul>${session.sets.map((set, index) => `<li>Set ${index + 1}: ${context.escapeHtml(setLoadLabel(set))} × ${set.reps} reps</li>`).join('')}</ul><button type="button" class="ghost compact" data-workload-history="${context.escapeHtml(session.workoutId)}">Full workout →</button></details></article>`;
       }).join('');
       const e1rmChart = sessions.some(session => session.estimated1RM === null) ? '' : progressChart(sessions);
       const historyWorkload = workloadMeta
         ? totalWorkload === null ? `${sessions.length} sessions · workload has gaps` : `${sessions.length} sessions · ${formatLoadVolume(totalWorkload)}`
         : `${sessions.length} sessions · no load-volume family`;
-      const recordQualification = record?.recordType === 'indicated_load' ? '<p class="record-qualification">Profile-local, exact-exercise indicated load. It does not claim equivalent resistance across machines, gyms, pulleys, attachments, or calibration.</p>' : '';
-      content.innerHTML = `<div class="history-summary-grid progress-summary-grid"><div><span>Best set</span><strong>${context.escapeHtml(setLoadLabel(best))} × ${Number(best.reps)}</strong></div><div><span>${context.escapeHtml(record?.recordLabel || 'Performance Record')}</span><strong>${context.escapeHtml(recordValue(record))}</strong></div><div><span>Training history</span><strong>${historyWorkload}</strong></div></div>${recordQualification}<div class="progress-trend-note"><strong>${latest.estimated1RM === null ? 'e1RM unavailable' : `${units.formatLoad(latest.estimated1RM, state())} latest e1RM`}</strong><span>${trendText(sessions)}</span></div>${e1rmChart}${workloadChart(sessions, workloadFamily)}<div class="progress-recent-head"><span class="label">Recent work</span><h3>Session-by-session</h3></div><div class="progress-session-list">${recent}</div>`;
+      const recordQualification = workloadFamily === 'machine_indicated' ? '<p class="record-qualification">Profile-local, exact-exercise indicated load. It does not claim equivalent resistance across machines, gyms, pulleys, attachments, or calibration.</p>' : '';
+      content.innerHTML = `<div class="history-summary-grid progress-summary-grid"><div><span>Best set</span><strong>${context.escapeHtml(setLoadLabel(best))} × ${Number(best.reps)}</strong></div><div><span>${context.escapeHtml(record?.recordLabel || 'Performance Record')}</span><strong>${context.escapeHtml(recordValue(record))}</strong></div><div><span>Training history</span><strong>${historyWorkload}</strong></div></div>${recordQualification}${exerciseWorkloadMarkup(exerciseId)}<div class="progress-trend-note"><strong>${latest.estimated1RM === null ? 'e1RM unavailable' : `${units.formatLoad(latest.estimated1RM, state())} latest e1RM`}</strong><span>${trendText(sessions)}</span></div>${workloadChart(sessions, workloadFamily)}${e1rmChart}<div class="progress-recent-head"><span class="label">Recent work</span><h3>Session-by-session</h3></div><div class="progress-session-list">${recent}</div>`;
     }
 
     const { dialog } = elements();
     if (dialog?.showModal) dialog.showModal();
     else dialog?.setAttribute('open', '');
+    const shell = dialog?.querySelector('.history-dialog-shell');
+    if (shell) shell.scrollTop = 0;
   }
 
   function decorateLibrary() {
@@ -652,6 +713,18 @@ window.workoutProgress = (() => {
       return;
     }
 
+    const todayMovement = event.target.closest('[data-today-progress-exercise]');
+    if (todayMovement) {
+      window.bigGainsViewShell.showView('progress', { instant: true });
+      openExerciseProgress(todayMovement.dataset.todayProgressExercise);
+      return;
+    }
+    const workloadHistory = event.target.closest('[data-workload-history]');
+    if (workloadHistory) {
+      closeProgress();
+      context.openHistory(workloadHistory.dataset.workloadHistory, 'list');
+      return;
+    }
     const progressButton = event.target.closest('[data-progress-exercise]');
     if (progressButton) {
       event.preventDefault();
@@ -716,6 +789,7 @@ window.workoutProgress = (() => {
 
   function afterFullRender({ activeWorkout }) {
     renderProgressDashboard();
+    renderTodayMovement();
     renderCompactHistory();
     if (elements().archive?.hidden === false) {
       renderHistoryArchive();
@@ -726,6 +800,7 @@ window.workoutProgress = (() => {
   }
 
   return {
+    workloadFamiliesMarkup,
     afterActiveRender,
     afterFullRender,
     afterLibraryRender,

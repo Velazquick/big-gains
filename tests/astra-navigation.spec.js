@@ -4,7 +4,7 @@ import {openApp,jorgeState,openLibraryFromMore} from './helpers/app.js';
 for(const width of [375,390])test(`Training First navigation and routine priority at ${width}`,async({page},info)=>{
  await page.setViewportSize({width,height:844});await installLocalStorageFixture(page,'blankJorge');await openApp(page);
  await expect(page.locator('.bottom-nav button')).toHaveText(['Today','Plan','Train','Progress','More']);
- await expect(page.locator('.bottom-nav [data-view="train"]')).toHaveCSS('background-color','rgb(216, 255, 62)');
+ await expect(page.locator('.bottom-nav [data-view="train"]')).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
  await expect(page.locator('.today-stage')).toHaveAttribute('data-priority','routine');
  await expect(page.locator('.today-stage > :first-child')).toHaveAttribute('id','sessionTypeSelector');
  await page.screenshot({path:info.outputPath(`today-${width}.png`)});

@@ -227,7 +227,7 @@ test('save is exact-once and updates calendar, history, progress, and workout to
   await expect(page.locator('#progressExerciseSelect')).toContainText('Seated Machine Chest Press');
   await page.locator('.bottom-nav [data-view="today"]').click();
   await expect(page.locator('#weeklyWorkouts')).toHaveText('1');
-  await expect(page.locator('#trainingVolume')).toHaveText('1,000 lb');
+  await expect(page.locator('#trainingVolume [data-workload-family="machine_indicated"] strong')).toHaveText('1,000 lb');
 });
 
 test('cancel and reload discard only the draft while an active workout and return bar remain untouched', async ({ page }) => {

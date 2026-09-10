@@ -49,7 +49,7 @@
   <div class="app-shell">
     <header class="topbar" id="top">
       <div><p class="eyebrow">BIG GAINS</p><h1 id="greeting">Welcome to Big Gains.</h1></div>
-      <div class="topbar-actions"><label class="profile-switcher"><span>Profile</span><select id="profileSelect" aria-label="Choose profile"></select></label><button id="openSettings" class="ghost compact" type="button" aria-label="Open Settings">Settings</button><button id="installButton" class="ghost hidden" type="button">Install</button></div>
+      <div class="topbar-actions"><label class="profile-switcher"><span>Profile</span><select id="profileSelect" aria-label="Choose profile"></select></label><button id="installButton" class="ghost hidden" type="button">Install</button></div>
     </header>
 
     <main>
@@ -96,6 +96,7 @@
             <div id="todayPlanActions" class="today-plan-actions"></div>
           </section>
 
+        <div id="todayMovementMetric" class="today-movement-slot"></div>
           <div id="trainingPetHome">
           <section class="training-pet-card" id="trainingPetCard" aria-labelledby="trainingPetState">
             <button class="training-pet" id="trainingPet" type="button" aria-describedby="trainingPetMessage">
@@ -136,10 +137,11 @@
           </div>
         </div>
 
+
         <section class="momentum-panel" aria-label="Current training momentum">
           <div class="momentum-copy"><span class="label">Current momentum</span><strong id="momentumHeadline">0 sessions this week</strong><p id="momentumNote">Build the baseline. Then make it difficult to recognize.</p></div>
           <div class="momentum-metrics">
-            <div class="momentum-metric"><span>Lifetime volume</span><strong id="trainingVolume">0 lb</strong><small>work completed</small></div>
+            <div class="momentum-metric"><span>Lifetime workload</span><div id="trainingVolume"></div><small>Completed working sets · resistance types kept separate</small></div>
             <div class="momentum-metric"><span>Current records</span><strong id="prCount">0</strong><small>typed performance records</small></div>
             <div class="momentum-metric"><span>Bodyweight</span><strong id="latestWeight">—</strong><small>latest check-in</small></div>
           </div>
@@ -354,7 +356,7 @@
         <div class="v2-page-head"><div><span class="label">More</span><h2>Your training toolkit.</h2><p>Exercises, preferences, and your private files.</p></div></div>
         <div class="more-inventory">
           <button id="moreLibrary" data-more-view="library" type="button"><span><strong>Library</strong><small>Exercises and saved routines</small></span><span aria-hidden="true">→</span></button>
-          <button data-more-view="settings" type="button"><span><strong>Settings</strong><small>Profile, Appearance, units, and training</small></span><span aria-hidden="true">→</span></button>
+          <button id="openSettings" data-more-view="settings" type="button"><span><strong>Settings</strong><small>Profile, Appearance, units, and training</small></span><span aria-hidden="true">→</span></button>
           <button data-more-view="settings" data-more-section="settingsBackupTitle" type="button"><span><strong>Cloud &amp; backup</strong><small>Sync, recovery, and export</small></span><span aria-hidden="true">→</span></button>
           <button data-more-view="settings" data-more-section="settingsSupportTitle" type="button"><span><strong>Support</strong><small>Help and app information</small></span><span aria-hidden="true">→</span></button>
         </div>
@@ -375,7 +377,7 @@
           <div><dt>Duration</dt><dd id="completionDuration">00:00</dd></div>
           <div><dt>Exercises</dt><dd id="completionExercises">0</dd></div>
           <div><dt>Working sets</dt><dd id="completionWorkingSets">0</dd></div>
-          <div><dt>Working-set volume</dt><dd id="completionVolume">0 lb</dd></div>
+          <div><dt>Session workload</dt><dd id="completionVolume">0 lb</dd></div>
           <div><dt>Record events</dt><dd id="completionPrCount">0</dd></div>
         </dl>
         <div class="completion-actions">
@@ -446,7 +448,7 @@
     <div class="pwa-update-actions"><button id="pwaUpdateNow" type="button" class="primary">Update now</button>
       <button id="pwaUpdateLater" type="button" class="secondary">Later</button></div>
   </aside>
-  <script src="asset-manifest.js?v=v109-train-position-summaries-config-925e766c1b907250" data-big-gains-manifest></script>
+  <script src="asset-manifest.js?v=v110-ui-acceptance-pass3-config-925e766c1b907250" data-big-gains-manifest></script>
   <script src="asset-loader.js"></script>
 </body>
 </html>

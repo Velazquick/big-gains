@@ -189,6 +189,7 @@ test('Safari compatibility Magic Link disables signup and uses the canonical app
   });
   await installLocalStorageFixture(page, 'blankJorge');
   await openApp(page);
+  await page.locator('.bottom-nav [data-view="more"]').click();
   await page.locator('#openSettings').click();
   await page.locator('#cloudAuthEmail').fill('jorge.synthetic@example.com');
   await page.locator('#cloudMagicLink').click();

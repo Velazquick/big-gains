@@ -47,7 +47,7 @@ jobs:
         env:
           BIG_GAINS_WEBKIT_QA: 'true'
           PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-astra-webkit
-        run: npx playwright test --project=webkit --output=test-results-astra-webkit tests/astra-position.spec.js tests/astra-workout.spec.js tests/astra-picker.spec.js tests/astra-navigation.spec.js tests/astra-startup.spec.js tests/active-workout-units.spec.js tests/set-removal.spec.js
+        run: npx playwright test --project=webkit --output=test-results-astra-webkit tests/astra-pass3.spec.js tests/astra-position.spec.js tests/astra-workout.spec.js tests/astra-picker.spec.js tests/astra-navigation.spec.js tests/astra-startup.spec.js tests/active-workout-units.spec.js tests/set-removal.spec.js
       - uses: actions/upload-artifact@v7
         if: always()
         with:

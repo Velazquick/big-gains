@@ -353,6 +353,7 @@ test('authenticated Settings UI shows quiet mapping, counts, audit details, and 
     };
   }, ZERO_COUNTS);
   await page.evaluate(() => BigGainsMigrationPreview.refresh());
+  await page.locator('.bottom-nav [data-view="more"]').click();
   await page.locator('#openSettings').click();
   await page.locator('#advancedDiagnostics').evaluate(element => { element.open = true; });
 

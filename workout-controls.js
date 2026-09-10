@@ -129,7 +129,7 @@
             </div>
             <span class="set-number">${set.warmup ? 'W' : exercise.sets.filter(item => !item.warmup).indexOf(set) + 1}</span>
             ${inputFields.map(field => stepper(field.name, exerciseIndex, setIndex, set[field.name] ?? '', field.step, { ...field, loadMode, compact: true })).join('')}
-            <button type="button" class="set-done" data-complete-set="1" data-ei="${exerciseIndex}" data-si="${setIndex}" aria-label="${set.completed ? 'Mark set incomplete' : `Complete ${label}`}">
+            <button type="button" class="set-done" aria-pressed="${set.completed === true}" data-complete-set="1" data-ei="${exerciseIndex}" data-si="${setIndex}" aria-label="${set.completed ? 'Mark set incomplete' : `Complete ${label}`}">
               <span class="set-done-icon">✓</span>
               <span class="set-done-text">${set.completed ? 'Done' : 'Complete'}</span>
             </button>
