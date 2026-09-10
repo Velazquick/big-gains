@@ -167,6 +167,7 @@
                 <button type="button" data-move-exercise="up" data-index="${exerciseIndex}" ${exerciseIndex === 0 ? 'disabled' : ''} aria-label="Move ${escapeHtml(exercise.name)} up">↑</button>
                 <button type="button" data-move-exercise="down" data-index="${exerciseIndex}" ${exerciseIndex === activeWorkout.exercises.length - 1 ? 'disabled' : ''} aria-label="Move ${escapeHtml(exercise.name)} down">↓</button>
               </div>
+              <button type="button" class="swap-exercise" data-swap-exercise="${exerciseIndex}" aria-label="Swap ${escapeHtml(exercise.name)}">Swap exercise</button>
               <button type="button" class="remove-exercise" data-remove-exercise="${exerciseIndex}" aria-label="Remove ${escapeHtml(exercise.name)}">✕</button></details>
           </div>
           <div class="collapsed-summary">

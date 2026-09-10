@@ -188,6 +188,7 @@ test('focus, Escape, keyboard selection, and browser Back work without a nested 
   await expect(page.locator('#routineDialog')).toBeVisible();
 
   await page.locator('[data-routine-choose]').first().click();
+  await page.locator('[data-exercise-picker-browse]').click();
   await page.locator('#exercisePickerSearch').fill('DB Bench');
   const keyboardResult = page.locator('.exercise-picker-all [data-exercise-picker-select]');
   await keyboardResult.focus();

@@ -3,14 +3,17 @@ window.workoutProgress = (() => {
   let initialized = false;
   let selectedWindowDays = 7;
   let selectedMuscle = null;
+  let selectedAnatomyView = 'front';
   let selectedHistoryView = 'list';
   let historyTrigger = null;
 
   const MUSCLE_GROUPS = Object.freeze([
     { key: 'Chest', label: 'Chest', sources: ['Chest'] },
-    { key: 'Shoulders', label: 'Shoulders', sources: ['Shoulders', 'Rear Delts'] },
-    { key: 'Back', label: 'Back', sources: ['Back', 'Traps'] },
-    { key: 'Arms', label: 'Arms', sources: ['Biceps', 'Triceps'] },
+    { key: 'Shoulders', label: 'Shoulders', sources: ['Shoulders'] },
+    { key: 'RearShoulders', label: 'Rear shoulders', sources: ['Rear Delts'] },
+    { key: 'Back', label: 'Back & traps', sources: ['Back', 'Traps'] },
+    { key: 'Biceps', label: 'Biceps', sources: ['Biceps'] },
+    { key: 'Triceps', label: 'Triceps', sources: ['Triceps'] },
     { key: 'Core', label: 'Core', sources: ['Core'] },
     { key: 'Glutes', label: 'Glutes', sources: ['Glutes'] },
     { key: 'Quads', label: 'Quads', sources: ['Quads'] },
@@ -308,108 +311,93 @@ window.workoutProgress = (() => {
     </section>`;
   }
 
+  // Counts are primary-role completed working sets, never cross-family tonnage.
+  // A set contributes once per displayed region, even if two source roles match it.
   function workloadGroups() {
-    const muscleTotals = context.analytics.recentMuscleWorkload(state().workouts, { days: selectedWindowDays, ...analyticsOptions() }).muscles;
     return MUSCLE_GROUPS.map(group => {
-      const totals = group.sources.reduce((sum, source) => {
-        const value = muscleTotals[source] || {};
-        sum.workingSets += Number(value.workingSets) || 0;
-        sum.totalReps += Number(value.totalReps) || 0;
-        return sum;
-      }, { workingSets: 0, totalReps: 0 });
-      return { ...group, ...totals };
+      const contributors = muscleContributors(group);
+      return { ...group, contributors,
+        workingSets: contributors.reduce((sum, item) => sum + item.workingSets, 0),
+        totalReps: contributors.reduce((sum, item) => sum + item.totalReps, 0) };
     });
   }
 
-  function heatLevel(workingSets, maxSets) {
-    if (!workingSets || !maxSets) return 0;
-    return Math.max(1, Math.min(4, Math.ceil(workingSets / maxSets * 4)));
+  function heatLevel(sets) {
+    return sets >= 20 ? 4 : sets >= 10 ? 3 : sets >= 5 ? 2 : sets > 0 ? 1 : 0;
   }
 
+  // Original vector artwork. Regions intentionally follow the catalog's broad
+  // muscle roles; the silhouette does not imply finer physiological precision.
   function muscleMapSvg(groups) {
     const lookup = new Map(groups.map(group => [group.key, group]));
-    const maxSets = Math.max(0, ...groups.map(group => group.workingSets));
-    const zone = (key, shape) => {
-      const group = lookup.get(key) || { label: key, workingSets: 0 };
-      const level = heatLevel(group.workingSets, maxSets);
-      const selected = selectedMuscle === key;
-      return shape.replace('CLASS', `muscle-zone heat-${level}${selected ? ' is-selected' : ''}`).replace('ATTRS', `data-muscle-key="${key}" role="button" tabindex="0" aria-pressed="${selected}" aria-label="${group.label}: ${group.workingSets} working sets"`);
+    const front = selectedAnatomyView === 'front';
+    const pair = d => `<path d="${d}"/><path d="${d}" transform="translate(240 0) scale(-1 1)"/>`;
+    const zone = (key, paths) => {
+      const group = lookup.get(key);
+      return `<g class="muscle-zone heat-${heatLevel(group.workingSets)}${selectedMuscle === key ? ' is-selected' : ''}" data-muscle-key="${key}" role="button" tabindex="0" aria-pressed="${selectedMuscle === key}" aria-label="${group.label}: ${group.workingSets} primary working sets">${paths}</g>`;
     };
-
-    return `<div class="muscle-map-wrap" aria-label="Working-set exposure map">
-      <div class="muscle-map-figure"><span>Front</span><svg viewBox="0 0 180 360" aria-label="Front muscle map">
-        <circle class="body-outline" cx="90" cy="34" r="20"></circle>
-        <path class="body-outline" d="M70 57h40l18 39-12 91-10 145H74L64 187 52 96Z"></path>
-        ${zone('Shoulders', '<ellipse class="CLASS" cx="55" cy="84" rx="17" ry="14" ATTRS></ellipse>')}
-        ${zone('Shoulders', '<ellipse class="CLASS" cx="125" cy="84" rx="17" ry="14" ATTRS></ellipse>')}
-        ${zone('Chest', '<path class="CLASS" d="M67 83h22v41H63l-4-26Z" ATTRS></path>')}
-        ${zone('Chest', '<path class="CLASS" d="M91 83h22l8 15-4 26H91Z" ATTRS></path>')}
-        ${zone('Arms', '<path class="CLASS" d="M43 96h14l-6 80H37Z" ATTRS></path>')}
-        ${zone('Arms', '<path class="CLASS" d="M123 96h14l6 80h-14Z" ATTRS></path>')}
-        ${zone('Core', '<rect class="CLASS" x="70" y="126" width="40" height="64" rx="14" ATTRS></rect>')}
-        ${zone('Adductors', '<path class="CLASS" d="M81 198h10l-3 80H73Z" ATTRS></path>')}
-        ${zone('Adductors', '<path class="CLASS" d="M89 198h10l8 80H92Z" ATTRS></path>')}
-        ${zone('Quads', '<path class="CLASS" d="M68 194h17l-8 88H59Z" ATTRS></path>')}
-        ${zone('Quads', '<path class="CLASS" d="M95 194h17l9 88h-18Z" ATTRS></path>')}
-        ${zone('Calves', '<path class="CLASS" d="M62 286h16l-4 50H57Z" ATTRS></path>')}
-        ${zone('Calves', '<path class="CLASS" d="M102 286h16l5 50h-17Z" ATTRS></path>')}
+    const shoulders = 'M77 81 C62 79 50 86 47 103 L45 121 C54 119 64 112 68 104 Z';
+    const frontRegions = [
+      ['Shoulders', pair(shoulders)],
+      ['Chest', pair('M80 82 C91 84 106 87 117 91 L117 123 C105 133 83 132 71 119 L70 105 Z')],
+      ['Biceps', pair('M46 125 C55 122 61 117 64 113 L62 145 C60 159 54 169 47 174 L38 166 Z')],
+      ['Core', pair('M94 138 C101 138 111 137 117 134 L117 203 L107 220 L95 204 C91 182 87 164 88 149 Z') + pair('M78 132 L87 139 C83 162 88 193 94 209 L79 201 L71 181 Z')],
+      ['Adductors', pair('M105 233 L117 246 L105 293 L98 312 L97 268 Z')],
+      ['Quads', pair('M78 219 C83 216 96 218 102 225 L92 271 L94 312 C90 328 82 336 73 331 C64 310 64 274 67 252 Z')]
+    ];
+    const backRegions = [
+      ['RearShoulders', pair(shoulders)],
+      ['Back', pair('M108 64 L117 70 L117 132 C99 123 86 108 79 85 Z') + pair('M76 113 C89 133 104 139 117 141 L117 207 C98 196 82 179 77 158 Z')],
+      ['Triceps', pair('M46 125 C56 122 61 117 64 113 L61 151 L48 179 L38 167 Z')],
+      ['Glutes', pair('M80 207 C93 198 109 209 117 218 L117 245 C108 259 85 259 73 246 Z')],
+      ['Hamstrings', pair('M72 257 C82 263 103 264 113 254 L102 310 L92 339 L77 335 C65 314 66 281 72 257 Z')],
+      ['Calves', pair('M78 350 C83 346 90 347 94 352 L98 378 C97 401 90 416 85 429 L79 427 L70 385 Z')]
+    ];
+    const regions = front ? frontRegions : backRegions;
+    return `<div class="muscle-map-wrap body-map-v2">
+      <div class="progress-window-toggle anatomy-toggle" role="group" aria-label="Anatomy view">${['front', 'back'].map(view => `<button type="button" data-anatomy-view="${view}" aria-pressed="${selectedAnatomyView === view}" class="${selectedAnatomyView === view ? 'active' : ''}">${view === 'front' ? 'Front' : 'Back'}</button>`).join('')}</div>
+      <div class="muscle-map-figure"><svg viewBox="0 0 240 480" role="group" aria-label="${front ? 'Front' : 'Back'} muscle map">
+        <path class="body-outline" d="M120 12 C101 12 97 26 99 42 C100 54 106 60 108 64 L106 73 L78 79 C60 77 46 86 42 103 L33 149 L27 189 L16 227 C13 237 15 247 21 248 L32 231 L40 204 L54 177 L66 151 L72 179 L69 203 C58 230 61 272 65 301 L68 339 C64 358 63 382 70 408 L75 441 L62 451 C57 457 60 465 66 466 L88 464 C96 460 94 447 91 440 L99 405 L103 373 L100 342 L111 303 L120 264 L129 303 L140 342 L137 373 L141 405 L149 440 C146 447 144 460 152 464 L174 466 C180 465 183 457 178 451 L165 441 L170 408 C177 382 176 358 172 339 L175 301 C179 272 182 230 171 203 L168 179 L174 151 L186 177 L200 204 L208 231 L219 248 C225 247 227 237 224 227 L213 189 L207 149 L198 103 C194 86 180 77 162 79 L134 73 L132 64 C134 60 140 54 141 42 C143 26 139 12 120 12 Z"/>
+        <path class="anatomy-line" d="M120 69 V245 M103 56 Q120 63 137 56 M70 343 Q83 338 99 344 M141 344 Q157 338 170 343"/>
+        ${regions.map(([key, paths]) => zone(key, paths)).join('')}
+        ${front ? '<path class="anatomy-line" d="M94 158 H146 M94 177 H146 M99 196 H141"/>' : ''}
       </svg></div>
-      <div class="muscle-map-figure"><span>Back</span><svg viewBox="0 0 180 360" aria-label="Back muscle map">
-        <circle class="body-outline" cx="90" cy="34" r="20"></circle>
-        <path class="body-outline" d="M70 57h40l18 39-12 91-10 145H74L64 187 52 96Z"></path>
-        ${zone('Shoulders', '<ellipse class="CLASS" cx="55" cy="84" rx="17" ry="14" ATTRS></ellipse>')}
-        ${zone('Shoulders', '<ellipse class="CLASS" cx="125" cy="84" rx="17" ry="14" ATTRS></ellipse>')}
-        ${zone('Back', '<path class="CLASS" d="M68 78h44l9 22-12 60H71l-12-60Z" ATTRS></path>')}
-        ${zone('Arms', '<path class="CLASS" d="M43 96h14l-6 80H37Z" ATTRS></path>')}
-        ${zone('Arms', '<path class="CLASS" d="M123 96h14l6 80h-14Z" ATTRS></path>')}
-        ${zone('Glutes', '<path class="CLASS" d="M68 162h22v40H62Z" ATTRS></path>')}
-        ${zone('Glutes', '<path class="CLASS" d="M90 162h22l6 40H90Z" ATTRS></path>')}
-        ${zone('Hamstrings', '<path class="CLASS" d="M66 205h20l-7 77H59Z" ATTRS></path>')}
-        ${zone('Hamstrings', '<path class="CLASS" d="M94 205h20l7 77h-20Z" ATTRS></path>')}
-        ${zone('Calves', '<path class="CLASS" d="M62 286h16l-4 50H57Z" ATTRS></path>')}
-        ${zone('Calves', '<path class="CLASS" d="M102 286h16l5 50h-17Z" ATTRS></path>')}
-      </svg></div>
+      <p class="body-map-hint">Tap a region or choose below.</p>
+      <div class="muscle-region-list" role="group" aria-label="Muscle regions">${regions.map(([key]) => { const group = lookup.get(key); return `<button type="button" data-muscle-key="${key}" aria-pressed="${selectedMuscle === key}"><span>${group.label}</span><strong>${group.workingSets}<span class="sr-only"> primary working sets</span></strong></button>`; }).join('')}</div>
+      <div class="body-map-legend" aria-label="Exposure legend"><strong>Primary working sets</strong><div>${['0', '1–4', '5–9', '10–19', '20+'].map((label, level) => `<span><i class="heat-${level}" aria-hidden="true"></i>${label}</span>`).join('')}</div></div>
     </div>`;
   }
 
   function muscleContributors(group) {
-    if (!group) return [];
     const sourceSet = new Set(group.sources);
     const contributors = new Map();
     workoutsInWindow().forEach(workout => list(workout.exercises).forEach(exercise => {
-      const definition = context.exercises.find(item => item.id === (exercise.definitionId || exercise.id));
-      const exerciseMuscles = new Set(definition?.muscleRoles?.primary?.length
-        ? definition.muscleRoles.primary
-        : context.analytics.muscleNames(exercise.muscle));
-      if (![...sourceSet].some(source => exerciseMuscles.has(source))) return;
-      const summary = context.analytics.setSummary(exercise, analyticsOptions());
-      if (!summary.workingSetCount) return;
-      const key = exercise.definitionId || exercise.id || exercise.name;
-      const current = contributors.get(key) || { name: exercise.name || key, workingSets: 0 };
-      current.workingSets += summary.workingSetCount;
+      const catalog = window.BigGainsExerciseCatalog;
+      const definition = catalog.definitionFor(exercise);
+      const primary = definition?.muscleRoles?.primary?.length ? definition.muscleRoles.primary : context.analytics.muscleNames(exercise.muscle);
+      if (!primary.some(source => sourceSet.has(source))) return;
+      const sets = list(exercise.sets).filter(context.analytics.isWorkingSet);
+      if (!sets.length) return;
+      const key = definition?.canonicalId || exercise.definitionId || exercise.id;
+      if (!key) return;
+      const current = contributors.get(key) || { exerciseId: definition?.id || null, name: definition?.name || exercise.name || key, workingSets: 0, totalReps: 0, lastTrained: workout.completedAt };
+      current.workingSets += sets.length;
+      current.totalReps += sets.reduce((sum, set) => sum + (Number(set.reps) || 0), 0);
+      if (completedAt(workout) > new Date(current.lastTrained).getTime()) current.lastTrained = workout.completedAt;
       contributors.set(key, current);
     }));
-    return [...contributors.values()].sort((left, right) => right.workingSets - left.workingSets || left.name.localeCompare(right.name)).slice(0, 5);
+    return [...contributors.values()].sort((a, b) => b.workingSets - a.workingSets || a.name.localeCompare(b.name));
   }
 
   function muscleDetailMarkup(groups) {
-    const requested = selectedMuscle ? groups.find(group => group.key === selectedMuscle) : null;
-    const active = requested
-      || groups.filter(group => group.workingSets > 0).sort((left, right) => right.workingSets - left.workingSets)[0]
-      || groups[0];
-    selectedMuscle = active?.key || null;
-    if (!active || !active.workingSets) {
-      return `<div class="muscle-detail is-zero" data-selected-muscle="${context.escapeHtml(active?.key || '')}">
-        <div class="muscle-detail-head"><div><span class="label">Primary working-set exposure</span><h3>${context.escapeHtml(active?.label || 'No exposure yet')}</h3></div><strong>0 sets</strong></div>
-        <div class="muscle-detail-metrics"><div><span>Primary working sets</span><strong>0</strong></div><div><span>Reps</span><strong>0</strong></div></div>
-        <p class="muscle-zero-state">No ${context.escapeHtml((active?.label || 'muscle').toLowerCase())} working sets in the last ${selectedWindowDays} days.</p>
-      </div>`;
-    }
-    const contributors = muscleContributors(active);
-    return `<div class="muscle-detail" data-selected-muscle="${context.escapeHtml(active.key)}">
-      <div class="muscle-detail-head"><div><span class="label">Primary working-set exposure</span><h3>${context.escapeHtml(active.label)}</h3></div><strong>${active.workingSets} sets</strong></div>
+    const active = groups.find(group => group.key === selectedMuscle);
+    if (!active) return '<div class="muscle-detail empty"><h3>Explore your training</h3><p>Select a muscle to see completed working sets and the exact movements behind them.</p></div>';
+    const last = active.contributors.map(item => item.lastTrained).sort((a, b) => new Date(b) - new Date(a))[0];
+    return `<div class="muscle-detail${active.workingSets ? '' : ' is-zero'}" data-selected-muscle="${active.key}">
+      <div class="muscle-detail-head"><div><span class="label">Primary working-set exposure</span><h3>${active.label}</h3></div><strong>${active.workingSets} sets</strong></div>
       <div class="muscle-detail-metrics"><div><span>Primary working sets</span><strong>${active.workingSets}</strong></div><div><span>Reps</span><strong>${formatCompact(active.totalReps)}</strong></div></div>
-      <div class="muscle-contributors">${contributors.map(item => `<div><span>${context.escapeHtml(item.name)}</span><strong>${item.workingSets} set${item.workingSets === 1 ? '' : 's'}</strong></div>`).join('') || '<p>No contributing movements in this window.</p>'}</div>
+      ${last ? `<p class="body-map-last">Last trained ${context.escapeHtml(context.fmtDate(last))}</p>` : `<p class="muscle-zero-state">No ${active.label.toLowerCase()} working sets in the last ${selectedWindowDays} days.</p>`}
+      <div class="muscle-contributors">${active.contributors.map(item => item.exerciseId ? `<button type="button" data-progress-exercise="${context.escapeHtml(item.exerciseId)}"><span>${context.escapeHtml(item.name)}<small>View movement progress →</small></span><strong>${item.workingSets} sets</strong></button>` : `<div><span>${context.escapeHtml(item.name)}</span><strong>${item.workingSets} sets</strong></div>`).join('')}</div>
     </div>`;
   }
 
@@ -458,8 +446,8 @@ window.workoutProgress = (() => {
     </div>
     ${trainingWorkloadMarkup()}
     <section class="progress-workload-card">
-      <div class="progress-section-head"><div><span class="label">Working-set exposure</span><h3>Primary working-set exposure.</h3><p>Heat reflects primary-role working-set counts, normalized to this window. It does not partition load or estimate muscle stimulus.</p></div><span class="progress-window-caption">Last ${selectedWindowDays} days</span></div>
-      <div class="muscle-workload-layout">${muscleMapSvg(groups)}<div id="progressMuscleDetail">${muscleDetailMarkup(groups)}</div></div>
+      <div class="progress-section-head"><div><span class="label">Working-set exposure</span><h3>Body Map</h3><p>Stronger shading means more completed primary working sets. Secondary roles and warm-ups are excluded. This shows exposure, not growth, recovery or readiness.</p></div><span class="progress-window-caption">Last ${selectedWindowDays} days</span></div>
+      <div class="muscle-workload-layout">${muscleMapSvg(groups)}<div id="progressMuscleDetail" aria-live="polite" aria-atomic="true">${muscleDetailMarkup(groups)}</div></div>
     </section>
     <section class="progress-strength-card">
       <div class="progress-section-head"><div><span class="label">Movement record</span><h3>Movement progress.</h3><p>Strength and workload trends stay isolated to the exact exercise.</p></div></div>
@@ -712,18 +700,32 @@ window.workoutProgress = (() => {
   }
 
   function handleProgressClick(event) {
+    const anatomy = event.target.closest('[data-anatomy-view]');
+    if (anatomy) {
+      selectedAnatomyView = anatomy.dataset.anatomyView === 'back' ? 'back' : 'front';
+      selectedMuscle = null;
+      renderProgressDashboard();
+      document.querySelector('[data-anatomy-view="' + selectedAnatomyView + '"]')?.focus({ preventScroll: true });
+      return;
+    }
     const windowButton = event.target.closest('[data-progress-window]');
     if (windowButton) {
       selectedWindowDays = Number(windowButton.dataset.progressWindow) === 30 ? 30 : 7;
       selectedMuscle = null;
       renderProgressDashboard();
+      document.querySelector(`[data-progress-window="${selectedWindowDays}"]`)?.focus({ preventScroll: true });
       return;
     }
 
     const muscle = event.target.closest('[data-muscle-key]');
     if (muscle) {
       selectedMuscle = muscle.dataset.muscleKey;
+      const tag = muscle.tagName.toLowerCase();
       renderProgressDashboard();
+      document.querySelector(`${tag}[data-muscle-key="${selectedMuscle}"]`)?.focus({ preventScroll: true });
+      // The detail is below the anatomy on narrow screens: make the response to
+      // a tap visible without forcing the user to discover it by scrolling.
+      if (window.innerWidth <= 760) document.getElementById('progressMuscleDetail')?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
       return;
     }
 
@@ -779,10 +781,11 @@ window.workoutProgress = (() => {
       return;
     }
     const muscle = event.target.closest?.('[data-muscle-key]');
-    if (!muscle || !['Enter', ' '].includes(event.key)) return;
+    if (!muscle || muscle.tagName.toLowerCase() === 'button' || !['Enter', ' '].includes(event.key)) return;
     event.preventDefault();
     selectedMuscle = muscle.dataset.muscleKey;
     renderProgressDashboard();
+    document.querySelector(`g[data-muscle-key="${selectedMuscle}"]`)?.focus({ preventScroll: true });
   }
 
   function initialize(apiContext) {

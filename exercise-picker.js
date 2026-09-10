@@ -43,6 +43,40 @@
     }));
   }
 
+  function closestAlternatives({
+    catalog,
+    currentExerciseId,
+    exercises = catalog?.exercises,
+    excludedExerciseIds = [],
+    eligibilityPredicate = null,
+    limit = 8
+  } = {}) {
+    const current = catalog?.getById?.(currentExerciseId);
+    if (!current?.canonicalId) return [];
+    const currentPatterns = new Set(list(current.movementPatterns).filter(pattern => pattern && pattern !== 'unknown'));
+    const currentPrimary = new Set(list(current.muscleRoles?.primary));
+    const trackingModel = current.measurement?.trackingModel || null;
+    const candidates = filterExercises({
+      catalog,
+      exercises,
+      excludedExerciseIds: [current.canonicalId, ...list(excludedExerciseIds)],
+      eligibilityPredicate
+    }).flatMap(exercise => {
+      if (!trackingModel || exercise.measurement?.trackingModel !== trackingModel) return [];
+      const family = current.swapFamily || current.family;
+      const sameFamily = Boolean(family && (exercise.swapFamily || exercise.family) === family);
+      const samePrimary = list(exercise.muscleRoles?.primary).some(muscle => currentPrimary.has(muscle));
+      const samePattern = list(exercise.movementPatterns).some(pattern => currentPatterns.has(pattern));
+      if (!sameFamily || !samePrimary) return [];
+      return [{ exercise, rank: samePattern ? 0 : 1 }];
+    });
+    return candidates.sort((left, right) => left.rank - right.rank
+      || Number(left.exercise.equipment === current.equipment) - Number(right.exercise.equipment === current.equipment)
+      || alphaCompare(left.exercise, right.exercise))
+      .slice(0, Math.max(0, Number(limit) || 0))
+      .map(item => item.exercise);
+  }
+
   function measurementLabel(exercise) {
     const measurement = exercise?.measurement || {};
     const ui = measurement.ui || {};
@@ -164,11 +198,15 @@
       const allById = new Map(all.map(exercise => [exercise.canonicalId, exercise]));
       const recent = filteredOrderedIds(active.recentExerciseIds, allById);
       const suggested = filteredOrderedIds(active.suggestionIds, allById);
-      results.innerHTML = [
-        sectionMarkup('Recent', recent, 'exercise-picker-recent'),
-        sectionMarkup(active.suggestionLabel, suggested, 'exercise-picker-suggested'),
-        sectionMarkup('All exercises A–Z', all, 'exercise-picker-all') || '<div class="exercise-picker-empty"><strong>No matching exercises.</strong><p>Clear a filter or try another exact name, alias, muscle, or equipment term.</p></div>'
-      ].join('');
+      const compact = !active.browseAll;
+      const compactEmpty = '<div class="exercise-picker-empty"><strong>No close alternatives yet.</strong><p>Browse all exercises to choose a replacement.</p></div>';
+      results.innerHTML = compact
+        ? [sectionMarkup(active.suggestionLabel, suggested, 'exercise-picker-suggested') || compactEmpty,
+          '<button type="button" class="secondary exercise-picker-browse-all" data-exercise-picker-browse>Browse all exercises</button>'].join('')
+        : [sectionMarkup('Recent', recent, 'exercise-picker-recent'),
+          sectionMarkup(active.suggestionLabel, suggested, 'exercise-picker-suggested'),
+          sectionMarkup('All exercises A–Z', all, 'exercise-picker-all') || '<div class="exercise-picker-empty"><strong>No matching exercises.</strong><p>Clear a filter or try another exact name, alias, muscle, or equipment term.</p></div>'].join('');
+      getElement('exercisePickerControls').hidden = compact;
       results.scrollTop = 0;
       getElement('exercisePickerClearFilters').hidden = !search.value && muscle.value === 'all' && equipment.value === 'all';
     }
@@ -226,6 +264,7 @@
         currentExerciseId: canonicalIdFor(catalog, options.currentExerciseId),
         suggestionIds: resolveIds(options.suggestionIds),
         suggestionLabel: options.suggestionLabel || 'Suggested',
+        browseAll: options.browseAllInitially !== false,
         recentExerciseIds: options.recentExerciseIds === false
           ? []
           : resolveIds(options.recentExerciseIds || recentExerciseIds({ state, profileId, catalog })),
@@ -255,7 +294,7 @@
       } catch {
         historyPushed = false;
       }
-      requestAnimationFrame(() => search.focus({ preventScroll: true }));
+      requestAnimationFrame(() => (active?.browseAll ? search : results.querySelector('[data-exercise-picker-select], [data-exercise-picker-browse]'))?.focus({ preventScroll: true }));
       return true;
     }
 
@@ -273,6 +312,13 @@
     dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });
     dialog.addEventListener('click', event => {
       if (event.target === dialog) return close();
+      const browse = event.target.closest('[data-exercise-picker-browse]');
+      if (browse && active) {
+        active.browseAll = true;
+        render();
+        search.focus({ preventScroll: true });
+        return;
+      }
       const choice = event.target.closest('[data-exercise-picker-select]');
       if (!choice || !active) return;
       const selectedId = canonicalIdFor(catalog, choice.dataset.exercisePickerSelect);
@@ -294,7 +340,7 @@
   Object.defineProperty(scope, 'BigGainsExercisePicker', {
     configurable: false,
     enumerable: true,
-    value: Object.freeze({ create, filterExercises, matchesSearch, measurementLabel, recentExerciseIds, resultMarkup, sortExercises }),
+    value: Object.freeze({ closestAlternatives, create, filterExercises, matchesSearch, measurementLabel, recentExerciseIds, resultMarkup, sortExercises }),
     writable: false
   });
 })(typeof window === 'object' ? window : globalThis);

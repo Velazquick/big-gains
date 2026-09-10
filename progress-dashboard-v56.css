@@ -39,11 +39,6 @@
 .muscle-zone{stroke:rgba(255,255,255,.12);stroke-width:1;cursor:pointer;transition:filter .15s ease,opacity .15s ease,stroke .15s ease}
 .muscle-zone:hover,.muscle-zone:focus{stroke:var(--accent);filter:brightness(1.12);outline:none}
 .muscle-zone.is-selected{stroke:var(--accent);stroke-width:3;filter:brightness(1.14) drop-shadow(0 0 5px rgba(var(--accent-rgb,216,255,62),.24))}
-.muscle-zone.heat-0{fill:#1a222b;opacity:.48}
-.muscle-zone.heat-1{fill:#3c471e;opacity:.82}
-.muscle-zone.heat-2{fill:#667527;opacity:.88}
-.muscle-zone.heat-3{fill:#98ad30;opacity:.94}
-.muscle-zone.heat-4{fill:var(--accent);opacity:1;filter:drop-shadow(0 0 7px rgba(var(--accent-rgb,216,255,62),.18))}
 #progressMuscleDetail{display:flex}
 .muscle-detail{width:100%;padding:18px;border:1px solid var(--progress-line);border-radius:18px;background:rgba(19,25,32,.74)}
 .muscle-detail.empty{display:flex;flex-direction:column;justify-content:center}
@@ -128,14 +123,6 @@ html[data-profile="alexa"] .training-workload-list,
 html[data-profile="alexa"] .training-workload-empty,
 html[data-profile="alexa"] #progressDialog .progress-chart-empty{background:#fff8fb;border-color:#ead5e1}
 html[data-profile="alexa"] .muscle-map-wrap{background:#fff8fb;border-color:#e7ccd9}
-html[data-profile="alexa"] .body-outline{fill:#f2dde8;stroke:#d8bccc}
-html[data-profile="alexa"] .muscle-zone{stroke:rgba(132,73,106,.16)}
-html[data-profile="alexa"] .muscle-zone.heat-0{fill:#ead8e2;opacity:.6}
-html[data-profile="alexa"] .muscle-zone.heat-1{fill:#efc8dc}
-html[data-profile="alexa"] .muscle-zone.heat-2{fill:#e39abe}
-html[data-profile="alexa"] .muscle-zone.heat-3{fill:#d875a7}
-html[data-profile="alexa"] .muscle-zone.heat-4{fill:var(--accent);filter:drop-shadow(0 0 7px rgba(var(--accent-rgb,200,95,152),.18))}
-html[data-profile="alexa"] .muscle-zone.is-selected{stroke:#b94d86;filter:brightness(1.06) drop-shadow(0 0 5px rgba(var(--accent-rgb,200,95,152),.22))}
 html[data-profile="alexa"] .muscle-detail-metrics>div{background:#fff8fb;border-color:#ead5e1}
 html[data-profile="alexa"] .muscle-contributors>div span{color:#5d3d50}
 html[data-profile="alexa"] .progress-window-caption{color:#745467;border-color:#dfc4d3;background:#fff8fb}
