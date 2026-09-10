@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
 
-const CURRENT_RELEASE = 'v110-ui-acceptance-pass3';
+const CURRENT_RELEASE = 'v111-exercise-metrics-session-recovery';
 const CURRENT_CONFIG_VERSION = 'config-925e766c1b907250';
 const CURRENT_CACHE = `big-gains-shell-${CURRENT_RELEASE}-${CURRENT_CONFIG_VERSION}`;
 const PREVIOUS_CACHE = 'big-gains-shell-v109-train-position-summaries-config-dfadb48839db90f2';

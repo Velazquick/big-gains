@@ -284,3 +284,16 @@ html[data-theme] #progressDialog .progress-summary-grid strong { overflow-wrap:a
 html[data-theme] #progressDialog { position:fixed; inset:0; margin:auto; max-height:calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overflow:hidden; }
 html[data-theme] #progressDialog .history-dialog-shell { box-sizing:border-box; max-height:calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overscroll-behavior:contain; }
 html[data-theme][data-train-presentation] #activeExercises .set-line.completed .set-number { color:var(--ui-success); background:transparent; border-color:transparent; }
+
+/* Focused post-v110 utilities: existing semantic palette, compact native controls. */
+html[data-theme] #chooseProgressMovement { display:flex; align-items:center; gap:12px; border:0; padding:0; min-height:44px; background:transparent; color:var(--ui-text); font:inherit; font-size:1.125rem; text-align:left; overflow-wrap:anywhere; }
+#chooseProgressMovement::after { content:'▾'; flex-shrink:0; }
+#progressMovementPicker { padding:0 0 16px; }
+#progressMovementPicker[hidden], #staleWorkoutRecovery[hidden] { display:none !important; }
+#progressMovementResults { display:grid; gap:4px; max-height:30vh; overflow:auto; margin-top:8px; }
+html[data-theme] #progressMovementResults button { min-height:44px; white-space:normal; text-align:left; background:var(--ui-surface); color:var(--ui-text); border:1px solid var(--line); }
+#progressMovementCount { font-size:.8125rem; }
+#staleWorkoutRecovery { margin-bottom:20px; }
+#staleWorkoutRecovery p { color:var(--ui-secondary); }
+.stale-workout-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.stale-workout-actions button { min-height:44px; }

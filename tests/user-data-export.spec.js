@@ -68,7 +68,7 @@ test('empty current profile exports valid versioned files without mutating state
   expect(data).toMatchObject({
     format: 'big-gains.user-export.v1',
     version: 1,
-    metadata: { exportedAt: EXPORTED_AT, appVersion: 'v110-ui-acceptance-pass3', displayName: 'Jorge' },
+    metadata: { exportedAt: EXPORTED_AT, appVersion: 'v111-exercise-metrics-session-recovery', displayName: 'Jorge' },
     workouts: [],
     bodyweight: [],
     routines: [],
