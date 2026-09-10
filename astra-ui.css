@@ -18,6 +18,8 @@ html[data-theme] .body-map-hint, html[data-theme] .body-map-last { margin:0; col
 html[data-theme] .muscle-region-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
 html[data-theme] .muscle-region-list button { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:44px; min-width:0; padding:10px; border:1px solid var(--ui-control-border); border-radius:10px; background:var(--ui-surface); color:var(--ui-text); font-size:.875rem; text-align:left; }
 html[data-theme] .muscle-region-list button[aria-pressed="true"] { border:2px solid var(--accent); padding:9px; }
+html[data-theme] .muscle-region-list button>span { min-width:0; overflow-wrap:anywhere; }
+html[data-theme] .muscle-region-list button>strong { flex-shrink:0; }
 html[data-theme] .body-map-legend { font-size:.8125rem; line-height:1.5; color:var(--ui-secondary); }
 html[data-theme] .body-map-legend>div { display:flex; flex-wrap:wrap; gap:8px 14px; margin-top:8px; }
 html[data-theme] .body-map-legend span { display:flex; align-items:center; gap:5px; }

@@ -85,6 +85,8 @@ test('front/back regions, keyboard selection, accessible alternatives and neutra
   expect(size.every(r=>r.w>=44&&r.h>=44)).toBe(true);
   await page.evaluate(()=>document.documentElement.style.fontSize='24px');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await page.evaluate(()=>document.body.style.fontFamily='Verdana, sans-serif');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 
 test('Body Map cannot disclose contributors from a different profile',async({page})=>{

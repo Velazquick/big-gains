@@ -446,7 +446,7 @@ window.workoutProgress = (() => {
     </div>
     ${trainingWorkloadMarkup()}
     <section class="progress-workload-card">
-      <div class="progress-section-head"><div><span class="label">Working-set exposure</span><h3>Body Map</h3><p>Stronger shading means more completed primary working sets. Secondary roles and warm-ups are excluded. This shows exposure, not growth, recovery or readiness.</p></div><span class="progress-window-caption">Last ${selectedWindowDays} days</span></div>
+      <div class="progress-section-head"><div><span class="label">Primary working-set exposure</span><h3>Body Map</h3><p>Stronger shading means more completed primary working sets. Secondary roles and warm-ups are excluded. This shows exposure, not growth, recovery or readiness.</p></div><span class="progress-window-caption">Last ${selectedWindowDays} days</span></div>
       <div class="muscle-workload-layout">${muscleMapSvg(groups)}<div id="progressMuscleDetail" aria-live="polite" aria-atomic="true">${muscleDetailMarkup(groups)}</div></div>
     </section>
     <section class="progress-strength-card">

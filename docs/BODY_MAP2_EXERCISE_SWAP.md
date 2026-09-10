@@ -68,6 +68,9 @@ Region names, numeric counts, pressed states, a labeled legend, dashed selection
 outlines, keyboard operation and equivalent 44px region buttons provide meaning
 beyond color. View/window/selection state is disposable UI state, not a new store.
 All six accents use existing Appearance tokens in light and dark profiles.
+Progress History headings and region labels wrap at larger text sizes without
+forcing horizontal page scrolling. The compact swap sheet sizes to its content;
+Browse all expands into the existing full picker.
 
 ## Swap contract
 
