@@ -10,20 +10,25 @@ async function instrument(page) {
     for(const name of ['scrollTo','scrollBy']) {const original=window[name].bind(window);window[name]=(...args)=>{trace(name,{args});return original(...args);};}
     const original=Element.prototype.scrollIntoView;
     Element.prototype.scrollIntoView=function(...args){trace('scrollIntoView',{id:this.id,exercise:this.dataset.exerciseId,args});return original.apply(this,args);};
+    for(const name of ['popstate','scroll'])window.addEventListener(name,()=>trace(name));
     for(const name of ['visibilitychange','big-gains-boot-concealed','big-gains-boot-authorized','big-gains-runtime-state-changed'])document.addEventListener(name,()=>trace(name));
   });
 }
 const frames=page=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))));
-test('blank workout gets its first stable anchor when the first exercise is added',async({page})=>{
+test('blank workout gets its first stable anchor when the first exercise is added',async({page},info)=>{
   await instrument(page);await installLocalStorageFixture(page,'blankJorge');await openApp(page);
   await page.locator('.bottom-nav [data-view="train"]').click();await page.locator('#trainBlankStart').click();
   await expect(page.locator('#exercisePickerDialog')).toBeVisible();
+  expect(await page.evaluate(()=>history.scrollRestoration)).toBe('manual');
   const choice=page.locator('.exercise-picker-all [data-exercise-picker-select]').first();
   const canonicalId=await choice.getAttribute('data-exercise-picker-select');
   const selectedId=await page.evaluate(id=>BigGainsExerciseCatalog.exercises.find(e=>e.canonicalId===id).id,canonicalId);await choice.click();
-  await expect(page.locator('#exercisePickerDialog')).toBeHidden();await frames(page);
+  await expect(page.locator('#exercisePickerDialog')).toBeHidden();
+  await expect.poll(()=>page.evaluate(()=>history.scrollRestoration)).toBe('auto');await frames(page);
   const card=page.locator('#activeExercises .is-active');await expect(card).toHaveAttribute('data-exercise-id',selectedId);
-  await expect(card.locator('.set-line').first()).toBeInViewport({ratio:1});
+  try { await expect(card.locator('.set-line').first()).toBeInViewport({ratio:1}); } finally {
+    await info.attach('picker-return-trace',{body:JSON.stringify(await page.evaluate(()=>({trace:window.positionTrace,y:scrollY,view:document.body.dataset.view,first:document.querySelector('#activeExercises .is-active .set-line')?.getBoundingClientRect().toJSON(),bookmark:Object.keys(localStorage).filter(k=>k.startsWith('big-gains-train-position')).map(k=>JSON.parse(localStorage.getItem(k)))})),null,2),contentType:'application/json'});
+  }
   expect(await page.evaluate(()=>JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k=>k.startsWith('big-gains-train-position')))).exerciseId)).toBe(selectedId);
 });
 test('inactive summaries surround the unchanged working card at 390px',async({page},info)=>{
@@ -82,4 +87,12 @@ test('fresh routine entry seeds first stable set and owns final scroll',async({p
   expect(bookmark.exerciseId).toBe(await page.locator('#activeExercises .is-active').getAttribute('data-exercise-id'));
   expect(bookmark.setId).toBe(await page.locator('#activeExercises .is-active .set-line').first().getAttribute('data-set-id'));
   await info.attach('entry-trace',{body:JSON.stringify(await page.evaluate(()=>({trace:window.positionTrace,y:scrollY,bookmark:Object.keys(localStorage).filter(k=>k.startsWith('big-gains-train-position')),first:document.querySelector('#activeExercises [data-set-id]')?.getBoundingClientRect().toJSON()})),null,2),contentType:'application/json'});
+});
+
+test('picker restores an existing manual history policy after cancellation',async({page})=>{
+ await installLocalStorageFixture(page,'blankJorge');await openApp(page);
+ await page.evaluate(()=>{history.scrollRestoration='manual';});
+ await page.locator('.bottom-nav [data-view="train"]').click();await page.locator('#trainBlankStart').click();
+ await page.locator('#closeExercisePicker').click();await expect(page.locator('#exercisePickerDialog')).toBeHidden();await frames(page);
+ expect(await page.evaluate(()=>history.scrollRestoration)).toBe('manual');
 });

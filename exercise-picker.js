@@ -123,6 +123,16 @@
     let returnFocus = null;
     let historyPushed = false;
     let ignoreNextPop = false;
+    let previousScrollRestoration = null;
+    function releaseHistoryScroll() {
+      // Popstate precedes the browser's persisted-scroll step. Restore the
+      // caller's policy in the following task, after this owned traversal.
+      setTimeout(() => {
+        if (active || previousScrollRestoration === null) return;
+        try { history.scrollRestoration = previousScrollRestoration; } catch {}
+        previousScrollRestoration = null;
+      }, 0);
+    }
 
     const resolveIds = values => list(values).map(value => canonicalIdFor(catalog, value)).filter(Boolean);
     const eligibleBase = () => filterExercises({
@@ -194,6 +204,7 @@
         ignoreNextPop = true;
         history.back();
       }
+      if (!historyPushed || fromHistory) releaseHistoryScroll();
       historyPushed = false;
       if (selectedId) closing.onSelect?.(selectedId);
       else closing.onCancel?.();
@@ -237,6 +248,8 @@
       if (dialog.showModal) dialog.showModal();
       else dialog.setAttribute('open', '');
       try {
+        if (previousScrollRestoration === null) previousScrollRestoration = history.scrollRestoration;
+        history.scrollRestoration = 'manual';
         history.pushState({ bigGainsExercisePicker: true }, '');
         historyPushed = true;
       } catch {
@@ -269,6 +282,7 @@
     scope.addEventListener?.('popstate', () => {
       if (ignoreNextPop) {
         ignoreNextPop = false;
+        releaseHistoryScroll();
         return;
       }
       if (active) close({ fromHistory: true });
