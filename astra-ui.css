@@ -283,3 +283,4 @@ html[data-theme] #progressDialog .progress-summary-grid strong { overflow-wrap:a
 
 html[data-theme] #progressDialog { position:fixed; inset:0; margin:auto; max-height:calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overflow:hidden; }
 html[data-theme] #progressDialog .history-dialog-shell { box-sizing:border-box; max-height:calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overscroll-behavior:contain; }
+html[data-theme][data-train-presentation] #activeExercises .set-line.completed .set-number { color:var(--ui-success); background:transparent; border-color:transparent; }

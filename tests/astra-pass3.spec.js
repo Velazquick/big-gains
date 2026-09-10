@@ -57,8 +57,8 @@ for(const profile of ['jorge','alexa'])test(`${profile} completed sets remain di
  for(const accent of ['volt','cobalt','merlot','rose','violet','ember']){
   await page.evaluate(accent=>BigGainsAppearance.select(accent),accent);
   const row=page.locator('#activeExercises .set-line.completed').first();await expect(row).toBeVisible();
-  const style=await row.evaluate(el=>({bg:getComputedStyle(el).backgroundColor,opacity:getComputedStyle(el).opacity,rail:getComputedStyle(el).borderInlineStartWidth,check:el.querySelector('.set-done').getAttribute('aria-pressed')}));
-  expect(style.opacity).toBe('1');expect(style.rail).toBe('3px');expect(style.check).toBe('true');expect(style.bg).not.toBe('rgba(0, 0, 0, 0)');
+  const style=await row.evaluate(el=>({bg:getComputedStyle(el).backgroundColor,opacity:getComputedStyle(el).opacity,rail:getComputedStyle(el).borderInlineStartWidth,check:el.querySelector('.set-done').getAttribute('aria-pressed'),numberColor:getComputedStyle(el.querySelector('.set-number')).color,doneColor:getComputedStyle(el.querySelector('.set-done')).color}));
+  expect(style.numberColor).toBe(style.doneColor);expect(style.opacity).toBe('1');expect(style.rail).toBe('3px');expect(style.check).toBe('true');expect(style.bg).not.toBe('rgba(0, 0, 0, 0)');
   await page.screenshot({path:info.outputPath(`${profile}-${accent}.png`)});
  }
 });
