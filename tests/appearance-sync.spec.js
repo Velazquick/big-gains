@@ -50,6 +50,7 @@ async function install(page, remote, {independent=false, fresh=false}={}) {
   await page.evaluate(()=>BigGainsAppearance.sync());
 }
 async function choose(page,name) {
+  await page.locator('.bottom-nav [data-view="more"]').click();
   await page.locator('#openSettings').click();
   await page.locator(`#accentChoice label:has(input[value="${name}"])`).click();
 }

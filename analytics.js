@@ -380,11 +380,41 @@
       const workloadFamily = workloadFamilyFor(exercise, workoutOptions);
       return [{
         workoutId: workout.id, date: workout.completedAt, exerciseId: requested, exerciseName: exercise.name || '',
-        muscle: exercise.muscle || '', equipment: exercise.equipment || '', workloadFamily,
+        muscle: exercise.muscle || '', equipment: exercise.equipment || '', displayUnitOverride: exercise.displayUnitOverride, workloadFamily,
         workload: workloadFamily ? summary.workingSetVolume : null, ...summary
       }];
     });
     return sessions.map((session, index) => ({ ...session, delta: performanceDelta(session, sessions[index + 1], options) }));
+  }
+
+  // Read-only workload evidence. Adjacent gaps are never skipped to create a comparison.
+  function exerciseWorkloadTrend(workouts, exerciseId, options = {}) {
+    const sessions = exerciseHistory(workouts, exerciseId, options);
+    const current = sessions[0] || null;
+    const previous = sessions[1] || null;
+    const comparable = Boolean(current?.workloadFamily && previous?.workloadFamily === current.workloadFamily
+      && Number.isFinite(current.workload) && Number.isFinite(previous.workload));
+    const change = comparable ? current.workload - previous.workload : null;
+    return { exerciseId: current?.exerciseId || exerciseId, sessions, current, previous,
+      change, percentage: comparable && previous.workload > 0 ? change / previous.workload * 100 : null };
+  }
+
+  function recentWorkloadMovement(workouts, options = {}) {
+    for (const workout of completedWorkouts(workouts)) {
+      // Last eligible movement in the newest completed workout; stored order breaks ties.
+      for (const exercise of list(workout.exercises).slice().reverse()) {
+        const exerciseId = canonicalExerciseId(exercise);
+        if (!definitionFor(exercise)) continue;
+        const trend = exerciseWorkloadTrend(workouts, exerciseId, options);
+        if (trend.current?.workoutId === workout.id && trend.current.workloadFamily
+          && Number.isFinite(trend.current.workload)) return trend;
+      }
+    }
+    return null;
+  }
+
+  function lifetimeWorkload(workouts, options = {}) {
+    return workloadWindow(workouts, { ...options, since: -8640000000000000, through: 8640000000000000 });
   }
 
   function previousPerformance(workouts, exerciseId, options = {}) { return exerciseHistory(workouts, exerciseId, options)[0] || null; }
@@ -528,7 +558,7 @@
 
   scope.BigGainsAnalytics = Object.freeze({
     bestWorkingSet, bodyweightAt, derivePerformanceRecords, derivePersonalRecords, durationSeconds, estimate1RM, exerciseFamilyTotals,
-    exerciseHistory, exerciseTrend, isWorkingSet, measurementFor, metricsForSet, muscleNames,
+    exerciseHistory, exerciseTrend, exerciseWorkloadTrend, recentWorkloadMovement, lifetimeWorkload, isWorkingSet, measurementFor, metricsForSet, muscleNames,
     muscleTotals, muscleWorkloadWindows, optionsForWorkout, performanceDelta, profileBodyweight, previousPerformance,
     recentMuscleWorkload, setSummary, trainingWorkloadWindows, workingSets, workloadFamilyFor, workoutSummary
   });

@@ -16,6 +16,7 @@ async function installState(page, value, activeProfile = 'jorge') {
 }
 
 async function chooseUnit(page, unit) {
+  await page.locator('.bottom-nav [data-view="more"]').click();
   await page.locator('#openSettings').click();
   await page.locator(`#weightUnitChoice label:has(input[value="${unit}"])`).click();
 }
@@ -91,6 +92,7 @@ test('unit preference is profile-isolated and projects through the existing clou
   let reloaded = page.waitForEvent('framenavigated');
   await page.locator('#profileSelect').selectOption('alexa');
   await reloaded;
+  await page.locator('.bottom-nav [data-view="more"]').click();
   await page.locator('#openSettings').click();
   await expect(page.locator('#diagnosticWeightUnit')).toHaveText('Pounds (lb)');
   expect((await readStoredJson(page, STORAGE_KEYS.alexa)).unitPreferences).toBeUndefined();
@@ -98,6 +100,7 @@ test('unit preference is profile-isolated and projects through the existing clou
   reloaded = page.waitForEvent('framenavigated');
   await page.locator('#profileSelect').selectOption('jorge');
   await reloaded;
+  await page.locator('.bottom-nav [data-view="more"]').click();
   await page.locator('#openSettings').click();
   await expect(page.locator('#diagnosticWeightUnit')).toHaveText('Kilograms (kg)');
 });
@@ -178,6 +181,7 @@ test('Settings is scannable at phone width and engineering details stay collapse
   await page.setViewportSize({ width: 390, height: 844 });
   await installLocalStorageFixture(page, 'blankJorge');
   await openApp(page);
+  await page.locator('.bottom-nav [data-view="more"]').click();
   await page.locator('#openSettings').click();
   await expect(page.locator('#viewSettings')).toBeVisible();
   await expect(page.locator('#weightUnitChoice')).toBeVisible();

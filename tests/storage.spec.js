@@ -92,6 +92,7 @@ test('keeps Jorge and Alexa localStorage isolated', async ({ page }) => {
 test('rejects a cross-profile import without modifying either profile', async ({ page }) => {
   await installLocalStorageFixture(page, ['blankJorge', 'blankAlexa'], { activeProfile: 'jorge' });
   await openApp(page);
+  await page.locator('.bottom-nav [data-view="more"]').click();
   await page.locator('#openSettings').click();
   const jorgeBefore = await readStoredJson(page, STORAGE_KEYS.jorge);
   const alexaBefore = await readStoredJson(page, STORAGE_KEYS.alexa);
@@ -120,6 +121,7 @@ test('rejects a cross-profile import without modifying either profile', async ({
 test('exports the existing backup format and restores it without schema changes', async ({ page }) => {
   await installLocalStorageFixture(page, 'completedWorkouts');
   await openApp(page);
+  await page.locator('.bottom-nav [data-view="more"]').click();
   await page.locator('#openSettings').click();
 
   const downloadPromise = page.waitForEvent('download');
@@ -143,6 +145,7 @@ test('exports the existing backup format and restores it without schema changes'
   await page.locator('#weightForm button[type="submit"]').click();
   expect((await readStoredJson(page, STORAGE_KEYS.jorge)).weights[0].weight).toBe(211);
 
+  await page.locator('.bottom-nav [data-view="more"]').click();
   await page.locator('#openSettings').click();
   const dialogPromise = page.waitForEvent('dialog');
   await page.locator('#importData').setInputFiles(downloadPath);
@@ -159,6 +162,7 @@ test('same-profile imports replace live timer ports without retaining the prior 
   await page.getByRole('button', { name: 'Complete Set 1 of 3' }).click();
   const timerA = await page.evaluate(() => workoutTimerController.getStatus());
   await page.locator('#exitWorkoutMode').click();
+  await page.locator('.bottom-nav [data-view="more"]').click();
   await page.locator('#openSettings').click();
 
   const importedDeadline = Date.now() + 120_000;
@@ -205,7 +209,7 @@ test('renders completed workout history from persisted state', async ({ page }) 
 
   await expect(page.locator('#history .history-item')).toHaveCount(1);
   await expect(page.locator('#history .history-item')).toContainText('Push');
-  await expect(page.locator('#trainingVolume')).toHaveText('1,000 lb');
+  await expect(page.locator('#trainingVolume [data-workload-family="machine_indicated"] strong')).toHaveText('1,000 lb');
   await expect(page.locator('#latestWeight')).toHaveText('218.4 lb');
 });
 

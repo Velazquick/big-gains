@@ -53,7 +53,7 @@
       if (button.dataset.moreSection) document.getElementById(button.dataset.moreSection)?.scrollIntoView({ block: 'start' });
     }));
 
-    document.getElementById('openSettings')?.addEventListener('click', () => showView('settings'));
+
 
     document.getElementById('startWorkout')?.addEventListener('click', () => {
       setTimeout(() => showView('train'), 0);

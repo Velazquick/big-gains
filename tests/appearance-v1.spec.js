@@ -18,6 +18,7 @@ async function setup(page, profile = 'jorge') {
   await openApp(page);
 }
 async function choose(page, name) {
+  await page.locator('.bottom-nav [data-view="more"]').click();
   await page.locator('#openSettings').click();
   await page.locator(`#accentChoice label:has(input[value="${name}"])`).click();
 }
@@ -96,6 +97,7 @@ for (const profile of ['jorge','alexa']) for (const name of names) {
 
 test('keyboard radio selection and managed profile isolation survive offline reload', async ({page,context}) => {
   await setup(page);
+  await page.locator('.bottom-nav [data-view="more"]').click();
   await page.locator('#openSettings').click();
   const radio=page.getByRole('radio',{name:'Volt',exact:true});
   await radio.focus(); await page.keyboard.press('ArrowRight');
