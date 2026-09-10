@@ -56,7 +56,7 @@ test('Progress is a dark analytics dashboard with overview, heatmap, and capped 
   await expect(page.locator('#progressMuscleDetail')).toContainText('Seated Machine Chest Press');
 
   const shellBackground = await page.locator('#progressDialog .history-dialog-shell').evaluate(element => getComputedStyle(element).backgroundImage);
-  expect(shellBackground).not.toBe('none');
+  expect(shellBackground).toBe('none');
 });
 
 test('30-day window recomputes the overview and muscle workload without changing stored state', async ({ page }) => {
@@ -126,7 +126,7 @@ test('strength drill-down remains available from the redesigned dashboard', asyn
     const styles = getComputedStyle(element);
     return { backgroundImage: styles.backgroundImage, color: styles.color };
   });
-  expect(shell.backgroundImage).not.toBe('none');
+  expect(shell.backgroundImage).toBe('none');
   expect(shell.color).toBe('rgb(244, 246, 248)');
 });
 
@@ -160,7 +160,7 @@ test('Alexa keeps a readable wellness-light dashboard and dialog without persist
   });
   expect(presentation.cardBackground).toBe('rgb(255, 254, 253)');
   expect(presentation.cardColor).toBe('rgb(53, 32, 45)');
-  expect(presentation.dialogBackground).not.toBe('none');
+  expect(presentation.dialogBackground).toBe('none');
   expect(presentation.dialogColor).toBe('rgb(53, 32, 45)');
   expect(presentation.documentWidth).toBeLessThanOrEqual(presentation.viewportWidth);
   expect(await page.evaluate(key => localStorage.getItem(key), STORAGE_KEYS.alexa)).toBe(before);

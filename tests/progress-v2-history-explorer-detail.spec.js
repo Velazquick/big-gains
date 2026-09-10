@@ -2,6 +2,8 @@ import { expect, test } from '@playwright/test';
 import { blankState, STORAGE_KEYS } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
 
+test.use({ timezoneId: 'UTC' });
+
 const completedSet = (id, weight, reps, warmup = false) => ({ id, weight, reps, warmup, completed: true });
 const exercise = ({ id, name, muscle, equipment, sets }) => ({ id, name, muscle, equipment, sets });
 
@@ -125,9 +127,9 @@ test('archive opens the correct polished detail with bodyweight semantics and wo
   await expect(page.locator('#historyDialogTitle')).toHaveText('Pull');
   await expect(page.locator('#closeHistoryDialog')).toHaveText('← History');
   await expect(page.locator('#historyDialogDate')).toContainText('July 31, 2026');
-  await expect(page.locator('.history-summary-grid > div')).toHaveCount(4);
-  await expect(page.locator('.history-summary-grid')).toContainText('Comparable workload');
-  await expect(page.locator('.history-summary-grid')).toContainText('—');
+  await expect(page.locator('.history-summary-grid > div')).toHaveCount(3);
+  await expect(page.locator('.session-workload-detail [data-workload-family]')).toHaveCount(2);
+  await expect(page.locator('.session-workload-detail [data-workload-family="modeled_system_load"]')).toContainText('Unavailable');
   await expect(page.locator('.history-summary-grid')).toContainText('3');
   await expect(page.locator('.history-summary-grid')).not.toContainText('PRs');
   await expect(page.locator('.history-pr-callout .pr-badge')).toHaveText('1 record');
@@ -150,7 +152,7 @@ test('archive opens the correct polished detail with bodyweight semantics and wo
   await expect(page.locator('#historyArchiveDialog')).toBeVisible();
 
   await page.locator('#historyArchiveList [data-history-id="july-oldest"]').click();
-  await expect(page.locator('.history-summary-grid > div')).toHaveCount(4);
+  await expect(page.locator('.history-summary-grid > div')).toHaveCount(3);
   await expect(page.locator('.history-pr-callout .pr-badge')).toHaveText('1 record');
   await expect(page.locator('.record-chip')).toHaveText('Load record');
   await expect(page.locator('.history-summary-grid')).not.toContainText('PRs');
