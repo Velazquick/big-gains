@@ -104,7 +104,6 @@ function derivePersonalRecords(workouts=state.workouts){return analyticsApi.deri
 function currentPerformanceRecordCount(){return Object.values(derivePersonalRecords().currentRecordStates||{}).reduce((total,families)=>total+Object.keys(families).length,0);}
 function volumeForWorkout(w){return analyticsApi.workoutSummary(w,analyticsOptions()).workingSetVolume;}
 function volumeForExercise(e){return analyticsApi.setSummary(e,analyticsOptions()).workingSetVolume;}
-function totalAnalyticsVolume(values){return values.some(value=>value===null)?null:values.reduce((total,value)=>total+value,0);}
 function formatAnalyticsVolume(value,kind=null){return value===null?'—':unitsApi.formatWorkload(value,state,{kind});}
 function estimate1RM(w,r){return analyticsApi.estimate1RM(w,r);}
 function isCompletableSet(exercise,set){return BigGainsWorkoutSessionController.isCompletableSet(exercise,set,exerciseCatalog.measurementFor(exercise));}
@@ -290,7 +289,6 @@ function openHistory(id,originView=null){
     return `<article class="history-exercise" data-exercise-id="${escapeHtml(exerciseId)}"><div class="history-exercise-head"><div><span class="exercise-order">Exercise ${String(exerciseIndex+1).padStart(2,'0')}</span><h3>${escapeHtml(e.name)}</h3><p>${escapeHtml(e.muscle||'Exercise')} · ${escapeHtml(e.equipment||'Movement')}</p></div><div class="history-exercise-volume"><strong>${formatAnalyticsVolume(exerciseSummary.workingSetVolume,exerciseSummary.workingSetVolumeKind)}</strong><span>${workloadLabel}</span></div></div><div class="history-set-columns" aria-hidden="true"><span>Type</span><span>Entered values</span><span></span></div><div class="history-sets">${sets||'<div class="history-sets-empty">No completed sets recorded.</div>'}</div></article>`;
   }).join('');
   const content=$('historyDialogContent');
-  const sessionWorkloadLabel=summary.workingSetVolumeKind==='indicated_load'?'Indicated workload':summary.workingSetVolumeKind==='external_load'?'External-load volume':summary.workingSetVolumeKind==='modeled_system_load'?'Modeled system volume':'Comparable workload';
   const programOriginLabel=historyProgramOriginLabel(w);
   const recordSummary=workoutEvents.map(event=>`<span><strong>${escapeHtml(event.exerciseName)}</strong> · ${escapeHtml(event.shortLabel)}: ${escapeHtml(unitsApi.formatLoad(event.observedValue,state))}</span>`).join('');
   content.innerHTML=`${w.entryMethod==='retrospective'?'<div class="history-origin-chip">Entered later</div>':''}${programOriginLabel?`<div class="history-origin-chip">${escapeHtml(programOriginLabel)}</div>`:''}<div class="history-summary-grid"><div><span>Duration</span><strong>${fmtTime(summary.durationSeconds)}</strong></div><div><span>Exercises</span><strong>${summary.exerciseCount}</strong></div><div><span>Working sets</span><strong>${summary.workingSetCount}</strong></div></div><section class="session-workload-detail" aria-label="Session workload">${progressApi.workloadFamiliesMarkup([w])}</section>${workoutEvents.length?`<div class="history-pr-callout"><span class="pr-badge">${workoutEvents.length} record${workoutEvents.length===1?'':'s'}</span><div class="history-record-list">${recordSummary}</div></div>`:''}${w.note?`<div class="history-note history-workout-note"><span>Workout note</span><p>${escapeHtml(w.note)}</p></div>`:''}<div class="history-detail-heading"><span class="label">Exercise breakdown</span><h3>${(w.exercises||[]).length} movement${(w.exercises||[]).length===1?'':'s'}, in workout order</h3></div><div class="history-detail-list">${exercises||'<div class="history-detail-empty">No exercises were recorded for this workout.</div>'}</div>`;
@@ -332,6 +330,7 @@ function renderTodayPriority(){
   const primary=priority==='program'?$('todayPlanCard'):priority==='freeform'?$('todayBlankCard'):$('sessionTypeSelector');
   stage.querySelectorAll('.is-priority').forEach(card=>card.classList.remove('is-priority'));
   primary.classList.add('is-priority');if(stage.firstElementChild!==primary)stage.prepend(primary);
+  const movementMetric=$('todayMovementMetric');if(movementMetric&&primary.nextElementSibling!==movementMetric)primary.after(movementMetric);
   const start=$('todayPlanActions')?.querySelector('[data-start-program-session]');if(start)start.hidden=Boolean(active);
 }
 window.renderTodayPriority=renderTodayPriority;

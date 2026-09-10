@@ -26,6 +26,7 @@ for(const width of [375,390])for(const unit of ['lb','kg'])test(`Pass 3 workload
  const canonical=await metric.getAttribute('data-today-progress-exercise');await metric.click();
  await expect(page.locator('body')).toHaveAttribute('data-view','progress');await expect(page.locator('#progressDialog')).toHaveAttribute('data-exercise-id',canonical);
  await expect(page.locator('#progressDialogTitle')).toHaveText('Seated Machine Chest Press');
+ const bounds=await page.locator('#progressDialog').boundingBox();expect(bounds.y).toBeGreaterThanOrEqual(0);expect(bounds.y+bounds.height).toBeLessThanOrEqual(844);
  await expect(page.locator('.exercise-workload-read')).toContainText('+33.3%');
  await page.screenshot({path:info.outputPath(`exercise-overview-${width}-${unit}.png`)});
  await page.locator('.progress-session details summary').first().click();await expect(page.locator('.progress-session details').first().locator('li')).toHaveCount(4);

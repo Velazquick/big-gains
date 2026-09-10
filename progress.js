@@ -214,7 +214,7 @@ window.workoutProgress = (() => {
       return;
     }
     const current = trend.current;
-    target.innerHTML = `<button type="button" class="movement-metric" data-today-progress-exercise="${context.escapeHtml(trend.exerciseId)}" aria-label="Open ${context.escapeHtml(current.exerciseName)} metrics in Progress"><strong class="movement-name">${context.escapeHtml(current.exerciseName)}</strong><strong class="movement-value">${units.formatWorkload(current.workload, state(), { unit: current.displayUnitOverride })}</strong>${movementSpark(trend)}<small class="movement-change">${workloadChangeText(trend)}</small><small class="movement-change">${WORKLOAD_FAMILY_META[current.workloadFamily].label.replace('volume', 'workload')} · ${context.fmtDate(current.date)}</small></button>`;
+    target.innerHTML = `<button type="button" class="movement-metric" data-today-progress-exercise="${context.escapeHtml(trend.exerciseId)}" aria-label="Open ${context.escapeHtml(current.exerciseName)} metrics in Progress"><strong class="movement-name">${context.escapeHtml(current.exerciseName)}</strong><strong class="movement-value">${units.formatWorkload(current.workload, state(), { unit: current.displayUnitOverride })}</strong>${movementSpark(trend)}<small class="movement-change">${workloadChangeText(trend)}</small><small class="movement-change">${WORKLOAD_FAMILY_META[current.workloadFamily].label.replace('volume', 'workload')}${current.workloadFamily === 'machine_indicated' ? ' · limited comparison' : ''} · ${context.fmtDate(current.date)}</small></button>`;
   }
 
   function exerciseWorkloadMarkup(exerciseId) {
@@ -623,13 +623,15 @@ window.workoutProgress = (() => {
       const historyWorkload = workloadMeta
         ? totalWorkload === null ? `${sessions.length} sessions · workload has gaps` : `${sessions.length} sessions · ${formatLoadVolume(totalWorkload)}`
         : `${sessions.length} sessions · no load-volume family`;
-      const recordQualification = record?.recordType === 'indicated_load' ? '<p class="record-qualification">Profile-local, exact-exercise indicated load. It does not claim equivalent resistance across machines, gyms, pulleys, attachments, or calibration.</p>' : '';
+      const recordQualification = workloadFamily === 'machine_indicated' ? '<p class="record-qualification">Profile-local, exact-exercise indicated load. It does not claim equivalent resistance across machines, gyms, pulleys, attachments, or calibration.</p>' : '';
       content.innerHTML = `<div class="history-summary-grid progress-summary-grid"><div><span>Best set</span><strong>${context.escapeHtml(setLoadLabel(best))} × ${Number(best.reps)}</strong></div><div><span>${context.escapeHtml(record?.recordLabel || 'Performance Record')}</span><strong>${context.escapeHtml(recordValue(record))}</strong></div><div><span>Training history</span><strong>${historyWorkload}</strong></div></div>${recordQualification}${exerciseWorkloadMarkup(exerciseId)}<div class="progress-trend-note"><strong>${latest.estimated1RM === null ? 'e1RM unavailable' : `${units.formatLoad(latest.estimated1RM, state())} latest e1RM`}</strong><span>${trendText(sessions)}</span></div>${workloadChart(sessions, workloadFamily)}${e1rmChart}<div class="progress-recent-head"><span class="label">Recent work</span><h3>Session-by-session</h3></div><div class="progress-session-list">${recent}</div>`;
     }
 
     const { dialog } = elements();
     if (dialog?.showModal) dialog.showModal();
     else dialog?.setAttribute('open', '');
+    const shell = dialog?.querySelector('.history-dialog-shell');
+    if (shell) shell.scrollTop = 0;
   }
 
   function decorateLibrary() {

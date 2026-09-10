@@ -276,3 +276,10 @@ html[data-theme] #progressDialog .progress-session summary::after { content:' +'
 html[data-theme] #progressDialog .progress-session details[open] summary::after { content:' −'; }
 html[data-theme] #progressDialog .record-qualification { font-size:.8125rem; color:var(--ui-secondary); line-height:1.5; }
 html[data-theme] .today-movement-slot { scroll-margin-bottom:100px; }
+
+html[data-theme] #progressDialog :is(.history-dialog-shell,.history-dialog-head) { background:var(--ui-surface); border-color:var(--line); box-shadow:none; }
+html[data-theme] #progressDialog .progress-summary-grid { grid-template-columns:repeat(auto-fit,minmax(min(100%,9rem),1fr)); }
+html[data-theme] #progressDialog .progress-summary-grid strong { overflow-wrap:anywhere; }
+
+html[data-theme] #progressDialog { position:fixed; inset:0; margin:auto; max-height:calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overflow:hidden; }
+html[data-theme] #progressDialog .history-dialog-shell { box-sizing:border-box; max-height:calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overscroll-behavior:contain; }

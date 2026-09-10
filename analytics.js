@@ -400,11 +400,15 @@
   }
 
   function recentWorkloadMovement(workouts, options = {}) {
+    const inspected = new Set();
     for (const workout of completedWorkouts(workouts)) {
       // Last eligible movement in the newest completed workout; stored order breaks ties.
       for (const exercise of list(workout.exercises).slice().reverse()) {
         const exerciseId = canonicalExerciseId(exercise);
-        if (!definitionFor(exercise)) continue;
+        if (!definitionFor(exercise) || inspected.has(exerciseId)) continue;
+        inspected.add(exerciseId);
+        const workoutOptions = optionsForWorkout(workout, options);
+        if (!workloadFamilyFor(exercise, workoutOptions) || !Number.isFinite(setSummary(exercise, workoutOptions).workingSetVolume)) continue;
         const trend = exerciseWorkloadTrend(workouts, exerciseId, options);
         if (trend.current?.workoutId === workout.id && trend.current.workloadFamily
           && Number.isFinite(trend.current.workload)) return trend;
