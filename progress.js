@@ -228,7 +228,7 @@ window.workoutProgress = (() => {
   function workloadChart(sessions, family) {
     const meta = WORKLOAD_FAMILY_META[family];
     if (!meta) return '<div class="progress-chart-empty"><strong>No load-volume trend</strong><span>This movement’s measurement contract does not produce load × rep-event volume.</span></div>';
-    const data = sessions.slice(0, 10).reverse();
+    const data = sessions.slice(0, 10).reverse().map(session => session.workloadFamily === family ? session : { ...session, workload: null });
     const known = data.filter(session => session.workloadFamily === family && session.workload !== null);
     if (!known.length) {
       const detail = family === 'modeled_system_load'
@@ -269,7 +269,7 @@ window.workoutProgress = (() => {
       ? `<line class="progress-gap-marker" x1="${xFor(index)}" y1="${padY}" x2="${xFor(index)}" y2="${height - padY}"><title>${context.fmtDate(session.date)}: workload unavailable</title></line>`
       : `<circle class="progress-dot progress-workload-dot" cx="${xFor(index)}" cy="${yFor(session.workload)}" r="5"><title>${context.fmtDate(session.date)}: ${formatLoadVolume(session.workload, sessions[0]?.displayUnitOverride)} ${meta.label.toLowerCase()}</title></circle>`).join('');
     const gapNote = data.some(session => session.workload === null)
-      ? '<p class="progress-chart-gap-note">Gaps are sessions with unavailable modeled bodyweight, not zero workload.</p>'
+      ? '<p class="progress-chart-gap-note">Gaps are sessions without comparable workload, not zero workload.</p>'
       : '';
     return `<div class="progress-chart progress-workload-chart"><div class="progress-chart-title"><strong>${meta.label} trend</strong><span>Last ${data.length} session${data.length === 1 ? '' : 's'}</span></div><svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${meta.label} session trend">${grid}${lines}${dots}<text class="progress-date-label" x="${padX}" y="${height - 7}">${context.escapeHtml(formatMonthDay(data[0].date))}</text><text class="progress-date-label" text-anchor="end" x="${width - padX}" y="${height - 7}">${context.escapeHtml(formatMonthDay(data[data.length - 1].date))}</text></svg>${gapNote}</div>`;
   }
@@ -612,11 +612,12 @@ window.workoutProgress = (() => {
         ? sessions.reduce((total, session) => total + session.workload, 0)
         : null;
       const recent = sessions.slice(0, 8).map(session => {
-        const sessionWorkload = !workloadMeta
+        const sessionMeta = WORKLOAD_FAMILY_META[session.workloadFamily];
+        const sessionWorkload = !sessionMeta
           ? 'No load-volume trend for this measurement contract'
           : session.workload === null
-            ? `${workloadMeta.label} unavailable · no bodyweight at workout`
-            : `${formatLoadVolume(session.workload)} ${workloadMeta.label.toLowerCase()}`;
+            ? `${sessionMeta.label} unavailable · no bodyweight at workout`
+            : `${formatLoadVolume(session.workload)} ${sessionMeta.label.toLowerCase()}`;
         return `<article class="progress-session"><div><strong>${context.fmtDate(session.date)}</strong><small>${session.sets.length} working set${session.sets.length === 1 ? '' : 's'} · ${sessionWorkload}</small></div><div class="progress-session-meta"><strong>${context.escapeHtml(setLoadLabel(session.best))} × ${session.best.reps}</strong><small>${session.estimated1RM === null ? 'e1RM unavailable for this measurement contract or session context' : `${units.formatLoad(session.estimated1RM, state())} e1RM`}</small></div><details><summary>View ${session.sets.length} working sets</summary><ul>${session.sets.map((set, index) => `<li>Set ${index + 1}: ${context.escapeHtml(setLoadLabel(set))} × ${set.reps} reps</li>`).join('')}</ul><button type="button" class="ghost compact" data-workload-history="${context.escapeHtml(session.workoutId)}">Full workout →</button></details></article>`;
       }).join('');
       const e1rmChart = sessions.some(session => session.estimated1RM === null) ? '' : progressChart(sessions);
