@@ -52,7 +52,7 @@ test('WorkoutSessionController exposes a frozen domain API and an exact pure ses
     factoryKeys: ['buildExercise', 'isCompletableSet', 'moveExercise', 'toggleExercise', 'advanceAfterCompletion', 'create'],
     instanceKeys: [
       'start', 'startProgram', 'resume', 'replace', 'loadRoutine', 'repairEmpty', 'addExercise',
-      'focusExercise', 'moveExercise', 'toggleExercise', 'removeExercise', 'addSet', 'addWarmupSet',
+      'focusExercise', 'moveExercise', 'toggleExercise', 'requiresExerciseSwapConfirmation', 'swapExercise', 'removeExercise', 'addSet', 'addWarmupSet',
       'removeSet', 'updateSet', 'adjustSet', 'toggleSetCompleted', 'complete', 'discard'
     ],
     frozenFactory: true,

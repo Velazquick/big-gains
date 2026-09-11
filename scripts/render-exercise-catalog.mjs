@@ -23,6 +23,8 @@ export function renderCatalogRuntime({ data, releaseId }) {
     equipment: record.equipment,
     aliases: [...record.aliases],
     family: record.family,
+    swapFamily: record.swapFamily,
+    swapFamilyVersion: record.swapFamilyVersion,
     variantOf: record.variantOf,
     canonicalId: record.canonicalId,
     contentRevision: record.contentRevision,

@@ -335,7 +335,8 @@ test('active workout shows canonical previous performance and a meaningful impro
 });
 
 test('completed-workout recap is driven by working analytics and excludes warmups', async ({ page }) => {
-  await installLocalStorageFixture(page, 'activeWorkoutWithExercises');
+  // Keep the one-hour session on the same local day; midnight recovery has its own contract tests.
+  await installLocalStorageFixture(page, 'activeWorkoutWithExercises', { now: '2026-09-10T12:00:00' });
   await openApp(page);
 
   await page.evaluate(() => {

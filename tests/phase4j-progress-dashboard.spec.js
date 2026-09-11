@@ -46,12 +46,13 @@ test('Progress is a dark analytics dashboard with overview, heatmap, and capped 
   await expect(page.locator('.progress-overview-grid article')).toHaveCount(3);
   await expect(page.locator('.progress-dashboard-head h2')).toHaveText('7-day progress');
   await expect(page.locator('.progress-overview-grid article').nth(0).locator('strong')).toHaveText('3');
-  await expect(page.locator('.muscle-zone')).toHaveCount(24);
+  await expect(page.locator('.muscle-zone')).toHaveCount(6);
+  await expect(page.locator('[data-anatomy-view="front"]')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('#history .history-item')).toHaveCount(3);
   await expect(page.locator('.progress-history-footer')).toContainText('Browse every completed session in List or Calendar');
   await expect(page.locator('[data-open-history-archive]').first()).toHaveText('Open History');
 
-  await page.locator('[data-muscle-key="Chest"]').first().click();
+  await page.locator('.muscle-region-list [data-muscle-key="Chest"]').first().click();
   await expect(page.locator('#progressMuscleDetail h3')).toHaveText('Chest');
   await expect(page.locator('#progressMuscleDetail')).toContainText('Seated Machine Chest Press');
 
@@ -65,7 +66,7 @@ test('30-day window recomputes the overview and muscle workload without changing
   await expect(page.locator('.progress-dashboard-head h2')).toHaveText('30-day progress');
   await expect(page.locator('[data-progress-window="30"]')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('.progress-overview-grid article').nth(0).locator('strong')).toHaveText('4');
-  await page.locator('[data-muscle-key="Shoulders"]').first().click();
+  await page.locator('.muscle-region-list [data-muscle-key="Shoulders"]').first().click();
   await expect(page.locator('#progressMuscleDetail h3')).toHaveText('Shoulders');
   const after = await page.evaluate(key => localStorage.getItem(key), STORAGE_KEYS.jorge);
   expect(after).toBe(before);
@@ -73,7 +74,7 @@ test('30-day window recomputes the overview and muscle workload without changing
 
 test('a selected zero-workload muscle stays selected and reports explicit zero metrics', async ({ page }) => {
   const before = await page.evaluate(key => localStorage.getItem(key), STORAGE_KEYS.jorge);
-  await page.locator('[data-muscle-key="Core"]').first().click();
+  await page.locator('.muscle-region-list [data-muscle-key="Core"]').first().click();
 
   const detail = page.locator('#progressMuscleDetail .muscle-detail');
   await expect(detail).toHaveAttribute('data-selected-muscle', 'Core');
@@ -82,7 +83,7 @@ test('a selected zero-workload muscle stays selected and reports explicit zero m
   await expect(detail.locator('.muscle-detail-metrics')).toContainText('Primary working sets0');
   await expect(detail.locator('.muscle-detail-metrics')).toContainText('Reps0');
   await expect(detail.locator('.muscle-zero-state')).toContainText('No core working sets in the last 7 days');
-  await expect(page.locator('[data-muscle-key="Core"]').first()).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.muscle-region-list [data-muscle-key="Core"]').first()).toHaveAttribute('aria-pressed', 'true');
 
   const after = await page.evaluate(key => localStorage.getItem(key), STORAGE_KEYS.jorge);
   expect(after).toBe(before);
@@ -142,7 +143,7 @@ test('Alexa keeps a readable wellness-light dashboard and dialog without persist
 
   const before = await page.evaluate(key => localStorage.getItem(key), STORAGE_KEYS.alexa);
   await page.locator('[data-progress-window="30"]').click();
-  await page.locator('[data-muscle-key="Shoulders"]').first().click();
+  await page.locator('.muscle-region-list [data-muscle-key="Shoulders"]').first().click();
   await page.locator('#openSelectedProgress').click();
   await expect(page.locator('#progressDialog')).toBeVisible();
 

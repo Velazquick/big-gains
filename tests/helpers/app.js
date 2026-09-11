@@ -7,6 +7,13 @@ export async function openApp(page) {
   await expect(page.locator('#sessionTypeSelector')).toBeAttached();
 }
 
+export async function clickCentered(locator) {
+  // WebKit can race CSS smooth scrolling when its automatic scroll starts above
+  // the sticky workout header. Put the control in view, then use a real click.
+  await locator.evaluate(element => element.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }));
+  await locator.click();
+}
+
 export async function chooseSession(page, sessionType) {
   await page.locator('#sessionSelectorToggle').click();
   await page.locator(`[data-session-type="${sessionType}"]`).click();

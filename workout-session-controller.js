@@ -369,6 +369,41 @@
       return { removed: true, confirmationRequired: false, exerciseId: exercise.id || null };
     }
 
+    function requiresExerciseSwapConfirmation(index) {
+      const exercise = getActiveWorkout()?.exercises?.[index];
+      return Boolean(exercise?.sets?.some(setHasEnteredData));
+    }
+
+    function swapExercise(index, id, { confirmed = false } = {}) {
+      const current = getActiveWorkout();
+      const exercise = current?.exercises?.[index];
+      const definition = exerciseCatalog.getById(id);
+      if (!exercise || !definition || !canResolveSession()) return { swapped: false, confirmationRequired: false };
+      const requestedCanonicalId = exerciseCatalog.canonicalIdFor(definition.id);
+      const duplicate = current.exercises.some((item, itemIndex) => itemIndex !== index
+        && exerciseCatalog.canonicalIdFor(item.id) === requestedCanonicalId);
+      if (duplicate || exerciseCatalog.canonicalIdFor(exercise.id) === requestedCanonicalId) {
+        return { swapped: false, confirmationRequired: false, duplicate };
+      }
+      if (requiresExerciseSwapConfirmation(index) && !confirmed) {
+        return { swapped: false, confirmationRequired: true, exerciseId: exercise.id || null };
+      }
+      const workingSets = Math.max(1, exercise.sets?.filter(set => !set.warmup).length || Number(exercise.targetWorkingSets) || 3);
+      const replacement = buildExercise({ definition, createId, prescription: {
+        workingSets, ...(exercise.targetReps && ['load_reps', 'assistance_reps', 'reps_only'].includes(definition.measurement?.trackingModel) ? { targetReps: exercise.targetReps } : {})
+      } });
+      replacement.sets.forEach(set => { if (set.warmup) set.reps = ''; });
+      // Unit preference belongs to this slot; loads/sets and guidance do not transfer.
+      if (['lb', 'kg'].includes(exercise.displayUnitOverride)) replacement.displayUnitOverride = exercise.displayUnitOverride;
+      replacement.collapsed = exercise.collapsed;
+      current.exercises.splice(index, 1, replacement);
+      if (current.focusedExerciseId === exercise.id) current.focusedExerciseId = replacement.id;
+      persistActiveMutation();
+      renderActiveMutation();
+      renderLibraryMutation();
+      return { swapped: true, confirmationRequired: false, exerciseId: replacement.id, replacedExerciseId: exercise.id };
+    }
+
     function addSet(exerciseIndex) {
       const exercise = getActiveWorkout()?.exercises?.[exerciseIndex];
       if (!exercise) return null;
@@ -564,6 +599,8 @@
       focusExercise,
       moveExercise,
       toggleExercise,
+      requiresExerciseSwapConfirmation,
+      swapExercise,
       removeExercise,
       addSet,
       addWarmupSet,

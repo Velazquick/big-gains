@@ -258,7 +258,7 @@ test('SZW renders merlot on slate with the pet off and no routine or schema-v5 m
   expect(result.seededNewExercises).toEqual([]);
 });
 
-test('Jorge keeps his deployed presentation and day-filtered library behavior', async ({ page }) => {
+test('Jorge keeps day-scoped browsing while explicit Library search spans all exercises', async ({ page }) => {
   await installLocalStorageFixture(page, 'blankJorge');
   await openApp(page);
 
@@ -270,7 +270,12 @@ test('Jorge keeps his deployed presentation and day-filtered library behavior', 
   await expect(page.locator('#libraryScopeChange')).toBeVisible();
   await expect(page.locator('#libraryInventory')).toBeVisible();
   await page.locator('#exerciseSearch').fill('Single Leg Press');
-  await expect(page.locator('#exerciseLibrary')).toContainText('No matching exercises');
+  await expect(page.locator('#exerciseLibrary h3')).toHaveText('Single-Leg Press');
+  await expect(page.locator('#libraryScopeLabel')).toHaveText('All matching exercises');
+  await expect(page.locator('#libraryScopeChange')).toBeHidden();
+  await page.locator('#exerciseSearch').fill('');
+  await expect(page.locator('#libraryScopeLabel')).toContainText('Push');
+  await expect(page.locator('#libraryScopeChange')).toBeVisible();
   await page.locator('#dayTabs [data-day="Legs"]').click();
   await page.locator('#exerciseSearch').fill('Single Leg Press');
   await expect(page.locator('#exerciseLibrary h3')).toHaveText('Single-Leg Press');

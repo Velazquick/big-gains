@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { renderCatalogRuntime } from './render-exercise-catalog.mjs';
+import { SWAP_FAMILIES, SWAP_FAMILY_VERSION } from '../ekf/curated/swap-families.mjs';
 
 const DEFAULT_ROOT = fileURLToPath(new URL('../', import.meta.url));
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -281,6 +282,8 @@ function runtimeRecords(validated) {
     equipment: record.compatibility.equipment,
     aliases: [...record.aliases],
     family: record.familyId ? validated.familyById.get(record.familyId).legacyId : null,
+    swapFamily: SWAP_FAMILIES[record.id] || null,
+    swapFamilyVersion: SWAP_FAMILY_VERSION,
     variantOf: record.variantOf,
     contentRevision: record.contentRevision,
     modality: record.modality,

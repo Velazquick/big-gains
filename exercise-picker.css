@@ -29,6 +29,7 @@
 .exercise-picker-result.is-current .exercise-picker-result-state { color: #9bc6a7; }
 .exercise-picker-empty { padding: 36px 18px; border: 1px dashed #3b4651; border-radius: 14px; text-align: center; }
 .exercise-picker-empty p { margin: 7px 0 0; color: #98a2ad; line-height: 1.45; }
+.exercise-picker-browse-all { width: 100%; min-height: 48px; margin-top: 4px; }
 .exercise-picker-trigger { box-sizing: border-box; width: 100%; min-height: 46px; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid #3a4652; border-radius: 11px; color: #f4f1ea; background: #0b0f13; text-align: left; font: inherit; }
 .exercise-picker-trigger span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .exercise-picker-trigger small { flex: 0 0 auto; color: #f0a36b; font-weight: 800; }
@@ -49,3 +50,7 @@
   .exercise-picker-filter-row > button { grid-column: 1 / -1; min-height: 42px; }
   .library-exercise-filters { grid-template-columns: 1fr; }
 }
+.exercise-picker-controls[hidden]{display:none!important}
+.exercise-picker-dialog.is-compact { width:min(560px,calc(100% - 28px)); height:auto; max-height:85dvh; margin:auto; }
+.exercise-picker-dialog.is-compact .exercise-picker-shell { min-height:0; max-height:85dvh; grid-template-rows:auto minmax(0,1fr); }
+@media(max-width:700px){.exercise-picker-dialog.is-compact { inset:auto 0 0; width:100%; margin:0 auto; border-radius:20px 20px 0 0; }}
