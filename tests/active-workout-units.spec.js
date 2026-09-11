@@ -2,7 +2,7 @@ import { waitForControlledAppShell } from './helpers/app.js';
 import { expect } from '@playwright/test';
 import { test } from './helpers/network-outage.js';
 import { activeWorkout, blankState, completedWorkout, readStoredJson, STORAGE_KEYS } from './fixtures/local-storage.js';
-import { openApp, openExerciseOptions } from './helpers/app.js';
+import { openApp, openExerciseOptions, clickCentered } from './helpers/app.js';
 
 const unitPreference = weightUnit => ({ contractVersion: 1, weightUnit });
 
@@ -30,7 +30,7 @@ const unitButton = (page, unit, index = 0) => page.locator(`[data-exercise-unit=
 const weightInput = (page, exerciseIndex, setIndex) => page.locator(`input[data-field="weight"][data-ei="${exerciseIndex}"][data-si="${setIndex}"]`);
 
 async function chooseExerciseUnit(page, unit, index = 0) {
-  await unitButton(page, unit, index).click();
+  await clickCentered(unitButton(page, unit, index));
   await expect(unitButton(page, unit, index)).toHaveAttribute('aria-pressed', 'true');
 }
 

@@ -1,18 +1,18 @@
 import { test, expect } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
-import { openApp, jorgeState, openSetAdjustments } from './helpers/app.js';
+import { openApp, jorgeState, openSetAdjustments, clickCentered } from './helpers/app.js';
 for(const width of [375,390]) test(`warmup-only addition and compact direct entry at ${width}px`,async({page},info)=>{
   await page.setViewportSize({width,height:844});await installLocalStorageFixture(page,'activeWorkoutWithTwoExercises');await openApp(page);
   const before=(await jorgeState(page)).activeWorkout;
   const plus=page.getByRole('button',{name:'Add warmup set to Seated Machine Chest Press',exact:true});
   const bounds=await plus.boundingBox();expect(bounds.width).toBeGreaterThanOrEqual(44);expect(bounds.height).toBeGreaterThanOrEqual(44);
-  await plus.click();const after=(await jorgeState(page)).activeWorkout;
+  await clickCentered(plus);const after=(await jorgeState(page)).activeWorkout;
   expect(after.exercises[0].sets.filter(s=>!s.warmup)).toEqual(before.exercises[0].sets.filter(s=>!s.warmup));
   expect(after.exercises[0].sets.filter(s=>s.warmup)).toHaveLength(2);
   expect(after.exercises[0].sets[1]).toMatchObject({weight:45,reps:10,warmup:true,completed:false});
   expect(new Set(after.exercises[0].sets.map(s=>s.id)).size).toBe(after.exercises[0].sets.length);
   for(const key of ['targetWorkingSets','targetReps','programOrigin'])expect(after.exercises[0][key]).toEqual(before.exercises[0][key]);
-  await page.locator('[data-exercise-unit="kg"][data-ei="0"]').click();
+  await clickCentered(page.locator('[data-exercise-unit="kg"][data-ei="0"]'));
   const input=page.locator('input[data-field="weight"][data-ei="0"][data-si="2"]');await input.fill('50');await input.blur();
   const canonical=(await jorgeState(page)).activeWorkout.exercises[0].sets[2].weight;expect(canonical).toBeCloseTo(110.231,2);
   await openSetAdjustments(page,0,2);await page.locator('[data-adjust="5"][data-field="weight"][data-ei="0"][data-si="2"]').click();
@@ -25,7 +25,7 @@ for(const width of [375,390]) test(`warmup-only addition and compact direct entr
 test('warmup deletion preserves working prescription and unsupported models cannot add warmups',async({page})=>{
   await installLocalStorageFixture(page,'activeWorkoutWithTwoExercises');await openApp(page);
   const before=await page.evaluate(()=>{active.exercises[0].targetWorkingSets=3;active.exercises[0].targetReps='6–8';saveState();return JSON.parse(JSON.stringify(active));});
-  await page.getByRole('button',{name:'Add warmup set to Seated Machine Chest Press'}).click();
+  await clickCentered(page.getByRole('button',{name:'Add warmup set to Seated Machine Chest Press'}));
   const remove=page.locator('[data-remove-set][data-ei="0"][data-si="1"]');await remove.click();expect((await jorgeState(page)).activeWorkout.exercises[0].sets).toHaveLength(5);await remove.click();
   const after=(await jorgeState(page)).activeWorkout;expect(after.exercises[0].sets).toEqual(before.exercises[0].sets);expect(after.exercises[0].targetWorkingSets).toBe(3);expect(after.exercises[0].targetReps).toBe('6–8');
   const rejected=await page.evaluate(()=>{const definition=BigGainsExerciseCatalog.exercises.find(e=>e.measurement.trackingModel==='duration');workoutSessionController.addExercise(definition.id,{scroll:false});const exercise=active.exercises.at(-1),before=JSON.stringify(exercise);return {result:workoutSessionController.addWarmupSet(active.exercises.length-1),unchanged:JSON.stringify(exercise)===before};});
