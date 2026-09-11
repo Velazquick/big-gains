@@ -563,7 +563,7 @@ function renderReorder(focusId, control='select') {
 function openReorder(kind) {
   const owner = kind === 'active' ? active : routineDraft;
   if (!owner) return;
-  reorderOwner = {kind,owner,trigger:document.activeElement};
+  reorderOwner = {kind,owner,trigger:$(kind==='active'?'reorderWorkout':'reorderRoutine')};
   $('reorderTitle').textContent = kind === 'active' ? 'Reorder workout' : 'Reorder routine draft';
   $('reorderAnnouncement').textContent = '';
   renderReorder();
