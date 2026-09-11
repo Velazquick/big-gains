@@ -29,7 +29,7 @@ jobs:
         env:
           BIG_GAINS_WEBKIT_QA: 'true'
           PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-webkit
-        run: npx playwright test --project=webkit --output=test-results-webkit tests/body-map-swap.spec.js tests/custom-domain-transition.spec.js tests/ios-home-screen-auth.spec.js tests/fresh-device-recovery.spec.js tests/pwa-update.spec.js tests/utility-recovery.spec.js
+        run: npx playwright test --project=webkit --output=test-results-webkit tests/swap-reorder-ux.spec.js tests/body-map-swap.spec.js tests/custom-domain-transition.spec.js tests/ios-home-screen-auth.spec.js tests/fresh-device-recovery.spec.js tests/pwa-update.spec.js tests/utility-recovery.spec.js
       - name: Repeat WebKit update-to-offline and failed-install transitions
         env:
           BIG_GAINS_WEBKIT_QA: 'true'

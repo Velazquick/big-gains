@@ -393,7 +393,9 @@ test('reorder keeps choices with exercise identity and unit toggle disarms remov
   await installState(page, { ...blankState('jorge'), activeWorkout: semanticActiveWorkout() });
   await chooseExerciseUnit(page, 'kg', 0);
   await openExerciseOptions(page, 'Seated Machine Chest Press');
-  await page.locator('[data-move-exercise="down"][data-index="0"]').click();
+  await page.locator('#reorderWorkout').click();
+  await page.locator('#reorderList select').first().selectOption({value:'1'});
+  await page.locator('#closeReorder').click();
   await expect(unitButton(page, 'kg', 1)).toHaveAttribute('aria-pressed', 'true');
   await expect(unitButton(page, 'lb', 0)).toHaveAttribute('aria-pressed', 'true');
   await openExerciseOptions(page, 'Seated Machine Chest Press');

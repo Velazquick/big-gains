@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
 
-const CURRENT_RELEASE = 'v112-body-map-exercise-swap';
+const CURRENT_RELEASE = 'v113-swap-reorder-ux';
 const CURRENT_CONFIG_VERSION = 'config-925e766c1b907250';
 const CURRENT_CACHE = `big-gains-shell-${CURRENT_RELEASE}-${CURRENT_CONFIG_VERSION}`;
 const PREVIOUS_CACHE = 'big-gains-shell-v109-train-position-summaries-config-dfadb48839db90f2';

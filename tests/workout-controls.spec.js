@@ -20,7 +20,9 @@ test('renders the active exercise expanded with upcoming work collapsed', async 
 test('reorders and removes exercises without changing selector compatibility', async ({ page }) => {
   const cards = page.locator('#activeExercises .active-exercise');
   await openExerciseOptions(page, 'Lat Pulldown');
-  await page.getByRole('button', { name: 'Move Lat Pulldown up', exact: true }).click();
+  await page.locator('#reorderWorkout').click();
+  await page.getByRole('combobox', { name: 'Move Lat Pulldown to position', exact: true }).selectOption({ value: '0' });
+  await page.locator('#closeReorder').click();
 
   await expect(cards.locator('h3')).toHaveText(['Lat Pulldown', 'Seated Machine Chest Press']);
   expect((await jorgeState(page)).activeWorkout.exercises.map(exercise => exercise.id)).toEqual([
