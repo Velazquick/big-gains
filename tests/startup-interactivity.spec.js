@@ -289,7 +289,7 @@ test('manifest required and optional script partitions are complete and release-
       runtimeGateCount: manifest.coreAssets.filter(asset => asset.includes('runtime-interactivity-gate.js')).length
     };
   });
-  expect(result.release).toBe('v112-body-map-exercise-swap');
+  expect(result.release).toBe('v113-swap-reorder-ux');
   expect(new Set(result.partition)).toEqual(new Set(result.scripts));
   expect(result.overlap).toEqual([]);
   expect(result.runtimeGateCount).toBe(1);

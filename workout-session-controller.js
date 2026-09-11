@@ -128,8 +128,8 @@
 
   function moveExerciseState(activeWorkout, from, direction) {
     if (!activeWorkout?.exercises) return false;
-    const to = direction === 'up' ? from - 1 : from + 1;
-    if (from < 0 || from >= activeWorkout.exercises.length || to < 0 || to >= activeWorkout.exercises.length) return false;
+    const to = Number.isInteger(direction) ? direction : direction === 'up' ? from - 1 : from + 1;
+    if (!Number.isInteger(from) || from === to || from < 0 || from >= activeWorkout.exercises.length || to < 0 || to >= activeWorkout.exercises.length) return false;
     const [exercise] = activeWorkout.exercises.splice(from, 1);
     activeWorkout.exercises.splice(to, 0, exercise);
     return true;

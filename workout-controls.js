@@ -153,6 +153,7 @@
               <p>${escapeHtml(exercise.equipment)}${inputFields.find(field => field.name === 'weight')?.label ? ` · ${escapeHtml(inputFields.find(field => field.name === 'weight').label)}` : ''} · ${escapeHtml(summary.complete ? `${summary.completed} of ${summary.total} complete` : summary.progress)}</p>
             </div>
             <div class="exercise-head-actions">
+              <button type="button" class="swap-exercise ghost compact" data-swap-exercise="${exerciseIndex}" aria-label="Swap ${escapeHtml(exercise.name)}" title="Swap exercise">⇄</button>
                 <button type="button" class="exercise-toggle" data-toggle-exercise="${exerciseIndex}" aria-expanded="${!collapsed}" aria-controls="exercise-body-${exerciseIndex}" aria-label="${collapsed ? 'Expand' : 'Collapse'} ${escapeHtml(exercise.name)}"><span class="exercise-toggle-chevron" aria-hidden="true">⌄</span></button>
             </div>
           </div>
@@ -163,11 +164,7 @@
             ${supportsWarmup(exercise) || warmups ? `<section class="set-section" aria-label="Warmup"><div class="set-section-heading"><h4>Warmup</h4>${supportsWarmup(exercise) ? `<button type="button" data-add-warmup="${exerciseIndex}" aria-label="Add warmup set to ${escapeHtml(exercise.name)}">+</button>` : ''}</div><div class="set-grid">${warmups}</div></section>` : ''}
             <section class="set-section" aria-label="Working sets"><div class="set-section-heading"><h4>Working sets</h4></div><div class="set-grid">${workingSets}</div></section>
             <button type="button" class="add-set" data-add-set="${exerciseIndex}">+ Add working set</button>
-            <details class="exercise-management"><summary>Exercise options</summary><div class="exercise-order">
-                <button type="button" data-move-exercise="up" data-index="${exerciseIndex}" ${exerciseIndex === 0 ? 'disabled' : ''} aria-label="Move ${escapeHtml(exercise.name)} up">↑</button>
-                <button type="button" data-move-exercise="down" data-index="${exerciseIndex}" ${exerciseIndex === activeWorkout.exercises.length - 1 ? 'disabled' : ''} aria-label="Move ${escapeHtml(exercise.name)} down">↓</button>
-              </div>
-              <button type="button" class="swap-exercise" data-swap-exercise="${exerciseIndex}" aria-label="Swap ${escapeHtml(exercise.name)}">Swap exercise</button>
+            <details class="exercise-management"><summary>Exercise options</summary>
               <button type="button" class="remove-exercise" data-remove-exercise="${exerciseIndex}" aria-label="Remove ${escapeHtml(exercise.name)}">✕</button></details>
           </div>
           <div class="collapsed-summary">

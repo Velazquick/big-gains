@@ -452,7 +452,7 @@ bind('activeExercises','click',e=>{
   if(head&&!e.target.closest('button,input,select,textarea,a')){e.preventDefault();toggleRenderedExercise(Number(head.dataset.exerciseHead),head);return;}
   const t=e.target.closest('button');
   if(!t)return;
-  if(t.dataset.swapExercise!==undefined){const exerciseIndex=Number(t.dataset.swapExercise),exercise=active.exercises[exerciseIndex],key=exercise?`${active.id}:${exercise.id||exerciseIndex}`:'';if(workoutSessionController.requiresExerciseSwapConfirmation(exerciseIndex)&&exerciseSwapArmed!==key){exerciseSwapArmed=key;clearTimeout(exerciseSwapTimer);t.classList.add('is-confirming');t.textContent='Swap entered sets?';t.setAttribute('aria-label',`Confirm: choose a replacement for ${exercise?.name||'this exercise'} and reset its entered sets in this workout`);exerciseSwapTimer=setTimeout(()=>{if(exerciseSwapArmed===key){exerciseSwapArmed=null;t.classList.remove('is-confirming');t.textContent='Swap exercise';t.setAttribute('aria-label',`Swap ${exercise?.name||'exercise'}`);}},3500);return;}exerciseSwapArmed=null;clearTimeout(exerciseSwapTimer);t.classList.remove('is-confirming');t.textContent='Swap exercise';t.setAttribute('aria-label','Swap '+exercise.name);openActiveExerciseSwap(exerciseIndex);return;}
+  if(t.dataset.swapExercise!==undefined){const exerciseIndex=Number(t.dataset.swapExercise),exercise=active.exercises[exerciseIndex],key=exercise?`${active.id}:${exercise.id||exerciseIndex}`:'';if(workoutSessionController.requiresExerciseSwapConfirmation(exerciseIndex)&&exerciseSwapArmed!==key){exerciseSwapArmed=key;clearTimeout(exerciseSwapTimer);t.classList.add('is-confirming');t.textContent='Sure?';t.setAttribute('aria-label',`Confirm: choose a replacement for ${exercise?.name||'this exercise'} and reset its entered sets in this workout`);exerciseSwapTimer=setTimeout(()=>{if(exerciseSwapArmed===key){exerciseSwapArmed=null;t.classList.remove('is-confirming');t.textContent='⇄';t.setAttribute('aria-label',`Swap ${exercise?.name||'exercise'}`);}},3500);return;}exerciseSwapArmed=null;clearTimeout(exerciseSwapTimer);t.classList.remove('is-confirming');t.textContent='⇄';t.setAttribute('aria-label','Swap '+exercise.name);openActiveExerciseSwap(exerciseIndex);return;}
   if(t.dataset.removeExercise!==undefined){const exerciseIndex=Number(t.dataset.removeExercise),exercise=active.exercises[exerciseIndex],key=exercise?`${active.id}:${exercise.id||exerciseIndex}`:'';const result=workoutSessionController.removeExercise(exerciseIndex,{confirmed:key&&exerciseRemovalArmed===key});if(result.confirmationRequired){exerciseRemovalArmed=key;clearTimeout(exerciseRemovalTimer);t.classList.add('is-confirming');t.textContent='Sure?';t.setAttribute('aria-label',`Confirm: Remove ${exercise?.name||'this exercise'} and its entered sets from this workout?`);exerciseRemovalTimer=setTimeout(()=>{if(exerciseRemovalArmed===key){exerciseRemovalArmed=null;t.classList.remove('is-confirming');t.textContent='✕';t.setAttribute('aria-label',`Remove ${exercise?.name||'exercise'}`);}},3500);}else if(result.removed){exerciseRemovalArmed=null;clearTimeout(exerciseRemovalTimer);}return;}
   if(t.dataset.setAdjustments!==undefined){const ei=Number(t.dataset.ei),si=Number(t.dataset.setAdjustments),exercise=active.exercises[ei],set=exercise?.sets[si];if(set){workoutControlsApi.toggleAdjustments(active.id,exercise.id,set.id);renderActive();document.querySelector(`[data-set-adjustments="${si}"][data-ei="${ei}"]`)?.focus({preventScroll:true});}return;}
   if(t.dataset.addWarmup!==undefined){const index=Number(t.dataset.addWarmup),set=workoutSessionController.addWarmupSet(index);if(set)window.bigGainsTrainPosition?.capture(active.exercises[index].id,set.id);return;}
@@ -547,3 +547,78 @@ window.BigGainsAppRuntime=Object.freeze({initialized:true,profileId:PROFILE.id,u
 }});
 if(!window.BigGainsSupabase?.configured)window.BigGainsBootGate?.authorize('local-config-unavailable');
 else renderAll();
+// The dialog resolves each move by stable identity against its original owner.
+let reorderOwner = null;
+let reorderDrag = null;
+function reorderEntries() {
+  if (!reorderOwner) return [];
+  if (reorderOwner.kind === 'active') return active === reorderOwner.owner ? active.exercises.map(e => ({id:e.id,name:e.name})) : [];
+  return routineDraft === reorderOwner.owner ? routineDraft.map(e => ({id:e.exerciseId,name:exerciseCatalog.getById(e.exerciseId)?.name || e.exerciseId})) : [];
+}
+function renderReorder(focusId, control='select') {
+  const entries = reorderEntries();
+  $('reorderList').innerHTML = entries.map((entry,index) => `<li data-reorder-id="${escapeHtml(entry.id)}"><button type="button" class="reorder-handle ghost compact" aria-label="Drag ${escapeHtml(entry.name)}" aria-describedby="reorderHelp">⠿</button><span><strong>${escapeHtml(entry.name)}</strong><small>Position ${index+1} of ${entries.length}</small></span><select aria-label="Move ${escapeHtml(entry.name)} to position">${entries.map((_,i)=>`<option value="${i}" ${i===index?'selected':''}>${i+1}</option>`).join('')}</select></li>`).join('');
+  if(focusId) [...$('reorderList').children].find(row=>row.dataset.reorderId===focusId)?.querySelector(control)?.focus({preventScroll:true});
+}
+function openReorder(kind) {
+  const owner = kind === 'active' ? active : routineDraft;
+  if (!owner) return;
+  reorderOwner = {kind,owner,trigger:document.activeElement};
+  $('reorderTitle').textContent = kind === 'active' ? 'Reorder workout' : 'Reorder routine draft';
+  $('reorderAnnouncement').textContent = '';
+  renderReorder();
+  $('reorderDialog').showModal();
+}
+function moveReorder(id,to,control='select') {
+  const entries = reorderEntries(), from = entries.findIndex(e=>e.id===id);
+  if(from<0 || !Number.isInteger(to) || to<0 || to>=entries.length || from===to) return;
+  if(reorderOwner.kind==='active') workoutSessionController.moveExercise(from,to);
+  else { const [entry]=routineDraft.splice(from,1);routineDraft.splice(to,0,entry);renderRoutineEditor(); }
+  renderReorder(id,control);
+  $('reorderAnnouncement').textContent = `${entries[from].name} moved to position ${to+1} of ${entries.length}.`;
+}
+bind('reorderWorkout','click',()=>openReorder('active'));
+bind('reorderRoutine','click',()=>openReorder('routine'));
+bind('closeReorder','click',()=>$('reorderDialog').close());
+bind('reorderDialog','close',()=>{
+  clearReorderDrag();
+  const owner=reorderOwner;reorderOwner=null;
+  owner?.trigger?.focus({preventScroll:true});
+  if(owner?.kind==='active' && active===owner.owner) window.bigGainsTrainPosition?.requestRestore();
+});
+bind('reorderList','change',event=>{
+  const row=event.target.closest('[data-reorder-id]');
+  if(row && event.target.matches('select')) moveReorder(row.dataset.reorderId,Number(event.target.value));
+});
+function clearReorderDrag() {
+  if(reorderDrag) cancelAnimationFrame(reorderDrag.frame);
+  reorderDrag=null;
+  $('reorderList').querySelectorAll('.is-dragging,.is-drop-target').forEach(row=>row.classList.remove('is-dragging','is-drop-target'));
+}
+function updateReorderTarget() {
+  if(!reorderDrag) return;
+  const rows=[...$('reorderList').children], box=$('reorderList').getBoundingClientRect();
+  if(reorderDrag.y<box.top+45) $('reorderList').scrollTop-=8;
+  else if(reorderDrag.y>box.bottom-45) $('reorderList').scrollTop+=8;
+  const targetY=Math.max(box.top+1,Math.min(box.bottom-1,reorderDrag.y));
+  const row=rows.find(row=>{const rect=row.getBoundingClientRect();return targetY>=rect.top && targetY<=rect.bottom;});
+  if(row) reorderDrag.to=rows.indexOf(row);
+  rows.forEach((row,i)=>row.classList.toggle('is-drop-target',i===reorderDrag.to));
+  reorderDrag.frame=requestAnimationFrame(updateReorderTarget);
+}
+bind('reorderList','pointerdown',event=>{
+  const handle=event.target.closest('.reorder-handle');
+  if(!handle || event.button!==0 || reorderDrag) return;
+  const row=handle.closest('[data-reorder-id]');
+  handle.setPointerCapture(event.pointerId);
+  reorderDrag={id:row.dataset.reorderId,to:[...row.parentNode.children].indexOf(row),y:event.clientY,pointerId:event.pointerId};
+  row.classList.add('is-dragging');
+  updateReorderTarget();
+});
+bind('reorderList','pointermove',event=>{if(reorderDrag && event.pointerId===reorderDrag.pointerId)reorderDrag.y=event.clientY;});
+bind('reorderList','pointerup',event=>{
+  if(!reorderDrag || event.pointerId!==reorderDrag.pointerId)return;
+  const {id,to}=reorderDrag;clearReorderDrag();moveReorder(id,to,'button');
+});
+bind('reorderList','pointercancel',clearReorderDrag);
+bind('reorderList','lostpointercapture',clearReorderDrag);
