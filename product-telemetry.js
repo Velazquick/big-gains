@@ -48,7 +48,7 @@
   }
   function opened() {
     try {
-      if(scope.document?.visibilityState==='hidden') return;
+      if(stopped || scope.document?.visibilityState==='hidden') return;
       const actor=scope.bigGainsAccounts?.runtime?.authUserId;
       if(!actor) return;
       if(actor!==lastIdentity || Date.now()-lastOpen>=15*60_000) {
@@ -64,8 +64,7 @@
     if(scope.document.documentElement.dataset.runtimeState==='recovery') emit('recovery_required',{surface:'recovery'});
     else opened();
   });
-  scope.addEventListener?.('pageshow',opened);
   scope.addEventListener?.('pagehide',()=>{stopped=true;});
-  scope.addEventListener?.('pageshow',()=>{stopped=false;});
+  scope.addEventListener?.('pageshow',()=>{stopped=false;opened();});
   setTimeout(()=>{opened();if(scope.document?.documentElement.dataset.runtimeState==='recovery')emit('recovery_required',{surface:'recovery'});},1500);
 })(typeof window==='object'?window:globalThis);

@@ -4,11 +4,13 @@ import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
 const source=await readFile('product-telemetry.js','utf8');
 function setup({online=true,throwing=false,actor='user-a'}={}) {
-  const events=[],listeners={};let id=0;let current=actor;
+  const events=[],listeners={};let id=0;let current=actor;let now=1700000000000;
+  const listen=(n,fn)=>{const previous=listeners[n];listeners[n]=(...args)=>{previous?.(...args);fn(...args);};};
+  class Clock extends Date {static now(){return now;}}
   const scope={navigator:{onLine:online,userAgent:'Mozilla Windows Chrome Safari'},crypto:{randomUUID:()=>`event-${++id}`},bigGainsAccounts:{runtime:{authUserId:actor}},BIG_GAINS_ASSET_MANIFEST:{release:'v114-operator-console-v1'},
-    BigGainsSupabase:{configured:true,session:async()=>({user:{id:current}}),getClient:()=>({rpc:(_,{event})=>{if(throwing)throw Error('offline');events.push(event);return{abortSignal:async()=>({})};}})},addEventListener:(n,fn)=>listeners[n]=fn};
-  const ctx=vm.createContext({window:scope,PROFILE:{id:'person-a'},setTimeout:()=>1,clearTimeout:()=>{},AbortController,Date});vm.runInContext(source,ctx);
-  return{scope,events,listeners,actor:value=>{current=value;},flush:()=>new Promise(r=>setImmediate(r))};
+    BigGainsSupabase:{configured:true,session:async()=>({user:{id:current}}),getClient:()=>({rpc:(_,{event})=>{if(throwing)throw Error('offline');events.push(event);return{abortSignal:async()=>({})};}})},document:{visibilityState:'visible',documentElement:{dataset:{}},addEventListener:listen},addEventListener:listen};
+  const ctx=vm.createContext({window:scope,PROFILE:{id:'person-a'},setTimeout:()=>1,clearTimeout:()=>{},AbortController,Date:Clock});vm.runInContext(source,ctx);
+  return{scope,events,listeners,advance:ms=>{now+=ms;},actor:value=>{current=value;},flush:()=>new Promise(r=>setImmediate(r))};
 }
 test('bounded payload drops all sensitive synthetic input before transport',async()=>{
   const h=setup();const secrets={email:'private@example.invalid',token:'Bearer SECRET',url:'https://example.invalid/?access_token=SECRET#workout',message:'weights=400 reps=6',stack:'BODYWEIGHT 200',state:{sets:[1]}};
@@ -24,3 +26,10 @@ test('auth transition cannot send previous actor event',async()=>{const h=setup(
 test('global errors never access sensitive error properties',async()=>{const h=setup();const raw={get message(){throw Error('must not inspect');},get stack(){throw Error('must not inspect');}};h.listeners.error({error:raw});h.listeners.unhandledrejection({reason:raw});await h.flush();assert.equal(h.events.length,2);assert.deepEqual(h.events.map(e=>e.category),['javascript','promise']);});
 test('coarse environment never sends user-agent string',()=>{const h=setup();h.scope.navigator.userAgent='Mozilla iPhone Safari';const e=h.scope.BigGainsTelemetry.environment();assert.equal(e.platform,'ios');assert.equal(e.browser,'safari');assert.equal(Object.keys(e).length,3);});
 test('at most ten error attempts per document across categories and surfaces',async()=>{const h=setup();for(const surface of ['app','train','program','recovery','onboarding'])for(const category of ['javascript','promise','resource','sync','program','unknown']){h.scope.BigGainsTelemetry.emit('app_error',{surface,category});await h.flush();}assert.equal(h.events.length,10);});
+
+test('back-forward return resumes before recording one new app open',async()=>{
+  const h=setup();h.listeners.pageshow();await h.flush();assert.equal(h.events.length,1);
+  h.listeners.pagehide();h.advance(16*60_000);h.listeners.visibilitychange();await h.flush();assert.equal(h.events.length,1);
+  h.listeners.pageshow();await h.flush();assert.equal(h.events.length,2);assert.ok(h.events.every(e=>e.event_name==='app_open'));
+  h.listeners.pageshow();h.listeners.visibilitychange();await h.flush();assert.equal(h.events.length,2);
+});
