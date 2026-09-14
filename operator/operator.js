@@ -81,7 +81,12 @@
   document.addEventListener('click',event=>{const b=event.target.closest('button');if(!b)return;if(b.dataset.section)select(b.dataset.section);if(b.dataset.user){detailUser=b.dataset.user;$('filters').hidden=true;void load();}if(b.id==='backUsers')select('users');});
   $('refresh').onclick=load;$('previous').onclick=()=>{page--;void load();};$('next').onclick=()=>{page++;void load();};
   $('filters').onsubmit=event=>{event.preventDefault();page=0;void load();};
-  client.auth.onAuthStateChange((event)=>{if(['SIGNED_OUT','USER_UPDATED','PASSWORD_RECOVERY'].includes(event))fail();});
+  client.auth.onAuthStateChange((event)=>{
+    if(['SIGNED_OUT','SIGNED_IN','USER_UPDATED','PASSWORD_RECOVERY'].includes(event))fail();
+    // Auth callbacks must stay synchronous. Verify the new identity separately;
+    // never retain the previous operator's results during an account switch.
+    if(event==='SIGNED_IN')setTimeout(()=>void authorize(),0);
+  });
   // Do not retain privileged DOM in the back-forward cache or after a tab hides.
   window.addEventListener('pagehide',()=>fail());
   async function authorize(){

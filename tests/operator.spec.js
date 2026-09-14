@@ -6,7 +6,7 @@ const person={user_id:'00000000-0000-4000-8000-000000000001',display_name:'A ver
 const overview={registered:505,confirmed:361,activated:294,two_workouts:230,four_workouts:160,active_today:24,active_7d:126,active_30d:240,workouts_today:18,workouts_7d:200,workouts_30d:600,unfinished:6,over_six_hours:2,errors_7d:4,recovery_events_7d:2,telemetry_users_90d:300,last_event:'2026-09-14T10:00:00Z',median_hours_to_first:24,time_to_first_eligible:290,program_users:180,freeform_observed_7d:56,releases:[{release:'v114-operator-console-v1',users:280},{release:'v113-synthetic-older',users:20}],retention:[1,7,14,28].map(day=>({day,eligible:200,returned:100}))};
 async function mock(page,{access=true,failure=false,empty=false}={}) {
   await page.route('**/cloud-config.js?*',route=>route.fulfill({contentType:'text/javascript',body:"window.__BIG_GAINS_CLOUD_CONFIG__={supabaseUrl:'https://synthetic.invalid',supabasePublishableKey:'synthetic-public-key'};"}));
-  await page.route('**/vendor/supabase.js',route=>route.fulfill({contentType:'text/javascript',body:`window.supabase={createClient(){return {auth:{onAuthStateChange(fn){window.operatorAuthListener=fn;}},rpc(name,args){window.operatorRequests ||= [];window.operatorRequests.push({name,args});const request=args?.request||{};let data=${JSON.stringify(overview)};if(name==='operator_access')data=${access};else if(request.section==='users')data={total:${empty?0:51},page:request.page,page_size:25,users:${empty?'[]':`Array.from({length:request.page===2?1:25},(_,i)=>({...${JSON.stringify(person)},display_name:(${JSON.stringify(person.display_name)})+' '+(request.page*25+i)}))`}};else if(request.section==='detail')data={...${JSON.stringify(person)},events:[],profiles:[]};else if(request.section==='reliability')data={errors:[],recovery:[],releases:[],observed_users:0,last_event:null};if(name!=='operator_access')data={...data,as_of:'2026-09-14T12:00:00Z',metric_contract:'operator-v1'};const result=${failure}&&name!=='operator_access'?{data:{secret:'PRIVILEGED PARTIAL'},error:{code:'42501'}}:{data,error:null};const p=Promise.resolve(result);p.abortSignal=()=>p;return p;}}}};` }));
+  await page.route('**/vendor/supabase.js',route=>route.fulfill({contentType:'text/javascript',body:`window.supabase={createClient(){return {auth:{onAuthStateChange(fn){window.operatorAuthListener=fn;}},rpc(name,args){window.operatorRequests ||= [];window.operatorRequests.push({name,args});const request=args?.request||{};let data=${JSON.stringify(overview)};if(name==='operator_access')data=window.operatorAllowed ?? ${access};else if(request.section==='users')data={total:${empty?0:51},page:request.page,page_size:25,users:${empty?'[]':`Array.from({length:request.page===2?1:25},(_,i)=>({...${JSON.stringify(person)},display_name:(${JSON.stringify(person.display_name)})+' '+(request.page*25+i)}))`}};else if(request.section==='detail')data={...${JSON.stringify(person)},events:[],profiles:[]};else if(request.section==='reliability')data={errors:[],recovery:[],releases:[],observed_users:0,last_event:null};if(name!=='operator_access')data={...data,as_of:'2026-09-14T12:00:00Z',metric_contract:'operator-v1'};const result=${failure}&&name!=='operator_access'?{data:{secret:'PRIVILEGED PARTIAL'},error:{code:'42501'}}:{data,error:null};const p=Promise.resolve(result);p.abortSignal=()=>p;return p;}}}};` }));
 }
 for(const identity of ['signed-out','ordinary','independent','managed-member'])test(`${identity} direct Operator route fails closed`,async({page})=>{
   await mock(page,{access:false});await page.goto('/operator/');await expect(page.locator('#gate')).toContainText('Operator access is unavailable');await expect(page.locator('#console')).toBeHidden();
@@ -26,6 +26,18 @@ for(const width of [1440,390])test(`owner Operator overview, pagination, detail 
   await page.getByRole('button',{name:'Reliability',exact:true}).click();await expect(page.locator('#content')).toContainText('No matching observations');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.evaluate(()=>window.operatorAuthListener('SIGNED_OUT'));await expect(page.locator('#console')).toBeHidden();await expect(page.locator('#content')).toBeEmpty();
+});
+test('Auth user change immediately clears previous operator results',async({page})=>{
+  await mock(page);await page.goto('/operator/');await expect(page.locator('#content')).toContainText('505');
+  await page.evaluate(()=>{
+    // Model a rejected authorization check for the newly signed-in person.
+    window.operatorAllowed=false;
+    window.operatorAuthListener('SIGNED_IN');
+    window.__operatorCleared= document.getElementById('content').children.length===0 && document.getElementById('console').hidden;
+  });
+  expect(await page.evaluate(()=>window.__operatorCleared)).toBe(true);
+  await expect(page.locator('#gate')).toContainText('Operator access is unavailable');
+  await expect(page.locator('#console')).toBeHidden();await expect(page.locator('#content')).toBeEmpty();
 });
 test('empty users table and pagination are honest',async({page})=>{await mock(page,{empty:true});await page.goto('/operator/');await page.getByRole('button',{name:'Users',exact:true}).click();await expect(page.locator('#content')).toContainText('No matching observations');await expect(page.locator('#next')).toBeDisabled();await expect(page.locator('#pageInfo')).toHaveText('0–0 of 0');});
 for(const offline of [false,true])test(`telemetry completely fails: Train and Finish persist${offline?' offline':''}`,async({page,context})=>{

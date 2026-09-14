@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
 
-const CURRENT_RELEASE = 'v113-swap-reorder-ux';
+const CURRENT_RELEASE = 'v114-operator-console-v1';
 const CURRENT_CONFIG_VERSION = 'config-925e766c1b907250';
 const CURRENT_CACHE = `big-gains-shell-${CURRENT_RELEASE}-${CURRENT_CONFIG_VERSION}`;
 const PREVIOUS_CACHE = 'big-gains-shell-v109-train-position-summaries-config-dfadb48839db90f2';
@@ -125,7 +125,7 @@ test('production assets use the release except for content-versioned cloud confi
   ]);
   expect(consistency.authSetupStyles).toEqual([`./auth-setup.css?v=${CURRENT_RELEASE}`]);
   const expectedManifestReference = `asset-manifest.js?v=${CURRENT_RELEASE}-${CURRENT_CONFIG_VERSION}`;
-  expect(indexSource.match(/[^"']+\.js\?v=[^"']+/g)).toEqual([expectedManifestReference]);
+  expect(indexSource.match(/[^"']+\.js\?v=[^"']+/g)).toEqual([expectedManifestReference, `product-telemetry.js?v=${CURRENT_RELEASE}`]);
   expect(authSetupSource.match(/[^"']+\.js\?v=[^"']+/g)).toEqual([expectedManifestReference]);
   expect(workerSource).toContain(`importScripts('./${expectedManifestReference}', './service-worker-core.js')`);
 });
