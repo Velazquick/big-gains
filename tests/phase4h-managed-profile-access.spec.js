@@ -1,3 +1,4 @@
+import { assertTelemetryRequest } from './helpers/telemetry.js';
 import { createHash } from 'node:crypto';
 import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
@@ -172,6 +173,10 @@ async function installCloudRoutes(page, { membershipRow = membership, slowRecove
     const url = new URL(request.url());
     const headers = { 'access-control-allow-origin': '*', 'content-type': 'application/json' };
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+    if (url.pathname === '/rest/v1/rpc/record_product_event') {
+      assertTelemetryRequest(request);
+      return route.fulfill({status:204,headers});
+    }
     if (url.pathname.endsWith('/auth/v1/logout')) return route.fulfill({ status: 204, headers, body: '' });
     if (url.pathname.endsWith('/auth/v1/user')) {
       return route.fulfill({ status: 200, headers, body: JSON.stringify({

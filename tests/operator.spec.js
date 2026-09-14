@@ -41,10 +41,11 @@ test('Auth user change immediately clears previous operator results',async({page
 });
 test('empty users table and pagination are honest',async({page})=>{await mock(page,{empty:true});await page.goto('/operator/');await page.getByRole('button',{name:'Users',exact:true}).click();await expect(page.locator('#content')).toContainText('No matching observations');await expect(page.locator('#next')).toBeDisabled();await expect(page.locator('#pageInfo')).toHaveText('0–0 of 0');});
 for(const offline of [false,true])test(`telemetry completely fails: Train and Finish persist${offline?' offline':''}`,async({page,context})=>{
-  await installLocalStorageFixture(page,'blankJorge');await openApp(page);await page.waitForFunction(()=>window.BigGainsTelemetry);
+  await installLocalStorageFixture(page,'blankJorge');await openApp(page);await expect(page.locator('html')).toHaveAttribute('data-runtime-state','interactive');await page.waitForFunction(()=>window.BigGainsTelemetry);
   await page.evaluate(()=>{window.BigGainsTelemetry={emit(){throw Error('Telemetry unavailable');}};});
   if(offline)await context.setOffline(true);
   await page.locator('#quickStartSession').click();
+  await expect(page.locator('#activePanel')).not.toHaveClass(/hidden/);
   expect(await page.evaluate(()=>Boolean(active))).toBe(true);
   await page.evaluate(()=>{workoutSessionController.updateSet(0,0,'weight',45);workoutSessionController.updateSet(0,0,'reps',8);workoutSessionController.toggleSetCompleted(0,0);});
   await page.locator('#finishWorkout').click();
