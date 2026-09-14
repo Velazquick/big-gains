@@ -65,7 +65,7 @@
         <label><span>Confirm password</span><input id="accountSignupConfirm" type="password" autocomplete="new-password" minlength="8" required></label>
         <button class="primary" type="submit">Create account</button>
         <button id="accountOnboardingBackToSignIn" class="ghost" type="button">Back to sign in</button>
-      </form><small>This step creates only an Auth identity. It cannot create or join a managed profile.</small>`;
+      </form><small>This step creates only an Auth identity. It cannot create or join a managed profile.</small><p class="account-telemetry-disclosure">Big Gains collects limited usage and technical information to understand reliability. Training weights, repetitions, bodyweight and private notes are excluded from product telemetry. <a href="./privacy.html">What we collect</a></p>`;
   }
 
   function checkEmailMarkup(email, message = '') {

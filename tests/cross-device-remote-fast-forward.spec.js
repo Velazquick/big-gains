@@ -1,3 +1,4 @@
+import { assertTelemetryRequest } from './helpers/telemetry.js';
 import { expect, test } from '@playwright/test';
 import { createHash } from 'node:crypto';
 import { openApp } from './helpers/app.js';
@@ -124,6 +125,10 @@ async function installAuthenticatedCloud(page, remoteInput) {
     const url = new URL(request.url());
     const headers = { 'access-control-allow-origin': '*', 'content-type': 'application/json' };
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+    if (url.pathname === '/rest/v1/rpc/record_product_event') {
+      assertTelemetryRequest(request);
+      return route.fulfill({status:204,headers});
+    }
     if (url.pathname.endsWith('/functions/v1/reconciliation-control')) {
       runtimeControlRequests.push({ method: request.method(), headers: request.headers() });
       if (runtimeControlNetworkError) return route.abort('connectionfailed');

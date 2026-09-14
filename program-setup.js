@@ -371,6 +371,7 @@
         versionNumber: draft.version.versionNumber,
         active: wizard.program.activate
       };
+      if(wizard.program.activate){try{window.BigGainsTelemetry?.emit('program_adopted',{surface:'program'});}catch{}}
       render();
       window.bigGainsGoals?.render();
     } catch (error) {

@@ -29,7 +29,7 @@ jobs:
         env:
           BIG_GAINS_WEBKIT_QA: 'true'
           PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-webkit
-        run: npx playwright test --project=webkit --output=test-results-webkit tests/swap-reorder-ux.spec.js tests/body-map-swap.spec.js tests/custom-domain-transition.spec.js tests/ios-home-screen-auth.spec.js tests/fresh-device-recovery.spec.js tests/pwa-update.spec.js tests/utility-recovery.spec.js
+        run: npx playwright test --project=webkit --output=test-results-webkit tests/operator.spec.js tests/swap-reorder-ux.spec.js tests/body-map-swap.spec.js tests/custom-domain-transition.spec.js tests/ios-home-screen-auth.spec.js tests/fresh-device-recovery.spec.js tests/pwa-update.spec.js tests/utility-recovery.spec.js
       - name: Repeat WebKit update-to-offline and failed-install transitions
         env:
           BIG_GAINS_WEBKIT_QA: 'true'
@@ -88,6 +88,12 @@ jobs:
         env:
           PGPASSWORD: synthetic-appearance-ci
         run: psql -h localhost -U postgres -d appearance_test -f tests/appearance-contract.sql
+
+      - name: Prove Operator security and telemetry against disposable PostgreSQL
+        env:
+          PGPASSWORD: synthetic-appearance-ci
+          OPERATOR_TEST_PG_PORT: '5432'
+        run: node --test tests/operator-db.test.mjs tests/product-telemetry.test.mjs
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium

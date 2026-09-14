@@ -212,6 +212,10 @@
     }
     box.hidden = false;
     const value = currentSnapshot;
+    try {
+      if(value.status===STATUS.CONFLICT) window.BigGainsTelemetry?.emit('conflict_presented',{surface:'program'});
+      if(value.status===STATUS.ERROR) window.BigGainsTelemetry?.emit('recovery_required',{surface:'program'});
+    } catch {}
     const copy = {
       [STATUS.CHECKING]: ['Program continuity', 'Checking your private Program copy.', ''],
       [STATUS.LOCAL_ONLY]: ['Program saved on this device', 'Publish it deliberately when you are ready to use it on another signed-in device.', '<button class="primary compact" type="button" data-program-portability="publish">Publish Program</button>'],
