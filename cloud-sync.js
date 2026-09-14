@@ -1086,6 +1086,7 @@
     signOutButton.hidden = !session;
     signOutNote.hidden = !session;
     conflictBox.hidden = state !== 'SYNC CONFLICT' || !conflict;
+    if(!conflictBox.hidden){try{window.BigGainsTelemetry?.emit('conflict_presented',{surface:'recovery'});}catch{}}
     if (conflict) {
       const occurredAt = conflict.localSummary?.completedAt || conflict.cloudSummary?.completedAt;
       const date = occurredAt && Number.isFinite(Date.parse(occurredAt))

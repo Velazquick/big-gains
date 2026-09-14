@@ -1,4 +1,4 @@
-importScripts('./asset-manifest.js?v=v113-swap-reorder-ux-config-925e766c1b907250', './service-worker-core.js');
+importScripts('./asset-manifest.js?v=v114-operator-console-v1-config-925e766c1b907250', './service-worker-core.js');
 
 const runtime = BigGainsServiceWorkerCore.createRuntime({
   manifest: BIG_GAINS_ASSET_MANIFEST,

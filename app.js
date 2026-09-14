@@ -60,6 +60,7 @@ function renderStaleRecovery(){
   const acknowledged=staleResume?.owner===owner&&now>=staleResume.at&&now-staleResume.at<staleSessionHours*3600000;
   card.hidden=!stale||(acknowledged&&writable);
   if(card.hidden){staleDiscardOwner=null;return;}
+  try{window.BigGainsTelemetry?.emit('stale_session_recovery_shown',{surface:'recovery'});}catch{}
   const start=new Date(active.startedAt),yesterday=new Date(now);yesterday.setDate(yesterday.getDate()-1);
   const day=start.toDateString()===new Date(now).toDateString()?'today':start.toDateString()===yesterday.toDateString()?'yesterday':start.toLocaleDateString();
   $('staleWorkoutContext').textContent=`${displayWorkout(active.type)} started ${day} at ${start.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}.`;
@@ -479,10 +480,11 @@ bind('staleWorkoutResume','click',()=>{
   staleResume={owner:`${ACCOUNT.storageNamespace}:${active.id}`,at:Date.now()};
   staleDiscardOwner=null;cancelArmedUntil=0;
   renderStaleRecovery();workoutSessionController.resume();
+  try{window.BigGainsTelemetry?.emit('stale_session_resumed',{surface:'recovery'});}catch{}
 });
 bind('staleWorkoutFinish','click',()=>{
   if(!active||!staleSessionCondition(active)||!staleRecoveryWritable()){renderStaleRecovery();return;}
-  workoutSessionController.complete();renderStaleRecovery();
+  if(workoutSessionController.complete()){try{window.BigGainsTelemetry?.emit('stale_session_finished',{surface:'recovery'});}catch{}}renderStaleRecovery();
 });
 bind('staleWorkoutDiscard','click',()=>{
   if(!active||!staleSessionCondition(active)||!staleRecoveryWritable()){staleDiscardOwner=null;cancelArmedUntil=0;renderStaleRecovery();return;}
@@ -491,6 +493,7 @@ bind('staleWorkoutDiscard','click',()=>{
   staleDiscardOwner=owner;
   // Reuse the existing two-tap confirmation and discard path.
   $('cancelWorkout').click();renderStaleRecovery();
+  if(!active){try{window.BigGainsTelemetry?.emit('stale_session_discarded',{surface:'recovery'});}catch{}}
 });
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')renderStaleRecovery();});
 window.addEventListener('pageshow',renderStaleRecovery);

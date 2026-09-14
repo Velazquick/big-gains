@@ -19,7 +19,7 @@ const mimeTypes = {
 
 function resolveRequestPath(requestUrl) {
   const pathname = decodeURIComponent(new URL(requestUrl, `http://${host}:${port}`).pathname);
-  const relativePath = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '');
+  const relativePath = pathname === '/' ? 'index.html' : pathname === '/operator/' || pathname === '/operator' ? 'operator/index.html' : pathname.replace(/^\/+/, '');
   const filePath = path.resolve(root, relativePath);
   const insideRoot = filePath === root || filePath.startsWith(`${root}${path.sep}`);
   return insideRoot ? filePath : null;

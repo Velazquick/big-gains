@@ -192,6 +192,10 @@
       throw new TypeError('WorkoutSessionController requires live state/session ports, routine and catalog APIs, analytics, IDs, and persistence.');
     }
 
+    function observe(name, trainingMode = 'unknown') {
+      try { scope.BigGainsTelemetry?.emit(name, { surface: 'train', training_mode: trainingMode }); } catch {}
+    }
+
     function makeExercise(definition, prescription = null, context = {}) {
       const exercise = buildExercise({
         definition,
@@ -262,6 +266,7 @@
       begin(day);
       if (shouldLoad) appendRoutine(day);
       persistActiveMutation();
+      observe('workout_started', 'freeform');
       renderActiveSession(scroll);
       return getActiveWorkout();
     }
@@ -286,6 +291,7 @@
         }));
       });
       persistActiveMutation();
+      observe('workout_started', 'program');
       renderActiveSession(scroll);
       return current;
     }
@@ -401,6 +407,7 @@
       persistActiveMutation();
       renderActiveMutation();
       renderLibraryMutation();
+      observe('exercise_swapped');
       return { swapped: true, confirmationRequired: false, exerciseId: replacement.id, replacedExerciseId: exercise.id };
     }
 
@@ -576,6 +583,7 @@
         renderActiveMutation();
         return false;
       }
+      observe('workout_completed', current.programOrigin ? 'program' : 'freeform');
       onCompleted({ workout: savedWorkout, newPRs });
       return true;
     }
