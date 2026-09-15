@@ -13,7 +13,9 @@
   }
   function emit(name){
     try{
-      if(scope.bigGainsAccounts?.runtime?.authUserId)return;
+      // A stored Auth session may exist before account runtime initialization.
+      // Check presence only: never parse, copy or transmit its contents.
+      if(scope.bigGainsAccounts?.runtime?.authUserId || scope.localStorage?.getItem('big-gains-supabase-auth-v1'))return;
       if(!allowed.has(name)||pending||attempts>=6||scope.navigator.onLine===false)return;
       const config=scope.__BIG_GAINS_CLOUD_CONFIG__;if(!config?.supabaseUrl||!config?.supabasePublishableKey||!scope.supabase)return;
       const value=session();if(value.sent.includes(name))return;
