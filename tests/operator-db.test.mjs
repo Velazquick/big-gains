@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import pg from 'pg';
+import {verifyOperatorV2} from './helpers/operator-v2-db.js';
 
 // This harness creates a fresh database. It refuses remote hosts.
 const port = Number(process.env.OPERATOR_TEST_PG_PORT || 55432);
@@ -26,9 +27,9 @@ test('Operator database security and analytics contract on disposable PostgreSQL
       create function public.rls_auto_enable() returns event_trigger language plpgsql as $$begin return; end$$;
     `);
     const paths = (await readdir('supabase/migrations')).filter(p=>p.endsWith('.sql')).sort();
-    for (const path of paths.filter(p=>!p.includes('operator_console'))) await client.query(await readFile(`supabase/migrations/${path}`,'utf8'));
+    for (const path of paths.filter(p=>!p.includes('operator_'))) await client.query(await readFile(`supabase/migrations/${path}`,'utf8'));
     const policiesBefore = (await client.query("select * from pg_policies where schemaname='public' order by tablename,policyname")).rows;
-    await client.query(await readFile(`supabase/migrations/${paths.find(p=>p.includes('operator_console'))}`,'utf8'));
+    for (const path of paths.filter(p=>p.includes('operator_'))) await client.query(await readFile(`supabase/migrations/${path}`,'utf8'));
     await t.test('existing RLS policies unchanged',async()=>assert.deepEqual((await client.query("select * from pg_policies where schemaname='public' order by tablename,policyname")).rows,policiesBefore));
     const as = async (user, role='authenticated') => {
       await client.query('reset role');
@@ -72,7 +73,7 @@ test('Operator database security and analytics contract on disposable PostgreSQL
       await client.query("insert into public.workouts(account_id,profile_id,client_id,idempotency_key,completed_at,payload) values($1,$2,$3,$3,now()-make_interval(days=>$4),$5)",
         [uuid(profile===202?102:101),uuid(profile),`workout-${n}`,days,{data:{programOrigin:n===2?{contract:'big-gains.program-origin.v1'}:null,notes:'PRIVATE SECRET',exercises:[{weight:400,reps:2}]}}]);
     }
-    await client.query("insert into public.active_sessions(account_id,profile_id,client_id,idempotency_key,payload) values($1,$2,'active','active',jsonb_build_object('data',jsonb_build_object('startedAt',now()-interval '7 hours')))",[uuid(102),uuid(202)]);
+    await client.query("insert into public.active_sessions(account_id,profile_id,client_id,idempotency_key,payload) values($1,$2,'active','active',jsonb_build_object('contract','big-gains.cloud-shadow.v1','entityType','activeSession','data',jsonb_build_object('workout',jsonb_build_object('startedAt',now()-interval '7 hours'))))",[uuid(102),uuid(202)]);
     await as(1);
     await t.test('activation counts, managed isolation, dates and counts',async()=>{
       const r=await rpc({section:'overview'});assert.equal(r.activated,3);assert.equal(r.two_workouts,1);assert.equal(r.four_workouts,0);assert.equal(r.workouts_7d,2);assert.equal(r.workouts_30d,4);assert.equal(r.over_six_hours,1);assert.equal(r.active_7d,1);assert.equal(r.telemetry_users_90d,1);assert.equal(r.time_to_first_eligible,3);
@@ -139,8 +140,9 @@ test('Operator database security and analytics contract on disposable PostgreSQL
     });
     await t.test('retention purge leaves cohort date and current events',async()=>{
       await client.query('reset role');await client.query('begin');
-      try{await client.query("update private.product_events set received_at=now()-interval '91 days'");assert.equal((await client.query('select private.purge_product_events() as n')).rows[0].n,'1');assert.equal((await client.query('select count(*)::int as n from private.product_first_opens')).rows[0].n,1);}finally{await client.query('rollback');}
+      try{await client.query("update private.product_events set received_at=now()-interval '91 days'");assert.equal(Number((await client.query('select private.purge_product_events() as n')).rows[0].n),1);assert.equal((await client.query('select count(*)::int as n from private.product_first_opens')).rows[0].n,1);}finally{await client.query('rollback');}
     });
+    await verifyOperatorV2({test:(name,fn)=>t.test(name,fn),client,as,uuid});
     await t.test('account deletion cascades telemetry',async()=>{
       await client.query('reset role');await client.query('delete from public.accounts where id=$1',[uuid(102)]);
       assert.equal((await client.query('select count(*)::int as n from private.product_events where user_id=$1',[uuid(2)])).rows[0].n,0);

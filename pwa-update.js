@@ -53,7 +53,7 @@
     });
   }
 
-  function create({ container, register, getSafety, reload, publish = () => {}, ask = message,
+  function create({ container, register, getSafety, reload, publish = () => {}, diagnose = () => {}, ask = message,
     release, deployment = release, now = () => Date.now() }) {
     let registration = null;
     let checking = null;
@@ -109,7 +109,7 @@
           watch();
           await registration.update();
           error = null;
-        } catch { error = 'check-unavailable'; }
+        } catch { error = 'check-unavailable'; try { diagnose(registration?'sw_update':'sw_registration'); } catch {} }
         await inspect();
       })().finally(() => { checking = null; });
       return checking;
@@ -167,6 +167,7 @@
     register: () => navigator.serviceWorker.register('./service-worker.js', { updateViaCache: 'none', scope: './' }),
     release: scope.BIG_GAINS_ASSET_MANIFEST.release,
     deployment: scope.BIG_GAINS_ASSET_MANIFEST.deploymentVersion,
+    diagnose: code => { try { scope.BigGainsTelemetry?.emit('app_error',{category:'resource',error_code:code,module_id:'pwa-update.js'}); } catch {} },
     getSafety: safety,
     reload: () => location.reload(),
     publish: value => {

@@ -213,7 +213,7 @@
     box.hidden = false;
     const value = currentSnapshot;
     try {
-      if(value.status===STATUS.CONFLICT) window.BigGainsTelemetry?.emit('conflict_presented',{surface:'program'});
+      if(value.status===STATUS.CONFLICT) window.BigGainsTelemetry?.conflict('program',{presented:scope.document?.visibilityState!=='hidden' && box.getClientRects().length>0});
       if(value.status===STATUS.ERROR) window.BigGainsTelemetry?.emit('recovery_required',{surface:'program'});
     } catch {}
     const copy = {
@@ -322,7 +322,10 @@
         invalid: STATUS.ERROR,
         unsupported: STATUS.ERROR
       }[currentInspection.state] || STATUS.ERROR;
-      if (currentInspection.state === 'converged' && remoteRead.remote) writeAccepted(mapping, remoteRead.remote);
+      if (currentInspection.state === 'converged' && remoteRead.remote) {
+        writeAccepted(mapping, remoteRead.remote);
+        try { scope.BigGainsTelemetry?.conflict('program',{verifiedResolved:true}); } catch {}
+      }
       return summary({
         status: mapped,
         reasonCode: currentInspection.reasonCode || null,
