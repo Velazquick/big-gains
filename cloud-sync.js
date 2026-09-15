@@ -606,6 +606,7 @@
         reasons: comparison.reasons
       });
       if (comparison.parity) {
+        if(!queue.pending().length && !capturePending){for(const profileId of shadow.profileIds){try{window.BigGainsTelemetry?.conflict('recovery',{profileId,verifiedResolved:true});}catch{}}}
         const verifiedCatalog = shadow.catalogFromCloud({ cloud: cloudState, owner: cloudOwner, journal });
         if (catalog?.migrationId) verifiedCatalog.migrationId = catalog.migrationId;
         catalog = verifiedCatalog;
@@ -953,6 +954,7 @@
       });
       await compareShadow();
       const verified = syncResult.ok && queue.pending().length === 0 && lastComparison?.parity === true;
+      if(verified){try{window.BigGainsTelemetry?.conflict('recovery',{profileId:selected.profileClientId,verifiedResolved:true});}catch{}}
       lastResult = Object.freeze({
         ...lastResult,
         ok: verified,
@@ -1086,7 +1088,7 @@
     signOutButton.hidden = !session;
     signOutNote.hidden = !session;
     conflictBox.hidden = state !== 'SYNC CONFLICT' || !conflict;
-    if(!conflictBox.hidden){try{window.BigGainsTelemetry?.emit('conflict_presented',{surface:'recovery'});}catch{}}
+    if(!conflictBox.hidden){try{window.BigGainsTelemetry?.conflict('recovery',{profileId:conflict.profileClientId,presented:document.visibilityState!=='hidden' && conflictBox.getClientRects().length>0});}catch{}}
     if (conflict) {
       const occurredAt = conflict.localSummary?.completedAt || conflict.cloudSummary?.completedAt;
       const date = occurredAt && Number.isFinite(Date.parse(occurredAt))

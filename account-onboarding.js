@@ -43,6 +43,7 @@
   }
 
   function signInMarkup(message = 'Sign in to open your private training space.') {
+    try{window.BigGainsPublicTelemetry?.emit('visit');}catch{}
     const signupAction = boundary?.signupAvailable
       ? '<button id="accountOnboardingCreate" class="ghost" type="button">Create account</button>'
       : '<button class="ghost" type="button" disabled>Create account unavailable</button><small>New accounts will open after production email delivery is ready. Existing accounts can still sign in.</small>';
@@ -58,6 +59,7 @@
   }
 
   function signupMarkup(message = 'Create an independent Big Gains account. You will confirm your email before creating a profile.') {
+    try{window.BigGainsPublicTelemetry?.emit('signup_reached');}catch{}
     return `<span class="label">Create account</span><h2>Your private training space starts here.</h2><p id="accountOnboardingDetail">${escapeHtml(message)}</p>
       <form id="accountOnboardingSignup" class="cloud-auth-form">
         <label><span>Email</span><input id="accountSignupEmail" type="email" autocomplete="email" required></label>
@@ -279,6 +281,7 @@
     const button = form.querySelector('button[type="submit"]');
     if (button) { button.disabled = true; button.textContent = 'Creating…'; }
     try {
+      try{window.BigGainsPublicTelemetry?.emit('signup_started');}catch{}
       const result = await boundary.signUpWithPassword(form.querySelector('#accountSignupEmail').value, password);
       show(checkEmailMarkup(result.email));
       renderCooldown(document.getElementById('accountOnboardingResend'), result.cooldownSeconds, 'Resend confirmation');

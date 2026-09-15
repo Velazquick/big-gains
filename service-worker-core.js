@@ -20,6 +20,17 @@
       || manifest.legacyCacheNames.includes(name)
     );
 
+    function reportUnavailable(request, clientId) {
+      try {
+        if(!clientId)return;
+        const requested=new URL(request.url);const module=(manifest.coreAssets||[]).find(p=>new URL(p,baseUrl).pathname===requested.pathname);
+        const moduleId=module?module.split('/').pop().split('?')[0]:'unknown';
+        // No request URL, status body or exception leaves the worker.
+        void Promise.resolve(clientApi.get?.(clientId)).then(client=>{
+          client?.postMessage?.({type:'BG_RESOURCE_UNAVAILABLE',module_id:moduleId});
+        }).catch(()=>{});
+      }catch{}
+    }
     async function fetchRequired(request) {
       const response = await fetcher(request);
       if (!response || !response.ok) {
@@ -66,7 +77,7 @@
       return runtime.match(requestOrUrl);
     }
 
-    async function navigationResponse(request) {
+    async function navigationResponse(request, clientId) {
       try {
         return await fetchRequired(new Request(request, { cache: 'no-store' }));
       } catch (error) {
@@ -74,11 +85,12 @@
         const fallbackUrl = requested.pathname.endsWith('/auth-setup.html') ? authSetupDocumentUrl : documentUrl;
         const cached = await findCurrent(fallbackUrl);
         if (cached) return cached;
+        reportUnavailable(request, clientId);
         throw error;
       }
     }
 
-    async function assetResponse(request) {
+    async function assetResponse(request, clientId) {
       try {
         const response = await fetchRequired(new Request(request, { cache: 'reload' }));
         const requestUrl = new URL(request.url).href;
@@ -93,16 +105,17 @@
       } catch (error) {
         const cached = await findCurrent(request);
         if (cached) return cached;
+        reportUnavailable(request, clientId);
         throw error;
       }
     }
 
-    function handle(request) {
+    function handle(request, clientId) {
       if (request.method !== 'GET') return null;
       const requestUrl = new URL(request.url);
-      if (request.mode === 'navigate') return navigationResponse(request);
+      if (request.mode === 'navigate') return navigationResponse(request, clientId);
       if (requestUrl.origin !== new URL(baseUrl).origin) return null;
-      return assetResponse(request);
+      return assetResponse(request, clientId);
     }
 
     return Object.freeze({ activate, handle, ownsCache, precache, prune });

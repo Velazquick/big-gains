@@ -110,3 +110,16 @@ test('client-free activation prunes only obsolete owned shell caches', async () 
   baseUrl: 'https://app.example/service-worker.js', clientApi: { matchAll: async () => [], claim: async () => {} } });
   await runtime.activate(); assert.deepEqual(deleted, ['shell-old', 'runtime-old']);
 });
+
+test('worker failure diagnostic targets only the requesting client and carries no URL', async () => {
+  const ctx={URL,Request,Promise,Object};
+  vm.runInNewContext(readFileSync(new URL('../service-worker-core.js',import.meta.url),'utf8'),ctx);
+  const messages=[],requested=[];
+  const runtime=ctx.BigGainsServiceWorkerCore.createRuntime({manifest:{coreAssets:['./app.js'],styles:[],scripts:[],legacyCacheNames:[],cacheName:'test',runtimeCacheName:'runtime'},baseUrl:'https://example.test/service-worker.js',cacheStorage:{open:async()=>({match:async()=>null})},fetcher:async()=>{throw Error('sensitive');},clientApi:{get:async id=>{requested.push(id);return {postMessage:v=>messages.push(v)};}}});
+  await assert.rejects(runtime.handle(new Request('https://example.test/app.js?token=secret'),'requesting-tab'));
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.deepEqual(requested,['requesting-tab']);
+  assert.equal(JSON.stringify(messages),'[{"type":"BG_RESOURCE_UNAVAILABLE","module_id":"app.js"}]');
+  await assert.rejects(runtime.handle(new Request('https://example.test/app.js')));
+  assert.equal(messages.length,1);
+});

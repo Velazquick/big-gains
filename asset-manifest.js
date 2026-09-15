@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v114-operator-console-v1';
+  const release = 'v115-operator-reliability-v2';
   const cloudConfigVersion = 'config-925e766c1b907250'; // BIG_GAINS_CLOUD_CONFIG_VERSION
   const deploymentVersion = `${release}-${cloudConfigVersion}`;
   const manifestAsset = `./asset-manifest.js?v=${encodeURIComponent(deploymentVersion)}`;
@@ -46,6 +46,7 @@
     './cloud-config.js',
     './vendor/supabase.js',
     './supabase-client.js',
+    './public-telemetry.js',
     './reconciliation-control.js',
     './cloud-storage.js',
     './program-model.js',
@@ -98,6 +99,8 @@
     './shell-init.js'
   ];
   const optionalScriptPaths = new Set([
+    './public-telemetry.js',
+    './product-telemetry.js',
     './reconciliation-control.js',
     './cloud-storage.js',
     './program-domain-envelope.js',

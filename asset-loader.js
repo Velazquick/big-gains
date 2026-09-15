@@ -49,6 +49,7 @@
       required: isRequired
     });
     if (!failures.some(item => item.code === failure.code && item.component === failure.component)) failures.push(failure);
+    try { document.dispatchEvent(new Event('big-gains-asset-failure')); } catch {}
     if (isRequired) {
       if (window.BigGainsRuntimeGate?.fail) window.BigGainsRuntimeGate.fail(code, failure.component);
       else {
