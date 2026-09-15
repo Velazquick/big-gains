@@ -35,6 +35,7 @@ export async function verifyOperatorV2({test,client,as,uuid}) {
   const record=v=>q('select public.record_visitor_event($1)',[v]);await record(visit);await record(visit);await record({...visit,event_name:'signup_reached'});await record({...visit,event_name:'signup_started'});
   for(const extra of [{email:'PRIVATE'},{user_id:uuid(1)},{source:'https://private.invalid'},{event_name:'private'},{payload:{private:true}}])await denied(()=>record({...visit,...extra}));await denied(()=>q('select * from private.visitor_events'));
   await as(1);const r=await rpc({section:'traffic'});assert.equal(r.traffic[0].sessions,1);assert.equal(r.traffic[0].signup_started,1);assert.equal(r.visitor_windows.days7,1);
+  await q('reset role');await q("update private.visitor_events set received_at=now()-interval '8 days' where event_name='visit'");await as(1);const outside=await rpc({section:'traffic',days:7});assert.equal(outside.traffic.length,0,'signup stages use the same arrival-session cohort as their denominator');
  });
  await check('v2 bounded pagination and filters reject arbitrary queries',async()=>{
   await as(1);assert.equal((await rpc({section:'users',search:'person2@'})).users.length,1);for(const extra of [{days:365},{platform:'PRIVATE'},{mode:'PRIVATE'},{fingerprint:'SECRET'},{sql:'select *'},{page:-1},{event:'PRIVATE'}])await denied(()=>rpc({section:'reliability',...extra}));

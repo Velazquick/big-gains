@@ -176,8 +176,8 @@ begin
  end if;
  if section in ('overview','traffic','funnel') then
    result:=result||jsonb_build_object('traffic',coalesce((select jsonb_agg(to_jsonb(t)) from (
-    select source,count(*) filter(where event_name='visit') as sessions,count(*) filter(where event_name='signup_reached') as signup_reached,count(*) filter(where event_name='signup_started') as signup_started
-    from private.visitor_events where received_at>=since_time and (source_filter is null or source=source_filter) group by source)t),'[]'),
+    select v.source,count(*) filter(where e.event_name='visit') as sessions,count(*) filter(where e.event_name='signup_reached') as signup_reached,count(*) filter(where e.event_name='signup_started') as signup_started
+    from private.visitor_events v join private.visitor_events e using(session_id) where v.event_name='visit' and v.received_at>=since_time and (source_filter is null or v.source=source_filter) group by v.source)t),'[]'),
     'visitor_windows',(select jsonb_build_object('today',count(*) filter(where received_at>=date_trunc('day',now() at time zone 'UTC') at time zone 'UTC'),'days7',count(*) filter(where received_at>=now()-interval '7 days'),'days30',count(*)) from private.visitor_events where event_name='visit' and received_at>=now()-interval '30 days'),
     'visitor_environments',coalesce((select jsonb_agg(to_jsonb(t)) from (select platform,browser,mode,count(*) as sessions from private.visitor_events where event_name='visit' and received_at>=since_time group by platform,browser,mode)t),'[]'));
  end if;
