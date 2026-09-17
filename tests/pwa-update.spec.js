@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { extname } from 'node:path';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 
-const RELEASE = 'v116-strength-history-correctness';
+const RELEASE = 'v117-pwa-update-safety-gate';
 const V103 = 'v103-rc-hardening-pass-1';
 test.setTimeout(60000);
 // Exact v103 core from e728f76; shell reduced to its load-only registration and
@@ -142,7 +142,7 @@ for (const [name, setup, cleanup, reason] of [
   ['durable queue', () => localStorage.setItem('big-gains-cloud-sync-queue-v1-proof', JSON.stringify({ version: 1, pending: [{}] })), () => localStorage.removeItem('big-gains-cloud-sync-queue-v1-proof'), 'queue'],
   ['Program queue', () => localStorage.setItem('big-gains-program-domain-queue-v1-proof', JSON.stringify({ version: 1, pending: [{}] })), () => localStorage.removeItem('big-gains-program-domain-queue-v1-proof'), 'queue'],
   ['malformed queue', () => localStorage.setItem('big-gains-cloud-sync-queue-v1-proof', '{'), () => localStorage.removeItem('big-gains-cloud-sync-queue-v1-proof'), 'unknown'],
-  ['Appearance pending', () => localStorage.setItem('big-gains-appearance-v1-proof', JSON.stringify({ pending: {} })), () => localStorage.removeItem('big-gains-appearance-v1-proof'), 'appearance'],
+  ['Appearance pending', () => localStorage.setItem('big-gains-appearance-v1-proof', JSON.stringify({ accepted: null, pending: { id: 'proof', value: { accent: 'cobalt', version: 1 }, base: null } })), () => localStorage.removeItem('big-gains-appearance-v1-proof'), 'appearance'],
   ['recovery journal', () => localStorage.setItem(BigGainsManagedProfileRecovery.adoptionKey, '{}'), () => localStorage.removeItem(BigGainsManagedProfileRecovery.adoptionKey), 'recovery'],
   ['open editor', () => document.querySelector('#routineDialog').showModal(), () => document.querySelector('#routineDialog').close(), 'editor']
 ]) test(`production guard defers ${name} and becomes safe after resolution`, async ({ page }) => {
@@ -264,4 +264,110 @@ test('v103 legacy-origin: redirected worker update fails and old cached shell re
     expect(await old.page.evaluate(() => localStorage.getItem('legacy-origin-sentinel'))).toBe('preserved');
     expect(await current.page.evaluate(() => localStorage.getItem('legacy-origin-sentinel'))).toBeNull();
   } finally { await old.close(); await current.close(); }
+});
+
+test('waiting banner reevaluates each safety owner and exposes a bounded blocker', async ({ browser }) => {
+  test.setTimeout(120000);
+  const h = await harness(browser);
+  try {
+    await offer(h);
+    await expect(h.page.locator('#pwaUpdateNow')).toBeEnabled();
+    await h.page.evaluate(() => {
+      window.proofSync = {};
+      window.proofProgram = true;
+      window.proofAppearance = true;
+      window.proofRecovery = true;
+      window.proofMigration = false;
+      const sync = BigGainsCloudSync;
+      window.BigGainsCloudSync = { ...sync, status: () => ({ ...sync.status(), ...window.proofSync }) };
+      window.BigGainsProgramPortability = { updateSafety: () => window.proofProgram };
+      window.BigGainsAppearance = { updateSafety: () => window.proofAppearance };
+      window.BigGainsManagedProfileRecovery = { updateSafety: () => window.proofRecovery };
+      window.BigGainsControlledMigration = { status: () => ({ busy: window.proofMigration }) };
+    });
+    const cases = [
+      ['sync', { proofSync: { pending: 1 } }], ['sync', { proofSync: { busy: true } }],
+      ['sync', { proofSync: { comparing: true } }], ['sync', { proofSync: { capturePending: 1 } }],
+      ['sync', { proofSync: { reconciliationInFlight: true } }],
+      ['recovery', { proofSync: { lastResult: { blocked: true } } }],
+      ['recovery', { proofSync: { lastResult: { conflict: true } } }],
+      ['recovery', { proofSync: { lastComparison: { parity: false } } }],
+      ['recovery', { proofSync: { sameEntityConflict: { eligible: true } } }],
+      ['recovery', { proofSync: { remoteFastForward: { conflict: true } } }],
+      ['recovery', { proofRecovery: false }], ['program', { proofProgram: false }],
+      ['appearance', { proofAppearance: false }], ['migration', { proofMigration: true }],
+      ['unknown', { proofProgram: null }]
+    ];
+    for (const [reason, values] of cases) {
+      await h.page.evaluate(values => Object.assign(window, values), values);
+      await expect(h.page.locator('#pwaUpdateNow')).toBeDisabled();
+      await expect(h.page.locator('#diagnosticUpdateBlocker')).toHaveText(`Update blocked: ${reason}`);
+      await h.page.evaluate(() => Object.assign(window, { proofSync: {}, proofProgram: true, proofAppearance: true, proofRecovery: true, proofMigration: false }));
+      await expect(h.page.locator('#pwaUpdateNow')).toBeEnabled();
+      await expect(h.page.locator('#pwaUpdate')).toBeVisible();
+    }
+    for (const event of ['focus', 'pageshow', 'visibilitychange', 'online']) {
+      await h.page.evaluate(() => { window.proofProgram = false; });
+      await expect(h.page.locator('#pwaUpdateNow')).toBeDisabled();
+      await h.page.evaluate(name => { window.proofProgram = true; (name === 'visibilitychange' ? document : window).dispatchEvent(new Event(name)); }, event);
+      await expect(h.page.locator('#pwaUpdateNow')).toBeEnabled();
+    }
+  } finally { await h.close(); }
+});
+
+test('hidden stale UI is ignored but visible and off-screen unsaved work stays protected', async ({ page }) => {
+  await installLocalStorageFixture(page, 'blankJorge'); await page.goto('/');
+  await expect.poll(() => page.evaluate(() => BigGainsPwaUpdate.safety().safe)).toBe(true);
+  await page.evaluate(() => {
+    const div = document.createElement('div'); div.id = 'hidden-proof';
+    div.innerHTML = '<dialog open hidden><input value="old"></dialog><div role="dialog" style="display:none"></div><input style="visibility:hidden"><textarea style="display:none"></textarea>';
+    document.body.append(div);
+    div.querySelector('input').value = 'stale'; div.querySelector('textarea').value = 'stale';
+    div.querySelector('input[style]').value = 'stale';
+  });
+  expect(await page.evaluate(() => BigGainsPwaUpdate.safety())).toEqual({ safe: true, reason: null });
+  await page.evaluate(() => { document.querySelector('#hidden-proof').remove(); const input = document.createElement('input'); input.id = 'offscreen-proof'; input.style.position = 'absolute'; input.style.top = '5000px'; input.value = 'unsaved'; document.body.append(input); });
+  expect(await page.evaluate(() => BigGainsPwaUpdate.safety())).toEqual({ safe: false, reason: 'editor' });
+});
+
+test('durable queue drains and malformed records recover on the same visible banner', async ({ browser }) => {
+  const h = await harness(browser);
+  try {
+    await offer(h);
+    for (const key of ['big-gains-cloud-sync-queue-v1-proof', 'big-gains-program-domain-queue-v1-proof', 'big-gains-appearance-v1-proof']) {
+      const appearance = key.includes('appearance');
+      for (const [value, reason] of [['{', 'unknown'], [JSON.stringify({ version: 9, pending: null }), 'unknown'], [JSON.stringify(appearance ? { accepted: null, pending: { id: 'proof', value: { accent: 'cobalt', version: 1 }, base: null } } : { version: 1, pending: [{}] }), appearance ? 'appearance' : 'queue']]) {
+        await h.page.evaluate(([key, value]) => localStorage.setItem(key, value), [key, value]);
+        await expect(h.page.locator('#pwaUpdateNow')).toBeDisabled();
+        await expect(h.page.locator('#diagnosticUpdateBlocker')).toHaveText(`Update blocked: ${reason}`);
+        await h.page.evaluate(([key, appearance]) => localStorage.setItem(key, JSON.stringify(appearance ? { accepted: null, pending: null } : { version: 1, pending: [] })), [key, appearance]);
+        await expect(h.page.locator('#pwaUpdateNow')).toBeEnabled();
+      }
+    }
+    await h.page.evaluate(() => localStorage.setItem('unrelated-malformed-proof', '{'));
+    await expect(h.page.locator('#pwaUpdateNow')).toBeEnabled();
+    await expect(h.page.locator('#diagnosticUpdateBlocker')).toHaveText('Update safe');
+    await h.page.locator('#pwaUpdateLater').click(); await expect(h.page.locator('#pwaUpdate')).toBeHidden();
+  } finally { await h.close(); }
+});
+
+test('Advanced diagnostics shows the live blocker in the actual Settings view', async ({ browser }) => {
+  const h = await harness(browser);
+  try {
+    await offer(h);
+    await h.page.locator('#pwaUpdateLater').click();
+    await h.page.locator('.bottom-nav [data-view="more"]').click();
+    await h.page.locator('#openSettings').click();
+    await h.page.locator('#advancedDiagnostics summary').evaluate(el => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
+    await h.page.locator('#advancedDiagnostics summary').click();
+    await h.page.locator('#pwaCheckUpdate').click();
+    await expect(h.page.locator('#diagnosticUpdateBlocker')).toBeVisible();
+    await expect(h.page.locator('#diagnosticUpdateBlocker')).toHaveText('Update safe');
+    await expect(h.page.locator('#pwaUpdateNow')).toBeEnabled();
+    await h.page.evaluate(() => localStorage.setItem('big-gains-cloud-sync-queue-v1-proof', JSON.stringify({ version: 1, pending: [{}] })));
+    await expect(h.page.locator('#diagnosticUpdateBlocker')).toHaveText('Update blocked: queue');
+    await expect(h.page.locator('#pwaUpdateNow')).toBeDisabled();
+    await h.page.evaluate(() => localStorage.setItem('big-gains-cloud-sync-queue-v1-proof', JSON.stringify({ version: 1, pending: [] })));
+    await expect(h.page.locator('#pwaUpdateNow')).toBeEnabled();
+  } finally { await h.close(); }
 });

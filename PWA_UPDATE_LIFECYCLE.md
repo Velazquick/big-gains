@@ -133,3 +133,6 @@ deliberate data-preserving origin transition. Do not change Pages/DNS or transfe
 local data automatically. A new canonical-origin release cannot itself solve it.
 Keep the RC blocker open until the user's stale install has been characterized
 and real state preservation/update delivery has been proved.
+## Follow-up safety audit (v117)
+
+See [PWA_UPDATE_SAFETY_GATE.md](docs/PWA_UPDATE_SAFETY_GATE.md) for the reproduced stale-result and hidden-editor defects, bounded diagnostics, current safety-owner audit and physical acceptance limitations. The v106 activation/cache invariants above remain in force.

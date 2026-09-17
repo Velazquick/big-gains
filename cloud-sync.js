@@ -1154,6 +1154,9 @@
       if (capturePending > 0) {
         return (lastResult = Object.freeze({ ok: false, deferred: true, reason: 'local-mutation-in-flight', pending: queue.pending().length }));
       }
+      const comparedMutationGeneration = localMutationGeneration;
+      const previousComparison = lastComparison;
+      const previousResult = lastResult;
       if (queue.pending().length || !catalog) await flush();
       else await compareShadow();
       if (!pageLifecycleCurrent(generation)) {
@@ -1181,6 +1184,16 @@
           reason: remoteFastForward.reason,
           pending: queue.pending().length
         });
+      }
+      // A completed, current readback owns the current outcome. Older blocked or
+      // conflict results must not survive verified recovery. Never acknowledge a
+      // queue or clear a recovery journal here; those retain their own guards.
+      if (lastComparison !== previousComparison && lastComparison?.parity === true
+          && !comparing && !queue.pending().length && !capturePending
+          && localMutationGeneration === comparedMutationGeneration
+          && lastResult === previousResult
+          && (lastResult?.blocked || lastResult?.conflict)) {
+        lastResult = Object.freeze({ ok: true, pending: 0, reason: 'verified-parity' });
       }
       return Object.freeze({
         ok: lastComparison?.parity === true,
