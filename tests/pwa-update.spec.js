@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { extname } from 'node:path';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 
-const RELEASE = 'v115-operator-reliability-v2';
+const RELEASE = 'v116-strength-history-correctness';
 const V103 = 'v103-rc-hardening-pass-1';
 test.setTimeout(60000);
 // Exact v103 core from e728f76; shell reduced to its load-only registration and

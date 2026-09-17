@@ -99,7 +99,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run browser tests
-        run: npm run test:ekf && npm run test:pwa-update && npm test
+        run: node --test tests/goals-progression.test.mjs && npm run test:ekf && npm run test:pwa-update && npm test
 
       - name: Upload Playwright report
         if: always()

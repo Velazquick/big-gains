@@ -87,6 +87,8 @@ async function installAuthenticatedCloud(page, remoteInput) {
     remoteTombstones = [],
     remoteBodyweights = [],
     remotePreferences = [],
+    remoteStrengthGoals = [],
+    remoteRoutines = [],
     remoteActiveSessions = [],
     allowWrites = false,
     automaticReconciliation = true,
@@ -173,7 +175,7 @@ async function installAuthenticatedCloud(page, remoteInput) {
             idempotency_key: `remote-goals-v${goalVersion}`, version: goalVersion,
             payload: {
               contract: 'big-gains.shadow.v1', version: 1, profileClientId: clientId,
-              entityType: 'goals', clientId: 'goals', data: { primary: remotePrimary }
+              entityType: 'goals', clientId: 'goals', data: { primary: remotePrimary, ...(remoteStrengthGoals.length ? { strengthGoals: remoteStrengthGoals } : {}) }
             },
             created_at: baselineAt, updated_at: goalUpdatedAt
           },
@@ -187,7 +189,7 @@ async function installAuthenticatedCloud(page, remoteInput) {
             created_at: baselineAt, updated_at: baselineAt
           },
           ...remotePreferences
-        ] : table === 'workouts' ? remoteWorkouts
+        ] : table === 'routines' ? remoteRoutines : table === 'workouts' ? remoteWorkouts
           : table === 'active_sessions' ? remoteActiveSessions
           : table === 'bodyweight_entries' ? remoteBodyweights
           : table === 'tombstones' ? remoteTombstones
@@ -834,3 +836,30 @@ for (const choice of [
     expect(writes).toEqual(choice.writes);
   });
 }
+
+test('Strength correctness: cloud History fast-forward refreshes Goal path without rewriting saved goal', async ({page}) => {
+  await page.clock.setFixedTime(new Date('2026-08-12T12:00:00.000Z'));
+  const bench='fe9b24dd-e6db-41d3-9395-596830a0a37a';
+  const current={decisionId:'synthetic-prior',issuedAt:'2026-08-09T12:00:00.000Z',evidenceCutoff:'2026-08-09T12:00:00.000Z',exerciseId:bench,enteredLoad:215,unit:'lb',loadBasis:'combined_external_load',workingSetCount:5,repTargets:[5,5,5,5,5],repRange:{min:5,max:5},policy:{id:'strength_double_progression_v1',version:1},decisionCode:'HOLD',reasonCode:'USER_OVERRIDE_REVIEW'};
+  const goal={goalId:'synthetic-bench-goal',accountId:'cloud:'+accountId,profileId:clientId,exerciseId:bench,legacyExerciseId:'barbell-bench-press',metric:'one_rep_max',targetValue:315,unit:'lb',targetBasis:'combined_external_load',status:'active',guidanceEnabled:true,policy:{id:'strength_double_progression_v1',version:1},createdAt:'2026-08-01T12:00:00.000Z',updatedAt:baselineAt,progressionState:{current,trace:[current]}};
+  const baseline={id:'synthetic-bench-history',type:'Other',startedAt:'2026-08-10T12:00:00.000Z',completedAt:'2026-08-10T13:00:00.000Z',durationSeconds:3600,prs:0,exercises:[{id:'barbell-bench-press',name:'Barbell Bench Press',muscle:'Chest',equipment:'Barbell',collapsed:true,sets:Array.from({length:5},(_,i)=>({id:'bench-'+i,weight:215,reps:5,warmup:false,completed:true}))}]};
+  const advanced=structuredClone(baseline);
+  advanced.exercises[0].sets.forEach(set=>set.weight=225);
+  const routine=[{exerciseId:'barbell-bench-press',workingSets:5,targetReps:'5'}];
+  await installReceiver(page,profileState('Shared baseline',{goals:{primary:'Shared baseline',strengthGoals:[goal]},workouts:[baseline],customRoutines:{Other:routine}}));
+  const records=await page.evaluate(async clientId=>await BigGainsCloudShadow.localRecords(clientId,state),clientId);
+  const routineRecord=records.find(record=>record.table==='routines');
+  const normalizedGoals=records.find(record=>record.clientId==='goals').data.strengthGoals;
+  const writes=await installAuthenticatedCloud(page,{remoteWorkouts:[workoutRow(advanced,2,advancedAt)],remoteStrengthGoals:normalizedGoals,remoteRoutines:[{
+    id:'synthetic-routine',account_id:accountId,profile_id:profileId,client_id:routineRecord.clientId,idempotency_key:'synthetic-routine-v1',version:1,created_at:baselineAt,updated_at:baselineAt,
+    payload:{contract:'big-gains.shadow.v1',version:1,profileClientId:clientId,entityType:'customRoutine',clientId:routineRecord.clientId,data:routineRecord.data}
+  }]});
+  await page.reload({waitUntil:'domcontentloaded'});
+  await expect(page.locator('#cloudShadowHeading')).toHaveText('In sync');
+  await expect(page.locator('#activeGoalsList .goal-trajectory')).toContainText('Current next exposure: 225 lb × 5 × 5');
+  const after=await page.evaluate(()=>({workouts:state.workouts,goal:state.goals.strengthGoals[0],adoptions:BigGainsCloudSync.status().observability.counters.automaticAdoptions}));
+  expect(after.workouts).toEqual([advanced]);
+  expect(after.goal.progressionState.current.enteredLoad).toBe(215);
+  expect(after.adoptions).toBe(1);
+  expect(writes).toEqual([]);
+});

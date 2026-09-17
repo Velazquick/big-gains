@@ -199,3 +199,48 @@ test('Goals v1.1: deleting one managed profile past goal cannot delete another p
   expect((await readStoredJson(page, STORAGE_KEYS.jorge)).goals.strengthGoals).toEqual([]);
   expect((await readStoredJson(page, STORAGE_KEYS.alexa)).goals.strengthGoals[0].goalId).toBe(alexaGoalId);
 });
+
+test('Strength correctness: Goal and Train recompute from History, survive reload and advance on completion', async ({page}) => {
+  await page.clock.setFixedTime(new Date(NOW));
+  await installLocalStorageFixture(page,'blankJorge');
+  await openApp(page);
+  await configureGuidedBench(page,{workouts:[workout(historyExercise())],routineDay:'Push'});
+  const before=await page.evaluate(({bench})=>{
+    workoutSessionController.discard();
+    state.customRoutines.Push=[{exerciseId:'barbell-bench-press',workingSets:5,targetReps:'5'}];
+    const goal=state.goals.strengthGoals[0];
+    goal.progressionState.current.repRange={min:5,max:5};
+    goal.progressionState.current.issuedAt='2026-08-01T12:00:00.000Z';
+    state.workouts=[{id:'synthetic-higher',type:'Push',startedAt:'2026-08-18T12:00:00.000Z',completedAt:'2026-08-18T13:00:00.000Z',durationSeconds:3600,prs:0,
+      exercises:[{id:'barbell-bench-press',definitionId:bench,name:'Barbell Bench Press',muscle:'Chest',equipment:'Barbell',collapsed:true,
+      sets:Array.from({length:5},(_,i)=>({id:'synthetic-'+i,weight:225,reps:5,warmup:false,completed:true}))}]}];
+    saveState();
+    const snapshot=JSON.stringify({goals:state.goals,workouts:state.workouts,routines:state.customRoutines});
+    bigGainsGoals.render();
+    return {snapshot,after:JSON.stringify({goals:state.goals,workouts:state.workouts,routines:state.customRoutines}),records:derivePersonalRecords()};
+  },{bench:BENCH});
+  expect(before.after).toBe(before.snapshot);
+  await page.evaluate(()=>bigGainsViewShell.showView('goals',{workout:false,instant:true}));
+  const path=page.locator('#activeGoalsList .goal-trajectory');
+  await expect(path).toContainText('Current next exposure: 225 lb × 5 × 5');
+  await expect(page.locator('#activeGoalsList')).toContainText('263 lb');
+  await page.reload();
+  await expect(path).toContainText('Current next exposure: 225 lb × 5 × 5');
+  const started=await page.evaluate(()=>{
+    workoutSessionController.start('Push',{loadRoutine:true,scroll:false});
+    return {exercise:structuredClone(active.exercises[0]),records:derivePersonalRecords(),workouts:structuredClone(state.workouts)};
+  });
+  expect(started.exercise.goalGuidance.reasonCode).toBe('DEMONSTRATED_HIGHER_BASELINE');
+  expect(started.exercise.sets.filter(s=>!s.warmup).map(s=>[s.weight,s.reps])).toEqual(Array(5).fill([225,5]));
+  expect(started.records).toEqual(before.records);
+  expect(started.workouts).toEqual(JSON.parse(before.snapshot).workouts);
+  await page.clock.setFixedTime(new Date('2026-08-19T17:00:00.000Z'));
+  await page.evaluate(()=>{
+    active.exercises[0].sets.forEach(s=>{if(!s.warmup)s.completed=true;});
+    workoutSessionController.complete();
+    bigGainsGoals.render();
+  });
+  await expect(path).toContainText('Current next exposure: 230 lb × 5 × 5');
+  await page.reload();
+  await expect(path).toContainText('Current next exposure: 230 lb × 5 × 5');
+});

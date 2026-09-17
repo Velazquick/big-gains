@@ -85,7 +85,8 @@ const goalsApi=BigGainsGoals.create({
   createId:uid,
   escapeHtml,
   picker:exercisePicker,
-  scheduledExposuresPerWeek
+  scheduledExposuresPerWeek,
+  previewGuidance: context => goalsTrainGuidance.previewGoal({ ...context, routine: goalRoutineStructure(context.goal.exerciseId) })
 });
 window.bigGainsGoals=goalsApi;
 const goalsTrainGuidance=BigGainsGoalsTrainGuidance.create({
@@ -132,6 +133,17 @@ function autosave(){saveState();renderHero();}
 function todaysWorkout(){return WEEK_PLAN[new Date().getDay()];}
 function routineFor(day){return routineEngine.getRoutine(day);}
 function routinePrescription(day,exerciseId){return routineEngine.getPrescription(day,exerciseId);}
+function goalRoutineStructure(exerciseId){
+  const canonical=exerciseCatalog.canonicalIdFor(exerciseId);
+  const candidates=Object.keys(DEFAULT_ROUTINES).flatMap(day=>routineFor(day)
+    .filter(id=>exerciseCatalog.canonicalIdFor(id)===canonical)
+    .map(id=>routinePrescription(day,id)));
+  // Without one unambiguous saved structure, only Train can resolve its context.
+  if(!candidates.length||candidates.some(value=>!value))return null;
+  const first=candidates[0];
+  if(candidates.some(value=>value.workingSets!==first.workingSets||value.targetReps!==first.targetReps))return null;
+  return {exerciseId:canonical,workingSetCount:first.workingSets,targetReps:first.targetReps,source:'saved_routine'};
+}
 function scheduledExposuresPerWeek(exerciseId){const canonical=exerciseCatalog.canonicalIdFor(exerciseId);if(!canonical)return null;const count=Object.values(WEEK_PLAN).filter(day=>day&&day!=='Rest').filter(day=>routineFor(day).some(id=>exerciseCatalog.canonicalIdFor(id)===canonical)).length;return count||null;}
 function selectRoutineVariant(day,exerciseId){const selection=routineEngine.resolveVariantSelection(day,exerciseId);if(!selection)return false;routineVariantSelections[day]=selection;return true;}
 function fmtDate(iso){return new Intl.DateTimeFormat('en-US',{month:'short',day:'numeric',year:'numeric'}).format(new Date(iso));}
