@@ -8,6 +8,8 @@
     HOLD_PARTIAL: { chip: 'Hold', title: 'Repeat this target' },
     ADJUST_REPEATED_MISS: { chip: 'Adjust', title: 'Reduce one step and rebuild' },
     USER_OVERRIDE_REVIEW: { chip: 'Review', title: 'Your performance differed from the target' },
+    DEMONSTRATED_HIGHER_BASELINE: { chip: 'Updated baseline', title: 'Repeat your demonstrated working load' },
+    AWAITING_EXPOSURE: { chip: 'Target ready', title: 'No new exposure since this target was issued' },
     GUIDANCE_DISABLED: { chip: 'Tracking only', title: 'Goal guidance is off' },
     GOAL_NOT_ACTIVE: { chip: 'Inactive', title: 'This goal is not active' },
     ACHIEVED: { chip: 'Achieved', title: 'The completed goal no longer prescribes work' },
@@ -246,6 +248,7 @@
     function retainDecision(goal, snapshot) {
       const recommendation = snapshot.recommendation;
       if (!recommendation) return;
+      if (snapshot.reasonCode === 'AWAITING_EXPOSURE') return;
       const issued = {
         decisionId: createId(),
         issuedAt: snapshot.evidenceCutoff,
@@ -273,6 +276,15 @@
       goal.updatedAt = snapshot.evidenceCutoff;
     }
 
+    function previewGoal({ goal, definition, routine, evidenceCutoff }) {
+      const cutoff = new Date(evidenceCutoff).toISOString();
+      const measurement = catalog.measurementFor(definition);
+      const evidence = buildEvidence({ workouts: getState().workouts, definition, measurement, goal, catalog, analytics, analyticsOptions });
+      const result = engine.resolve({ goal, measurement, routine, evidence, priorDecision: normalizePrior(goal), evidenceCutoff: cutoff, loadability: { increment: measurement?.ui?.loadStep } });
+      const diagnostic = baselineDiagnostic({ result, workouts: getState().workouts, definition, catalog, cutoff });
+      return snapshotForResult({ result, goal, definition, measurement, cutoff, diagnostic });
+    }
+
     function prepareExercise({ exercise, definition, prescription, evidenceCutoff, source = 'current_workout' }) {
       const goals = matchingGoals(definition);
       if (!goals.length) return exercise;
@@ -282,7 +294,6 @@
         return exercise;
       }
       const goal = goals[0];
-      const measurement = catalog.measurementFor(definition);
       const workingSetCount = list(exercise.sets).filter(set => set.warmup !== true).length;
       const routine = {
         exerciseId: definition.canonicalId,
@@ -290,26 +301,7 @@
         targetReps: typeof prescription?.targetReps === 'string' ? prescription.targetReps : '',
         source
       };
-      const evidence = buildEvidence({
-        workouts: getState().workouts,
-        definition,
-        measurement,
-        goal,
-        catalog,
-        analytics,
-        analyticsOptions
-      });
-      const result = engine.resolve({
-        goal,
-        measurement,
-        routine,
-        evidence,
-        priorDecision: normalizePrior(goal),
-        evidenceCutoff: cutoff,
-        loadability: { increment: measurement?.ui?.loadStep }
-      });
-      const diagnostic = baselineDiagnostic({ result, workouts: getState().workouts, definition, catalog, cutoff });
-      const snapshot = snapshotForResult({ result, goal, definition, measurement, cutoff, diagnostic });
+      const snapshot = previewGoal({ goal, definition, routine, evidenceCutoff: cutoff });
       exercise.goalGuidance = snapshot;
       if (snapshot.status !== 'available' || !snapshot.recommendation) return exercise;
 
@@ -385,7 +377,7 @@
       return true;
     }
 
-    return Object.freeze({ prepareExercise, presentationFor, render, useForToday });
+    return Object.freeze({ prepareExercise, previewGoal, presentationFor, render, useForToday });
   }
 
   Object.defineProperty(scope, 'BigGainsGoalsTrainGuidance', {

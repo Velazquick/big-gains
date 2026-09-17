@@ -139,7 +139,7 @@ test('G1-7.6/G1-7.7: exact bench progression renders add-reps then add-load targ
   await expect(page.locator('[data-goal-guidance-status="available"]')).toContainText('Today: 195 lb × 4 · 4 sets');
 });
 
-test('G1-7.8/G1-7.9/G1-10.6: partials hold, repeated misses adjust, and overrides request review without rebasing', async ({ page }) => {
+test('G1-7.8/G1-7.9/G1-10.6: partials hold, repeated misses adjust, and equivalent higher loads establish baseline', async ({ page }) => {
   await setup(page);
   let result = await configureBench(page, {
     priorDecision: prior({ load: 195, reps: [4, 4, 4, 4] }),
@@ -163,9 +163,9 @@ test('G1-7.8/G1-7.9/G1-10.6: partials hold, repeated misses adjust, and override
     priorDecision: prior({ load: 195, reps: [4, 4, 4, 4] }),
     workouts: [exposure({ id: 'override', load: 200, reps: [4, 4, 4, 4] })]
   });
-  expect(result.active.exercises[0].goalGuidance.reasonCode).toBe('USER_OVERRIDE_REVIEW');
-  expect(workingValues(result.active)).toEqual(Array(4).fill({ weight: 195, reps: 4 }));
-  await expect(page.locator('[data-goal-guidance-status="available"]')).toContainText('Your performance differed from the target');
+  expect(result.active.exercises[0].goalGuidance.reasonCode).toBe('DEMONSTRATED_HIGHER_BASELINE');
+  expect(workingValues(result.active)).toEqual(Array(4).fill({ weight: 200, reps: 4 }));
+  await expect(page.locator('[data-goal-guidance-status="available"]')).toContainText('Repeat your demonstrated working load');
 });
 
 test('G1-2.13/G1-2.14: estimated reached stays contextual while a performed target single stops prescription', async ({ page }) => {

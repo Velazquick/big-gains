@@ -337,10 +337,10 @@ test('G1-7.9/G1-7.10: an intervening override breaks consecutive clear misses', 
   assert.equal(result.recommendation.enteredLoad, 195);
 });
 
-test('G1-7.10/G1-10.6: latest different load is evidence but never an automatic rebase', () => {
+test('Strength correctness: complete higher equivalent performance becomes a held baseline', () => {
   const result = engine.resolve(input({ priorDecision: prior(195, 4), evidence: [exposure('override', 1, uniformSets(205, 4))] }));
-  assert.equal(result.reasonCode, 'USER_OVERRIDE_REVIEW');
-  assert.equal(result.recommendation.enteredLoad, 195);
+  assert.equal(result.reasonCode, 'DEMONSTRATED_HIGHER_BASELINE');
+  assert.equal(result.recommendation.enteredLoad, 205);
   assert.deepEqual(result.recommendation.repTargets, [4, 4, 4, 4]);
 });
 
@@ -659,4 +659,62 @@ test('G1-3.2/G1-12.1/G1-12.4: module boundary contains no DOM, persistence, clou
   assert.doesNotMatch(source, /\b(?:saveState|persist|enqueue|activeWorkout|customRoutines)\b/);
   assert.match(source, /Object\.defineProperty\(scope, 'BigGainsGoalsProgression'/);
   assert.equal(Object.keys(engine).join(','), 'deadlineOutlook,projectTrajectory,resolve,policy,constants');
+});
+
+// Synthetic bench-only reproduction; no production identities or records.
+const benchInput = (overrides = {}) => input({
+  goal: goal({ targetValue: 315, createdAt: isoDaysAgo(14) }),
+  routine: routine({ workingSetCount: 5, targetReps: '5' }),
+  priorDecision: prior(215, 5, { workingSetCount: 5 }),
+  ...overrides
+});
+test('Strength correctness: empty History and exact prescribed-load success', () => {
+  assert.equal(engine.resolve(benchInput()).recommendation, null);
+  assert.equal(engine.resolve(benchInput({ evidence: [exposure('complete',1,uniformSets(215,5,5))] })).recommendation.enteredLoad,220);
+});
+test('Strength correctness: pre/post-goal higher History holds demonstrated load with or without prior', () => {
+  for (const days of [18,1]) for (const withPrior of [true,false]) {
+    const result=engine.resolve(benchInput({ priorDecision:withPrior?prior(215,5,{workingSetCount:5,issuedAt:isoDaysAgo(14)}):null,
+      evidence:[exposure('higher',days,uniformSets(225,5,5))] }));
+    assert.equal(result.recommendation.enteredLoad,225);
+    assert.deepEqual(result.recommendation.repTargets,[5,5,5,5,5]);
+    assert.equal(engine.projectTrajectory({recommendation:result.recommendation,loadIncrement:5}).current.enteredLoad,225);
+  }
+});
+test('Strength correctness: repeated higher exposures and warmups cannot remain behind 225', () => {
+  const evidence=[1,8,15].map(days=>exposure('week-'+days,days,[set(135,10,{warmup:true}),...uniformSets(225,5,5)]));
+  const result=engine.resolve(benchInput({evidence}));
+  assert.equal(result.reasonCode,'DEMONSTRATED_HIGHER_BASELINE');
+  assert.equal(result.recommendation.enteredLoad,225);
+});
+test('Strength correctness: incomplete, missed, extra, mixed and variant evidence cannot rebase', () => {
+  for(const sets of [uniformSets(225,5,4),[...uniformSets(225,5,4),set(225,3)],[...uniformSets(225,5,5),set(185,10)],[...uniformSets(225,5,4),set(215,5)]]) {
+    const result=engine.resolve(benchInput({evidence:[exposure('latest',1,sets),exposure('older-full',8,uniformSets(225,5,5))]}));
+    assert.equal(result.recommendation.enteredLoad,215);
+    assert.equal(result.reasonCode,'USER_OVERRIDE_REVIEW');
+  }
+  const result=engine.resolve(benchInput({evidence:[exposure('variant',1,uniformSets(225,5,5),{exerciseId:'distinct-bench-variant'})]}));
+  assert.equal(result.recommendation,null);
+  assert.equal(result.evidence.excluded[0].reasonCode,'EXERCISE_MISMATCH');
+});
+test('Strength correctness: no new exposure never mislabels recent history stale', () => {
+  const result=engine.resolve(benchInput({priorDecision:prior(225,5,{workingSetCount:5,issuedAt:isoDaysAgo(0.5)}),
+    evidence:[exposure('recent',1,uniformSets(225,5,5)),exposure('old',60,uniformSets(215,5,5))]}));
+  assert.equal(result.reasonCode,'AWAITING_EXPOSURE');
+  assert.equal(result.recommendation.enteredLoad,225);
+});
+test('Strength correctness: 263 e1RM is supporting evidence, not proof of a full prescription', () => {
+  const sets=[...Array.from({length:4},(_,i)=>e1rmSet(225,5,263,{setId:'set-'+i})),set(225,3),set(185,10)];
+  const source=benchInput({evidence:[exposure('mixed',1,sets)]}),before=JSON.stringify(source);
+  const result=engine.resolve(source);
+  assert.equal(result.attainment.bestEstimate.value,263);
+  assert.equal(result.recommendation.enteredLoad,215);
+  assert.equal(JSON.stringify(source),before);
+});
+test('Strength correctness: extra demonstrated reps hold issued reps and preserve Program source', () => {
+  const result=engine.resolve(benchInput({routine:routine({workingSetCount:5,targetReps:'5',source:'program_routine'}),
+    evidence:[exposure('extra-reps',1,uniformSets(225,6,5))]}));
+  assert.equal(result.recommendation.enteredLoad,225);
+  assert.deepEqual(result.recommendation.repTargets,[5,5,5,5,5]);
+  assert.equal(result.routine.source,'program_routine');
 });

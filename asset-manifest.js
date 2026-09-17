@@ -1,7 +1,7 @@
 ((scope) => {
   'use strict';
 
-  const release = 'v115-operator-reliability-v2';
+  const release = 'v116-strength-history-correctness';
   const cloudConfigVersion = 'config-925e766c1b907250'; // BIG_GAINS_CLOUD_CONFIG_VERSION
   const deploymentVersion = `${release}-${cloudConfigVersion}`;
   const manifestAsset = `./asset-manifest.js?v=${encodeURIComponent(deploymentVersion)}`;

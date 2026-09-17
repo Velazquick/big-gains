@@ -30,6 +30,8 @@
     HOLD_PARTIAL: 'HOLD_PARTIAL',
     ADJUST_REPEATED_MISS: 'ADJUST_REPEATED_MISS',
     USER_OVERRIDE_REVIEW: 'USER_OVERRIDE_REVIEW',
+    DEMONSTRATED_HIGHER_BASELINE: 'DEMONSTRATED_HIGHER_BASELINE',
+    AWAITING_EXPOSURE: 'AWAITING_EXPOSURE',
     GUIDANCE_DISABLED: 'GUIDANCE_DISABLED',
     GOAL_NOT_ACTIVE: 'GOAL_NOT_ACTIVE',
     ACHIEVED: 'ACHIEVED',
@@ -717,22 +719,55 @@
     const prior = priorResult.value;
 
     if (prior) {
+      // Only the latest exact exposure can establish a higher equivalent baseline.
+      // Never skip a recent miss, take a maximum set, or add an unearned increment.
+      const latest = evidence.recentEligible[0];
+      const latestWorking = latest ? completedWorkingSets(latest.exposure) : [];
+      if (latest && latestWorking.length === routine.workingSetCount
+        && latestWorking.every(set => enteredLoad(set) !== null && sameNumber(enteredLoad(set), enteredLoad(latestWorking[0])))
+        && enteredLoad(latestWorking[0]) > prior.enteredLoad
+        && latestWorking.every((set, index) => wholePositive(set.reps) >= prior.repTargets[index])) {
+        return recommendation({
+          goal, routine, load: enteredLoad(latestWorking[0]), reps: prior.repTargets,
+          decisionCode: DECISION.HOLD, reasonCode: REASON.DEMONSTRATED_HIGHER_BASELINE,
+          objective: OBJECTIVE.BUILD_STRENGTH_VOLUME,
+          explanation: 'The latest exact-exercise exposure completed the full working-set prescription at a higher uniform load. Repeat that demonstrated load; no additional increment has been earned against this new target.',
+          evidence, attainment, priorOutcome: { kind: 'higher_equivalent_baseline', exposureId: latest.id }
+        });
+      }
       const outcomes = classifyPriorOutcomes(evidence, prior, routine);
       const current = outcomes[0];
       if (!current) {
+        if (evidence.recentEligible.length && prior.issuedAtMs > cutoffMs - EVIDENCE_LOOKBACK_DAYS * DAY_MS) {
+          return recommendation({
+            goal, routine, load: prior.enteredLoad, reps: prior.repTargets,
+            decisionCode: DECISION.HOLD, reasonCode: REASON.AWAITING_EXPOSURE,
+            objective: OBJECTIVE.BUILD_STRENGTH_VOLUME,
+            explanation: 'Recent exact-exercise history exists. No completed exposure follows the last issued target yet; repeat that target before progressing it.',
+            evidence, attainment, priorOutcome: null
+          });
+        }
         const hasOldCompatibleEvidence = evidence.allCompatible.some(item => item.completedAtMs <= cutoffMs - EVIDENCE_LOOKBACK_DAYS * DAY_MS);
         return unavailable({
           goal, routine, evidence, attainment,
-          reasonCode: hasOldCompatibleEvidence ? REASON.STALE_EVIDENCE : REASON.ESTABLISH_BASELINE,
-          explanation: hasOldCompatibleEvidence ? 'Comparable evidence is older than the 42-day decision window.' : 'Log a comparable exposure after the prior decision before progressing it.'
+          reasonCode: !evidence.recentEligible.length && hasOldCompatibleEvidence ? REASON.STALE_EVIDENCE : REASON.ESTABLISH_BASELINE,
+          explanation: !evidence.recentEligible.length && hasOldCompatibleEvidence ? 'Comparable evidence is older than the 42-day decision window.' : 'No completed exposure follows the prior decision. Recent history, when present, has not resolved that issued target.'
         });
       }
       if (current.kind === 'user_override') {
+        const working = completedWorkingSets(evidence.recentEligible[0].exposure);
+        const detail = working.length !== prior.workingSetCount
+          ? `History records ${working.length} completed working sets; this target requires exactly ${prior.workingSetCount}.`
+          : working.some(set => !sameNumber(enteredLoad(set), enteredLoad(working[0])))
+            ? 'The completed working sets use mixed loads.'
+            : working.some((set, index) => (wholePositive(set.reps) || 0) < prior.repTargets[index])
+              ? 'At least one completed working set is below the issued rep target.'
+              : 'The completed working load differs from the issued target and does not establish a higher equivalent baseline.';
         return recommendation({
           goal, routine, load: prior.enteredLoad, reps: prior.repTargets,
           decisionCode: DECISION.HOLD, reasonCode: REASON.USER_OVERRIDE_REVIEW,
           objective: OBJECTIVE.BUILD_STRENGTH_VOLUME,
-          explanation: 'The latest completed performance used a materially different load or set structure. Hold the issued target unless a baseline is explicitly adopted.',
+          explanation: `${detail} This exposure remains valid History, but does not earn progression. Hold the issued target pending a qualifying exposure or explicit baseline review.`,
           evidence, attainment, priorOutcome: current
         });
       }

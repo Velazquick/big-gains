@@ -62,6 +62,7 @@
       picker,
       now = () => new Date(),
       scheduledExposuresPerWeek = () => null,
+      previewGuidance = () => null,
       confirmDelete = message => scope.confirm(message),
       getElement = id => document.getElementById(id)
     } = options;
@@ -301,13 +302,8 @@
       if (PAST_STATUSES.has(goal.status) || !exercise) return '';
       const engine = scope.BigGainsGoalsProgression;
       if (!engine?.projectTrajectory || !engine?.deadlineOutlook) return '';
-      const current = goal.progressionState?.current;
-      const recommendation = current && current.exerciseId === goal.exerciseId ? {
-        enteredLoad: current.enteredLoad,
-        workingSetCount: current.workingSetCount,
-        repTargets: current.repTargets,
-        repRange: current.repRange || { min: 4, max: 6 }
-      } : null;
+      const preview = previewGuidance({ goal, definition: exercise, evidenceCutoff: isoNow() });
+      const recommendation = preview?.status === 'available' ? preview.recommendation : null;
       const increment = exercise.measurement?.ui?.loadStep;
       const trajectory = engine.projectTrajectory({ recommendation, loadability: { increment } });
       const cadence = Number(scheduledExposuresPerWeek(goal.exerciseId));
@@ -326,11 +322,13 @@
           <p>${escapeHtml(trajectory.condition)}</p>
           <ol>${trajectory.steps.map(step => `<li><span>${step.decisionCode === 'INCREASE_LOAD' ? 'Then, if completed' : 'If completed'}</span><strong>${escapeHtml(displayExposure(step.enteredLoad, step.repTargets, step.workingSetCount))}</strong></li>`).join('')}</ol>
           <small>Conditional projection only. The path changes when actual performance differs.</small>`
-        : '<p>A conditional path will appear after Train resolves a safe exact-exercise starting target.</p>';
+        : `<p>${escapeHtml(preview?.diagnostic?.explanation || preview?.explanation || 'A conditional path will appear after Train resolves a safe exact-exercise starting target.')}</p>`;
       const cadenceCopy = exposuresPerWeek ? `<small>Saved routine cadence: about ${exposuresPerWeek} exposure${exposuresPerWeek === 1 ? '' : 's'} per week.</small>` : '';
       return `<details class="goal-trajectory">
         <summary>Path / trajectory</summary>
         ${path}
+        <small>Based on the saved routine. Train checks the selected workout's exact set and rep structure.</small>
+        ${recommendation ? `<small>${escapeHtml(preview.explanation)}</small>` : ''}
       </details>
       <section class="goal-deadline-outlook" data-deadline-status="${escapeHtml(outlook.status)}">
         <span>Deadline outlook</span><strong>${escapeHtml(outlook.label)}</strong>

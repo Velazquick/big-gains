@@ -1,4 +1,4 @@
-importScripts('./asset-manifest.js?v=v115-operator-reliability-v2-config-925e766c1b907250', './service-worker-core.js');
+importScripts('./asset-manifest.js?v=v116-strength-history-correctness-config-925e766c1b907250', './service-worker-core.js');
 
 const runtime = BigGainsServiceWorkerCore.createRuntime({
   manifest: BIG_GAINS_ASSET_MANIFEST,
