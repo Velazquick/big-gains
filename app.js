@@ -39,22 +39,33 @@ function staleSessionCondition(workout,now=Date.now()){
   const day=value=>{const date=new Date(value);return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;};
   return day(start)!==day(now)||now-start>=staleSessionHours*3600000;
 }
-function staleRecoveryWritable(){
+function staleRecoverySafety(){
+  const blocked=reason=>({safe:false,reason});
   try{
+    if(!window.BigGainsRuntimeGate?.canInteract()||!window.BigGainsBootGate?.canRender())return blocked('unknown');
     const sync=window.BigGainsCloudSync?.status();
-    return Boolean(window.BigGainsRuntimeGate?.canInteract()&&window.BigGainsBootGate?.canRender()
-      &&sync&&!sync.pending&&!sync.busy&&!sync.comparing&&!sync.capturePending&&!sync.reconciliationInFlight
-      &&!sync.sameEntityConflict?.eligible&&!sync.remoteFastForward?.conflict&&!sync.lastResult?.blocked
-      &&!sync.lastResult?.conflict&&sync.lastComparison?.parity!==false
-      &&window.BigGainsManagedProfileRecovery?.updateSafety?.()===true
-      &&window.BigGainsProgramPortability?.updateSafety?.()===true
-      &&!window.BigGainsControlledMigration?.status?.().busy);
-  }catch{return false;}
+    if(!sync||!Number.isSafeInteger(sync.pending)||sync.pending<0
+      ||!Number.isSafeInteger(sync.capturePending)||sync.capturePending<0
+      ||['busy','comparing','reconciliationInFlight'].some(key=>typeof sync[key]!=='boolean'))return blocked('unknown');
+    if(sync.pending||sync.busy||sync.comparing||sync.capturePending||sync.reconciliationInFlight)return blocked('sync');
+    if(sync.sameEntityConflict?.eligible||sync.remoteFastForward?.conflict||sync.lastResult?.blocked
+      ||sync.lastResult?.conflict||sync.lastComparison?.parity===false)return blocked('recovery');
+    for(const [owner,reason] of [[window.BigGainsManagedProfileRecovery,'recovery'],[window.BigGainsProgramPortability,'program']]){
+      const safe=owner?.updateSafety?.();
+      if(safe!==true)return blocked(safe===false?reason:'unknown');
+    }
+    const migration=window.BigGainsControlledMigration?.status?.();
+    if(typeof migration?.busy!=='boolean')return blocked('unknown');
+    return migration.busy?blocked('migration'):{safe:true,reason:null};
+  }catch{return blocked('unknown');}
 }
+function staleRecoveryWritable(){return staleRecoverySafety().safe;}
 function renderStaleRecovery(){
   const card=$('staleWorkoutRecovery');if(!card)return;
   const now=Date.now(),owner=active?`${ACCOUNT.storageNamespace}:${active.id}`:null;
-  const stale=staleSessionCondition(active,now),writable=!stale||staleRecoveryWritable();
+  const stale=staleSessionCondition(active,now),safety=staleRecoverySafety(),writable=!stale||safety.safe;
+  const diagnostic=$('diagnosticStaleRecovery');
+  if(diagnostic)diagnostic.textContent=!stale?'No stale session':safety.safe?'Recovery safe':`Recovery blocked: ${safety.reason}`;
   $('cancelWorkout').disabled=!writable;
   $('finishWorkout').disabled=!writable||!active?.exercises.some(exercise=>exercise.sets.some(set=>set.completed));
   const acknowledged=staleResume?.owner===owner&&now>=staleResume.at&&now-staleResume.at<staleSessionHours*3600000;

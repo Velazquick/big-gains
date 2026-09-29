@@ -2,6 +2,74 @@ import {test,expect} from '@playwright/test';
 import {blankState,completedWorkout,installLocalStorageFixture} from './fixtures/local-storage.js';
 import {openApp,jorgeState} from './helpers/app.js';
 import {createProgramFixture} from './helpers/program.js';
+import {readFileSync} from 'node:fs';
+import {createSyncSafetyFixture} from './helpers/sync-safety.mjs';
+const healthySync={pending:0,busy:false,comparing:false,capturePending:0,reconciliationInFlight:false};
+
+for(const age of [0,24,72])test(`healthy Finish at ${age} hours preserves completed data exactly once`,async({page})=>{
+  await seed(page,{age});
+  const before=await jorgeState(page);
+  await page.evaluate(()=>{window.BigGainsTelemetry={emit(){throw Error('synthetic telemetry outage');}};});
+  if(age)await page.locator('#staleWorkoutFinish').click();
+  else expect(await page.evaluate(()=>workoutSessionController.complete())).toBe(true);
+  const after=await jorgeState(page);
+  expect(after.activeWorkout).toBeNull();expect(after.workouts).toHaveLength(1);
+  expect(after.workouts[0].exercises[0].sets[0]).toEqual(before.activeWorkout.exercises[0].sets[0]);
+  expect(await page.evaluate(()=>workoutSessionController.complete())).toBe(false);
+  expect((await jorgeState(page)).workouts).toHaveLength(1);
+});
+
+for(const historical of ['blocked','conflict'])test(`real sync ${historical} recovery re-enables stale actions and idle PWA safety`,async({page})=>{
+  await seed(page,{age:24});const before=await jorgeState(page);
+  await page.evaluate(async({builder,source,historical})=>{
+    const build=new Function(`return (${builder})`)();
+    const f=build(ctx=>new Function('window','document','navigator','localStorage',source)(ctx.window,ctx.document,ctx.navigator,ctx.localStorage));
+    window.syntheticSync=f;window.BigGainsCloudSync=f.api;
+    if(historical==='blocked')await f.reconcile();
+    else{f.controls.recovery={ok:true};await f.reconcile();f.controls.pending=[{id:'synthetic'}];await f.api.applyRemoteFastForward();}
+    renderStaleRecovery();
+  },{builder:createSyncSafetyFixture.toString(),source:readFileSync(new URL('../cloud-sync.js',import.meta.url),'utf8'),historical});
+  await expect(page.locator('#staleWorkoutFinish')).toBeDisabled();await expect(page.locator('#staleWorkoutDiscard')).toBeDisabled();
+  await page.evaluate(async()=>{
+    syntheticSync.controls.recovery={ok:true};
+    syntheticSync.controls.pending=[]; // Synthetic queue owner independently settles its work.
+    await syntheticSync.reconcile();
+  });
+  // Existing one-second refresh must observe recovery, without manual UI refresh.
+  await expect(page.locator('#staleWorkoutFinish')).toBeEnabled();await expect(page.locator('#staleWorkoutDiscard')).toBeEnabled();
+  expect((await jorgeState(page)).activeWorkout).toEqual(before.activeWorkout);
+  expect(await page.evaluate(()=>BigGainsPwaUpdate.safety().reason)).toBe('workout');
+  expect(await page.evaluate(()=>[syntheticSync.storage.get('queue'),syntheticSync.storage.get('synthetic-recovery-journal')])).toEqual(['preserve-durable-envelope','preserve']);
+  await page.locator('#staleWorkoutFinish').click();
+  expect((await jorgeState(page)).workouts).toHaveLength(1);
+  // Saved input defaults are reconciled by the normal render; update eligibility
+  // still applies its own editor/rest/queue checks independently.
+  expect(await page.evaluate(()=>BigGainsPwaUpdate.safety())).toEqual({safe:true,reason:null});
+});
+
+for(const [patch,reason] of [
+  [{pending:1},'sync'],[{busy:true},'sync'],[{comparing:true},'sync'],[{capturePending:1},'sync'],[{reconciliationInFlight:true},'sync'],
+  [{sameEntityConflict:{eligible:true}},'recovery'],[{remoteFastForward:{conflict:true}},'recovery'],
+  [{lastResult:{blocked:true}},'recovery'],[{lastResult:{conflict:true}},'recovery'],[{lastComparison:{parity:false}},'recovery'],
+  [{owner:'managed'},'recovery'],[{owner:'program'},'program'],[{owner:'migration'},'migration'],[{owner:'missing'},'unknown'],[{owner:'throw'},'unknown']
+])test(`bounded stale diagnostic ${JSON.stringify(patch)}`,async({page,context})=>{
+  await seed(page,{age:24});const before=await jorgeState(page);await context.setOffline(true);
+  await page.evaluate(({status,patch})=>{
+    if(patch.owner==='managed')window.BigGainsManagedProfileRecovery={updateSafety:()=>false};
+    else if(patch.owner==='program')window.BigGainsProgramPortability={updateSafety:()=>false};
+    else if(patch.owner==='migration')window.BigGainsControlledMigration={status:()=>({busy:true})};
+    else if(patch.owner==='missing')window.BigGainsControlledMigration=null;
+    else if(patch.owner==='throw')window.BigGainsCloudSync={status(){throw Error('private training contents');}};
+    if(patch.owner!=='throw')window.BigGainsCloudSync={status:()=>({...status,...patch})};
+    renderStaleRecovery();
+  },{status:healthySync,patch});
+  expect(await page.locator('#diagnosticStaleRecovery').textContent()).toBe(`Recovery blocked: ${reason}`);
+  await expect(page.locator('#staleWorkoutFinish')).toBeDisabled();await expect(page.locator('#staleWorkoutDiscard')).toBeDisabled();
+  expect(await page.evaluate(()=>workoutSessionController.complete())).toBe(false);
+  expect(await page.evaluate(()=>workoutSessionController.discard())).toBe(false);
+  expect(await jorgeState(page)).toEqual(before);
+  await expect(page.locator('#staleWorkoutResume')).toBeEnabled();
+});
 
 async function seed(page,{age=7,completed=true,history=false}={}){
   await installLocalStorageFixture(page,'blankJorge');
@@ -94,7 +162,7 @@ test('offline detection and local Resume work',async({page,context})=>{
 });
 for(const status of [{pending:1},{lastResult:{conflict:true}},{reconciliationInFlight:true}])test(`recovery fails closed ${JSON.stringify(status)}`,async({page})=>{
   await seed(page);const before=await jorgeState(page);
-  await page.evaluate(status=>{window.BigGainsCloudSync={status:()=>status};renderStaleRecovery();},status);
+  await page.evaluate(status=>{window.BigGainsCloudSync={status:()=>status};renderStaleRecovery();},{...healthySync,...status});
   await expect(page.locator('#staleWorkoutFinish')).toBeDisabled();await expect(page.locator('#staleWorkoutDiscard')).toBeDisabled();
   await expect(page.locator('#staleWorkoutGuard')).toBeVisible();expect((await jorgeState(page)).workouts).toEqual(before.workouts);
   await page.locator('#staleWorkoutResume').click();
@@ -103,7 +171,7 @@ for(const status of [{pending:1},{lastResult:{conflict:true}},{reconciliationInF
   expect(await page.evaluate(()=>workoutSessionController.complete())).toBe(false);
   expect(await page.evaluate(()=>workoutSessionController.discard())).toBe(false);
   expect((await jorgeState(page)).activeWorkout.id).toBe(before.activeWorkout.id);
-  await page.evaluate(()=>{window.BigGainsCloudSync={status:()=>({})};renderStaleRecovery();});
+  await page.evaluate(status=>{window.BigGainsCloudSync={status:()=>status};renderStaleRecovery();},healthySync);
   await expect(page.locator('#finishWorkout')).toBeEnabled();await expect(page.locator('#cancelWorkout')).toBeEnabled();
 });
 for(const width of [375,390])test(`metrics selector exact variants, search, same surface and mobile ${width}`,async({page},info)=>{
@@ -151,4 +219,6 @@ test('explicit stale Finish advances a real Program once; Resume does not',async
   await page.evaluate(()=>{staleResume=null;renderStaleRecovery();});
   await page.locator('#staleWorkoutFinish').click();
   const after=await jorgeState(page);expect(after.programCapture).not.toEqual(before);expect(after.workouts).toHaveLength(1);
+  expect(await page.evaluate(()=>workoutSessionController.complete())).toBe(false);
+  const repeated=await jorgeState(page);expect(repeated.programCapture).toEqual(after.programCapture);expect(repeated.workouts).toHaveLength(1);
 });

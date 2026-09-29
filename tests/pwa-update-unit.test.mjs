@@ -1,3 +1,4 @@
+import { createSyncSafetyFixture } from './helpers/sync-safety.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -125,31 +126,22 @@ test('worker failure diagnostic targets only the requesting client and carries n
 });
 
 // Execute the real sync owner with synthetic storage/network boundaries. No production client.
-function syncSafetyFixture() {
-  const storage = new Map();
-  const catalog = { format: 'big-gains.shadow-catalog.v1', accountId: 'account', authUserId: 'user', profiles: { proof: { profileId: 'profile' } } };
-  storage.set('catalog', JSON.stringify(catalog));
-  const controls = { recovery: { ok: false, reason: 'synthetic-recovery' }, parity: true, pending: [], timers: [], comparingHook: null };
-  const scope = {
-    setTimeout: fn => { controls.timers.push(fn); return controls.timers.length; }, clearTimeout() {},
-    BigGainsCloud: { createDurableQueue: () => ({ pending: () => controls.pending }) },
-    bigGainsAccounts: { runtime: { kind: 'independent', cloudShape: 'independent', cloudKeys: { queue: 'queue', catalog: 'catalog', comparison: 'comparison' } }, matchesCloudOwner: () => true, cloudProfileShape: () => 'independent' },
-    BigGainsSupabase: { session: async () => ({ user: { id: 'user' } }), verifiedUser: async () => { if (controls.sessionFailure) throw Error('synthetic verification failure'); return { id: 'user' }; }, readCloudAccount: async () => ({ account: { id: 'account' }, authUserId: 'user', profiles: { proof: { id: 'profile' } } }), getClient: () => ({}) },
-    BigGainsManagedProfileRecovery: { adoptionRecoveryStatus: () => controls.recovery, inspectRemoteFastForward: () => ({ eligible: false, reason: 'synthetic-drift' }) },
-    BigGainsCloudShadow: { profileIds: ['proof'], createRepository: () => ({ readAll: async () => ({ journals: [] }) }), completedMigrationJournal: () => null, reconstructCloud: async () => ({}), readLocalProfiles: async () => ({}), compare: async () => { await controls.comparingHook?.(); return { parity: controls.parity, profiles: { proof: { parity: controls.parity } } }; }, catalogFromCloud: () => catalog }
-  };
-  const ctx = { window: scope, document: { visibilityState: 'visible', getElementById: () => null }, navigator: { onLine: true }, localStorage: { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value) } };
-  vm.runInNewContext(readFileSync(new URL('../cloud-sync.js', import.meta.url), 'utf8'), ctx);
-  return { controls, api: scope.BigGainsCloudSync, async reconcile() { scope.BigGainsCloudSync.scheduleReconciliation('synthetic', 0); await controls.timers.pop()(); await new Promise(resolve => setImmediate(resolve)); } };
-}
+function syncSafetyFixture() { return createSyncSafetyFixture(ctx => vm.runInNewContext(readFileSync(new URL('../cloud-sync.js', import.meta.url), 'utf8'), ctx)); }
 
 test('recovered reconciliation retires a historical blocked result only after fresh parity', async () => {
   const f = syncSafetyFixture(); await f.reconcile();
   assert.equal(f.api.status().lastResult.blocked, true);
+  const gates = recoveredGates(f.api);
+  assert.equal(gates.stale().reason, 'recovery');
+  assert.equal(gates.update().reason, 'recovery');
   f.controls.recovery = { ok: true }; await f.reconcile();
   assert.equal(f.api.status().lastComparison.parity, true);
   assert.equal(f.api.status().reconciliationInFlight, false);
   assert.equal(Boolean(f.api.status().lastResult.blocked), false);
+  assert.equal(gates.stale().safe, true);
+  assert.equal(gates.update().safe, true);
+  assert.equal(f.storage.get('synthetic-recovery-journal'), 'preserve');
+  assert.equal(f.storage.get('queue'), 'preserve-durable-envelope');
 });
 
 test('failed parity retains the historical recovery guard', async () => {
@@ -164,12 +156,29 @@ test('recovered reconciliation retires historical conflict without mutating the 
   f.controls.pending = [{ id: 'synthetic' }]; await f.api.applyRemoteFastForward();
   assert.equal(f.api.status().lastResult.conflict, true);
   assert.equal(f.controls.pending.length, 1);
+  const gates = recoveredGates(f.api);
+  assert.equal(gates.stale().safe, false);
   f.controls.pending = []; // Synthetic owner has independently completed its work.
   await f.reconcile();
   assert.equal(Boolean(f.api.status().lastResult.conflict), false);
   assert.equal(f.api.status().remoteFastForward, null);
   assert.equal(f.api.status().sameEntityConflict, null);
+  assert.equal(gates.stale().safe, true);
+  assert.equal(gates.update().safe, true);
 });
+
+// Both production consumers read the same real sync owner. Local PWA safety is
+// idle here; an active workout must still independently prevent activation.
+function recoveredGates(sync) {
+  const f = safetyFixture();
+  f.scope.BigGainsCloudSync = sync;
+  f.scope.BigGainsBootGate = { canRender: () => true };
+  const source = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  const ctx = { window: f.scope };
+  vm.createContext(ctx);
+  vm.runInContext(source.slice(source.indexOf('function staleRecoverySafety(){'), source.indexOf('function renderStaleRecovery(){')), ctx);
+  return { stale: () => ctx.staleRecoverySafety(), update: f.safety };
+}
 
 for (const race of ['capture-pending', 'completed-concurrent-mutation', 'new-queue', 'lifecycle']) {
   test(`fresh parity cannot retire a blocker during ${race}`, async () => {

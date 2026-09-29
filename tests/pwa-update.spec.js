@@ -3,6 +3,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname } from 'node:path';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
+import { createSyncSafetyFixture } from './helpers/sync-safety.mjs';
 
 const RELEASE = 'v117-pwa-update-safety-gate';
 const V103 = 'v103-rc-hardening-pass-1';
@@ -58,6 +59,24 @@ async function offer(h) {
   await h.page.evaluate(() => bigGainsPwaUpdate.check(true));
   await expect(h.page.locator('#pwaUpdate')).toBeVisible({ timeout: 15000 });
 }
+
+for(const historical of ['blocked','conflict'])test(`real waiting worker: verified ${historical} recovery enables Update now`,async({browser})=>{
+  const h=await harness(browser);
+  try{
+    await h.page.evaluate(async({builder,source,historical})=>{
+      const build=new Function(`return (${builder})`)();
+      const f=build(ctx=>new Function('window','document','navigator','localStorage',source)(ctx.window,ctx.document,ctx.navigator,ctx.localStorage));
+      window.syntheticSync=f;window.BigGainsCloudSync=f.api;
+      if(historical==='blocked')await f.reconcile();
+      else{f.controls.recovery={ok:true};await f.reconcile();f.controls.pending=[{id:'synthetic'}];await f.api.applyRemoteFastForward();f.controls.pending=[];}
+    },{builder:createSyncSafetyFixture.toString(),source:await readFile(new URL('../cloud-sync.js',import.meta.url),'utf8'),historical});
+    await offer(h);
+    await expect(h.page.locator('#pwaUpdateNow')).toBeDisabled();
+    await h.page.evaluate(async()=>{syntheticSync.controls.recovery={ok:true};await syntheticSync.reconcile();});
+    await expect(h.page.locator('#pwaUpdateNow')).toBeEnabled();
+    expect(await h.page.evaluate(()=>[syntheticSync.storage.get('queue'),syntheticSync.storage.get('synthetic-recovery-journal')])).toEqual(['preserve-durable-envelope','preserve']);
+  }finally{await h.close();}
+});
 test('real waiting worker: idle approval updates once, preserves data and launches offline', async ({ browser }, testInfo) => {
   const h = await harness(browser);
   try {
