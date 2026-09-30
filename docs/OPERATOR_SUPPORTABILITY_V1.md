@@ -28,7 +28,7 @@ Completion reporting counts idempotent stale completion lifecycle observations w
 
 Reliability reports affected users, blocked tab episodes, bounded blocker distribution, episodes observed ready after blocking, eventual Finish, and episodes without Finish/Discard observed. Full retained lifecycles are used for episodes with observations matching the selected period/release/environment. A median receipt time from first blocked→first subsequent ready requires three nonnegative samples; sample count is visible. Missing resolution means unknown, not proof of a stuck user. Multiple blockers may occur within one episode.
 
-Needs attention is a dedicated paginated view: recently observed blocking lasting 15+ minutes, unclosed conflict episodes, 3+ observations of one diagnostic group in 24 hours, or workout start→error within 10 minutes with no same-profile resolution receipt after 15 minutes. These are review signals, not causal diagnoses. The last signal lacks session correlation and can be incomplete when telemetry is missing. No external alerting is added.
+Needs attention is a dedicated paginated view: recently observed uninterrupted blocking lasting 15+ minutes (the threshold restarts after readiness), unclosed conflict episodes, 3+ observations of one diagnostic group in 24 hours, or workout start→error within 10 minutes with no same-profile resolution receipt after 15 minutes. These are review signals, not causal diagnoses. The last signal lacks session correlation and can be incomplete when telemetry is missing. No external alerting is added.
 
 ## Schema and security
 
@@ -38,6 +38,6 @@ Supabase changelog/docs reviewed. September 25 PostgreSQL minor-release changes 
 
 ## Validation and production safety
 
-Focused: 18 telemetry unit tests, 44 disposable PGlite supplemental database checks (same protected PostgreSQL harness), and 10 focused Chromium support/controller/mobile checks passed. Existing recovery/Operator checks also passed; some broader local browser cases experienced browser process/context crashes, so the unchanged protected macOS WebKit and real PostgreSQL/Chromium gate is authoritative. No local browser workaround enters source. Required checks must be green on the exact candidate before merge; no protection bypass or manual Pages artifact substitution.
+Focused: 18 telemetry unit tests, 45 disposable PGlite supplemental database checks (same protected PostgreSQL harness), and 10 focused Chromium support/controller/mobile checks passed. Existing recovery/Operator checks also passed; some broader local browser cases experienced browser process/context crashes, so the unchanged protected macOS WebKit and real PostgreSQL/Chromium gate is authoritative. No local browser workaround enters source. Required checks must be green on the exact candidate before merge; no protection bypass or manual Pages artifact substitution.
 
 All write QA uses synthetic local/disposable fixtures. Real hosted inspection is read-only. No Jorge/Sontai training data, sessions, queues, Program state or History is manually altered. The additive migration writes operational release metadata only. Deployment verification must be read-only and stop this interval afterward.

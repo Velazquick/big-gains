@@ -39,4 +39,10 @@ export async function verifyOperatorSupport({test,client,as,uuid}){
   assert.equal((await rpc({section:'detail',user_id:uuid(2)})).support_completions[0].verification,'Duplicate completion observed');
  });
 
+ await check('support attention threshold uses the current uninterrupted blocked interval',async()=>{
+  await as(2);await ingest(event(9481));await q('reset role');await q("update private.product_events set received_at=now()-interval '20 minutes' where id=$1",[uuid(9481)]);
+  await as(2);await ingest(event(9482,{event_name:'stale_session_ready',finish_permitted:'yes',discard_permitted:'yes',blocker:'none'}));await ingest(event(9483));
+  await as(1);assert.equal((await rpc({section:'attention'})).users.some(p=>p.blocked_attention),false);
+ });
+
 }

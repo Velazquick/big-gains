@@ -102,7 +102,8 @@ revoke all on private.operator_support_episodes from public,anon,authenticated;
 create view private.operator_support_people as
 select p.user_id,
  exists(select 1 from private.operator_support_latest s join private.operator_profiles op on op.id=s.profile_id where op.user_id=p.user_id and s.received_at>=now()-interval '30 minutes' and s.stale='yes' and s.discard_permitted='no' and s.received_at>=now()-interval '90 days'
- and exists(select 1 from private.operator_support_episodes e where e.episode_id=s.episode_id and e.profile_id=s.profile_id and e.user_id=s.user_id and e.blocked_at<now()-interval '15 minutes')) as blocked_attention,
+ and exists(select 1 from private.product_events b where b.episode_id=s.episode_id and b.profile_id=s.profile_id and b.user_id=s.user_id and b.support_sequence is not null and b.stale='yes' and b.discard_permitted='no' and b.received_at<now()-interval '15 minutes'
+   and not exists(select 1 from private.product_events r where r.episode_id=b.episode_id and r.profile_id=b.profile_id and r.user_id=b.user_id and r.support_sequence is not null and r.support_sequence::integer>b.support_sequence::integer and (r.stale<>'yes' or r.discard_permitted<>'no')))) as blocked_attention,
  exists(select 1 from private.operator_episodes e where e.user_id=p.user_id and not e.resolved) as conflict_attention,
  exists(select 1 from private.product_events e where e.user_id=p.user_id and e.event_name='app_error' and e.received_at>=now()-interval '1 day' group by e.diagnostic_fingerprint,e.category having count(*)>=3) as error_attention,
  exists(select 1 from private.product_events e where e.user_id=p.user_id and e.event_name='workout_started' and e.received_at>=now()-interval '7 days' and e.received_at<now()-interval '15 minutes'
