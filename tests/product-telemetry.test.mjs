@@ -39,3 +39,50 @@ test('bounded diagnostics and stable distinct fingerprints',()=>{const api=setup
 test('resource capture distinguishes element failure from absent error object',async()=>{const h=setup();h.listeners.error({target:{tagName:'SCRIPT',src:'https://synthetic.invalid/app.js?SECRET'}});await h.flush();h.advance(61000);h.listeners.error({error:null});await h.flush();assert.equal(h.events[0].error_code,'resource_load');assert.equal(h.events[0].module_id,'app.js');assert.equal(h.events[1].category,'javascript');assert.ok(!JSON.stringify(h.events).includes('SECRET'));});
 test('continuous conflict survives render foreground retry and reload then resolves once',async()=>{const storage=new Map();const h=setup({storage});const api=h.scope.BigGainsTelemetry;api.conflict('program',{presented:true});await h.flush();const id=h.events[0].episode_id;for(let i=0;i<100;i++)api.conflict('program',{presented:true});await h.flush();assert.deepEqual(h.events.map(e=>e.event_name),['conflict_detected','conflict_presented']);h.advance(61000);api.conflict('program',{presented:true});await h.flush();assert.equal(h.events.at(-1).episode_id,id);const reload=setup({storage});reload.advance(122000);reload.scope.BigGainsTelemetry.conflict('program',{presented:true});await reload.flush();assert.equal(reload.events.length,1);assert.equal(reload.events[0].episode_id,id);api.conflict('program',{verifiedResolved:true});api.conflict('program',{verifiedResolved:true});await h.flush();assert.equal(h.events.filter(e=>e.event_name==='conflict_resolved').length,1);h.advance(61000);api.conflict('program');await h.flush();assert.notEqual(h.events.at(-1).episode_id,id);});
 test('conflict telemetry storage failure is isolated',()=>{const h=setup();h.scope.sessionStorage.setItem=()=>{throw Error('quota')};assert.doesNotThrow(()=>h.scope.BigGainsTelemetry.conflict('program'));});
+
+const readySupport={active_unfinished:true,stale:true,finish_permitted:true,discard_permitted:true,blocker:'none',pending_sync:0,reconciliation:'verified',conflict_open:false,program_state:'in_sync',completion_observed:'none'};
+test('support healthy presentation, transitions and render/foreground/reload dedup',async()=>{
+ const storage=new Map(),h=setup({storage}),api=h.scope.BigGainsTelemetry;
+ api.support(readySupport,{sessionKey:'PRIVATE-workout',presented:true});await h.flush();
+ assert.deepEqual(h.events.map(e=>e.event_name),['stale_session_presented','stale_session_ready']);
+ const episode=h.events[0].episode_id;
+ for(let i=0;i<100;i++)api.support(readySupport,{sessionKey:'PRIVATE-workout',presented:true});
+ h.listeners.visibilitychange();await h.flush();assert.equal(h.events.filter(e=>e.support_sequence).length,2);
+ const reload=setup({storage});reload.scope.BigGainsTelemetry.support(readySupport,{sessionKey:'PRIVATE-workout',presented:true});await reload.flush();assert.equal(reload.events.length,0);
+ assert.ok(!JSON.stringify(h.events).includes('PRIVATE-workout'));
+ for(const blocker of ['sync','recovery','program','migration','unknown']){
+  const blocked={...readySupport,finish_permitted:false,discard_permitted:false,blocker};
+  api.support(blocked,{sessionKey:'PRIVATE-workout',presented:true});await h.flush();
+  api.support(readySupport,{sessionKey:'PRIVATE-workout',presented:true});await h.flush();
+ }
+ assert.equal(h.events.filter(e=>e.event_name==='stale_session_blocked').length,5);
+ assert.equal(h.events.filter(e=>e.event_name==='stale_session_ready').length,6);
+ assert.ok(h.events.filter(e=>e.support_sequence).every(e=>e.episode_id===episode));
+});
+test('support actions only after explicit action; Resume cannot imply completion',async()=>{
+ const h=setup(),api=h.scope.BigGainsTelemetry;
+ api.support(readySupport,{sessionKey:'s',presented:true});await h.flush();
+ api.support(readySupport,{sessionKey:'s',action:'resume'});await h.flush();
+ assert.equal(h.events.filter(e=>e.event_name==='stale_session_resumed').length,1);
+ assert.equal(h.events.filter(e=>e.event_name==='stale_session_finished').length,0);
+ const finished={...readySupport,active_unfinished:false,stale:false,finish_permitted:false,discard_permitted:false,completion_observed:'once'};
+ api.support(finished,{sessionKey:'s',action:'finish'});await h.flush();api.support(finished,{sessionKey:'s',action:'finish'});await h.flush();
+ assert.equal(h.events.filter(e=>e.event_name==='stale_session_finished').length,1);
+ api.support({...finished,completion_observed:'none'},{sessionKey:'s2',action:'discard'});await h.flush();
+ assert.equal(h.events.filter(e=>e.event_name==='stale_session_discarded').length,1);
+});
+test('support bounded privacy, unavailable telemetry and storage failures',async()=>{
+ const h=setup({throwing:true});h.scope.sessionStorage.setItem=()=>{throw Error('quota')};
+ assert.doesNotThrow(()=>h.scope.BigGainsTelemetry.support({...readySupport,queue:{PRIVATE:1},blocker:'PRIVATE',program_state:'PRIVATE',parity_verified_at:'PRIVATE'},{sessionKey:'PRIVATE',presented:true}));await h.flush();
+ const bounded=h.scope.BigGainsTelemetry.supportSnapshot({queue:{PRIVATE:1},blocker:'PRIVATE',program_state:'PRIVATE',pending_sync:-1});
+ assert.ok(!JSON.stringify(bounded).includes('PRIVATE'));assert.equal(bounded.pending_sync,'unknown');assert.equal(bounded.blocker,'unknown');
+ const off=setup({online:false});off.scope.BigGainsTelemetry.support(readySupport,{sessionKey:'s',presented:true});await off.flush();assert.equal(off.events.length,0);
+});
+
+test('draining sync counts do not create a blocked-event storm; heartbeat is bounded',async()=>{
+ const h=setup(),api=h.scope.BigGainsTelemetry,blocked={...readySupport,finish_permitted:false,discard_permitted:false,blocker:'sync',pending_sync:100};
+ api.support(blocked,{sessionKey:'s',presented:true});await h.flush();
+ for(let n=99;n>0;n--){api.support({...blocked,pending_sync:n},{sessionKey:'s',presented:true});await h.flush();}
+ assert.equal(h.events.length,2);h.advance(60001);api.support({...blocked,pending_sync:1},{sessionKey:'s',presented:true});await h.flush();assert.equal(h.events.at(-1).event_name,'support_state_observed');assert.equal(h.events.length,3);
+ h.advance(15*60000);api.support({...blocked,pending_sync:1},{sessionKey:'s',presented:true});await h.flush();assert.equal(h.events.length,4);
+});
