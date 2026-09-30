@@ -288,3 +288,12 @@ test('support observer outage cannot block automatic recovery or explicit Finish
  await expect(page.locator('#staleWorkoutFinish')).toBeEnabled();await page.locator('#staleWorkoutFinish').click();
  const after=await jorgeState(page);expect(after.activeWorkout).toBeNull();expect(after.workouts).toHaveLength(1);expect(after.workouts[0].exercises[0].sets[0]).toEqual(before.activeWorkout.exercises[0].sets[0]);
 });
+
+test('support observes bounded unknown when a safety dependency throws',async({page})=>{
+ await seed(page);await page.evaluate(()=>{window.supportSyncOwner=BigGainsCloudSync;window.BigGainsCloudSync={status(){throw Error('PRIVATE raw dependency payload')}};});
+ await installSupportObserver(page);await expect(page.locator('#staleWorkoutFinish')).toBeDisabled();
+ await expect.poll(()=>page.evaluate(()=>supportObserved.filter(e=>e.event_name==='stale_session_blocked').map(e=>e.blocker))).toEqual(['unknown']);
+ expect(await page.evaluate(()=>JSON.stringify(supportObserved))).not.toContain('PRIVATE');
+ await page.evaluate(()=>{window.BigGainsCloudSync=supportSyncOwner;});await expect(page.locator('#staleWorkoutFinish')).toBeEnabled();
+ await expect.poll(()=>page.evaluate(()=>supportObserved.filter(e=>e.event_name==='stale_session_ready').length)).toBe(1);
+});

@@ -62,9 +62,10 @@ function staleRecoverySafety(){
 function staleRecoveryWritable(){return staleRecoverySafety().safe;}
 function observeSupport({workout=active,action=null,presented=false}={}){
   try{
-    const sync=window.BigGainsCloudSync?.status?.(),safety=staleRecoverySafety(),stale=staleSessionCondition(active);
+    const read=fn=>{try{return fn();}catch{return undefined;}};
+    const sync=read(()=>window.BigGainsCloudSync?.status?.()),safety=staleRecoverySafety(),stale=staleSessionCondition(active);
     const completionCount=action==='finish'?state.workouts.filter(w=>w.id===workout?.id).length:null;
-    const comparison=sync?.lastComparison,program=window.BigGainsProgramPortability?.status?.();
+    const comparison=sync?.lastComparison,program=read(()=>window.BigGainsProgramPortability?.status?.());
     const conflict=typeof sync?.sameEntityConflict?.eligible==='boolean'||typeof sync?.remoteFastForward?.conflict==='boolean'
       ?Boolean(sync.sameEntityConflict?.eligible||sync.remoteFastForward?.conflict):undefined;
     window.BigGainsTelemetry?.support?.({
