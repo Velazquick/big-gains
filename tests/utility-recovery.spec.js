@@ -222,3 +222,69 @@ test('explicit stale Finish advances a real Program once; Resume does not',async
   expect(await page.evaluate(()=>workoutSessionController.complete())).toBe(false);
   const repeated=await jorgeState(page);expect(repeated.programCapture).toEqual(after.programCapture);expect(repeated.workouts).toHaveLength(1);
 });
+
+// Real app/controller observations, using only synthetic local fixtures.
+async function installSupportObserver(page){
+ await page.evaluate(async()=>{
+  window.supportObserved=[];
+  window.bigGainsAccounts={...window.bigGainsAccounts,runtime:{...window.bigGainsAccounts.runtime,authUserId:'synthetic-support-actor'}};
+  window.BigGainsSupabase={configured:true,session:async()=>({user:{id:'synthetic-support-actor'}}),getClient:()=>({rpc(_,{event}){supportObserved.push(event);return {abortSignal:async()=>({})};}})};
+  new Function(await (await fetch('/product-telemetry.js')).text())();
+  renderStaleRecovery();
+ });
+}
+for(const [blocker,patch] of [
+ ['sync',()=>{window.BigGainsCloudSync={status:()=>({...window.supportSync,pending:1})};}],
+ ['recovery',()=>{window.BigGainsManagedProfileRecovery={updateSafety:()=>false};}],
+ ['program',()=>{window.BigGainsProgramPortability={updateSafety:()=>false,status:()=>({status:'blocked'})};}],
+ ['migration',()=>{window.BigGainsControlledMigration={status:()=>({busy:true})};}],
+ ['unknown',()=>{window.BigGainsControlledMigration={status:()=>null};}]
+])test(`support controller observes ${blocker}, then automatically ready once`,async({page})=>{
+ await seed(page);
+ await page.evaluate(fn=>{window.supportSync=BigGainsCloudSync.status();window.supportOwners={sync:BigGainsCloudSync,recovery:BigGainsManagedProfileRecovery,program:BigGainsProgramPortability,migration:BigGainsControlledMigration};new Function(`return (${fn})`)()();},patch.toString());
+ await installSupportObserver(page);
+ await expect(page.locator('#staleWorkoutFinish')).toBeDisabled();
+ await expect.poll(()=>page.evaluate(()=>supportObserved.filter(e=>e.event_name==='stale_session_blocked').map(e=>e.blocker))).toEqual([blocker]);
+ await page.evaluate(()=>{for(let i=0;i<30;i++)renderStaleRecovery();});
+ expect(await page.evaluate(()=>supportObserved.filter(e=>e.event_name==='stale_session_blocked').length)).toBe(1);
+ await page.evaluate(()=>{window.BigGainsCloudSync=supportOwners.sync;window.BigGainsManagedProfileRecovery=supportOwners.recovery;window.BigGainsProgramPortability=supportOwners.program;window.BigGainsControlledMigration=supportOwners.migration;});
+ await expect(page.locator('#staleWorkoutFinish')).toBeEnabled();
+ await expect.poll(()=>page.evaluate(()=>supportObserved.filter(e=>e.event_name==='stale_session_ready').length)).toBe(1);
+ await page.evaluate(()=>{renderStaleRecovery();document.dispatchEvent(new Event('visibilitychange'));window.dispatchEvent(new Event('pageshow'));});
+ expect(await page.evaluate(()=>supportObserved.filter(e=>e.event_name==='stale_session_ready').length)).toBe(1);
+});
+test('support controller Resume does not complete, explicit Finish observes once and clears unfinished',async({page})=>{
+ await seed(page);await installSupportObserver(page);
+ await expect.poll(()=>page.evaluate(()=>supportObserved.filter(e=>e.support_sequence).length)).toBe(2);
+ await page.locator('#staleWorkoutResume').click();
+ await expect.poll(()=>page.evaluate(()=>supportObserved.filter(e=>e.event_name==='stale_session_resumed').length)).toBe(1);
+ expect(await page.evaluate(()=>supportObserved.filter(e=>e.event_name==='stale_session_finished').length)).toBe(0);
+ await page.locator('#finishWorkout').click();
+ await expect.poll(()=>page.evaluate(()=>supportObserved.filter(e=>e.event_name==='stale_session_finished').length)).toBe(1);
+ const e=await page.evaluate(()=>supportObserved.find(e=>e.event_name==='stale_session_finished'));
+ expect(e.active_unfinished).toBe('no');expect(e.completion_observed).toBe('once');
+ expect((await jorgeState(page)).workouts).toHaveLength(1);
+ expect(await page.evaluate(()=>workoutSessionController.complete())).toBe(false);
+});
+test('support controller explicit Discard observes no completion',async({page})=>{
+ await seed(page);await installSupportObserver(page);
+ await expect.poll(()=>page.evaluate(()=>supportObserved.filter(e=>e.support_sequence).length)).toBe(2);
+ await page.locator('#staleWorkoutDiscard').click();
+ expect(await page.evaluate(()=>supportObserved.filter(e=>e.event_name==='stale_session_discarded').length)).toBe(0);
+ await page.locator('#staleWorkoutDiscard').click();
+ await expect.poll(()=>page.evaluate(()=>supportObserved.filter(e=>e.event_name==='stale_session_discarded').length)).toBe(1);
+ expect(await page.evaluate(()=>supportObserved.filter(e=>e.event_name==='stale_session_finished').length)).toBe(0);
+ expect((await jorgeState(page)).workouts).toHaveLength(0);
+});
+test('support observer outage cannot block automatic recovery or explicit Finish',async({page})=>{
+ await seed(page);const before=await jorgeState(page);
+ await page.evaluate(()=>{
+  window.BigGainsTelemetry={support(){throw Error('synthetic support outage')},emit(){throw Error('synthetic telemetry outage')}};
+  const owner=BigGainsManagedProfileRecovery;window.supportHealthyOwner=owner;
+  window.BigGainsManagedProfileRecovery={updateSafety:()=>false};renderStaleRecovery();
+ });
+ await expect(page.locator('#staleWorkoutFinish')).toBeDisabled();
+ await page.evaluate(()=>{window.BigGainsManagedProfileRecovery=supportHealthyOwner;});
+ await expect(page.locator('#staleWorkoutFinish')).toBeEnabled();await page.locator('#staleWorkoutFinish').click();
+ const after=await jorgeState(page);expect(after.activeWorkout).toBeNull();expect(after.workouts).toHaveLength(1);expect(after.workouts[0].exercises[0].sets[0]).toEqual(before.activeWorkout.exercises[0].sets[0]);
+});

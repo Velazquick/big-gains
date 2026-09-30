@@ -1,6 +1,6 @@
 ((scope) => {
   'use strict';
-  const names = new Set(['app_open','workout_started','workout_completed','program_adopted','exercise_swapped','stale_session_recovery_shown','stale_session_resumed','stale_session_finished','stale_session_discarded','recovery_required','conflict_detected','conflict_presented','conflict_resolved','app_error']);
+  const names = new Set(['app_open','workout_started','workout_completed','program_adopted','exercise_swapped','support_state_observed','stale_session_presented','stale_session_blocked','stale_session_ready','stale_session_recovery_shown','stale_session_resumed','stale_session_finished','stale_session_discarded','recovery_required','conflict_detected','conflict_presented','conflict_resolved','app_error']);
   const categories = new Set(['javascript','promise','resource','sync','program','unknown']);
   const surfaces = new Set(['app','train','program','recovery','onboarding']);
   const modes = new Set(['program','freeform','unknown']);
@@ -43,6 +43,47 @@
       if(presented && Date.now()-(entry.presented||0)>=60000){entry.presented=Date.now();saveEpisodes();emit('conflict_presented',{surface:channel,episode_id:entry.id,profile_client_id:targetProfile});}
     }catch{}
   }
+  const supportKey='big-gains-support-episodes-v1';
+  let supportCache=[];
+  try{const v=JSON.parse(scope.sessionStorage?.getItem(supportKey)||'[]');if(Array.isArray(v))supportCache=v.filter(e=>e&&typeof e.owner==='string'&&typeof e.session==='string'&&/^[a-f0-9-]{36}$/i.test(e.id)&&Number.isSafeInteger(e.seq)&&e.seq>=0&&Number.isFinite(e.at)&&Date.now()-e.at<90*86400000).slice(-16);}catch{}
+  function saveSupport(){try{scope.sessionStorage?.setItem(supportKey,JSON.stringify(supportCache.slice(-16)));}catch{}}
+  const yesNo=v=>v===true?'yes':v===false?'no':'unknown';
+  const supportFields=['active_unfinished','stale','finish_permitted','discard_permitted','blocker','reconciliation','pending_sync','conflict_open','program_state','parity_verified_at','completion_observed'];
+  function supportSnapshot(input={}) {
+    const timestamp=input.parity_verified_at;
+    return {active_unfinished:yesNo(input.active_unfinished),stale:yesNo(input.stale),finish_permitted:yesNo(input.finish_permitted),discard_permitted:yesNo(input.discard_permitted),
+      blocker:bounded(input.blocker,['none','sync','recovery','program','migration','unknown']),
+      reconciliation:bounded(input.reconciliation,['idle','pending','checking','blocked','verified','unknown']),
+      pending_sync:Number.isSafeInteger(input.pending_sync)&&input.pending_sync>=0?String(Math.min(1000,input.pending_sync)):'unknown',
+      conflict_open:yesNo(input.conflict_open),program_state:bounded(input.program_state,['off','checking','local_only','no_program','in_sync','update_available','conflict','pending','blocked','error','unknown']),
+      parity_verified_at:typeof timestamp==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(timestamp)&&Number.isFinite(Date.parse(timestamp))?timestamp:'unknown',
+      completion_observed:bounded(input.completion_observed,['none','once','multiple','unknown'])};
+  }
+  // Raw session identity is a local lookup key only; only a random tab episode leaves the device.
+  // Heartbeats refresh coverage without creating another episode. Storage never owns product state.
+  function support(input={}, {sessionKey='idle',action=null,presented=false}={}) {
+    try{
+      if(!scope.bigGainsAccounts?.runtime?.authUserId||typeof PROFILE==='undefined')return;
+      const owner=episodeOwner(PROFILE.id),now=Date.now(),snapshot=supportSnapshot(input);
+      let entry=supportCache.find(e=>e.owner===owner&&e.session===sessionKey);
+      if(!entry){entry={owner,session:sessionKey,id:scope.crypto.randomUUID(),seq:0,at:now,signature:null,presented:false,lastSent:0};supportCache.push(entry);supportCache=supportCache.slice(-16);}
+      const signature=JSON.stringify({...snapshot,parity_verified_at:'excluded-from-transition-key'}),changed=entry.signature!==signature;
+      const availability=JSON.stringify([snapshot.active_unfinished,snapshot.stale,snapshot.finish_permitted,snapshot.discard_permitted,snapshot.blocker]);
+      const stateChanged=entry.availability!==availability;
+      const lifecycle=action==='finish'?'stale_session_finished':action==='discard'?'stale_session_discarded':action==='resume'?'stale_session_resumed':null;
+      const firstPresentation=presented&&!entry.presented;
+      const ready=snapshot.stale==='yes'&&snapshot.discard_permitted==='yes';
+      let name=lifecycle||(firstPresentation?'stale_session_presented':stateChanged&&snapshot.stale==='yes'?(ready?'stale_session_ready':'stale_session_blocked'):'support_state_observed');
+      if(!lifecycle&&!firstPresentation&&!stateChanged&&now-entry.lastSent<(changed?60000:15*60000))return;
+      if(lifecycle&&entry.action===action)return;
+      const seq=entry.seq+1;
+      if(!dispatch(name,{surface:'recovery',episode_id:entry.id,support_sequence:String(seq),...snapshot},true))return;
+      entry.seq=seq;entry.signature=signature;entry.availability=availability;entry.lastSent=now;entry.blocked=snapshot.stale==='yes'&&!ready;
+      if(firstPresentation)entry.presented=true;if(lifecycle)entry.action=action;saveSupport();
+      // One initial bounded state event in addition to presentation; later renders are silent.
+      if(firstPresentation){const transition=ready?'stale_session_ready':'stale_session_blocked';if(dispatch(transition,{surface:'recovery',episode_id:entry.id,support_sequence:String(seq+1),...snapshot},true)){entry.seq++;saveSupport();}}
+    }catch{}
+  }
   let inFlight=0, sent=0, errors=0, lastOpen=0, lastIdentity='', stopped=false;
   function environment() {
     const ua=String(scope.navigator?.userAgent || '');
@@ -54,7 +95,8 @@
   }
   // Never stringify, hash, inspect or transmit raw errors, URLs, stacks or state.
   function errorCategory(value) { return categories.has(value) ? value : 'unknown'; }
-  function emit(name, options={}) {
+  function emit(name,options={}){dispatch(name,options);}
+  function dispatch(name, options={}, isSupport=false) {
     try {
       if(stopped || !names.has(name) || scope.navigator?.onLine===false || inFlight>=2 || sent>=120) return;
       const runtime=scope.bigGainsAccounts?.runtime;
@@ -64,7 +106,8 @@
       const category=name==='app_error'?errorCategory(options.category):'none';
       const diag=name==='app_error'?diagnostic(options):null;
       const fp=diag?fingerprint({category,surface,...diag}):null;
-      const key=[runtime.authUserId,profile,name,surface,category,fp,options.episode_id||''].join(':');
+      if(!isSupport&&['support_state_observed','stale_session_presented','stale_session_blocked','stale_session_ready'].includes(name))return;
+      const key=[runtime.authUserId,profile,name,surface,category,fp,options.episode_id||'',isSupport?options.support_sequence:''].join(':');
       const now=Date.now();
       if(now-(seen.get(key) || 0)<60_000 || (name==='app_error' && errors>=10)) return;
       if(seen.size>=64) seen.delete(seen.keys().next().value);
@@ -73,7 +116,8 @@
         release:scope.BIG_GAINS_ASSET_MANIFEST?.release,...environment(),surface,category,
         training_mode:modes.has(options.training_mode)?options.training_mode:'unknown',
         ...(diag?{...diag,diagnostic_fingerprint:fp}:{}),
-        ...(/^conflict_(detected|presented|resolved)$/.test(name)&&/^[a-f0-9-]{36}$/i.test(options.episode_id||'')?{episode_id:options.episode_id}:{})};
+        ...(isSupport?Object.fromEntries(['support_sequence',...supportFields].map(k=>[k,options[k]])):{}),
+        ...((isSupport||/^conflict_(detected|presented|resolved)$/.test(name))&&/^[a-f0-9-]{36}$/i.test(options.episode_id||'')?{episode_id:options.episode_id}:{})};
       const actor=runtime.authUserId;
       inFlight++;
       // Nothing in the product awaits this task. No persistent queue or retries.
@@ -86,6 +130,7 @@
           await scope.BigGainsSupabase.getClient().rpc('record_product_event',{event}).abortSignal(abort.signal);
         } catch {} finally {clearTimeout(timeout);inFlight--;}
       })();
+      return true;
     } catch {}
   }
   function opened() {
@@ -99,7 +144,7 @@
       }
     } catch {}
   }
-  scope.BigGainsTelemetry=Object.freeze({emit,errorCategory,environment,diagnostic,fingerprint,resourceId,conflict});
+  scope.BigGainsTelemetry=Object.freeze({emit,errorCategory,environment,diagnostic,fingerprint,resourceId,conflict,support,supportSnapshot});
   scope.addEventListener?.('error',event=>{
     try {
       const target=event?.target;

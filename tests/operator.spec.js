@@ -10,7 +10,7 @@ async function mock(page,{access=true,failure=false,empty=false,signals=false,ep
 }
 for(const identity of ['signed-out','ordinary','independent','managed-member'])test(`${identity} direct Operator route fails closed`,async({page})=>{
   await mock(page,{access:false});await page.goto('/operator/');await expect(page.locator('#gate')).toContainText('Operator access is unavailable');await expect(page.locator('#console')).toBeHidden();
-  expect(await page.evaluate(()=>window.operatorRequests.filter(r=>r.name==='operator_query_v2').length)).toBe(0);
+  expect(await page.evaluate(()=>window.operatorRequests.filter(r=>r.name==='operator_query_v3').length)).toBe(0);
 });
 test('authorization failure clears all privileged partial data',async({page})=>{await mock(page,{failure:true});await page.goto('/operator/');await expect(page.locator('#console')).toBeHidden();await expect(page.locator('body')).not.toContainText('PRIVILEGED PARTIAL');});
 for(const width of [1440,390])test(`owner Operator overview, pagination, detail and funnel at ${width}px`,async({page},info)=>{
@@ -69,4 +69,14 @@ test('reliability pagination follows the selected signal only',async({page})=>{
   await page.locator('#filterPanel').evaluate(e=>e.open=true);await page.locator('#signalFilter').selectOption(signal);await page.getByRole('button',{name:'Apply',exact:true}).click();
   if(hidden)await expect(page.locator('#pagination')).toBeHidden();else await expect(page.locator('#pageInfo')).toHaveText(total);
  }
+});
+
+test('Operator support current state, timeline and Needs attention work on mobile',async({page})=>{
+ await mock(page);await page.setViewportSize({width:390,height:844});
+ await page.route('**/vendor/supabase.js',route=>route.fulfill({contentType:'text/javascript',body:`window.supabase={createClient(){return {auth:{onAuthStateChange(){}},rpc(name,{request}={}){const detail={display_name:'Synthetic person',support:[{profile_name:'Synthetic profile',status:'Needs attention',coverage:'recent',active_unfinished:'yes',stale:'yes',finish_permitted:'no',discard_permitted:'no',blocker:'recovery',reconciliation:'blocked',pending_sync:'0',conflict_open:'yes',program_state:'in_sync',persisted_unfinished:true}],events:[{received_at:'2026-09-30T11:00:00Z',event_name:'stale_session_blocked',support_sequence:'1',blocker:'recovery'},{received_at:'2026-09-30T11:01:00Z',event_name:'stale_session_ready',support_sequence:'2',finish_permitted:'yes',automatically_ready:true}]};const data=name==='operator_access'?true:{metric_contract:'operator-v2',as_of:'2026-09-30T11:01:00Z',...(request.section==='detail'?detail:request.section==='attention'?{total:1,page_size:25,users:[{user_id:'00000000-0000-4000-8000-000000000002',display_name:'Synthetic person',blocked_attention:true}]}:{})};const p=Promise.resolve({data,error:null});p.abortSignal=()=>p;return p;}}}};` }));
+ await page.goto('/operator/');await page.locator('[data-section="attention"]').click();
+ await expect(page.locator('#content')).toContainText('Stale session blocked >15 min');
+ await page.locator('[data-user]').click();await expect(page.locator('#content')).toContainText('Support / Current state');
+ await expect(page.locator('#content')).toContainText('Finish blocked · recovery');await expect(page.locator('#content')).toContainText('Recovery became healthy · Finish available');
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
 });

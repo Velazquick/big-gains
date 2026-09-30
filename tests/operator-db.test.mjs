@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import pg from 'pg';
+import {verifyOperatorSupport} from './helpers/operator-support-db.js';
 import {verifyOperatorV2} from './helpers/operator-v2-db.js';
 
 // This harness creates a fresh database. It refuses remote hosts.
@@ -143,6 +144,7 @@ test('Operator database security and analytics contract on disposable PostgreSQL
       try{await client.query("update private.product_events set received_at=now()-interval '91 days'");assert.equal(Number((await client.query('select private.purge_product_events() as n')).rows[0].n),1);assert.equal((await client.query('select count(*)::int as n from private.product_first_opens')).rows[0].n,1);}finally{await client.query('rollback');}
     });
     await verifyOperatorV2({test:(name,fn)=>t.test(name,fn),client,as,uuid});
+    await verifyOperatorSupport({test:(name,fn)=>t.test(name,fn),client,as,uuid});
     await t.test('account deletion cascades telemetry',async()=>{
       await client.query('reset role');await client.query('delete from public.accounts where id=$1',[uuid(102)]);
       assert.equal((await client.query('select count(*)::int as n from private.product_events where user_id=$1',[uuid(2)])).rows[0].n,0);
