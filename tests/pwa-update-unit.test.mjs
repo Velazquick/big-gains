@@ -1,3 +1,4 @@
+import { createSyncSafetyFixture } from './helpers/sync-safety.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -122,4 +123,126 @@ test('worker failure diagnostic targets only the requesting client and carries n
   assert.equal(JSON.stringify(messages),'[{"type":"BG_RESOURCE_UNAVAILABLE","module_id":"app.js"}]');
   await assert.rejects(runtime.handle(new Request('https://example.test/app.js')));
   assert.equal(messages.length,1);
+});
+
+// Execute the real sync owner with synthetic storage/network boundaries. No production client.
+function syncSafetyFixture() { return createSyncSafetyFixture(ctx => vm.runInNewContext(readFileSync(new URL('../cloud-sync.js', import.meta.url), 'utf8'), ctx)); }
+
+test('recovered reconciliation retires a historical blocked result only after fresh parity', async () => {
+  const f = syncSafetyFixture(); await f.reconcile();
+  assert.equal(f.api.status().lastResult.blocked, true);
+  const gates = recoveredGates(f.api);
+  assert.equal(gates.stale().reason, 'recovery');
+  assert.equal(gates.update().reason, 'recovery');
+  f.controls.recovery = { ok: true }; await f.reconcile();
+  assert.equal(f.api.status().lastComparison.parity, true);
+  assert.equal(f.api.status().reconciliationInFlight, false);
+  assert.equal(Boolean(f.api.status().lastResult.blocked), false);
+  assert.equal(gates.stale().safe, true);
+  assert.equal(gates.update().safe, true);
+  assert.equal(f.storage.get('synthetic-recovery-journal'), 'preserve');
+  assert.equal(f.storage.get('queue'), 'preserve-durable-envelope');
+});
+
+test('failed parity retains the historical recovery guard', async () => {
+  const f = syncSafetyFixture(); await f.reconcile();
+  f.controls.recovery = { ok: true }; f.controls.parity = false; await f.reconcile();
+  assert.equal(f.api.status().lastResult.blocked, true);
+  assert.equal(f.api.status().lastComparison.parity, false);
+});
+
+test('recovered reconciliation retires historical conflict without mutating the queue', async () => {
+  const f = syncSafetyFixture(); f.controls.recovery = { ok: true }; await f.reconcile();
+  f.controls.pending = [{ id: 'synthetic' }]; await f.api.applyRemoteFastForward();
+  assert.equal(f.api.status().lastResult.conflict, true);
+  assert.equal(f.controls.pending.length, 1);
+  const gates = recoveredGates(f.api);
+  assert.equal(gates.stale().safe, false);
+  f.controls.pending = []; // Synthetic owner has independently completed its work.
+  await f.reconcile();
+  assert.equal(Boolean(f.api.status().lastResult.conflict), false);
+  assert.equal(f.api.status().remoteFastForward, null);
+  assert.equal(f.api.status().sameEntityConflict, null);
+  assert.equal(gates.stale().safe, true);
+  assert.equal(gates.update().safe, true);
+});
+
+// Both production consumers read the same real sync owner. Local PWA safety is
+// idle here; an active workout must still independently prevent activation.
+function recoveredGates(sync) {
+  const f = safetyFixture();
+  f.scope.BigGainsCloudSync = sync;
+  f.scope.BigGainsBootGate = { canRender: () => true };
+  const source = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  const ctx = { window: f.scope };
+  vm.createContext(ctx);
+  vm.runInContext(source.slice(source.indexOf('function staleRecoverySafety(){'), source.indexOf('function renderStaleRecovery(){')), ctx);
+  return { stale: () => ctx.staleRecoverySafety(), update: f.safety };
+}
+
+for (const race of ['capture-pending', 'completed-concurrent-mutation', 'new-queue', 'lifecycle']) {
+  test(`fresh parity cannot retire a blocker during ${race}`, async () => {
+    const f = syncSafetyFixture(); await f.reconcile(); f.controls.recovery = { ok: true };
+    f.controls.comparingHook = () => {
+      if (race === 'new-queue') f.controls.pending = [{ id: 'new' }];
+      else if (race === 'lifecycle') f.api.scheduleReconciliation('new-generation', 0);
+      else { const finish = f.api.beginLocalMutation(); if (race === 'completed-concurrent-mutation') finish(); }
+    };
+    await f.reconcile();
+    assert.equal(f.api.status().lastResult.blocked, true);
+  });
+}
+
+function safetyFixture() {
+  const records = new Map();
+  const scope = {
+    BigGainsRuntimeGate: { canInteract: () => true, status: () => ({ degraded: [] }) },
+    BigGainsAppRuntime: { initialized: true, updateSafety: () => ({ safe: true, reason: null }) },
+    BigGainsCloudSync: { status: () => ({ pending: 0, busy: false, comparing: false, capturePending: 0, reconciliationInFlight: false }) },
+    BigGainsManagedProfileRecovery: { updateSafety: () => true },
+    BigGainsProgramPortability: { updateSafety: () => true },
+    BigGainsAppearance: { updateSafety: () => true },
+    BigGainsControlledMigration: { status: () => ({ busy: false }) },
+    document: { querySelectorAll: () => [] },
+    localStorage: { get length() { return records.size; }, key: i => [...records.keys()][i], getItem: key => records.get(key) }
+  };
+  vm.runInNewContext(readFileSync(new URL('../pwa-update.js', import.meta.url), 'utf8'), scope);
+  return { scope, records, safety: scope.BigGainsPwaUpdate.safety };
+}
+
+for (const owner of ['BigGainsCloudSync', 'BigGainsManagedProfileRecovery', 'BigGainsProgramPortability', 'BigGainsAppearance', 'BigGainsControlledMigration']) {
+  test(`missing or throwing ${owner} fails closed with bounded unknown`, () => {
+    const f = safetyFixture(); assert.equal(f.safety().safe, true);
+    const original = f.scope[owner]; f.scope[owner] = null;
+    assert.equal(f.safety().reason, 'unknown');
+    f.scope[owner] = { status() { throw Error('private state must not leak'); }, updateSafety() { throw Error('private state must not leak'); } };
+    assert.equal(f.safety().reason, 'unknown'); f.scope[owner] = original; assert.equal(f.safety().safe, true);
+  });
+}
+
+test('multiple blockers use the first authoritative owner in fixed order', () => {
+  const f = safetyFixture(); f.scope.BigGainsProgramPortability.updateSafety = () => false;
+  f.scope.BigGainsAppRuntime.updateSafety = () => ({ safe: false, reason: 'workout' });
+  assert.equal(f.safety().reason, 'workout');
+  f.scope.BigGainsAppRuntime.updateSafety = () => ({ safe: true }); assert.equal(f.safety().reason, 'program');
+  f.scope.BigGainsRuntimeGate.canInteract = () => false; assert.equal(f.safety().reason, 'startup');
+});
+
+test('invalid local safety payload and malformed sync fields never permit update', () => {
+  const f = safetyFixture(); f.scope.BigGainsAppRuntime.updateSafety = () => ({ safe: 'yes', reason: 'private data' });
+  assert.equal(f.safety().reason, 'unknown');
+  f.scope.BigGainsAppRuntime.updateSafety = () => ({ safe: true });
+  f.scope.BigGainsCloudSync.status = () => ({}); assert.equal(f.safety().reason, 'unknown');
+});
+
+test('a newer sync failure during readback is not mistaken for historical evidence', async () => {
+  const f = syncSafetyFixture(); await f.reconcile(); f.controls.recovery = { ok: true };
+  f.controls.comparingHook = async () => { f.controls.sessionFailure = true; await f.api.flush(); };
+  await f.reconcile();
+  assert.equal(f.api.status().lastComparison.parity, true);
+  assert.equal(f.api.status().lastResult.blocked, true);
+  assert.equal(f.api.status().lastResult.reason, 'session-verification-failed');
+  f.controls.sessionFailure = false; f.controls.comparingHook = null; await f.reconcile();
+  assert.equal(f.api.status().lastResult.ok, true);
+  assert.equal(Boolean(f.api.status().lastResult.blocked), false);
 });

@@ -9,7 +9,7 @@ export function assertTelemetryRequest(request) {
   expect(JSON.stringify(event).length).toBeLessThanOrEqual(1024);
   expect(event.id).toMatch(/^[0-9a-f-]{36}$/i);
   expect(['app_open','workout_started','workout_completed','program_adopted','exercise_swapped','stale_session_recovery_shown','stale_session_resumed','stale_session_finished','stale_session_discarded','recovery_required','conflict_detected','conflict_presented','conflict_resolved','app_error']).toContain(event.event_name);
-  expect(event.release).toBe('v116-strength-history-correctness');
+  expect(event.release).toBe('v117-pwa-update-safety-gate');
   expect(['ios','android','windows','mac','linux','other']).toContain(event.platform);
   expect(['edge','firefox','chrome','safari','other']).toContain(event.browser);
   expect(['standalone','browser']).toContain(event.mode);

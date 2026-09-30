@@ -4,38 +4,55 @@
   // No storage writes, queue acknowledgements, or cloud calls belong here.
   function safety() {
     const blocked = reason => ({ safe: false, reason });
+    const visible = el => !el.closest('[hidden]') && el.getClientRects().length > 0
+      && !['hidden', 'collapse'].includes(scope.getComputedStyle(el).visibility);
+    const dependency = (value, reason) => value === true ? null : blocked(value === false ? reason : 'unknown');
     try {
       if (!scope.BigGainsRuntimeGate?.canInteract() || !scope.BigGainsAppRuntime?.initialized
           || scope.BigGainsRuntimeGate.status().degraded.length) return blocked('startup');
       const local = scope.BigGainsAppRuntime.updateSafety();
-      if (!local.safe) return local;
-      if (document.querySelector('dialog[open], [role="dialog"]:not([hidden])')) return blocked('editor');
+      if (local?.safe !== true) return blocked(local?.safe === false && ['workout', 'rest', 'storage'].includes(local.reason) ? local.reason : 'unknown');
+      if ([...document.querySelectorAll('dialog[open], [role="dialog"]')].some(visible)) return blocked('editor');
       // Restore reads File.text() asynchronously; the styled file input can be
       // hidden while that mutation is pending. Its files clear in the writer's finally.
       if ([...document.querySelectorAll('input[type="file"]')].some(el => el.files?.length)) return blocked('editor');
       // Form values not yet submitted are also unsaved work (including sign-in).
       if ([...document.querySelectorAll('input, textarea, [contenteditable="true"]')].some(el =>
-        el.getClientRects().length && ((el.matches('input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]), textarea')
+        visible(el) && ((el.matches('input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]), textarea')
           && el.value !== el.defaultValue) || (el.isContentEditable && el.textContent)))) return blocked('editor');
       const sync = scope.BigGainsCloudSync?.status();
-      if (!sync || sync.pending || sync.busy || sync.comparing || sync.capturePending || sync.reconciliationInFlight) return blocked('sync');
+      if (!sync || !Number.isSafeInteger(sync.pending) || sync.pending < 0
+          || !Number.isSafeInteger(sync.capturePending) || sync.capturePending < 0
+          || ['busy', 'comparing', 'reconciliationInFlight'].some(key => typeof sync[key] !== 'boolean')) return blocked('unknown');
+      if (sync.pending || sync.busy || sync.comparing || sync.capturePending || sync.reconciliationInFlight) return blocked('sync');
       if (sync.sameEntityConflict?.eligible || sync.remoteFastForward?.conflict || sync.lastResult?.blocked
           || sync.lastResult?.conflict || sync.lastComparison?.parity === false) return blocked('recovery');
-      if (scope.BigGainsManagedProfileRecovery?.updateSafety?.() !== true) return blocked('recovery');
-      if (scope.BigGainsProgramPortability?.updateSafety?.() !== true) return blocked('program');
-      if (scope.BigGainsAppearance?.updateSafety?.() !== true) return blocked('appearance');
-      if (scope.BigGainsControlledMigration?.status?.().busy) return blocked('recovery');
+      for (const [owner, reason] of [[scope.BigGainsManagedProfileRecovery, 'recovery'],
+        [scope.BigGainsProgramPortability, 'program'], [scope.BigGainsAppearance, 'appearance']]) {
+        const result = dependency(owner?.updateSafety?.(), reason);
+        if (result) return result;
+      }
+      const migration = scope.BigGainsControlledMigration?.status?.();
+      if (typeof migration?.busy !== 'boolean') return blocked('unknown');
+      if (migration.busy) return blocked('migration');
       // Inspect durable envelopes too: in-memory queues can ignore malformed records
       // or miss another window/profile's outstanding work. Fail closed, never repair.
-      for (let i = 0; i < localStorage.length; i += 1) {
-        const key = localStorage.key(i);
-        if (/^big-gains-(cloud-sync-queue-v1|program-domain-queue-v1)/.test(key)) {
+      const keys = Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i)).sort();
+      for (const key of keys) {
+        if (/^big-gains-(cloud-sync-queue-v1|program-domain-queue-v1)(?:-|$)/.test(key)) {
           const value = JSON.parse(localStorage.getItem(key));
-          if (value?.version !== 1 || !Array.isArray(value.pending) || value.pending.length) return blocked('queue');
+          if (value?.version !== 1 || !Array.isArray(value.pending)) return blocked('unknown');
+          if (value.pending.length) return blocked('queue');
         }
         if (key.startsWith('big-gains-appearance-v1-')) {
           const value = JSON.parse(localStorage.getItem(key));
-          if (!value || !Object.hasOwn(value, 'pending') || value.pending) return blocked('appearance');
+          const validAccent = item => item === null || Boolean(scope.BigGainsAppearanceModel?.normalize(item));
+          if (!value || !Object.hasOwn(value, 'pending') || !Object.hasOwn(value, 'accepted')
+              || !validAccent(value.accepted)
+              || (value.pending !== null && (typeof value.pending?.id !== 'string'
+                || scope.BigGainsAppearanceModel?.normalize(value.pending.value)?.version !== 1
+                || !validAccent(value.pending.base)))) return blocked('unknown');
+          if (value.pending) return blocked('appearance');
         }
       }
       return { safe: true, reason: null };
@@ -183,6 +200,8 @@
       setText('diagnosticWorkerVersion', value.workerRelease || (navigator.serviceWorker.controller ? 'Older worker / version unavailable' : 'Not controlled yet'));
       setText('diagnosticUpdateState', value.waiting ? `Update waiting${value.waitingRelease ? ` (${value.waitingRelease})` : ''}`
         : value.available ? 'Restart available' : value.error === 'check-unavailable' ? 'Check unavailable / offline' : 'No waiting update');
+      setText('diagnosticUpdateBlocker', value.applying ? 'Update applying'
+        : value.safety.safe ? 'Update safe' : `Update blocked: ${value.safety.reason}`);
       setText('diagnosticAppOrigin', location.origin + new URL('./', location.href).pathname);
     }
   });
