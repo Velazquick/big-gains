@@ -4,6 +4,18 @@ export async function verifyOperatorSupport({test,client,as,uuid}){
  const q=(sql,args=[])=>client.query(sql,args),rpc=async request=>(await q('select public.operator_query_v3($1) as r',[request])).rows[0].r;
  async function check(name,fn){await test(name,async()=>{await q('reset role');await q('begin');try{await fn();}finally{await q('rollback');}});}
  async function denied(fn){await q('savepoint denied');try{await assert.rejects(fn);}finally{await q('rollback to savepoint denied');}}
+ await check('resolution retry event UUID is idempotent, closes only its episode and preserves History',async()=>{
+  const conflict={id:uuid(9911),event_name:'conflict_detected',profile_client_id:'person-2',release:'v119-conflict-resolution-retry',platform:'ios',browser:'safari',mode:'standalone',surface:'program',category:'none',training_mode:'unknown',episode_id:uuid(9921)};
+  await q('reset role');const before=(await q('select id,payload from public.workouts order by id')).rows;
+  await as(2);await q('select public.record_product_event($1)',[conflict]);
+  await q('select public.record_product_event($1)',[{...conflict,id:uuid(9912),episode_id:uuid(9922)}]);
+  const resolved={...conflict,id:uuid(9913),event_name:'conflict_resolved'};
+  await q('select public.record_product_event($1)',[resolved]);await q('select public.record_product_event($1)',[resolved]);
+  await as(1);const r=await rpc({section:'reliability',signal:'conflicts'});
+  assert.equal(r.resolved_episodes,1);assert.equal(r.unresolved_episodes,1);
+  await q('reset role');assert.equal((await q('select count(*)::integer as n from private.product_events where id=$1',[resolved.id])).rows[0].n,1);
+  assert.deepEqual((await q('select id,payload from public.workouts order by id')).rows,before);
+ });
  const event=(id,extra={})=>({id:uuid(id),event_name:'stale_session_blocked',profile_client_id:'person-2',release:'v118-operator-supportability-v1',platform:'ios',browser:'safari',mode:'standalone',surface:'recovery',category:'none',training_mode:'unknown',episode_id:uuid(9700),support_sequence:String(id-9400),active_unfinished:'yes',stale:'yes',finish_permitted:'no',discard_permitted:'no',blocker:'recovery',reconciliation:'blocked',pending_sync:'0',conflict_open:'yes',program_state:'in_sync',parity_verified_at:'unknown',completion_observed:'none',...extra});
  const ingest=e=>q('select public.record_product_event($1)',[e]);
  await check('conflict projection upgrade preserves History, receipts and private permissions',async()=>{

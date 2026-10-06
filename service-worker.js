@@ -1,4 +1,4 @@
-importScripts('./asset-manifest.js?v=v118-operator-supportability-v1-config-925e766c1b907250', './service-worker-core.js');
+importScripts('./asset-manifest.js?v=v119-conflict-resolution-retry-config-925e766c1b907250', './service-worker-core.js');
 
 const runtime = BigGainsServiceWorkerCore.createRuntime({
   manifest: BIG_GAINS_ASSET_MANIFEST,
