@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
 import {randomUUID} from 'node:crypto';
+import {createClient} from '@supabase/supabase-js';
 
 const telemetry=await readFile('product-telemetry.js','utf8');
 const program=await readFile('program-portability.js','utf8');
@@ -23,9 +24,9 @@ function setup({tab=new Map(),receipts=new Map(),local=new Map(),now=Date.parse(
   __BIG_GAINS_CLOUD_CONFIG__:{programPortability:true,programPortabilityVersion:1},
   BIG_GAINS_ASSET_MANIFEST:{release:'v119-conflict-resolution-retry',coreAssets:[]},
   bigGainsAccounts:{runtime:{authUserId:'synthetic-user',storageNamespace:'synthetic',kind:'signed-in'},matchesCloudOwner:()=>true},
-  BigGainsSupabase:{configured:true,session:async()=>({user:{id:sessionActor}}),verifiedUser:async()=>({id:sessionActor}),
+  BigGainsSupabase:{configured:true,session:async()=>({user:{id:sessionActor},access_token:'synthetic-token'}),verifiedUser:async()=>({id:sessionActor}),
    readCloudAccount:async()=>({account:{id:'cloud-account'},profiles:[{id:'cloud-profile',client_id:'synthetic-profile',account_id:'cloud-account'}]}),
-   getClient:()=>({rpc:(_,{event})=>{attempts.push(event);return {abortSignal:async signal=>{
+   getClient:()=>({rpc:(_,{event})=>{attempts.push(event);return {setHeader(){return this;},abortSignal:async signal=>{
     activeRequests++;maxRequests=Math.max(maxRequests,activeRequests);
     try{if(delivery==='reject')throw Error('synthetic failure');
      if(delivery==='error')return {data:null,error:{message:'PRIVATE failure'},status:400};
@@ -121,6 +122,35 @@ test('actor, session and selected-profile changes cannot replay or retire anothe
  h.scope.bigGainsAccounts.runtime.authUserId='synthetic-user';h.sessionActor('other-actor');await h.retry();assert.equal(resolutions(h).length,1);
  h.sessionActor('synthetic-user');h.profile.id='other-profile';await h.retry();assert.equal(resolutions(h).length,1);
  h.profile.id='synthetic-profile';await h.retry();assert.deepEqual(resolutions(h).at(-1),event);assert.equal(cached(h).length,0);
+});
+test('repeated missing or mismatched sessions consume no receipt attempts or document budget',async()=>{
+ const h=setup();await h.start();h.sessionActor(null);await h.converge();
+ for(let n=0;n<10;n++)await h.retry();
+ h.sessionActor('other-actor');for(let n=0;n<10;n++)await h.retry();
+ assert.equal(resolutions(h).length,0);assert.equal(cached(h)[0].resolution.attempts,0);
+ h.sessionActor('synthetic-user');await h.retry();assert.equal(resolutions(h).length,1);assert.equal(cached(h).length,0);
+ for(let n=0;n<117;n++){h.advance(60001);h.scope.BigGainsTelemetry.emit('workout_started');await flush();}
+ assert.equal(h.attempts.length,120);
+});
+test('late session result after deadline cannot start a request or spend a receipt attempt',async()=>{
+ const h=setup();await h.start();let resolveSession;h.scope.BigGainsSupabase.session=()=>new Promise(r=>{resolveSession=r;});
+ await h.converge();await h.tick(4000);resolveSession({user:{id:'synthetic-user'},access_token:'synthetic-token'});await flush();
+ assert.equal(resolutions(h).length,0);assert.equal(cached(h)[0].resolution.attempts,0);assert.equal(h.runtime.updateSafety(),true);
+ h.scope.BigGainsSupabase.session=async()=>({user:{id:'synthetic-user'},access_token:'synthetic-token'});await h.retry();assert.equal(cached(h).length,0);
+});
+test('actual SDK request authorization stays bound to the session validated before a shared-client actor switch',async()=>{
+ const h=setup();await h.start();let sdkActor='synthetic-user',authReads=0;const submitted=[];
+ const client=createClient('https://synthetic.invalid','synthetic-publishable-key',{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},global:{fetch:async(_url,options)=>{
+  submitted.push({authorization:new Headers(options.headers).get('Authorization'),event:JSON.parse(options.body).event});
+  return new Response(null,{status:204});
+ }}});
+ client.auth.getSession=async()=>{authReads++;return {data:{session:{user:{id:sdkActor},access_token:sdkActor==='synthetic-user'?'synthetic-token-A':'synthetic-token-B'}},error:null};};
+ h.scope.BigGainsSupabase.session=async()=>{const result=await client.auth.getSession();sdkActor='other-actor';return result.data.session;};
+ h.scope.BigGainsSupabase.getClient=()=>client;
+ await h.converge();assert.ok(authReads>=2);assert.equal(submitted.length,1);
+ assert.equal(submitted[0].authorization,'Bearer synthetic-token-A');assert.equal(submitted[0].event.profile_client_id,'synthetic-profile');
+ assert.equal(cached(h).length,0);assert.ok(!h.tab.get(key).includes('synthetic-token'));
+ await client.auth.stopAutoRefresh();
 });
 test('identity transition while resolution request is in flight keeps pending entry',async()=>{
  const h=setup();await h.start();h.delivery('hold');await h.converge();h.scope.bigGainsAccounts.runtime.authUserId='other-actor';

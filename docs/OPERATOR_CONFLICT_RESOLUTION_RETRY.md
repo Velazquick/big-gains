@@ -27,11 +27,18 @@ resolution, with 5/10/20/40/80/160/300-second backoff. Attempts and next-eligibl
 time survive same-tab reload. Offline, hidden, pagehide, wrong actor/profile or
 full transport capacity defer delivery; they do not reset bounds. The existing
 two-in-flight and 120-attempts-per-document budgets also apply. Saturation before
-submission consumes no resolution attempt. Timeout remains four seconds.
+submission consumes no resolution attempt. Missing/mismatched sessions also
+consume no receipt attempt or document budget and defer the next identity check
+for one minute. A four-second deadline bounds session lookup plus RPC; a late
+session result cannot start a request after that deadline.
 
 Online, foreground, pageshow, startup, retry timers and ordinary telemetry-slot
 completion reconsider eligible delivery. Session identity is verified before RPC;
 actor/profile changes prevent another identity's receipt from being sent or retired.
+The single RPC's Authorization header is bound to that validated session, so a
+shared SDK session change cannot substitute another actor's token between
+validation and request dispatch. The token exists only transiently in that
+request; it is never retained in receipt metadata, storage or diagnostics.
 Automatic retries require the original profile to be selected. No account-wide
 or historical episode closure is performed.
 

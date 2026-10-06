@@ -5,7 +5,7 @@ async function setup(page){
  await page.goto('/privacy.html');await page.evaluate(()=>{
   window.PROFILE={id:'synthetic'};window.telemetryRows=[];window.telemetryAttempts=[];window.resolutionDelivery='ok';window.bigGainsAccounts={runtime:{authUserId:'synthetic'}};
   window.BIG_GAINS_ASSET_MANIFEST={release:'v115-operator-reliability-v2',coreAssets:['./app.js','./styles.css']};
-  window.BigGainsSupabase={configured:true,session:async()=>({user:{id:'synthetic'}}),getClient:()=>({rpc:(_,{event})=>({abortSignal:async()=>{
+  window.BigGainsSupabase={configured:true,session:async()=>({user:{id:'synthetic'},access_token:'synthetic-token'}),getClient:()=>({rpc:(_,{event})=>({setHeader(){return this;},abortSignal:async()=>{
    window.telemetryAttempts.push(event);
    if(event.event_name==='conflict_resolved'&&resolutionDelivery==='error')return {data:null,error:{message:'synthetic failure'},status:400};
    window.telemetryRows.push(event);return {data:null,error:null,status:200};

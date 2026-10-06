@@ -70,15 +70,26 @@
         const event={id:r.id,event_name:'conflict_resolved',profile_client_id:r.profile,release:r.release,
           platform:r.platform,browser:r.browser,mode:r.mode,surface:entry.channel,category:'none',
           training_mode:'unknown',episode_id:entry.id};
-        r.attempts++;r.nextAt=Math.min(r.at+resolutionAge,now+Math.min(300000,5000*2**(r.attempts-1)));saveEpisodes();
-        resolving.add(entry);inFlight++;sent++;
+        // Authentication can temporarily lag runtime identity. Defer checks for
+        // one minute without spending a receipt attempt or document budget.
+        r.nextAt=Math.min(r.at+resolutionAge,now+60000);saveEpisodes();
+        resolving.add(entry);inFlight++;
         void (async()=>{
           let timeout;
           try{
-            const session=await scope.BigGainsSupabase.session();
-            if(session?.user?.id!==actor||scope.bigGainsAccounts?.runtime?.authUserId!==actor||PROFILE.id!==r.profile)return;
-            const abort=new AbortController();timeout=setTimeout(()=>abort.abort(),4000);
-            const result=await scope.BigGainsSupabase.getClient().rpc('record_product_event',{event}).abortSignal(abort.signal);
+            const abort=new AbortController();
+            const deadline=new Promise((_,reject)=>{timeout=setTimeout(()=>{abort.abort();reject(new Error('Telemetry attempt timed out'));},4000);});
+            const session=await Promise.race([scope.BigGainsSupabase.session(),deadline]);
+            if(session?.user?.id!==actor||typeof session.access_token!=='string'||!session.access_token
+              ||scope.bigGainsAccounts?.runtime?.authUserId!==actor||PROFILE.id!==r.profile
+              ||stopped||scope.navigator?.onLine===false||scope.document?.visibilityState==='hidden'
+              ||sent>=120||Date.now()-r.at>=resolutionAge)return;
+            r.attempts++;r.nextAt=Math.min(r.at+resolutionAge,Date.now()+Math.min(300000,5000*2**(r.attempts-1)));saveEpisodes();sent++;
+            // Bind this request to the validated actor: the shared SDK may read
+            // a different session again while asynchronously preparing headers.
+            // The token is transient and never belongs to the receipt or cache.
+            const result=await Promise.race([scope.BigGainsSupabase.getClient().rpc('record_product_event',{event})
+              .setHeader('Authorization','Bearer '+session.access_token).abortSignal(abort.signal),deadline]);
             // The void RPC acknowledges insertion or idempotent duplicate only
             // through an explicit successful HTTP response without an RPC error.
             if(result?.error===null&&Number.isInteger(result.status)&&result.status>=200&&result.status<300
