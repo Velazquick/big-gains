@@ -1,5 +1,28 @@
 # Operator Supportability v1 — v118
 
+## Conflict projection correction
+
+Only `conflict_detected`, `conflict_presented`, and `conflict_resolved` receipts may
+contribute to conflict episodes, counts, badges, or conflict attention. Support
+observations remain independently available through the support views and v3
+queries. Completed History is untouched.
+
+The additive `operator_conflict_episode_filter` migration replaces only
+`private.operator_episodes`, retaining its columns, grouping, 90-day window and
+private permissions. It preserves all telemetry receipts and existing dependent
+queries. Deploying the migration is a separate reviewed operation; a static PR
+merge or client rollback does not apply or undo this database correction.
+
+Rollback, if required, is a new reviewed migration restoring the prior view
+definition; it reintroduces the known reporting contamination. No deletion or
+training-data recovery is required. View replacement may briefly wait for a
+database lock, so hosted verification should compare anonymous aggregate counts
+and confirm permissions after application.
+
+The receipt-order blocked-to-ready aggregation and initial telemetry-slot
+saturation findings are independent P2 issues. This correction changes neither
+support recovery ordering nor client dispatch/delivery.
+
 Starting main: `162894bbfe23afdb91982b663dd113fc8aa02426`. Clean clone, unchanged remote verified before implementation and before candidate preparation. Production baseline: `v117-pwa-update-safety-gate/config-dfadb48839db90f2`. Hosted migrations include Operator v1 `20260914161625` and Operator v2 `20260915235536`; repository migration filenames differ from hosted timestamps. Hosted function definition digests were read-only inspected: ingest `ec03cfbe81b8ae57dfd394ad92f2bf12`, v2 query `e95d18f25e8f0d2e8d676a58ad69d16c`. Standby PRs #106/#109/#111 are unrelated and untouched. Existing protected Browser tests → main-push Pages workflow remains the deployment path.
 
 ## Product behavior and observation boundary

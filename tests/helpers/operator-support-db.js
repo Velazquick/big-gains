@@ -1,10 +1,87 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 export async function verifyOperatorSupport({test,client,as,uuid}){
  const q=(sql,args=[])=>client.query(sql,args),rpc=async request=>(await q('select public.operator_query_v3($1) as r',[request])).rows[0].r;
  async function check(name,fn){await test(name,async()=>{await q('reset role');await q('begin');try{await fn();}finally{await q('rollback');}});}
  async function denied(fn){await q('savepoint denied');try{await assert.rejects(fn);}finally{await q('rollback to savepoint denied');}}
  const event=(id,extra={})=>({id:uuid(id),event_name:'stale_session_blocked',profile_client_id:'person-2',release:'v118-operator-supportability-v1',platform:'ios',browser:'safari',mode:'standalone',surface:'recovery',category:'none',training_mode:'unknown',episode_id:uuid(9700),support_sequence:String(id-9400),active_unfinished:'yes',stale:'yes',finish_permitted:'no',discard_permitted:'no',blocker:'recovery',reconciliation:'blocked',pending_sync:'0',conflict_open:'yes',program_state:'in_sync',parity_verified_at:'unknown',completion_observed:'none',...extra});
  const ingest=e=>q('select public.record_product_event($1)',[e]);
+ await check('conflict projection upgrade preserves History, receipts and private permissions',async()=>{
+  const original=await readFile('supabase/migrations/20260915224421_operator_reliability_v2.sql','utf8');
+  const start=original.indexOf('create view private.operator_episodes as');
+  const end=original.indexOf(';',start)+1;
+  await q(original.slice(start,end).replace('create view','create or replace view'));
+  await as(2);await ingest(event(9591,{event_name:'support_state_observed',active_unfinished:'no',stale:'no',blocker:'none'}));
+  await as(1);assert.equal((await rpc({section:'overview'})).unresolved_episodes,1);
+  await q('reset role');
+  const snapshot=async()=>(await q("select (select jsonb_agg(to_jsonb(w) order by id) from public.workouts w) as history,(select jsonb_agg(to_jsonb(e) order by id) from private.product_events e) as receipts,(select relacl from pg_class where oid='private.operator_episodes'::regclass) as permissions")).rows[0];
+  const before=await snapshot();
+  await q(await readFile('supabase/migrations/20261006014455_operator_conflict_episode_filter.sql','utf8'));
+  assert.deepEqual(await snapshot(),before);
+  await as(1);assert.equal((await rpc({section:'overview'})).unresolved_episodes,0);
+  assert.equal((await rpc({section:'attention'})).total,0);
+  await as(2);await denied(()=>q('select * from private.operator_episodes'));
+ });
+ await check('v3 support-only receipts stay available without conflict counts or attention',async()=>{
+  await as(2);
+  await ingest(event(9601,{event_name:'support_state_observed',active_unfinished:'no',stale:'no',blocker:'none',conflict_open:'no',reconciliation:'idle'}));
+  await as(1);
+  const overview=await rpc({section:'overview'}),users=await rpc({section:'users'}),detail=await rpc({section:'detail',user_id:uuid(2)}),reliability=await rpc({section:'reliability'});
+  assert.equal(overview.unresolved_episode_people,0);assert.equal(overview.unresolved_episodes,0);
+  assert.equal(users.users.find(p=>p.user_id===uuid(2)).open_episodes,0);
+  assert.equal((await rpc({section:'users',health:'conflicts'})).total,0);
+  assert.equal(detail.open_episodes,0);assert.deepEqual(detail.episodes,[]);
+  assert.equal(detail.support[0].active_unfinished,'no');assert.equal(detail.support[0].status,'No current issue observed');
+  assert.equal(detail.events.filter(e=>e.support_sequence).length,1);
+  assert.equal(reliability.episode_total,0);assert.equal(reliability.episode_people,0);assert.equal(reliability.unresolved_episodes,0);
+  assert.equal((await rpc({section:'attention'})).total,0);
+ });
+ await check('v3 legitimate support blocking and resolution never become conflict episodes',async()=>{
+  await as(2);await ingest(event(9611));
+  await q('reset role');await q("update private.product_events set received_at=now()-interval '20 minutes' where id=$1",[uuid(9611)]);
+  await as(1);let attention=await rpc({section:'attention'});
+  assert.equal(attention.total,1);assert.equal(attention.users[0].blocked_attention,true);assert.equal(attention.users[0].conflict_attention,false);
+  assert.equal((await rpc({section:'detail',user_id:uuid(2)})).support[0].status,'Needs attention');
+  await as(2);
+  await ingest(event(9612,{event_name:'stale_session_presented'}));
+  await ingest(event(9613,{event_name:'stale_session_ready',finish_permitted:'yes',discard_permitted:'yes',blocker:'none',conflict_open:'no'}));
+  await ingest(event(9614,{event_name:'stale_session_resumed',finish_permitted:'yes',discard_permitted:'yes',blocker:'none',conflict_open:'no'}));
+  await ingest(event(9615,{event_name:'stale_session_finished',active_unfinished:'no',stale:'no',blocker:'none',conflict_open:'no',completion_observed:'once'}));
+  await ingest(event(9616,{episode_id:uuid(9701),event_name:'stale_session_discarded',active_unfinished:'no',stale:'no',blocker:'none',conflict_open:'no'}));
+  await as(1);const d=await rpc({section:'detail',user_id:uuid(2)}),r=await rpc({section:'reliability'});
+  assert.equal(d.open_episodes,0);assert.deepEqual(d.episodes,[]);assert.equal(d.events.filter(e=>e.support_sequence).length,6);
+  assert.equal(d.support_completions.length,2);assert.equal(r.episode_total,0);assert.equal(r.support_reliability.finished,1);
+  attention=await rpc({section:'attention'});assert.equal(attention.total,0);
+ });
+ await check('v3 genuine conflict lifecycle and legacy reporting survive adjacent support receipts',async()=>{
+  const conflict={id:uuid(9621),event_name:'conflict_detected',profile_client_id:'person-2',release:'v115-operator-reliability-v2',platform:'ios',browser:'safari',mode:'standalone',surface:'recovery',category:'none',episode_id:uuid(9700)};
+  await as(2);await ingest(conflict);await ingest({...conflict,id:uuid(9622),event_name:'conflict_presented'});
+  await ingest(event(9623,{event_name:'support_state_observed',active_unfinished:'no',stale:'no',blocker:'none',conflict_open:'no'}));
+  await as(1);let r=await rpc({section:'reliability'}),d=await rpc({section:'detail',user_id:uuid(2)});
+  assert.equal(r.episode_total,1);assert.equal(r.detected_episodes,1);assert.equal(r.presentations,1);assert.equal(r.unresolved_episodes,1);
+  assert.deepEqual(d.episodes[0].releases,['v115-operator-reliability-v2']);assert.equal(d.open_episodes,1);
+  assert.equal((await rpc({section:'overview'})).unresolved_episode_people,1);
+  assert.equal((await rpc({section:'users',health:'conflicts'})).total,1);
+  assert.equal((await rpc({section:'attention'})).users[0].conflict_attention,true);
+  await as(2);await ingest({...conflict,id:uuid(9624),event_name:'conflict_resolved'});
+  const legacy={...conflict,id:uuid(9625),release:'v114-operator-console-v1',event_name:'conflict_presented'};delete legacy.episode_id;await ingest(legacy);
+  await as(1);r=await rpc({section:'reliability'});
+  assert.equal(r.episode_total,1);assert.equal(r.resolved_episodes,1);assert.equal(r.unresolved_episodes,0);
+  assert.equal(r.legacy_conflict_presentations,1);assert.equal(r.legacy_conflict_people,1);
+  assert.equal((await rpc({section:'attention'})).total,0);
+  assert.equal((await rpc({section:'users',health:'conflicts'})).total,0);
+ });
+ await check('v3 conflict pagination excludes support receipts across pages',async()=>{
+  await as(2);
+  for(let n=0;n<30;n++)await ingest({id:uuid(9650+n),event_name:'conflict_detected',profile_client_id:'person-2',release:'v115-operator-reliability-v2',platform:'ios',browser:'safari',mode:'standalone',surface:'program',category:'none',episode_id:uuid(9900+n)});
+  await ingest(event(9681,{event_name:'support_state_observed',active_unfinished:'no',stale:'no',blocker:'none'}));
+  await q('reset role');await q("update private.product_events set received_at=now()-make_interval(secs=>right(id::text,12)::integer-9600) where id=any($1::uuid[])",[Array.from({length:30},(_,n)=>uuid(9650+n))]);
+  await as(1);const first=await rpc({section:'reliability',signal:'conflicts',page:0}),second=await rpc({section:'reliability',signal:'conflicts',page:1});
+  assert.equal(first.episode_total,30);assert.equal(second.episode_total,30);assert.equal(first.episodes.length,25);assert.equal(second.episodes.length,5);
+  assert.equal(new Set([...first.episodes,...second.episodes].map(e=>e.episode_id)).size,30);
+  assert.equal((await rpc({section:'reliability',signal:'conflicts',platform:'windows'})).episode_total,0);
+  assert.equal((await rpc({section:'users',health:'conflicts',page:1})).users.length,0);
+ });
  for(const n of [null,2,3,4])await check(`support owner-only reads reject ${n}`,async()=>{await as(n,n===null?'anon':'authenticated');for(const section of ['detail','reliability','attention'])await denied(()=>rpc({section,user_id:uuid(2)}));for(const table of ['private.operator_support_latest','private.operator_support_episodes','private.operator_support_people'])await denied(()=>q(`select * from ${table}`));});
  await check('support missing/expired coverage remains unknown',async()=>{
   await as(1);let r=await rpc({section:'detail',user_id:uuid(2)});assert.equal(r.support[0].finish_permitted,'unknown');assert.equal(r.support[0].status,'Coverage limited');
