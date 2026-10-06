@@ -9,7 +9,7 @@ export function assertTelemetryRequest(request) {
   expect(JSON.stringify(event).length).toBeLessThanOrEqual(event.support_sequence?2048:1024);
   expect(event.id).toMatch(/^[0-9a-f-]{36}$/i);
   expect(['support_state_observed','stale_session_presented','stale_session_blocked','stale_session_ready','app_open','workout_started','workout_completed','program_adopted','exercise_swapped','stale_session_recovery_shown','stale_session_resumed','stale_session_finished','stale_session_discarded','recovery_required','conflict_detected','conflict_presented','conflict_resolved','app_error']).toContain(event.event_name);
-  expect(event.release).toBe('v118-operator-supportability-v1');
+  expect(event.release).toBe('v119-conflict-resolution-retry');
   expect(['ios','android','windows','mac','linux','other']).toContain(event.platform);
   expect(['edge','firefox','chrome','safari','other']).toContain(event.browser);
   expect(['standalone','browser']).toContain(event.mode);
