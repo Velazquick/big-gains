@@ -26,18 +26,94 @@
   }
   const seen = new Map();
   const episodeKey='big-gains-operator-episodes-v2';
+  const episodeAge=90*86400000, resolutionAge=86400000, resolutionAttempts=8;
+  const uuid=value=>typeof value==='string'&&/^[a-f0-9-]{36}$/i.test(value);
+  const profileId=value=>typeof value==='string'&&/^[a-z0-9-]{1,100}$/i.test(value);
+  function retainedResolution(value,entry){
+    if(!value||!uuid(value.id)||!profileId(value.profile)||!entry.owner.endsWith(':'+value.profile)
+      ||typeof value.release!=='string'||value.release.length>80||!/^v[0-9]+-[a-z0-9-]+$/.test(value.release)
+      ||!['ios','android','windows','mac','linux','other'].includes(value.platform)
+      ||!['edge','firefox','chrome','safari','other'].includes(value.browser)||!['standalone','browser'].includes(value.mode)
+      ||!Number.isFinite(value.at)||value.at> Date.now()||value.at<entry.at
+      ||!Number.isInteger(value.attempts)||value.attempts<0||value.attempts>resolutionAttempts
+      ||!Number.isFinite(value.nextAt)||value.nextAt<value.at||value.nextAt>value.at+resolutionAge)return null;
+    return {id:value.id,profile:value.profile,release:value.release,platform:value.platform,browser:value.browser,
+      mode:value.mode,at:value.at,attempts:value.attempts,nextAt:value.nextAt};
+  }
   let episodeCache=[];
-  try { const value=JSON.parse(scope.sessionStorage?.getItem(episodeKey)||'[]'); if(Array.isArray(value))episodeCache=value.slice(-16).filter(v=>v&&typeof v.owner==='string'&&v.owner.length<250&&['program','recovery'].includes(v.channel)&&/^[a-f0-9-]{36}$/i.test(v.id)&&Number.isFinite(v.at)&&Date.now()-v.at<90*86400000); }catch{}
+  try { const value=JSON.parse(scope.sessionStorage?.getItem(episodeKey)||'[]'); if(Array.isArray(value))episodeCache=value.slice(-16).filter(v=>v&&typeof v.owner==='string'&&v.owner.length<250&&['program','recovery'].includes(v.channel)&&uuid(v.id)&&Number.isFinite(v.at)&&v.at<=Date.now()&&Date.now()-v.at<episodeAge).map(v=>{
+    const entry={owner:v.owner,channel:v.channel,id:v.id,at:v.at,presented:Number.isFinite(v.presented)?v.presented:0};
+    if(v.resolution){const resolution=retainedResolution(v.resolution,entry);if(resolution)entry.resolution=resolution;}
+    return entry;
+  }); }catch{}
   function episodeOwner(profile){return [scope.bigGainsAccounts?.runtime?.authUserId,profile].filter(Boolean).join(':');}
   function saveEpisodes(){try{scope.sessionStorage?.setItem(episodeKey,JSON.stringify(episodeCache.slice(-16)));}catch{}}
+  const resolving=new Set();let resolutionTimer=null;
+  function pauseResolutions(){if(resolutionTimer!==null)clearTimeout(resolutionTimer);resolutionTimer=null;}
+  // A tiny tab-local receipt retry, never a training/sync queue. The event UUID,
+  // owner, profile, release and environment stay fixed across every attempt.
+  function retryResolutions(){
+    try{
+      pauseResolutions();const now=Date.now();
+      episodeCache=episodeCache.filter(e=>now-e.at<episodeAge);saveEpisodes();
+      if(stopped||scope.navigator?.onLine===false||scope.document?.visibilityState==='hidden'
+        ||typeof PROFILE==='undefined'||!scope.BigGainsSupabase?.configured)return;
+      let next=Infinity;
+      for(const entry of episodeCache){
+        const r=entry.resolution;
+        if(!r||resolving.has(entry)||entry.owner!==episodeOwner(r.profile)||PROFILE.id!==r.profile
+          ||now-r.at>=resolutionAge||r.attempts>=resolutionAttempts||sent>=120)continue;
+        if(r.nextAt>now){next=Math.min(next,r.nextAt);continue;}
+        // Ordinary telemetry completion re-enters this pump when slots free up.
+        if(inFlight>=2)continue;
+        const actor=scope.bigGainsAccounts.runtime.authUserId;
+        const event={id:r.id,event_name:'conflict_resolved',profile_client_id:r.profile,release:r.release,
+          platform:r.platform,browser:r.browser,mode:r.mode,surface:entry.channel,category:'none',
+          training_mode:'unknown',episode_id:entry.id};
+        // Authentication can temporarily lag runtime identity. Defer checks for
+        // one minute without spending a receipt attempt or document budget.
+        r.nextAt=Math.min(r.at+resolutionAge,now+60000);saveEpisodes();
+        resolving.add(entry);inFlight++;
+        void (async()=>{
+          let timeout;
+          try{
+            const abort=new AbortController();
+            const deadline=new Promise((_,reject)=>{timeout=setTimeout(()=>{abort.abort();reject(new Error('Telemetry attempt timed out'));},4000);});
+            const session=await Promise.race([scope.BigGainsSupabase.session(),deadline]);
+            if(session?.user?.id!==actor||typeof session.access_token!=='string'||!session.access_token
+              ||scope.bigGainsAccounts?.runtime?.authUserId!==actor||PROFILE.id!==r.profile
+              ||stopped||scope.navigator?.onLine===false||scope.document?.visibilityState==='hidden'
+              ||sent>=120||Date.now()-r.at>=resolutionAge)return;
+            r.attempts++;r.nextAt=Math.min(r.at+resolutionAge,Date.now()+Math.min(300000,5000*2**(r.attempts-1)));saveEpisodes();sent++;
+            // Bind this request to the validated actor: the shared SDK may read
+            // a different session again while asynchronously preparing headers.
+            // The token is transient and never belongs to the receipt or cache.
+            const result=await Promise.race([scope.BigGainsSupabase.getClient().rpc('record_product_event',{event})
+              .setHeader('Authorization','Bearer '+session.access_token).abortSignal(abort.signal),deadline]);
+            // The void RPC acknowledges insertion or idempotent duplicate only
+            // through an explicit successful HTTP response without an RPC error.
+            if(result?.error===null&&Number.isInteger(result.status)&&result.status>=200&&result.status<300
+              &&scope.bigGainsAccounts?.runtime?.authUserId===actor&&PROFILE.id===r.profile){
+              episodeCache=episodeCache.filter(e=>e!==entry);saveEpisodes();
+            }
+          }catch{}finally{clearTimeout(timeout);resolving.delete(entry);inFlight--;retryResolutions();}
+        })();
+      }
+      if(Number.isFinite(next))resolutionTimer=setTimeout(()=>{resolutionTimer=null;retryResolutions();},Math.max(1,next-now));
+    }catch{}
+  }
   // One continuous unresolved interval per tab/profile/channel; no payload fingerprints.
   // State changes such as CHECKING never close an episode. Storage is telemetry-only.
   function conflict(channel, {presented=false,verifiedResolved=false,profileId=null}={}) {
     try {
       if(!['program','recovery'].includes(channel) || !scope.bigGainsAccounts?.runtime?.authUserId || typeof PROFILE==='undefined')return;
       const targetProfile=profileId || PROFILE.id;if(!/^[a-z0-9-]{1,100}$/i.test(targetProfile))return;
-      const owner=episodeOwner(targetProfile);let entry=episodeCache.find(v=>v.owner===owner&&v.channel===channel);
-      if(verifiedResolved){if(!entry)return;emit('conflict_resolved',{surface:channel,episode_id:entry.id,profile_client_id:targetProfile});episodeCache=episodeCache.filter(v=>v!==entry);saveEpisodes();return;}
+      const owner=episodeOwner(targetProfile);let entry=episodeCache.find(v=>v.owner===owner&&v.channel===channel&&!v.resolution);
+      if(verifiedResolved){
+        if(entry){const now=Date.now();entry.resolution={id:scope.crypto.randomUUID(),profile:targetProfile,
+          release:scope.BIG_GAINS_ASSET_MANIFEST?.release,...environment(),at:now,attempts:0,nextAt:now};saveEpisodes();}
+        retryResolutions();return;
+      }
       if(!entry){entry={owner,channel,id:scope.crypto.randomUUID(),at:Date.now(),presented:0};episodeCache.push(entry);episodeCache=episodeCache.slice(-16);saveEpisodes();emit('conflict_detected',{surface:channel,episode_id:entry.id,profile_client_id:targetProfile});}
       // Sample visible presentations at most once per minute, across reloads too.
       if(presented && Date.now()-(entry.presented||0)>=60000){entry.presented=Date.now();saveEpisodes();emit('conflict_presented',{surface:channel,episode_id:entry.id,profile_client_id:targetProfile});}
@@ -128,7 +204,7 @@
           if(session?.user?.id!==actor || scope.bigGainsAccounts?.runtime?.authUserId!==actor) return;
           const abort=new AbortController();timeout=setTimeout(()=>abort.abort(),4000);
           await scope.BigGainsSupabase.getClient().rpc('record_product_event',{event}).abortSignal(abort.signal);
-        } catch {} finally {clearTimeout(timeout);inFlight--;}
+        } catch {} finally {clearTimeout(timeout);inFlight--;retryResolutions();}
       })();
       return true;
     } catch {}
@@ -136,6 +212,7 @@
   function opened() {
     try {
       if(stopped || scope.document?.visibilityState==='hidden') return;
+      retryResolutions();
       const actor=scope.bigGainsAccounts?.runtime?.authUserId;
       if(!actor) return;
       reportAssets();
@@ -163,7 +240,8 @@
     if(scope.document.documentElement.dataset.runtimeState==='recovery') emit('recovery_required',{surface:'recovery'});
     else opened();
   });
-  scope.addEventListener?.('pagehide',()=>{stopped=true;});
+  scope.addEventListener?.('online',retryResolutions);
+  scope.addEventListener?.('pagehide',()=>{stopped=true;pauseResolutions();});
   scope.addEventListener?.('pageshow',()=>{stopped=false;opened();});
   const reportedAssets=new Set();
   function reportAssets(){

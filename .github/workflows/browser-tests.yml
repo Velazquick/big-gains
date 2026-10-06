@@ -93,7 +93,7 @@ jobs:
         env:
           PGPASSWORD: synthetic-appearance-ci
           OPERATOR_TEST_PG_PORT: '5432'
-        run: node --test tests/operator-db.test.mjs tests/product-telemetry.test.mjs tests/public-telemetry.test.mjs
+        run: node --test tests/operator-db.test.mjs tests/product-telemetry.test.mjs tests/conflict-resolution-retry.test.mjs tests/public-telemetry.test.mjs
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
