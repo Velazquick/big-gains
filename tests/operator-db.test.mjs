@@ -4,6 +4,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import pg from 'pg';
 import {verifyOperatorSupport} from './helpers/operator-support-db.js';
 import {verifyOperatorV2} from './helpers/operator-v2-db.js';
+import {verifyActiveSessionIdentity} from './helpers/active-session-identity-db.js';
 
 // This harness creates a fresh database. It refuses remote hosts.
 const port = Number(process.env.OPERATOR_TEST_PG_PORT || 55432);
@@ -28,7 +29,12 @@ test('Operator database security and analytics contract on disposable PostgreSQL
       create function public.rls_auto_enable() returns event_trigger language plpgsql as $$begin return; end$$;
     `);
     const paths = (await readdir('supabase/migrations')).filter(p=>p.endsWith('.sql')).sort();
-    for (const path of paths.filter(p=>!p.includes('operator_'))) await client.query(await readFile(`supabase/migrations/${path}`,'utf8'));
+    for (const path of paths.filter(p=>!p.includes('operator_'))) {
+      const migration = await readFile(`supabase/migrations/${path}`,'utf8');
+      if (path.includes('active_session_identity_constraint')) await t.test('tombstoned session permits next identity without altering data or authorization',
+        () => verifyActiveSessionIdentity({client,migration,uuid}));
+      await client.query(migration);
+    }
     const policiesBefore = (await client.query("select * from pg_policies where schemaname='public' order by tablename,policyname")).rows;
     for (const path of paths.filter(p=>p.includes('operator_'))) await client.query(await readFile(`supabase/migrations/${path}`,'utf8'));
     await t.test('existing RLS policies unchanged',async()=>assert.deepEqual((await client.query("select * from pg_policies where schemaname='public' order by tablename,policyname")).rows,policiesBefore));

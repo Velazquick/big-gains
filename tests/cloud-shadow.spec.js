@@ -13,6 +13,32 @@ async function openBlank(page) {
   await openApp(page);
 }
 
+test('retained tombstoned session permits recovery; two live sessions still fail closed',async({page})=>{
+  await openBlank(page);
+  const result=await page.evaluate(async({accountId,profiles})=>{
+    const base=JSON.parse(localStorage.getItem('big-gains-v2'));
+    const rowsByTable=Object.fromEntries(BigGainsCloudShadow.tables.map(table=>[table,[]]));
+    for(const id of ['old','current']){
+      const copy={...base,activeWorkout:{id,type:'Push',startedAt:'2026-10-08T12:00:00.000Z',exercises:[]}};
+      for(const record of await BigGainsCloudShadow.localRecords('jorge',copy)){
+        if(id==='old'&&record.table!=='active_sessions')continue;
+        rowsByTable[record.table].push({id:`${record.table}-${record.clientId}`,account_id:accountId,profile_id:profiles.jorge.id,
+          client_id:record.clientId,idempotency_key:`insert-${record.clientId}`,version:1,updated_at:'2026-10-08T12:00:00.000Z',payload:BigGainsCloudShadow.envelopeFor(record)});
+      }
+    }
+    const tombstone={id:'old-delete',account_id:accountId,profile_id:profiles.jorge.id,entity_type:'active_sessions',entity_id:'old',
+      idempotency_key:'old-delete',version:2,deleted_at:'2026-10-08T13:00:00.000Z',updated_at:'2026-10-08T13:00:00.000Z'};
+    const resolved=await BigGainsCloudShadow.reconstructCloud({rowsByTable,tombstones:[tombstone],profiles,accountId});
+    const recovered=await BigGainsCloudShadow.schemaV5FromCloud({cloud:resolved,profileClientId:'jorge'});
+    const ambiguous=await BigGainsCloudShadow.reconstructCloud({rowsByTable,tombstones:[],profiles,accountId});
+    let refusal=null;
+    try{await BigGainsCloudShadow.schemaV5FromCloud({cloud:ambiguous,profileClientId:'jorge'});}catch(error){refusal=error.code;}
+    return {recoveredId:recovered.state?.activeWorkout?.id||recovered.activeWorkout?.id,refusal};
+  },{accountId,profiles});
+  expect(result.recoveredId).toBe('current');
+  expect(result.refusal).toBe('fresh-recovery-incomplete-cloud-state');
+});
+
 test('migration envelopes reconstruct into equal local/cloud shadow checksums without derived PR data', async ({ page }) => {
   await openBlank(page);
   const result = await page.evaluate(async ({ accountId, profiles }) => {

@@ -6,6 +6,64 @@ import {readFileSync} from 'node:fs';
 import {createSyncSafetyFixture} from './helpers/sync-safety.mjs';
 const healthySync={pending:0,busy:false,comparing:false,capturePending:0,reconciliationInFlight:false};
 
+test('next session queue drains after physical singleton correction and stale Finish preserves sets',async({page})=>{
+  await seed(page,{age:24});
+  const before=await jorgeState(page);
+  await page.evaluate(async()=>{
+    const original=BigGainsCloudSync;
+    const accountId='84a00000-0000-0000-0000-000000000001',profileId='84b00000-0000-0000-0000-000000000001';
+    const owner={account:{id:accountId},profiles:{jorge:{id:profileId}}};
+    const old={...structuredClone(state),activeWorkout:{...structuredClone(active),id:'previous-session'}};
+    const record=(await BigGainsCloudShadow.localRecords('jorge',old)).find(r=>r.table==='active_sessions');
+    const oldRow={id:'retained-source',account_id:accountId,profile_id:profileId,client_id:record.clientId,
+      idempotency_key:'old-operation',version:1,updated_at:'2026-10-08T12:00:00.000Z',payload:BigGainsCloudShadow.envelopeFor(record)};
+    const oldTombstone={id:'retained-tombstone',account_id:accountId,profile_id:profileId,entity_type:'active_sessions',
+      entity_id:record.clientId,idempotency_key:'old-delete',version:2,deleted_at:'2026-10-08T13:00:00.000Z',updated_at:'2026-10-08T13:00:00.000Z'};
+    const rows={active_sessions:[oldRow],tombstones:[oldTombstone]};
+    const storage=new Map(),queue=BigGainsCloud.createDurableQueue({key:'synthetic-session-queue',storage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)}});
+    const current=(await BigGainsCloudShadow.localRecords('jorge',state)).find(r=>r.table==='active_sessions');
+    const first=BigGainsCloud.createOperation({owner:{accountId,profileId},entityType:'active_sessions',entityId:current.clientId,
+      mutation:'upsert',version:1,updatedAt:'2026-10-09T12:00:00.000Z',payload:BigGainsCloudShadow.envelopeFor(current),payloadFingerprint:current.fingerprint});
+    queue.enqueue(first);
+    // Replay actual cloud transport and queue semantics. The database harness
+    // independently verifies the real 23505 before/after migration and RLS.
+    window.sessionSingleton=true;
+    const client={from(table){
+      const filters=[];let insert=null;
+      const query={select(){return query;},eq(k,v){filters.push([k,v]);return query;},insert(v){insert=v;return query;},
+        async maybeSingle(){return {data:(rows[table]||[]).find(r=>filters.every(([k,v])=>r[k]===v))||null,error:null};},
+        async single(){
+          if(table==='active_sessions'&&sessionSingleton&&rows[table].some(r=>r.account_id===insert.account_id&&r.profile_id===insert.profile_id))
+            return {data:null,error:{code:'23505',message:'active_sessions_account_id_profile_id_key'}};
+          const value={id:'new-source',...insert};(rows[table]||= []).push(value);return {data:value,error:null};
+        }};return query;
+    }};
+    const runtime=original.createSyncRuntime({durableQueue:queue,transport:original.createProductionTransport({client,owner}),isOnline:()=>true});
+    window.sessionProof={runtime,queue,rows,oldRow:structuredClone(oldRow),oldTombstone:structuredClone(oldTombstone),first};
+    window.BigGainsCloudSync={...original,status:()=>({pending:queue.pending().length,busy:false,comparing:false,capturePending:0,reconciliationInFlight:false})};
+    const result=await runtime.flush();
+    if(result.failed!==1||result.pending!==1)throw Error('Expected physical singleton to block the new session');
+    renderStaleRecovery();
+  });
+  await expect(page.locator('#staleWorkoutFinish')).toBeDisabled();
+  await page.locator('#staleWorkoutResume').click();
+  expect((await jorgeState(page)).activeWorkout).toEqual(before.activeWorkout);
+  await page.evaluate(async()=>{
+    sessionSingleton=false;
+    window.sessionDrainResult=await sessionProof.runtime.flush();
+  });
+  await expect(page.locator('#finishWorkout')).toBeEnabled();
+  expect(await page.evaluate(()=>sessionDrainResult)).toMatchObject({ok:true,sent:1,pending:0});
+  expect(await page.evaluate(()=>sessionProof.rows.active_sessions[0])).toEqual(await page.evaluate(()=>sessionProof.oldRow));
+  expect(await page.evaluate(()=>sessionProof.rows.tombstones[0])).toEqual(await page.evaluate(()=>sessionProof.oldTombstone));
+  expect(await page.evaluate(()=>sessionProof.queue.acknowledgement(sessionProof.first.idempotencyKey))).not.toBeNull();
+  await page.locator('#finishWorkout').click();
+  const after=await jorgeState(page);
+  expect(after.activeWorkout).toBeNull();expect(after.workouts).toHaveLength(1);
+  expect(after.workouts[0].exercises[0].sets[0]).toEqual(before.activeWorkout.exercises[0].sets[0]);
+  expect(await page.evaluate(()=>workoutSessionController.complete())).toBe(false);
+});
+
 for(const age of [0,24,72])test(`healthy Finish at ${age} hours preserves completed data exactly once`,async({page})=>{
   await seed(page,{age});
   const before=await jorgeState(page);
