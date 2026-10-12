@@ -153,7 +153,7 @@
               <p>${escapeHtml(exercise.equipment)}${inputFields.find(field => field.name === 'weight')?.label ? ` · ${escapeHtml(inputFields.find(field => field.name === 'weight').label)}` : ''} · ${escapeHtml(summary.complete ? `${summary.completed} of ${summary.total} complete` : summary.progress)}</p>
             </div>
             <div class="exercise-head-actions">
-              <button type="button" class="swap-exercise ghost compact" data-swap-exercise="${exerciseIndex}" aria-label="Swap ${escapeHtml(exercise.name)}" title="Swap exercise">⇄</button>
+              <button type="button" class="swap-exercise ghost compact" data-swap-exercise="${exerciseIndex}" aria-label="Swap ${escapeHtml(exercise.name)}" title="Swap exercise">Swap</button>
                 <button type="button" class="exercise-toggle" data-toggle-exercise="${exerciseIndex}" aria-expanded="${!collapsed}" aria-controls="exercise-body-${exerciseIndex}" aria-label="${collapsed ? 'Expand' : 'Collapse'} ${escapeHtml(exercise.name)}"><span class="exercise-toggle-chevron" aria-hidden="true">⌄</span></button>
             </div>
           </div>
@@ -161,7 +161,7 @@
           <div class="active-exercise-body" id="exercise-body-${exerciseIndex}">
             ${guidanceMarkupFor(exercise)}
             <div class="exercise-context"><span>Last</span><strong data-previous-performance="${escapeHtml(exercise.id)}">${escapeHtml(previous)}</strong>${exercise.targetReps ? `<em class="exercise-target" data-target-reps="${escapeHtml(exercise.targetReps)}">Target ${escapeHtml(exercise.targetReps)}</em>` : ''}${improvement ? `<em class="exercise-delta" data-improvement-delta="${escapeHtml(improvement.kind)}">${escapeHtml(improvement.label)}</em>` : ''}${previousSets ? `<small>${escapeHtml(previousSets)}</small>` : ''}</div>
-            ${supportsWarmup(exercise) || warmups ? `<section class="set-section" aria-label="Warmup"><div class="set-section-heading"><h4>Warmup</h4>${supportsWarmup(exercise) ? `<button type="button" data-add-warmup="${exerciseIndex}" aria-label="Add warmup set to ${escapeHtml(exercise.name)}">+</button>` : ''}</div><div class="set-grid">${warmups}</div></section>` : ''}
+            ${supportsWarmup(exercise) || warmups ? `<section class="set-section" aria-label="Warmup"><div class="set-section-heading"><h4>Warmup</h4>${supportsWarmup(exercise) ? `<button type="button" data-add-warmup="${exerciseIndex}" aria-label="Add warmup set to ${escapeHtml(exercise.name)}">+ Add warmup</button>` : ''}</div><div class="set-grid">${warmups}</div></section>` : ''}
             <section class="set-section" aria-label="Working sets"><div class="set-section-heading"><h4>Working sets</h4></div><div class="set-grid">${workingSets}</div></section>
             <button type="button" class="add-set" data-add-set="${exerciseIndex}">+ Add working set</button>
             <details class="exercise-management"><summary>Exercise options</summary>
