@@ -28,6 +28,13 @@ export async function readReleaseSources(root = new URL('../', import.meta.url))
   if (!releases.length) throw new Error('Manifest release provenance requires recorded release history.');
   sources.set(releaseHistoryKey, JSON.stringify(releases.filter((release, index) => index === 0 || release !== releases[index - 1])));
   await Promise.all(migrations.filter(file => /insert\s+into\s+private\.product_releases/i.test(sources.get(file))).map(async file => {
+    const indexed = (await git('git', ['ls-files', '--', file], { cwd })).stdout.trim();
+    if (indexed) {
+      const staged = (await git('git', ['show', `:${file}`], { cwd })).stdout;
+      if (staged.replace(/\r\n/g, '\n') !== sources.get(file).replace(/\r\n/g, '\n')) {
+        throw new Error(`${file}: registration index and worktree differ; stage the reviewed contents before checking`);
+      }
+    }
     // Use path introduction, not --follow: copy detection can incorrectly trace
     // a genuinely new registration back to a similar historical SQL file.
     const history = await git('git', ['log', '--reverse', '--diff-filter=A', '--format=%H', '--', file], { cwd });
