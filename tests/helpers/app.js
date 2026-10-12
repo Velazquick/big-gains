@@ -5,6 +5,7 @@ export async function openApp(page) {
   await page.goto('/');
   await expect(page).toHaveTitle('Big Gains');
   await expect(page.locator('#sessionTypeSelector')).toBeAttached();
+  await page.waitForFunction(() => window.BigGainsAppRuntime?.initialized === true);
 }
 
 export async function clickCentered(locator) {

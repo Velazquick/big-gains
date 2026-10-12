@@ -21,9 +21,8 @@
     </details>`;
   }
 
-  function initialize({ state, saveState }) {
+  function initialize({ state }) {
     state.exercisePreferences = state.exercisePreferences || {};
-    saveState();
   }
 
   function renderActiveNotes({ activeWorkout, box, state, defaultRest, escapeHtml }) {

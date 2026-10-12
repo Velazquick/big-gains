@@ -21,7 +21,7 @@ async function switchProfile(page, profileId) {
 }
 
 test('loads, normalizes, and saves a profile through the persistence API', async ({ page }) => {
-  await installLocalStorageFixture(page, 'malformedButParseableState');
+  await installLocalStorageFixture(page, 'completedWorkouts');
   await openApp(page);
 
   const roundTrip = await page.evaluate(() => {
@@ -213,9 +213,11 @@ test('renders completed workout history from persisted state', async ({ page }) 
   await expect(page.locator('#latestWeight')).toHaveText('218.4 lb');
 });
 
-test('recovers a malformed but parseable current-profile state', async ({ page }) => {
+test('protects malformed current-profile bytes while normalizing a recovery preview', async ({ page }) => {
   await installLocalStorageFixture(page, 'malformedButParseableState');
-  await openApp(page);
+  await page.goto('/');
+  await page.waitForFunction(() => window.BigGainsAppRuntime?.initialized);
+  const original = await page.evaluate(() => localStorage.getItem(statePersistenceApi.storageKey));
 
   const normalized = await page.evaluate(() => ({
     workouts: Array.isArray(state.workouts),
@@ -238,9 +240,14 @@ test('recovers a malformed but parseable current-profile state', async ({ page }
     goals: { primary: 'Strength and performance' },
     restTimerEndsAt: null
   });
-  await expect(page.locator('#routineSelect option')).toHaveCount(1);
-  await expect(page.locator('#history')).toHaveText('Your completed workouts will appear here.');
-  await expect(page.locator('#weightHistory')).toHaveText('No weigh-ins yet.');
+  await expect(page.locator('#bootShellDetail')).toContainText('original data is unchanged');
+  await expect(page.locator('#downloadRecoveryData')).toBeVisible();
+  await expect(page.locator('.app-shell')).toHaveAttribute('aria-hidden', 'true');
+  expect(await page.evaluate(() => BigGainsBootGate.status().state)).toBe('recovery');
+  expect(await page.evaluate(() => {
+    try { statePersistenceApi.save(state, active); return null; } catch (error) { return error.code; }
+  })).toBe('local-state-unreadable');
+  expect(await page.evaluate(() => localStorage.getItem(statePersistenceApi.storageKey))).toBe(original);
 });
 
 test('persists pending state on pagehide and when the page becomes hidden', async ({ page }) => {
@@ -282,6 +289,7 @@ test('routes profile storage reads and writes through the explicit API', async (
   await openApp(page);
 
   const evidence = await page.evaluate(async keys => {
+    statePersistenceApi.save(state, active);
     const appSource = await (await fetch('/app.js')).text();
     const profilesSource = await (await fetch('/profiles.js')).text();
     const calls = window.__profileStorageCalls.filter(call => keys.includes(call.key));

@@ -19,7 +19,7 @@ const LIBRARY_ROUTINE_TYPES=routineEngine.libraryRoutineTypes;
 const statePersistenceApi=bigGainsStatePersistence.create({account:ACCOUNT,profile:PROFILE,profileConfig:PROFILE_CONFIG,validWorkoutTypes:Object.keys(DEFAULT_ROUTINES),createId:uid,slug:exerciseCatalog.idForName,exerciseCatalog});
 const hadStoredState=statePersistenceApi.hasStoredState();
 state=statePersistenceApi.load();
-if(bigGainsAccounts.runtime.kind==='independent'&&bigGainsAccounts.runtime.newlyProvisioned&&!hadStoredState){
+if(bigGainsAccounts.runtime.kind==='independent'&&bigGainsAccounts.runtime.newlyProvisioned&&!hadStoredState&&statePersistenceApi.status().writable){
   state.onboarding={contractVersion:1,status:'in_progress',lastStage:'welcome',completedAt:null,skippedAt:null};
   statePersistenceApi.save(state,null);
   bigGainsAccounts.completeIndependentBootstrap(bigGainsAccounts.runtime.authUserId);
@@ -146,7 +146,27 @@ const retrospectiveApi=window.bigGainsRetrospective.create({
   afterUpdate:(dateKey,workoutId)=>{calendarSelectedKey=dateKey;calendarMonth=new Date(`${dateKey}T12:00:00`);try{sessionStorage.setItem(calendarSavedKey,dateKey);}catch{}renderAll();const returnView=historyEditReturnView;historyEditReturnView=null;if(returnView)window.bigGainsViewShell?.showView('progress',{workout:false,historyView:returnView});openHistory(workoutId,returnView);document.dispatchEvent(new CustomEvent('big-gains-workout-updated',{detail:{workoutId}}));}
 });
 function setWorkoutPetState(next){if(next)document.body.dataset.workoutPetState=next;else delete document.body.dataset.workoutPetState;if(typeof window.trainingPet?.render==='function')window.trainingPet.render(true);}
-function saveState(){if(bigGainsAccounts.runtime.kind==='managed-member'&&!statePersistenceApi.hasStoredState())return;if(window.BigGainsManagedProfileRecovery?.suppressingLocalSave(state,active))return;statePersistenceApi.save(state,active);const snapshot=JSON.parse(JSON.stringify(state));const finishCloudMutation=window.BigGainsCloudSync?.beginLocalMutation?.();queueMicrotask(async()=>{try{await Promise.all([window.BigGainsCloudSync?.captureLocalSnapshot?.(PROFILE.id,{tracked:true}),window.BigGainsProgramPortability?.captureLocalSnapshot?.(PROFILE.id,{stateSnapshot:snapshot})]);}finally{finishCloudMutation?.();}});}
+function saveState(){
+  if((bigGainsAccounts.runtime.kind==='managed-member'&&!statePersistenceApi.hasStoredState())
+    ||window.BigGainsManagedProfileRecovery?.suppressingLocalSave(state,active)){
+    throw Object.assign(new Error('Saved training is protected while recovery is pending.'),{code:'local-save-protected'});
+  }
+  statePersistenceApi.save(state,active);
+  // The profile write is the local commit. Optional backup setup and capture
+  // must never turn an already committed workout into a rollback.
+  try{
+    const snapshot=JSON.parse(JSON.stringify(state));
+    const finishCloudMutation=window.BigGainsCloudSync?.beginLocalMutation?.();
+    queueMicrotask(async()=>{
+      try{await Promise.all([
+        window.BigGainsCloudSync?.captureLocalSnapshot?.(PROFILE.id,{tracked:true}),
+        window.BigGainsProgramPortability?.captureLocalSnapshot?.(PROFILE.id,{stateSnapshot:snapshot})
+      ]);}catch(error){console.warn('Workout saved locally; backup capture could not finish.',error);}
+      finally{try{finishCloudMutation?.();}catch(error){console.warn('Backup tracking could not finish.',error);}}
+    });
+  }catch(error){console.warn('Workout saved locally; backup setup could not finish.',error);}
+  return Object.freeze({committed:true});
+}
 const timerController=BigGainsTimerController.create({
   getState:()=>state,
   getActiveWorkout:()=>active,
@@ -219,8 +239,8 @@ function renderLibrary(){renderSelectors();const term=$('exerciseSearch').value,
 function suggestionIdsForDay(day){return BigGainsExercisePicker.sortExercises(CATALOG_EXERCISES.filter(exercise=>exercise.day===day)).slice(0,10).map(exercise=>exercise.canonicalId);}
 function openLibraryExercisePicker({fromTrain=false}={}){
   const eligible=new Set(CATALOG_EXERCISES.map(exercise=>exercise.canonicalId));
-  const owner=fromTrain&&active?{namespace:ACCOUNT.storageNamespace,workoutId:active.id}:null;
-  const sameOwner=()=>owner&&owner.namespace===ACCOUNT.storageNamespace&&owner.workoutId===active?.id;
+  const owner=active?{namespace:ACCOUNT.storageNamespace,workout:active,workoutId:active.id}:null;
+  const sameOwner=()=>owner&&owner.namespace===ACCOUNT.storageNamespace&&owner.workout===active&&owner.workoutId===active?.id;
   return exercisePicker.open({
     title:active?'Add exercise to workout':'Choose an exercise',
     prompt:active?'Choose an exercise for this workout.':'Choose the exact movement to start your workout.',
@@ -230,7 +250,7 @@ function openLibraryExercisePicker({fromTrain=false}={}){
     returnFocus:()=>$(owner?'browseWorkoutLibrary':'addSelectedExercise'),
     onCancel:()=>{if(sameOwner())window.bigGainsTrainPosition?.requestRestore();},
     onSelect:canonicalId=>{
-      if(owner&&!sameOwner())return;
+      if(owner?!sameOwner():Boolean(active))return;
       const definition=exerciseCatalog.getById(canonicalId);
       if(!definition)return;
       workoutSessionController.addExercise(definition.id,{scroll:!owner});
@@ -312,7 +332,7 @@ function updateOnboarding(status,lastStage){
   return true;
 }
 function renderFirstRunOnboarding(){const panel=$('firstRunOnboarding');if(!panel)return;const visible=state.onboarding?.status==='in_progress',wasHidden=panel.hidden;panel.hidden=!visible;document.body.classList.toggle('first-run-open',visible);if(visible&&wasHidden)requestAnimationFrame(()=>$('firstRunTitle')?.focus({preventScroll:true}));}
-function startBlankWorkout(){window.bigGainsViewShell?.showView('train',{workout:false});if(!active)workoutSessionController.start(selectedDay,{loadRoutine:false,scroll:true});else workoutSessionController.resume(true);window.setTimeout(openLibraryExercisePicker,80);}
+function startBlankWorkout(){window.bigGainsViewShell?.showView('train',{workout:false});if(!active)workoutSessionController.start(selectedDay,{loadRoutine:false,scroll:true});else workoutSessionController.resume(true);const owner=active,ownerId=active?.id;window.setTimeout(()=>{if(active===owner&&active?.id===ownerId)openLibraryExercisePicker();},80);}
 const workoutSessionController=BigGainsWorkoutSessionController.create({
   getState:()=>state,
   getActiveWorkout:()=>active,
@@ -335,6 +355,7 @@ const workoutSessionController=BigGainsWorkoutSessionController.create({
   clearWorkoutTicker:()=>clearInterval(workoutTicker),
   setPetState:setWorkoutPetState,
   onRuntimeCleared:({hideActive})=>{window.bigGainsTrainPosition?.clear();if(hideActive)$('activePanel').classList.add('hidden');$('cancelWorkout').classList.add('hidden');$('cancelWorkout').textContent='Cancel';cancelArmedUntil=0;setRemovalArmed=null;clearTimeout(setRemovalTimer);},
+  onPersistenceFailed:()=>{$('heroNote').textContent='This action was not saved. Your workout is still here. Check device storage and try again.';},
   renderActiveSession,
   renderLoadedSession:scroll=>{renderActive();renderLibrary();if(scroll)window.bigGainsTrainPosition?.requestRestore({fallback:true});},
   renderActiveMutation:renderActive,
@@ -345,8 +366,8 @@ const workoutSessionController=BigGainsWorkoutSessionController.create({
   startRestTimer:exerciseIndex=>timerController.start(exerciseIndex),
   scheduleAfterCompletion:callback=>requestAnimationFrame(callback),
   advanceProgramSequence:({activeWorkout,completedAt})=>activeWorkout?.programOrigin?BigGainsProgramOrigin.advanceCaptureForCompletion({capture:state.programCapture,programOrigin:activeWorkout.programOrigin,workoutId:activeWorkout.id,accountId:ACCOUNT.accountId,profileId:PROFILE.id,catalog:exerciseCatalog,completedAt}):null,
-  onCompletionAdvanced:({nextIndex})=>{const next=active?.exercises?.[nextIndex];if(next)window.bigGainsTrainPosition?.capture(next.id,next.sets.find(set=>!set.completed)?.id||null);if(nextIndex>=0&&!matchMedia('(prefers-reduced-motion: reduce)').matches)requestAnimationFrame(()=>document.querySelectorAll('#activeExercises .active-exercise')[nextIndex]?.scrollIntoView({behavior:'smooth',block:'nearest'}));},
-  onCompleted:({workout,newPRs})=>{if(staleSessionCondition({...workout,completedAt:null}))observeSupport({workout,action:'finish'});updateOnboarding('completed','first_success');$('heroNote').textContent=`Workout saved${newPRs?` · ${newPRs} new record${newPRs===1?'':'s'}`:''}.`;renderAll();renderCompletion(workout);},
+  onCompletionAdvanced:({nextIndex})=>{const owner=active,ownerId=active?.id,next=active?.exercises?.[nextIndex];if(next)window.bigGainsTrainPosition?.capture(next.id,next.sets.find(set=>!set.completed)?.id||null);if(nextIndex>=0&&!matchMedia('(prefers-reduced-motion: reduce)').matches)requestAnimationFrame(()=>{if(active===owner&&active?.id===ownerId&&active?.exercises?.[nextIndex]===next)document.querySelectorAll('#activeExercises .active-exercise')[nextIndex]?.scrollIntoView({behavior:'smooth',block:'nearest'});});},
+  onCompleted:({workout,newPRs})=>{if(staleSessionCondition({...workout,completedAt:null}))observeSupport({workout,action:'finish'});try{updateOnboarding('completed','first_success');}catch(error){console.warn('Workout saved; onboarding could not finish.',error);}$('heroNote').textContent=`Workout saved${newPRs?` · ${newPRs} new record${newPRs===1?'':'s'}`:''}.`;renderAll();renderCompletion(workout);},
   onDiscarded:()=>{if(staleClearedWorkout)observeSupport({workout:staleClearedWorkout,action:'discard'});staleClearedWorkout=null;renderHero();renderLibrary();$('workoutPanel').scrollIntoView({behavior:'smooth'});}
 });
 window.workoutSessionController=workoutSessionController;
@@ -573,13 +594,25 @@ bind('exportData','click',()=>{const backup=statePersistenceApi.prepareExport(st
 bind('importData','change',async e=>{const file=e.target.files[0];if(!file)return;try{const imported=JSON.parse(await file.text()),result=statePersistenceApi.validateImport(imported);if(!result.ok){if(result.reason==='profile-mismatch'){alert(`This backup belongs to ${result.profileName}, not ${ACCOUNT.displayName}. Switch profiles before restoring it.`);return;}throw new Error('Invalid backup');}state=result.state;active=state.activeWorkout||null;const today=todaysWorkout();selectedDay=(active&&active.type)||(today==='Rest'?PROFILE.capabilities.restFallbackWorkout:today);saveState();renderAll();alert('Backup restored for '+ACCOUNT.displayName+'.');}catch{alert('That file is not a valid Big Gains backup.');}finally{e.target.value='';}});
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;$('installButton').classList.remove('hidden');});
 bind('installButton','click',async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;$('installButton').classList.add('hidden');});
-window.addEventListener('pagehide',saveState);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')saveState();});
+function saveBackgroundState(){try{saveState();}catch(error){console.warn('Background save refused; retained training was not replaced.',error);}}
+window.addEventListener('pagehide',saveBackgroundState);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')saveBackgroundState();});
 // ./service-worker.js registration is owned by pwa-update.js, including late startup.
 notesApi.initialize({state,saveState});
 progressApi.initialize({getState:()=>state,getAnalyticsOptions:analyticsOptions,exercises:CATALOG_EXERCISES,analytics:analyticsApi,fmtDate,escapeHtml,workoutLabel:completionWorkoutLabel,openHistory,closeHistory,closeRoutineEditor});
 retrospectiveApi.initialize();
 document.addEventListener('big-gains-boot-authorized',renderAll);
-window.BigGainsAppRuntime=Object.freeze({initialized:true,profileId:PROFILE.id,updateSafety:()=>{
+function preparePersistence(){
+  if(statePersistenceApi.status().writable)return true;
+  window.BigGainsBootGate.recover('Saved training could not be read safely. The original data is unchanged. Download it for recovery before making any changes.','local-state-unreadable');
+  $('bootRetry')?.removeAttribute('hidden');
+  if(statePersistenceApi.originalRaw()!==null&&!$('downloadRecoveryData')){
+    const button=document.createElement('button');button.id='downloadRecoveryData';button.className='ghost';button.textContent='Download saved data for recovery';
+    button.addEventListener('click',()=>{const url=URL.createObjectURL(new Blob([statePersistenceApi.originalRaw()],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download=`big-gains-recovery-${PROFILE.id}.json`;link.click();URL.revokeObjectURL(url);});
+    $('bootShellDetail').parentElement.appendChild(button);
+  }
+  return false;
+}
+window.BigGainsAppRuntime=Object.freeze({initialized:true,profileId:PROFILE.id,preparePersistence,updateSafety:()=>{
   if(active||state.activeWorkout)return {safe:false,reason:'workout'};
   if(state.restTimerEndsAt||timerController.getStatus().deadline)return {safe:false,reason:'rest'};
   for(const account of bigGainsAccounts.registry.accounts){
