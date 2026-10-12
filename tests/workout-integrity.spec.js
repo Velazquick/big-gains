@@ -63,7 +63,7 @@ for (const kind of ['managed-owner', 'independent', 'managed-member', 'guest']) 
   });
 }
 
-for (const action of ['discard', 'complete']) {
+for (const action of ['discard', 'complete', 'replace']) {
   test(`failed ${action} keeps recoverable workout and usable controls`, async ({ page }) => {
     await seed(page);
     const before = await raw(page);

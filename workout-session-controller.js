@@ -262,10 +262,10 @@
       onRuntimeCleared({ hideActive });
     }
 
-    function clearCommittedRuntime() {
+    function clearCommittedRuntime(hideActive = true) {
       // The profile document already has no active session. Presentation or
       // timer cleanup errors cannot turn that durable success into a failure.
-      for (const cleanup of [clearWorkoutTicker, deactivateTimer, () => setPetState(null), () => onRuntimeCleared({ hideActive: true })]) {
+      for (const cleanup of [clearWorkoutTicker, deactivateTimer, () => setPetState(null), () => onRuntimeCleared({ hideActive })]) {
         try { cleanup(); } catch (error) { console.warn('Workout committed; runtime cleanup failed.', error); }
       }
     }
@@ -315,12 +315,24 @@
 
     function replace(day = getSelectedDay(), { loadRoutine: shouldLoad = true, scroll = true } = {}) {
       if (!getActiveWorkout()) return start(day, { loadRoutine: shouldLoad, scroll });
-      clearRuntime(false);
-      begin(day);
-      if (shouldLoad) appendRoutine(day);
-      persistActiveMutation();
+      const previous = getActiveWorkout(), previousDay = getSelectedDay(), state = getState(), previousDeadline = state.restTimerEndsAt;
+      let replacement;
+      try {
+        replacement = begin(day);
+        if (shouldLoad) appendRoutine(day);
+        state.restTimerEndsAt = null;
+        if (persist()?.committed !== true) throw new Error('Replacement was not committed.');
+      } catch (error) {
+        setActiveWorkout(previous);
+        setSelectedDay(previousDay);
+        state.restTimerEndsAt = previousDeadline;
+        onPersistenceFailed(error);
+        return false;
+      }
+      clearCommittedRuntime(false);
+      renderHero();
       renderActiveSession(scroll);
-      return getActiveWorkout();
+      return replacement;
     }
 
     function loadRoutine(day = getSelectedDay(), { scroll = true } = {}) {
