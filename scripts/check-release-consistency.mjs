@@ -23,12 +23,12 @@ export async function readReleaseSources(root = new URL('../', import.meta.url))
   const shallow = await git('git', ['rev-parse', '--is-shallow-repository'], { cwd });
   if (shallow.stdout.trim() !== 'false') throw new Error('Registration provenance requires complete Git history; fetch unshallow before checking.');
   await Promise.all(migrations.filter(file => /insert\s+into\s+private\.product_releases/i.test(sources.get(file))).map(async file => {
-    const history = await git('git', ['log', '--follow', '--diff-filter=A', '--format=%H', '--name-only', '--', file], { cwd });
-    const lines = history.stdout.split(/\r?\n/).filter(Boolean);
-    const introductions = lines.flatMap((line, index) => /^[a-f0-9]{40,64}$/.test(line) && lines[index + 1] ? [{ commit: line, path: lines[index + 1] }] : []);
-    const introduction = introductions.at(-1);
+    // Use path introduction, not --follow: copy detection can incorrectly trace
+    // a genuinely new registration back to a similar historical SQL file.
+    const history = await git('git', ['log', '--reverse', '--diff-filter=A', '--format=%H', '--', file], { cwd });
+    const introduction = history.stdout.trim().split(/\s+/)[0];
     const tracked = (await git('git', ['ls-files', '--', file], { cwd })).stdout.trim();
-    const original = introduction ? (await git('git', ['show', `${introduction.commit}:${introduction.path}`], { cwd })).stdout : tracked ? '' : sources.get(file);
+    const original = introduction ? (await git('git', ['show', `${introduction}:${file}`], { cwd })).stdout : tracked ? '' : sources.get(file);
     sources.set(introducedKey(file), original);
   }));
   return sources;

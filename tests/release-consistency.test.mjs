@@ -1,5 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { tmpdir } from 'node:os';
+import { join, resolve, sep } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { checkReleaseSources, readReleaseSources, releaseFiles, registrationFor } from '../scripts/check-release-consistency.mjs';
 
 const baseline = await readReleaseSources();
@@ -49,6 +55,41 @@ test('even a matching release cannot edit its committed registration', () => {
   const sources = new Map(baseline);
   sources.set(registration, sources.get(registration) + '\n-- changed after introduction\n');
   assert.throws(() => checkReleaseSources(sources), /unchanged operator-classified/);
+});
+
+test('real Git provenance rejects a committed rewrite and accepts a fresh registration path', async context => {
+  const prefix = join(tmpdir(), 'big-gains-release-provenance-');
+  const directory = await mkdtemp(prefix);
+  context.after(async () => {
+    assert.ok(resolve(directory).startsWith(resolve(prefix)), 'cleanup must stay in the synthetic fixture directory');
+    await rm(directory, { recursive: true, force: true });
+  });
+  const root = pathToFileURL(`${directory}${sep}`);
+  const run = promisify(execFile);
+  const git = (...args) => run('git', args, { cwd: directory });
+  const put = async (file, source) => {
+    await mkdir(new URL('./', new URL(file, root)), { recursive: true });
+    await writeFile(new URL(file, root), source);
+  };
+  const commit = async message => {
+    await git('add', '.');
+    await git('-c', 'user.name=Synthetic QA', '-c', 'user.email=synthetic@example.invalid', '-c', 'commit.gpgsign=false', 'commit', '-m', message);
+  };
+  for (const file of [...releaseFiles, registration]) await put(file, baseline.get(file));
+  await git('init');
+  await git('config', 'core.autocrlf', 'false');
+  await commit('Synthetic original registration');
+  for (const file of [...releaseFiles, registration]) await put(file, baseline.get(file).replaceAll(release, rotated));
+  await commit('Incorrect committed historical rewrite');
+  const rewritten = await readReleaseSources(root);
+  assert.throws(() => checkReleaseSources(rewritten), /add a fresh migration/);
+  await put(registration, baseline.get(registration));
+  const fresh = 'supabase/migrations/20990101000000_operator_synthetic_release.sql';
+  await put(fresh, `insert into private.product_releases(release) values ('${rotated}') on conflict do nothing;\n`);
+  await commit('Fresh synthetic registration');
+  const result = checkReleaseSources(await readReleaseSources(root));
+  assert.equal(result.release, rotated);
+  assert.equal(result.registrationMigration, fresh);
 });
 
 test('matching shell pins without a release registration fail closed', () => {
