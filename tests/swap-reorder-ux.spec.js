@@ -19,6 +19,12 @@ for(const width of [375,390])test(`card Swap and accessible reorder preserve ses
   await page.setViewportSize({width,height:844});await start(page);
   const swap=page.getByRole('button',{name:'Swap Dumbbell Lateral Raise',exact:true});
   await expect(swap).toBeVisible();
+  await expect(swap).toHaveText('Swap');
+  const reorderAction=page.locator('#reorderWorkout');
+  await expect(reorderAction).toBeVisible();
+  await expect(reorderAction).toHaveAttribute('aria-label','Reorder exercises');
+  await expect(page.locator('.train-exercise-toolbar')).toContainText('Exercises');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   const bounds=await swap.boundingBox();expect(bounds.width).toBeGreaterThanOrEqual(44);expect(bounds.height).toBeGreaterThanOrEqual(44);
   expect(await swap.locator('xpath=ancestor::div[contains(@class,"exercise-head")]').count()).toBeGreaterThan(0);
   await swap.click();await page.locator('[data-swap-exercise="0"]').click();
