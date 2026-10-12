@@ -1,11 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile, rm, symlink, unlink } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { tmpdir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { checkReleaseSources, readReleaseSources, releaseFiles, registrationFor } from '../scripts/check-release-consistency.mjs';
 
 const baseline = await readReleaseSources();
@@ -70,6 +70,73 @@ test('a fresh current registration cannot mask a rewritten or deleted historical
     else sources.set(registration, sources.get(registration) + '\n-- rewritten historical registration\n');
     assert.throws(() => checkReleaseSources(sources), /historical registration must remain unchanged/);
   }
+});
+
+test('PR browser collection preserves complete history required by release provenance', async context => {
+  const prefix = join(tmpdir(), 'big-gains-pr-collection-');
+  const directory = await mkdtemp(prefix);
+  const origin = join(directory, 'origin');
+  const checkout = join(directory, 'checkout');
+  const modules = join(checkout, 'node_modules');
+  context.after(async () => {
+    assert.ok(resolve(directory).startsWith(resolve(prefix)), 'cleanup must stay in the synthetic fixture directory');
+    try { await unlink(modules); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+    await rm(directory, { recursive: true, force: true });
+  });
+  const run = promisify(execFile);
+  const git = (cwd, ...args) => run('git', args, { cwd });
+  const put = async (file, source) => {
+    const destination = join(origin, file);
+    await mkdir(resolve(destination, '..'), { recursive: true });
+    await writeFile(destination, source);
+  };
+  for (const file of [...releaseFiles, registration]) await put(file, baseline.get(file));
+  for (const file of ['playwright.config.js', 'scripts/check-release-consistency.mjs']) {
+    await put(file, await readFile(new URL(`../${file}`, import.meta.url), 'utf8'));
+  }
+  await put('package.json', '{"type":"module"}\n');
+  await put('probe.config.js', `import config from './playwright.config.js';
+export default { ...config, webServer: undefined, reporter: 'line',
+  projects: [{ name: 'chromium' }],
+  ...(process.env.RELEASE_DISCOVERY_LEGACY_METADATA === 'true' ? { captureGitInfo: undefined } : {}) };
+`);
+  await put('tests/provenance-import.spec.js', `import { test, expect } from '@playwright/test';
+import { readReleaseSources, checkReleaseSources } from '../scripts/check-release-consistency.mjs';
+const result = checkReleaseSources(await readReleaseSources());
+test('release import retains complete provenance', async ({}, info) => {
+  expect(result.release).toBe('${release}');
+  expect(info.config.metadata.gitCommit.hash).toBe(process.env.GITHUB_SHA);
+  expect(info.config.metadata.gitDiff).toBeUndefined();
+});
+`);
+  await git(origin, 'init');
+  await git(origin, 'config', 'core.autocrlf', 'false');
+  const commit = async message => {
+    await git(origin, 'add', '.');
+    await git(origin, '-c', 'user.name=Synthetic QA', '-c', 'user.email=synthetic@example.invalid', '-c', 'commit.gpgsign=false', 'commit', '-m', message);
+    return (await git(origin, 'rev-parse', 'HEAD')).stdout.trim();
+  };
+  const base = await commit('Synthetic PR base');
+  await put('fixture.txt', 'Synthetic PR change\n');
+  const head = await commit('Synthetic PR head');
+  await git(directory, 'clone', '--no-local', pathToFileURL(origin).href, checkout);
+  await symlink(fileURLToPath(new URL('../node_modules/', import.meta.url)), modules, 'junction');
+  const event = join(directory, 'event.json');
+  await writeFile(event, JSON.stringify({ pull_request: { title: 'Synthetic provenance regression', number: 1, base: { sha: base } } }));
+  const env = { ...process.env, CI: 'true', GITHUB_ACTIONS: 'true', GITHUB_EVENT_PATH: event,
+    GITHUB_SERVER_URL: 'https://github.com', GITHUB_REPOSITORY: 'synthetic/provenance', GITHUB_RUN_ID: '1', GITHUB_SHA: head };
+  const cli = fileURLToPath(new URL('../node_modules/playwright/cli.js', import.meta.url));
+  const args = [cli, 'test', '--config', join(checkout, 'probe.config.js'), 'tests/provenance-import.spec.js', '--workers=1'];
+  const shallow = async () => (await git(checkout, 'rev-parse', '--is-shallow-repository')).stdout.trim();
+  assert.equal(await shallow(), 'false', 'the same full checkout passes before browser collection');
+  await assert.rejects(run(process.execPath, args, { cwd: checkout, env: { ...env, RELEASE_DISCOVERY_LEGACY_METADATA: 'true' } }),
+    error => error.code === 1 && /Registration provenance requires complete Git history/.test(error.stdout + error.stderr));
+  assert.equal(await shallow(), 'true', 'legacy PR metadata fetch actually makes the checkout shallow');
+  await git(checkout, 'fetch', '--unshallow', 'origin');
+  assert.equal(await shallow(), 'false');
+  const repaired = await run(process.execPath, args, { cwd: checkout, env: { ...env, RELEASE_DISCOVERY_LEGACY_METADATA: 'false' } });
+  assert.match(repaired.stdout, /1 passed/);
+  assert.equal(await shallow(), 'false', 'repaired browser entry point retains complete history');
 });
 
 test('real Git provenance preserves the accepted baseline, rejects later rewrites and accepts fresh registrations', async context => {
