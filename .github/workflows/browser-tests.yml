@@ -24,12 +24,14 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Check current release references before browser validation
+        run: npm run check:release && npm run test:release
       - run: npx playwright install --with-deps webkit
       - name: Verify mobile update, custom-domain, Auth and recovery in WebKit
         env:
           BIG_GAINS_WEBKIT_QA: 'true'
           PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-webkit
-        run: npx playwright test --project=webkit --output=test-results-webkit tests/operator.spec.js tests/operator-diagnostics.spec.js tests/swap-reorder-ux.spec.js tests/body-map-swap.spec.js tests/custom-domain-transition.spec.js tests/ios-home-screen-auth.spec.js tests/fresh-device-recovery.spec.js tests/pwa-update.spec.js tests/utility-recovery.spec.js
+        run: npx playwright test --project=webkit --output=test-results-webkit tests/train-premium-pass02.spec.js tests/operator.spec.js tests/operator-diagnostics.spec.js tests/swap-reorder-ux.spec.js tests/body-map-swap.spec.js tests/custom-domain-transition.spec.js tests/ios-home-screen-auth.spec.js tests/fresh-device-recovery.spec.js tests/pwa-update.spec.js tests/utility-recovery.spec.js
       - name: Repeat WebKit update-to-offline and failed-install transitions
         env:
           BIG_GAINS_WEBKIT_QA: 'true'
@@ -83,6 +85,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Check current release references before database validation
+        run: npm run check:release && npm run test:release
 
       - name: Rehearse appearance migration and stale-write guards on synthetic rows
         env:
