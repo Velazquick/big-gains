@@ -84,6 +84,31 @@ test('swapping an exercise recalculates progress from the replacement without ch
   expect(after.activeWorkout.exercises[1]).toEqual(before.activeWorkout.exercises[1]);
 });
 
+test('custom routine targets preserve non-repetition measurement text without inventing units', async ({ page }) => {
+  await seed(page);
+  const before = await snapshot(page);
+  await page.evaluate(() => {
+    state.customRoutines.Push = [
+      { exerciseId: 'plank', workingSets: 2, targetReps: '60' },
+      { exerciseId: 'farmer-carry', workingSets: 2, targetReps: '40 m' },
+      { exerciseId: 'barbell-bench-press', workingSets: 2, targetReps: '5' }
+    ];
+    saveState();
+    workoutSessionController.replace('Push', { loadRoutine: true, scroll: false });
+  });
+  const plank = page.locator('[data-exercise-id="plank"]');
+  const carry = page.locator('[data-exercise-id="farmer-carry"]');
+  await expect(plank.locator('[data-target-reps]')).toHaveText('60');
+  await expect(plank.locator('input[data-field="duration"]')).toHaveCount(2);
+  await expect(plank.locator('input[data-field="reps"]')).toHaveCount(0);
+  await expect(carry.locator('[data-target-reps]')).toHaveText('40 m');
+  await expect(carry.locator('input[data-field="distance"]')).toHaveCount(2);
+  await expect(carry.locator('input[data-field="reps"]')).toHaveCount(0);
+  await expect(page.locator('[data-exercise-id="barbell-bench-press"] [data-target-reps]')).toHaveText('5 reps');
+  expect((await snapshot(page)).activeWorkout.exercises.map(exercise => exercise.targetReps)).toEqual(['60', '40 m', '5']);
+  expect((await snapshot(page)).workouts).toEqual(before.workouts);
+});
+
 test('rapid completion/undo taps and interrupted removal preserve set identity, focus and History', async ({ page }) => {
   await seed(page);
   const before = await snapshot(page);

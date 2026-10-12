@@ -195,7 +195,7 @@
             ${guidanceMarkupFor(exercise)}
             <div class="exercise-context">
               <div class="exercise-context-cell"><span>Last</span><strong data-previous-performance="${escapeHtml(exercise.id)}">${escapeHtml(previous)}</strong></div>
-              <div class="exercise-context-cell"><span>Target</span>${exercise.targetReps ? `<strong class="exercise-target" data-target-reps="${escapeHtml(exercise.targetReps)}">${escapeHtml(exercise.targetReps)} reps</strong>` : '<strong class="context-unavailable">Not set</strong>'}</div>
+              <div class="exercise-context-cell"><span>Target</span>${exercise.targetReps ? `<strong class="exercise-target" data-target-reps="${escapeHtml(exercise.targetReps)}">${escapeHtml(exercise.targetReps)}${inputFields.some(field => field.name === 'reps') ? ' reps' : ''}</strong>` : '<strong class="context-unavailable">Not set</strong>'}</div>
               <div class="exercise-context-cell"><span>Improvement</span>${improvement ? `<strong class="exercise-delta" data-improvement-delta="${escapeHtml(improvement.kind)}">${escapeHtml(improvement.label)}</strong>` : '<strong class="context-unavailable" aria-label="Improvement unavailable">—</strong>'}</div>
               ${previousSets ? `<small class="previous-working-sets">${escapeHtml(previousSets)}</small>` : ''}
             </div>
