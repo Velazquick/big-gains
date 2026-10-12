@@ -126,6 +126,11 @@ test('real Git provenance preserves the accepted baseline, rejects later rewrite
   const result = checkReleaseSources(await readReleaseSources(root));
   assert.equal(result.release, rotated);
   assert.equal(result.registrationMigration, fresh);
+  for (const file of [registration, fresh]) {
+    await git('rm', '--cached', file);
+    await assert.rejects(readReleaseSources(root), /registration is staged for deletion/);
+    await git('add', file);
+  }
   await put(registration, acceptedSql + '\n-- incorrect historical edit alongside fresh registration\n');
   await commit('Historical rewrite masked by a correct fresh registration');
   const masked = await readReleaseSources(root);

@@ -51,6 +51,7 @@ export async function readReleaseSources(root = new URL('../', import.meta.url))
     const staged = indexPaths.includes(file) ? (await git('git', ['show', `:${file}`], { cwd })).stdout : null;
     const isRegistration = sql => /insert\s+into\s+private\.product_releases/i.test(sql || '');
     if (![original, staged, sources.get(file)].some(isRegistration)) return;
+    if (committed && staged === null) throw new Error(`${file}: registration is staged for deletion; restore it in the index before checking`);
     if (staged !== null && staged.replace(/\r\n/g, '\n') !== sources.get(file).replace(/\r\n/g, '\n')) {
       throw new Error(`${file}: registration index and worktree differ; stage the reviewed contents before checking`);
     }
