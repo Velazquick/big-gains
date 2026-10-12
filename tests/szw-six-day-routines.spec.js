@@ -238,7 +238,8 @@ test('targets remain metadata, previous performance seeds results, and schema-v5
   expect(bench.sets.filter(set => !set.warmup)[0]).toMatchObject({ weight: 185, reps: 5, completed: false });
   expect(shoulder.targetReps).toBe('6–8');
   expect(shoulder.sets.filter(set => !set.warmup).map(set => set.reps)).toEqual(['', '', '']);
-  await expect(page.locator('.active-exercise').first().locator('[data-target-reps="5"]')).toHaveText('Target 5');
+  await expect(page.locator('.active-exercise').first().locator('[data-target-reps="5"]')).toHaveText('5 reps');
+  await expect(page.locator('.active-exercise').first().locator('.exercise-context-cell').nth(1)).toContainText('Target');
 
   await page.reload();
   const reloaded = await storedSzwState(page);

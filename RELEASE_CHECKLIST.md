@@ -44,6 +44,8 @@ V42 release `v42-training-calendar-controls` adds accessible exercise-card contr
 For any production app-shell change:
 
 - [ ] Update the `release` value in `asset-manifest.js` to a new, unique, descriptive release ID.
+- [ ] Create its `private.product_releases` registration with the Supabase CLI and keep the migration operator-classified. `check:release` verifies the matching local registration artifact; it does not prove hosted application.
+- [ ] Before authorizing a merge that triggers Pages, separately authorize/apply the reviewed registration and verify the exact release exists in the hosted registry, as required by [OPERATOR_V1.md](docs/OPERATOR_V1.md). Record that proof with the release approval. A green PR or a checked-in migration alone is insufficient; stop the release if this proof is unavailable.
 - [ ] Add, remove, or reorder CSS and scripts only in the manifest's `styles` and `scripts` arrays. Preserve the dependency order documented in [ARCHITECTURE.md](ARCHITECTURE.md).
 - [ ] Confirm each production CSS and script appears exactly once and every required offline asset is present in `coreAssets`; `cloud-config.js` alone uses the generated config-content version rather than the release version.
 - [ ] The generated, revisioned `asset-manifest.js` URL is the only production URL written directly into `index.html`, `auth-setup.html`, or `service-worker.js`; all application assets remain shared through the manifest.

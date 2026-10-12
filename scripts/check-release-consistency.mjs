@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { runInNewContext } from 'node:vm';
@@ -10,8 +10,16 @@ export const releaseFiles = [
 ];
 
 export async function readReleaseSources(root = new URL('../', import.meta.url)) {
-  return new Map(await Promise.all(releaseFiles.map(async file =>
+  const migrations = (await readdir(new URL('supabase/migrations/', root)))
+    .filter(file => /^\d{14}_.*\.sql$/.test(file)).map(file => `supabase/migrations/${file}`);
+  return new Map(await Promise.all([...releaseFiles, ...migrations].map(async file =>
     [file, await readFile(new URL(file, root), 'utf8')])));
+}
+
+export function registrationFor(sources, release) {
+  return [...sources].find(([file, sql]) => /^supabase\/migrations\/\d{14}_operator_.*\.sql$/.test(file)
+    && [...sql.replace(/--[^\n]*|\/\*[\s\S]*?\*\//g, '').matchAll(/insert\s+into\s+private\.product_releases\s*\(\s*release\s*\)\s*values\s*\(\s*'([^']+)'\s*\)\s*on\s+conflict\s+do\s+nothing\s*;/gi)]
+      .some(match => match[1] === release))?.[0] || null;
 }
 
 // Inspect only current-release contracts. Prior caches, retained telemetry
@@ -25,6 +33,8 @@ export function checkReleaseSources(sources) {
     throw new Error('asset-manifest.js: missing or invalid release/config version');
   }
   const errors = [];
+  const registrationMigration = registrationFor(sources, manifest.release);
+  if (!registrationMigration) errors.push('supabase/migrations: current release requires an operator-classified product_releases registration');
   function pin(file, pattern, expected, label) {
     const matches = [...sources.get(file).matchAll(pattern)];
     if (matches.length !== 1 || matches[0][1] !== expected) {
@@ -57,13 +67,14 @@ export function checkReleaseSources(sources) {
     }
   }
   if (errors.length) throw new Error(errors.join('\n'));
-  return { release: manifest.release, cloudConfigVersion: manifest.cloudConfigVersion };
+  return { release: manifest.release, cloudConfigVersion: manifest.cloudConfigVersion, registrationMigration };
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const result = checkReleaseSources(await readReleaseSources());
     console.log(`Release references consistent: ${result.release} (${result.cloudConfigVersion})`);
+    console.log(`Registration artifact: ${result.registrationMigration} (hosted application requires separate verification)`);
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;

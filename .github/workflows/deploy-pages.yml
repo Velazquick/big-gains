@@ -25,6 +25,11 @@ jobs:
         with:
           ref: ${{ github.sha }}
 
+      # Owner approval must first verify hosted registration (RELEASE_CHECKLIST.md).
+      # This read-only check verifies the repository artifact, not hosted state.
+      - name: Require consistent release and registration artifact
+        run: node scripts/check-release-consistency.mjs
+
       - name: Write browser-safe deployment configuration
         if: ${{ vars.SUPABASE_URL != '' && vars.SUPABASE_PUBLISHABLE_KEY != '' }}
         env:

@@ -1,10 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkReleaseSources, readReleaseSources } from '../scripts/check-release-consistency.mjs';
+import { checkReleaseSources, readReleaseSources, releaseFiles, registrationFor } from '../scripts/check-release-consistency.mjs';
 
 const baseline = await readReleaseSources();
 const release = checkReleaseSources(baseline).release;
 const rotated = 'v999-synthetic-release';
+const registration = registrationFor(baseline, release);
 
 test('checked-in current release is consistent; historical fixtures remain allowed', () => {
   const sources = new Map(baseline);
@@ -17,12 +18,28 @@ test('a coordinated release rotation passes', () => {
   assert.equal(checkReleaseSources(sources).release, rotated);
 });
 
-for (const file of [...baseline.keys()].filter(file => file !== 'asset-manifest.js')) {
+for (const file of [...releaseFiles, registration].filter(file => file !== 'asset-manifest.js')) {
   test(`release rotation rejects stale current reference in ${file}`, () => {
     const sources = new Map([...baseline].map(([path, source]) => [path, path === file ? source : source.replaceAll(release, rotated)]));
-    assert.throws(() => checkReleaseSources(sources), error => error.message.includes(file));
+    assert.throws(() => checkReleaseSources(sources), error => error.message.includes(file === registration ? 'product_releases registration' : file));
   });
 }
+
+test('matching shell pins without a release registration fail closed', () => {
+  const sources = new Map(baseline);
+  sources.delete(registration);
+  assert.throws(() => checkReleaseSources(sources), /product_releases registration/);
+});
+
+test('registration comments and incorrect migration ordering cannot satisfy the gate', () => {
+  for (const commented of [true, false]) {
+    const sources = new Map(baseline);
+    const sql = sources.get(registration);
+    sources.delete(registration);
+    sources.set(commented ? registration : registration.replace('_operator_', '_'), commented ? `/* ${sql} */` : sql);
+    assert.throws(() => checkReleaseSources(sources), /product_releases registration/);
+  }
+});
 
 test('a config rotation catches stale offline and entrypoint expectations', () => {
   const sources = new Map(baseline);

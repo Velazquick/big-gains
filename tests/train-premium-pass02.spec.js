@@ -84,7 +84,7 @@ test('swapping an exercise recalculates progress from the replacement without ch
   expect(after.activeWorkout.exercises[1]).toEqual(before.activeWorkout.exercises[1]);
 });
 
-test('repeated log taps and interrupted removal preserve set identity, focus and History', async ({ page }) => {
+test('rapid completion/undo taps and interrupted removal preserve set identity, focus and History', async ({ page }) => {
   await seed(page);
   const before = await snapshot(page);
   const complete = row(page, 'active-working-1').locator('.set-done');
@@ -92,7 +92,11 @@ test('repeated log taps and interrupted removal preserve set identity, focus and
   await complete.click({ clickCount: 2, delay: 40 });
   const repeated = await snapshot(page);
   const logged = repeated.activeWorkout.exercises.flatMap(exercise => exercise.sets).filter(set => set.completed);
-  expect(logged.every(set => set.id === 'active-working-1')).toBe(true);
+  // Existing completion is a toggle: a rapid completion/undo pair leaves no set logged.
+  expect(logged.map(set => set.id)).toEqual([]);
+  expect(repeated.restTimerEndsAt).toBeGreaterThan(0);
+  await clickCentered(complete);
+  expect((await snapshot(page)).activeWorkout.exercises.flatMap(exercise => exercise.sets).filter(set => set.completed).map(set => set.id)).toEqual(['active-working-1']);
   const entered = row(page, 'active-working-1').locator('.set-remove');
   await clickCentered(entered);
   await expect(entered).toHaveClass(/is-confirming/);

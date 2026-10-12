@@ -1,5 +1,7 @@
 # Browser testing
 
+The release consistency check also requires a matching operator-classified release registration migration. This verifies repository preparation only; hosted registration must be independently verified before an authorized merge/deployment.
+
 The Playwright harness serves the static PWA from `index.html` without rewriting it, so production scripts execute in their declared order.
 
 The current baseline is 468 passing Chromium tests across 58 files with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
