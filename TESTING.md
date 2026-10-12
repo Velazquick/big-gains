@@ -2,6 +2,7 @@
 
 The release consistency check also requires a matching operator-classified release registration migration. This verifies repository preparation only; hosted registration must be independently verified before an authorized merge/deployment.
 The check uses complete Git history to reject rewritten registrations and reuse of retired manifest release IDs; use a full clone (or fetch unshallow), choose a unique ID, and add a fresh CLI migration when rotating a release.
+Pre-existing registration files are frozen at the accepted parent commit of this gate's introduction; earlier merged edits stay part of that baseline. Registrations added afterward are frozen at their first committed contents. Every registration is checked independently, so a fresh file cannot mask a historical rewrite or deletion. Staged registration contents must match the working copy.
 
 The Playwright harness serves the static PWA from `index.html` without rewriting it, so production scripts execute in their declared order.
 

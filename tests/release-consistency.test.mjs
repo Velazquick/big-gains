@@ -62,7 +62,17 @@ test('even a matching release cannot edit its committed registration', () => {
   assert.throws(() => checkReleaseSources(sources), /unchanged operator-classified/);
 });
 
-test('real Git provenance rejects a committed rewrite and accepts a fresh registration path', async context => {
+test('a fresh current registration cannot mask a rewritten or deleted historical registration', () => {
+  for (const deleted of [false, true]) {
+    const sources = rotateShell(baseline);
+    addFreshRegistration(sources);
+    if (deleted) sources.delete(registration);
+    else sources.set(registration, sources.get(registration) + '\n-- rewritten historical registration\n');
+    assert.throws(() => checkReleaseSources(sources), /historical registration must remain unchanged/);
+  }
+});
+
+test('real Git provenance preserves the accepted baseline, rejects later rewrites and accepts fresh registrations', async context => {
   const prefix = join(tmpdir(), 'big-gains-release-provenance-');
   const directory = await mkdtemp(prefix);
   context.after(async () => {
@@ -84,11 +94,19 @@ test('real Git provenance rejects a committed rewrite and accepts a fresh regist
   await git('init');
   await git('config', 'core.autocrlf', 'false');
   await commit('Synthetic original registration');
-  for (const file of [...releaseFiles, registration]) await put(file, baseline.get(file).replaceAll(release, rotated));
+  const acceptedSql = baseline.get(registration) + '\n-- previously approved pre-pilot edit\n';
+  await put(registration, acceptedSql);
+  await commit('Approved historical edit before the release gate');
+  const acceptedBaseline = (await git('rev-parse', 'HEAD')).stdout.trim();
+  await put('scripts/check-release-consistency.mjs', '// Synthetic gate introduction; execution uses the tested reader.\n');
+  await commit('Introduce immutable registration gate');
+  const accepted = checkReleaseSources(await readReleaseSources(root));
+  assert.equal(accepted.registrationProvenanceBaseline, acceptedBaseline);
+  for (const file of [...releaseFiles, registration]) await put(file, (file === registration ? acceptedSql : baseline.get(file)).replaceAll(release, rotated));
   await commit('Incorrect committed historical rewrite');
   const rewritten = await readReleaseSources(root);
   assert.throws(() => checkReleaseSources(rewritten), /add a fresh migration/);
-  await put(registration, baseline.get(registration));
+  await put(registration, acceptedSql);
   const fresh = 'supabase/migrations/20990101000000_operator_synthetic_release.sql';
   const freshSql = `insert into private.product_releases(release) values ('${rotated}') on conflict do nothing;\n`;
   await put(fresh, freshSql);
@@ -108,6 +126,18 @@ test('real Git provenance rejects a committed rewrite and accepts a fresh regist
   const result = checkReleaseSources(await readReleaseSources(root));
   assert.equal(result.release, rotated);
   assert.equal(result.registrationMigration, fresh);
+  await put(registration, acceptedSql + '\n-- incorrect historical edit alongside fresh registration\n');
+  await commit('Historical rewrite masked by a correct fresh registration');
+  const masked = await readReleaseSources(root);
+  assert.throws(() => checkReleaseSources(masked), /historical registration must remain unchanged/);
+  await put(registration, acceptedSql);
+  await commit('Restore historical registration');
+  await rm(new URL(registration, root));
+  await commit('Incorrect deletion masked by fresh registration');
+  const deleted = await readReleaseSources(root);
+  assert.throws(() => checkReleaseSources(deleted), /historical registration must remain unchanged/);
+  await put(registration, acceptedSql);
+  await commit('Restore deleted historical registration');
   // A committed rollback must also fail: the latest history entry alone is
   // insufficient evidence that an identifier has never been retired.
   for (const file of releaseFiles) await put(file, baseline.get(file));

@@ -16,33 +16,46 @@ export const releaseFiles = [
 ];
 
 export async function readReleaseSources(root = new URL('../', import.meta.url)) {
-  const migrations = (await readdir(new URL('supabase/migrations/', root)))
-    .filter(file => /^\d{14}_.*\.sql$/.test(file)).map(file => `supabase/migrations/${file}`);
-  const sources = new Map(await Promise.all([...releaseFiles, ...migrations].map(async file =>
-    [file, await readFile(new URL(file, root), 'utf8')])));
   const cwd = fileURLToPath(root);
   const shallow = await git('git', ['rev-parse', '--is-shallow-repository'], { cwd });
   if (shallow.stdout.trim() !== 'false') throw new Error('Registration provenance requires complete Git history; fetch unshallow before checking.');
+  // Freeze pre-existing migrations at the accepted baseline before this gate
+  // was introduced. Earlier merged SQL edits are not repaired by a UI pilot.
+  const gateHistory = (await git('git', ['log', '--reverse', '--diff-filter=A', '--format=%H', '--', 'scripts/check-release-consistency.mjs'], { cwd })).stdout.trim();
+  const gateIntroduction = gateHistory.split(/\s+/)[0];
+  const gateParents = gateIntroduction ? (await git('git', ['rev-list', '--parents', '-n', '1', gateIntroduction], { cwd })).stdout.trim().split(/\s+/) : [];
+  const checkpoint = gateParents[1];
+  const checkpointPaths = checkpoint ? (await git('git', ['ls-tree', '-r', '--name-only', checkpoint, '--', 'supabase/migrations'], { cwd })).stdout.trim().split('\n') : [];
+  const committedPaths = (await git('git', ['ls-tree', '-r', '--name-only', 'HEAD', '--', 'supabase/migrations'], { cwd })).stdout.trim().split('\n');
+  const indexPaths = (await git('git', ['ls-files', '--', 'supabase/migrations'], { cwd })).stdout.trim().split('\n');
+  const diskPaths = (await readdir(new URL('supabase/migrations/', root))).map(file => `supabase/migrations/${file}`);
+  const migrations = [...new Set([...diskPaths, ...committedPaths, ...indexPaths, ...checkpointPaths])]
+    .filter(file => /^supabase\/migrations\/\d{14}_.*\.sql$/.test(file));
+  const sources = new Map(await Promise.all([...releaseFiles, ...migrations].map(async file => {
+    try { return [file, await readFile(new URL(file, root), 'utf8')]; }
+    catch (error) { if (migrations.includes(file) && error.code === 'ENOENT') return [file, '']; throw error; }
+  })));
   const manifestHistory = await git('git', ['log', '--reverse', '--format=', '-p', '--', 'asset-manifest.js'], { cwd });
   const releases = [...manifestHistory.stdout.matchAll(/^\+\s*const release = ['"]([^'"]+)['"];$/gm)].map(match => match[1]);
   if (!releases.length) throw new Error('Manifest release provenance requires recorded release history.');
   sources.set(releaseHistoryKey, JSON.stringify(releases.filter((release, index) => index === 0 || release !== releases[index - 1])));
-  await Promise.all(migrations.filter(file => /insert\s+into\s+private\.product_releases/i.test(sources.get(file))).map(async file => {
-    const indexed = (await git('git', ['ls-files', '--', file], { cwd })).stdout.trim();
-    if (indexed) {
-      const staged = (await git('git', ['show', `:${file}`], { cwd })).stdout;
-      if (staged.replace(/\r\n/g, '\n') !== sources.get(file).replace(/\r\n/g, '\n')) {
-        throw new Error(`${file}: registration index and worktree differ; stage the reviewed contents before checking`);
-      }
-    }
+  await Promise.all(migrations.map(async file => {
     // Use path introduction, not --follow: copy detection can incorrectly trace
     // a genuinely new registration back to a similar historical SQL file.
     const history = await git('git', ['log', '--reverse', '--diff-filter=A', '--format=%H', '--', file], { cwd });
     const introduction = history.stdout.trim().split(/\s+/)[0];
-    const committed = (await git('git', ['ls-tree', '--name-only', 'HEAD', '--', file], { cwd })).stdout.trim();
-    const original = introduction ? (await git('git', ['show', `${introduction}:${file}`], { cwd })).stdout : committed ? '' : sources.get(file);
+    const committed = committedPaths.includes(file);
+    const reference = checkpointPaths.includes(file) ? checkpoint : introduction;
+    const original = reference ? (await git('git', ['show', `${reference}:${file}`], { cwd })).stdout : committed ? '' : sources.get(file);
+    const staged = indexPaths.includes(file) ? (await git('git', ['show', `:${file}`], { cwd })).stdout : null;
+    const isRegistration = sql => /insert\s+into\s+private\.product_releases/i.test(sql || '');
+    if (![original, staged, sources.get(file)].some(isRegistration)) return;
+    if (staged !== null && staged.replace(/\r\n/g, '\n') !== sources.get(file).replace(/\r\n/g, '\n')) {
+      throw new Error(`${file}: registration index and worktree differ; stage the reviewed contents before checking`);
+    }
     sources.set(introducedKey(file), original);
   }));
+  sources.set('registration-provenance-baseline', checkpoint || 'path-introduction');
   return sources;
 }
 
@@ -65,6 +78,13 @@ export function checkReleaseSources(sources) {
     throw new Error('asset-manifest.js: missing or invalid release/config version');
   }
   const errors = [];
+  for (const [key, original] of sources) {
+    if (!key.startsWith('migration-introduction:')) continue;
+    const file = key.slice('migration-introduction:'.length);
+    if ((sources.get(file) || '').replace(/\r\n/g, '\n') !== original.replace(/\r\n/g, '\n')) {
+      errors.push(`${file}: historical registration must remain unchanged; add a fresh migration rather than rewriting or deleting an existing one`);
+    }
+  }
   const releaseHistory = JSON.parse(sources.get(releaseHistoryKey) || 'null');
   if (!Array.isArray(releaseHistory) || !releaseHistory.length) {
     errors.push('asset-manifest.js: complete release history is required');
@@ -105,7 +125,7 @@ export function checkReleaseSources(sources) {
     }
   }
   if (errors.length) throw new Error(errors.join('\n'));
-  return { release: manifest.release, cloudConfigVersion: manifest.cloudConfigVersion, registrationMigration };
+  return { release: manifest.release, cloudConfigVersion: manifest.cloudConfigVersion, registrationMigration, registrationProvenanceBaseline: sources.get('registration-provenance-baseline') };
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -113,6 +133,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     const result = checkReleaseSources(await readReleaseSources());
     console.log(`Release references consistent: ${result.release} (${result.cloudConfigVersion})`);
     console.log(`Registration artifact: ${result.registrationMigration} (hosted application requires separate verification)`);
+    console.log(`Registration immutability baseline: ${result.registrationProvenanceBaseline}`);
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;

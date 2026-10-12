@@ -45,7 +45,7 @@ For any production app-shell change:
 
 - [ ] Update the `release` value in `asset-manifest.js` to a new, unique, descriptive release ID.
 - [ ] Create its `private.product_releases` registration with the Supabase CLI and keep the migration operator-classified. `check:release` verifies the matching local registration artifact; it does not prove hosted application.
-- [ ] Add a fresh timestamped registration migration for each release; never rewrite an existing migration. The checker requires complete Git history and compares registrations to their original committed content.
+- [ ] Add a fresh timestamped registration migration for each release; never rewrite an existing migration. The checker requires complete Git history: pre-pilot files are frozen at the accepted starting commit, and later files at their first committed content. Every registration is checked independently.
 - [ ] Before authorizing a merge that triggers Pages, separately authorize/apply the reviewed registration and verify the exact release exists in the hosted registry, as required by [OPERATOR_V1.md](docs/OPERATOR_V1.md). Record that proof with the release approval. A green PR or a checked-in migration alone is insufficient; stop the release if this proof is unavailable.
 - [ ] Add, remove, or reorder CSS and scripts only in the manifest's `styles` and `scripts` arrays. Preserve the dependency order documented in [ARCHITECTURE.md](ARCHITECTURE.md).
 - [ ] Confirm each production CSS and script appears exactly once and every required offline asset is present in `coreAssets`; `cloud-config.js` alone uses the generated config-content version rather than the release version.
