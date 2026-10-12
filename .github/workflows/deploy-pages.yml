@@ -24,6 +24,12 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      # Owner approval must first verify hosted registration (RELEASE_CHECKLIST.md).
+      # This read-only check verifies the repository artifact, not hosted state.
+      - name: Require consistent release and registration artifact
+        run: node scripts/check-release-consistency.mjs
 
       - name: Write browser-safe deployment configuration
         if: ${{ vars.SUPABASE_URL != '' && vars.SUPABASE_PUBLISHABLE_KEY != '' }}

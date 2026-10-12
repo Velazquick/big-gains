@@ -76,8 +76,40 @@
     return `Set ${position} of ${working.length}`;
   }
 
-  function renderActive({ activeWorkout, box, finishButton, lastPerformance, performanceDelta, estimate1RM, escapeHtml, stepper, loadModeFor = exercise => exercise?.equipment === 'Bodyweight' ? 'bodyweight' : 'external', inputFieldsFor = () => null, setSummaryFor = null, formatLoad = value => String(Number(value)), formatWorkload = null, guidanceMarkupFor = () => '', unitFor = () => 'lb', supportsWarmup = () => false }) {
+  function renderSessionSummary(workout, box) {
+    if (!box) return;
+    const working = workout.exercises.map(exercise => (exercise.sets || []).filter(set => !set.warmup));
+    const total = working.reduce((count, sets) => count + sets.length, 0);
+    const completed = working.reduce((count, sets) => count + sets.filter(set => set.completed).length, 0);
+    const exercises = working.filter(sets => sets.length > 0 && sets.every(set => set.completed)).length;
+    box.querySelector('[data-workout-exercises]').textContent = `${exercises}/${working.length}`;
+    box.querySelector('[data-workout-sets]').textContent = `${completed}/${total}`;
+    box.querySelector('[data-workout-percent]').textContent = `${total ? Math.round(completed / total * 100) : 0}%`;
+    const progress = box.querySelector('[data-workout-progress]');
+    progress.max = Math.max(1, total);
+    progress.value = completed;
+    progress.setAttribute('aria-label', `${completed} of ${total} working sets completed`);
+  }
+
+  function equipmentIcon(equipment) {
+    const shapes = {
+      barbell: '<path d="M5 12h14M5 6v12M2 9v6M19 6v12M22 9v6"/>',
+      dumbbells: '<path d="m7 7 10 10M4 4l5 5M2 6l4-4M15 15l5 5M18 22l4-4"/>',
+      cable: '<path d="M5 21V3h14v18M8 17h8M8 13h8M12 3v6m-3 0h6"/>',
+      machine: '<path d="M4 21V4h8v10h7v7M4 14h8M12 9h7M7 21h14"/>',
+      bodyweight: '<circle cx="12" cy="4" r="2"/><path d="M5 8h14M12 6v8m0 0-5 7m5-7 5 7"/>',
+      kettlebell: '<path d="M8 9V6a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15" r="7"/>',
+      other: '<circle cx="12" cy="12" r="8"/><path d="M8 12h8m-4-4v8"/>'
+    };
+    const key = String(equipment || '').toLowerCase();
+    const shapeKey = key === 'dumbbell' ? 'dumbbells' : key;
+    const shape = Object.hasOwn(shapes, shapeKey) ? shapes[shapeKey] : shapes.other;
+    return `<svg class="exercise-equipment-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${shape}</svg>`;
+  }
+
+  function renderActive({ activeWorkout, box, finishButton, summaryBox = null, lastPerformance, performanceDelta, estimate1RM, escapeHtml, stepper, loadModeFor = exercise => exercise?.equipment === 'Bodyweight' ? 'bodyweight' : 'external', inputFieldsFor = () => null, setSummaryFor = null, formatLoad = value => String(Number(value)), formatWorkload = null, guidanceMarkupFor = () => '', unitFor = () => 'lb', supportsWarmup = () => false }) {
     if (!activeWorkout) return;
+    renderSessionSummary(activeWorkout, summaryBox);
     if (!activeWorkout.exercises.length) {
       box.innerHTML = '<div class="empty">Choose a routine or an exercise above.</div>';
       finishButton.disabled = true;
@@ -130,8 +162,8 @@
             <span class="set-number">${set.warmup ? 'W' : exercise.sets.filter(item => !item.warmup).indexOf(set) + 1}</span>
             ${inputFields.map(field => stepper(field.name, exerciseIndex, setIndex, set[field.name] ?? '', field.step, { ...field, loadMode, compact: true })).join('')}
             <button type="button" class="set-done" aria-pressed="${set.completed === true}" data-complete-set="1" data-ei="${exerciseIndex}" data-si="${setIndex}" aria-label="${set.completed ? 'Mark set incomplete' : `Complete ${label}`}">
-              <span class="set-done-icon">✓</span>
-              <span class="set-done-text">${set.completed ? 'Done' : 'Complete'}</span>
+              <span class="set-done-icon" aria-hidden="true">${set.completed ? '✓' : current ? '→' : '○'}</span>
+              <span class="set-done-text">${set.completed ? 'Done' : current ? 'Log' : 'Complete'}</span>
             </button>
             <button type="button" class="set-adjustment-toggle" data-set-adjustments="${setIndex}" data-ei="${exerciseIndex}" aria-expanded="${adjustmentOpen}" aria-controls="${adjustmentId}" aria-label="Adjust ${label}">±</button>
             <button type="button" class="set-remove" data-remove-set="1" data-ei="${exerciseIndex}" data-si="${setIndex}" aria-label="Remove ${label}"><span aria-hidden="true">✕</span></button>
@@ -147,8 +179,9 @@
       return `
         <article class="active-exercise ${collapsed ? 'is-collapsed' : ''} ${summary.complete ? 'is-complete' : ''} ${isActive ? 'is-active' : 'is-upcoming'}" data-exercise-state="${exerciseState}" data-exercise-id="${escapeHtml(exercise.id)}" aria-current="${isActive ? 'step' : 'false'}">
           <div class="exercise-head" data-exercise-head="${exerciseIndex}">
-            <div>
-              <div class="exercise-kickers"><span class="exercise-state-label">${exerciseState === 'current' ? 'Current' : exerciseState === 'completed' ? 'Completed' : 'Up next'}</span><span class="exercise-muscle">${escapeHtml(exercise.muscle)}</span></div>
+            <div class="exercise-heading-copy">
+              <span class="exercise-ordinal" aria-hidden="true">${exerciseIndex + 1}</span>
+              <div class="exercise-kickers">${equipmentIcon(exercise.equipment)}<span class="exercise-state-label">${exerciseState === 'current' ? 'Current' : exerciseState === 'completed' ? 'Completed' : 'Up next'}</span><span class="exercise-muscle">${escapeHtml(exercise.muscle)}</span></div>
               <h3>${escapeHtml(exercise.name)}</h3>
               <p>${escapeHtml(exercise.equipment)}${inputFields.find(field => field.name === 'weight')?.label ? ` · ${escapeHtml(inputFields.find(field => field.name === 'weight').label)}` : ''} · ${escapeHtml(summary.complete ? `${summary.completed} of ${summary.total} complete` : summary.progress)}</p>
             </div>
@@ -160,7 +193,12 @@
           ${unitChoice}
           <div class="active-exercise-body" id="exercise-body-${exerciseIndex}">
             ${guidanceMarkupFor(exercise)}
-            <div class="exercise-context"><span>Last</span><strong data-previous-performance="${escapeHtml(exercise.id)}">${escapeHtml(previous)}</strong>${exercise.targetReps ? `<em class="exercise-target" data-target-reps="${escapeHtml(exercise.targetReps)}">Target ${escapeHtml(exercise.targetReps)}</em>` : ''}${improvement ? `<em class="exercise-delta" data-improvement-delta="${escapeHtml(improvement.kind)}">${escapeHtml(improvement.label)}</em>` : ''}${previousSets ? `<small>${escapeHtml(previousSets)}</small>` : ''}</div>
+            <div class="exercise-context">
+              <div class="exercise-context-cell"><span>Last</span><strong data-previous-performance="${escapeHtml(exercise.id)}">${escapeHtml(previous)}</strong></div>
+              <div class="exercise-context-cell"><span>Target</span>${exercise.targetReps ? `<strong class="exercise-target" data-target-reps="${escapeHtml(exercise.targetReps)}">${escapeHtml(exercise.targetReps)}${inputFields.some(field => field.name === 'reps') && /^\d+(?:\s*[-–—]\s*\d+)?$/.test(String(exercise.targetReps).trim()) ? ' reps' : ''}</strong>` : '<strong class="context-unavailable">Not set</strong>'}</div>
+              <div class="exercise-context-cell"><span>Improvement</span>${improvement ? `<strong class="exercise-delta" data-improvement-delta="${escapeHtml(improvement.kind)}">${escapeHtml(improvement.label)}</strong>` : '<strong class="context-unavailable" aria-label="Improvement unavailable">—</strong>'}</div>
+              ${previousSets ? `<small class="previous-working-sets">${escapeHtml(previousSets)}</small>` : ''}
+            </div>
             ${supportsWarmup(exercise) || warmups ? `<section class="set-section" aria-label="Warmup"><div class="set-section-heading"><h4>Warmup</h4>${supportsWarmup(exercise) ? `<button type="button" data-add-warmup="${exerciseIndex}" aria-label="Add warmup set to ${escapeHtml(exercise.name)}">+ Add warmup</button>` : ''}</div><div class="set-grid">${warmups}</div></section>` : ''}
             <section class="set-section" aria-label="Working sets"><div class="set-section-heading"><h4>Working sets</h4></div><div class="set-grid">${workingSets}</div></section>
             <button type="button" class="add-set" data-add-set="${exerciseIndex}">+ Add working set</button>

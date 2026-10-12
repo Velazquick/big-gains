@@ -1,5 +1,10 @@
 # Browser testing
 
+The release consistency check also requires a matching operator-classified release registration migration. This verifies repository preparation only; hosted registration must be independently verified before an authorized merge/deployment.
+The check uses complete Git history to reject rewritten registrations and reuse of retired manifest release IDs; use a full clone (or fetch unshallow), choose a unique ID, and add a fresh CLI migration when rotating a release.
+Pre-existing registration files are frozen at the accepted parent commit of this gate's introduction; earlier merged edits stay part of that baseline. Registrations added afterward are frozen at their first committed contents. Every registration is checked independently, so a fresh file cannot mask a historical rewrite or deletion. Staged registration contents must match the working copy.
+Playwright retains commit metadata but disables automatic PR diff metadata, whose depth-one fetch makes an otherwise complete checkout shallow before collection. A disposable local PR fixture exercises that actual browser entry point: the old metadata default fails release provenance, while the configured run preserves full history and commit metadata. This does not skip browser cases or relax the release gate.
+
 The Playwright harness serves the static PWA from `index.html` without rewriting it, so production scripts execute in their declared order.
 
 The current baseline is 468 passing Chromium tests across 58 files with no expected failures. See [ARCHITECTURE.md](ARCHITECTURE.md) for the runtime boundaries these tests protect and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the required release verification.
@@ -26,6 +31,14 @@ npx playwright install chromium
 On Linux CI hosts, install Chromium and its system dependencies with `npx playwright install --with-deps chromium`.
 
 ## Run
+
+Before focused browser tests, run `npm run check:release` and `npm run test:release`.
+These dependency-free Node checks also run at the start of `npm test` and in the
+protected Browser tests workflow. They compare the current asset manifest with
+entrypoint URLs and the offline, startup, telemetry, and export expectations.
+Historical caches and synthetic release fixtures are intentionally excluded.
+This is source consistency evidence; it does not prove deployment or replace
+browser/offline validation.
 
 ```sh
 npm test

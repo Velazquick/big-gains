@@ -4,6 +4,9 @@ const chromiumExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
 
 export default defineConfig({
   testDir: './tests',
+  // PR diff metadata fetches the base with --depth=1 and makes a full clone
+  // shallow before collection. Preserve the history required by release checks.
+  captureGitInfo: { commit: true, diff: false },
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: 0,
