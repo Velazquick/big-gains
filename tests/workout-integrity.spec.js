@@ -2,10 +2,10 @@ import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { blankState, activeWorkout, completedWorkout } from './fixtures/local-storage.js';
 
-async function seed(page, { corrupt = null, kind = 'managed-owner' } = {}) {
+async function seed(page, { corrupt = null, kind = 'managed-owner', version = 5 } = {}) {
   const workout = activeWorkout({ startedAt: new Date().toISOString() });
   workout.exercises[0].sets[1].completed = true;
-  const value = { ...blankState('jorge'), workouts: [completedWorkout()], activeWorkout: workout };
+  const value = { ...blankState('jorge'), version, workouts: [completedWorkout()], activeWorkout: workout };
   await page.context().route('**/*', route => new URL(route.request().url()).origin === new URL(test.info().project.use.baseURL).origin ? route.continue() : route.abort());
   await page.addInitScript(({ value, corrupt, kind }) => {
     if (localStorage.getItem('__integrity_seed')) return;
@@ -219,7 +219,7 @@ test('unreadable queue cannot be replaced by a new operation', async ({ page }) 
     const key = '__synthetic_queue', corrupt = '{pending-evidence';
     localStorage.setItem(key, corrupt);
     const queue = BigGainsCloud.createDurableQueue({ key });
-    const operation = BigGainsCloud.createOperation({ owner: { accountId: 'synthetic', profileId: 'synthetic' }, entityType: 'workouts', entityId: 'synthetic-workout', mutation: 'upsert', payload: { id: 'synthetic-workout' }, version: 1 });
+    const operation = BigGainsCloud.createOperation({ owner: { accountId: 'synthetic', profileId: 'synthetic' }, entityType: 'workouts', entityId: 'synthetic-workout', mutation: 'upsert', payload: { id: 'synthetic-workout' }, version: 1, updatedAt: '2026-10-12T12:00:00.000Z' });
     let error;
     try { queue.enqueue(operation); } catch (failure) { error = failure.message; }
     return { error, stored: localStorage.getItem(key), corrupt, pending: queue.pending().length };
@@ -227,4 +227,88 @@ test('unreadable queue cannot be replaced by a new operation', async ({ page }) 
   expect(result.error).toContain('original data is protected');
   expect(result.stored).toBe(result.corrupt);
   expect(result.pending).toBe(0);
+});
+
+for (const version of [2, 3, 4]) {
+  test(`valid schema ${version} preserves performed History and remains writable`, async ({ page }) => {
+    await seed(page, { version });
+    const before = JSON.parse(await raw(page)).workouts;
+    expect(await page.evaluate(() => statePersistenceApi.status().writable)).toBe(true);
+    await page.evaluate(() => saveState());
+    expect(JSON.parse(await raw(page)).workouts).toEqual(before);
+    expect(JSON.parse(await raw(page)).version).toBe(5);
+  });
+}
+
+test('storage read fault cannot bootstrap an empty profile over existing data', async ({ page }) => {
+  await page.addInitScript(() => {
+    const original = Storage.prototype.getItem;
+    Storage.prototype.getItem = function(key) {
+      if (key === 'big-gains-v2') throw new DOMException('Synthetic unavailable storage', 'SecurityError');
+      return original.call(this, key);
+    };
+    window.__restoreStorageRead = () => { Storage.prototype.getItem = original; };
+  });
+  await seed(page);
+  expect(await page.evaluate(() => BigGainsBootGate.status().state)).toBe('recovery');
+  await page.evaluate(() => window.__restoreStorageRead());
+  const before = await raw(page);
+  expect(JSON.parse(before).workouts).toHaveLength(1);
+  expect(await page.evaluate(() => {
+    try { statePersistenceApi.save(state, active); return null; } catch (error) { return error.code; }
+  })).toBe('local-state-unreadable');
+  await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+  expect(await raw(page)).toBe(before);
+});
+
+test('inactive corrupt managed profile cannot be replaced by recovery or rollback', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('big-gains-alexa-v1', '{inactive-evidence'));
+  await seed(page);
+  const result = await page.evaluate(() => {
+    const key = bigGainsStatePersistence.storageKeyForProfile('alexa'), before = localStorage.getItem(key), errors = [];
+    for (const action of [() => bigGainsStatePersistence.writeRawOwnedState(key, '{}'), () => bigGainsStatePersistence.removeRawOwnedState(key)]) {
+      try { action(); errors.push(null); } catch (error) { errors.push(error.code); }
+    }
+    return { before, after: localStorage.getItem(key), errors };
+  });
+  expect(result.before).toBe('{inactive-evidence');
+  expect(result.after).toBe(result.before);
+  expect(result.errors).toEqual(['local-state-unreadable', 'local-state-unreadable']);
+});
+
+test('offline Finish persists authoritative History without awaiting cloud acknowledgement', async ({ page, context }) => {
+  await seed(page);
+  await context.setOffline(true);
+  expect(await page.evaluate(() => workoutSessionController.complete())).toBe(true);
+  const committed = await raw(page);
+  expect(JSON.parse(committed).workouts).toHaveLength(2);
+  await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+  expect(await raw(page)).toBe(committed);
+  await context.setOffline(false);
+  await page.reload();
+  await page.waitForFunction(() => BigGainsBootGate.canRender());
+  expect(await page.evaluate(() => state.workouts.length)).toBe(2);
+  expect(await page.evaluate(() => active)).toBeNull();
+});
+
+test('failed backup import preserves live and durable training through background save and reload', async ({ page }) => {
+  await seed(page);
+  const before = await raw(page), beforeMemory = await page.evaluate(() => ({ history: structuredClone(state.workouts), active: structuredClone(active) }));
+  await page.evaluate(() => {
+    const original = Storage.prototype.setItem;
+    Storage.prototype.setItem = function(key, value) { if (key === ACCOUNT.storageKey) throw new DOMException('Synthetic quota', 'QuotaExceededError'); return original.call(this, key, value); };
+    window.__restoreStorageWrite = () => { Storage.prototype.setItem = original; };
+  });
+  page.once('dialog', dialog => { expect(dialog.message()).toContain('Your existing training is unchanged'); return dialog.accept(); });
+  await page.locator('#importData').setInputFiles({ name: 'synthetic-backup.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(blankState('jorge'))) });
+  await expect(page.locator('#importData')).toHaveValue('');
+  expect(await raw(page)).toBe(before);
+  expect(await page.evaluate(() => ({ history: structuredClone(state.workouts), active: structuredClone(active) }))).toEqual(beforeMemory);
+  await page.evaluate(() => { window.__restoreStorageWrite(); window.dispatchEvent(new Event('pagehide')); });
+  expect(JSON.parse(await raw(page)).workouts).toEqual(beforeMemory.history);
+  expect(JSON.parse(await raw(page)).activeWorkout).toEqual(beforeMemory.active);
+  await page.reload();
+  await page.waitForFunction(() => BigGainsBootGate.canRender());
+  expect(await page.evaluate(() => active.id)).toBe(beforeMemory.active.id);
+  expect(await page.evaluate(() => state.workouts)).toEqual(beforeMemory.history);
 });

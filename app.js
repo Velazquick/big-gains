@@ -147,15 +147,18 @@ const retrospectiveApi=window.bigGainsRetrospective.create({
 });
 function setWorkoutPetState(next){if(next)document.body.dataset.workoutPetState=next;else delete document.body.dataset.workoutPetState;if(typeof window.trainingPet?.render==='function')window.trainingPet.render(true);}
 function saveState(){
+  return commitState(state,active);
+}
+function commitState(value,workout){
   if((bigGainsAccounts.runtime.kind==='managed-member'&&!statePersistenceApi.hasStoredState())
-    ||window.BigGainsManagedProfileRecovery?.suppressingLocalSave(state,active)){
+    ||window.BigGainsManagedProfileRecovery?.suppressingLocalSave(value,workout)){
     throw Object.assign(new Error('Saved training is protected while recovery is pending.'),{code:'local-save-protected'});
   }
-  statePersistenceApi.save(state,active);
+  statePersistenceApi.save(value,workout);
   // The profile write is the local commit. Optional backup setup and capture
   // must never turn an already committed workout into a rollback.
   try{
-    const snapshot=JSON.parse(JSON.stringify(state));
+    const snapshot=JSON.parse(JSON.stringify(value));
     const finishCloudMutation=window.BigGainsCloudSync?.beginLocalMutation?.();
     queueMicrotask(async()=>{
       try{await Promise.all([
@@ -591,7 +594,28 @@ bind('downloadCompletedSets','click',()=>{if(preparedUserExport&&userExportApi.d
 bind('downloadPersonalData','click',()=>{if(preparedUserExport&&userExportApi.download(preparedUserExport.json))$('userDataExportStatus').textContent='Personal data JSON downloaded.';});
 bind('closeUserDataExport','click',closeUserExportDialog);bind('userDataExportDialog','click',e=>{if(e.target===$('userDataExportDialog'))closeUserExportDialog();});
 bind('exportData','click',()=>{const backup=statePersistenceApi.prepareExport(state),blob=new Blob([backup.json],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=backup.filename;a.click();URL.revokeObjectURL(url);});
-bind('importData','change',async e=>{const file=e.target.files[0];if(!file)return;try{const imported=JSON.parse(await file.text()),result=statePersistenceApi.validateImport(imported);if(!result.ok){if(result.reason==='profile-mismatch'){alert(`This backup belongs to ${result.profileName}, not ${ACCOUNT.displayName}. Switch profiles before restoring it.`);return;}throw new Error('Invalid backup');}state=result.state;active=state.activeWorkout||null;const today=todaysWorkout();selectedDay=(active&&active.type)||(today==='Rest'?PROFILE.capabilities.restFallbackWorkout:today);saveState();renderAll();alert('Backup restored for '+ACCOUNT.displayName+'.');}catch{alert('That file is not a valid Big Gains backup.');}finally{e.target.value='';}});
+bind('importData','change',async e=>{
+  const file=e.target.files[0];if(!file)return;
+  const ownerState=state,ownerWorkout=active;
+  let validated=false;
+  try{
+    const imported=JSON.parse(await file.text()),result=statePersistenceApi.validateImport(imported);
+    if(!result.ok){
+      if(result.reason==='profile-mismatch'){alert(`This backup belongs to ${result.profileName}, not ${ACCOUNT.displayName}. Switch profiles before restoring it.`);return;}
+      throw new Error('Invalid backup');
+    }
+    validated=true;
+    if(state!==ownerState||active!==ownerWorkout){alert('Your workout changed while the backup was being read. Choose the backup again.');return;}
+    const nextActive=result.state.activeWorkout||null;
+    // Persist the candidate before changing any live state or timer ports.
+    commitState(result.state,nextActive);
+    state=result.state;active=nextActive;
+    const today=todaysWorkout();selectedDay=(active&&active.type)||(today==='Rest'?PROFILE.capabilities.restFallbackWorkout:today);
+    try{renderAll();}catch(error){console.warn('Backup restored; presentation failed.',error);}
+    alert('Backup restored for '+ACCOUNT.displayName+'.');
+  }catch{alert(validated?'Backup could not be saved. Your existing training is unchanged.':'That file is not a valid Big Gains backup.');}
+  finally{e.target.value='';}
+});
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;$('installButton').classList.remove('hidden');});
 bind('installButton','click',async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;$('installButton').classList.add('hidden');});
 function saveBackgroundState(){try{saveState();}catch(error){console.warn('Background save refused; retained training was not replaced.',error);}}

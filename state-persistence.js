@@ -32,7 +32,7 @@
     return isRecord(value) && (!Object.hasOwn(value, 'version') || [2, 3, 4, 5].includes(value.version))
       && (!Object.hasOwn(value, 'profileId') || value.profileId === profileId)
       && Array.isArray(value.workouts) && value.workouts.every(workout => exercisesReadable(workout) && validDate(workout.completedAt))
-      && Array.isArray(value.weights) && value.weights.every(entry => isRecord(entry) && validDate(entry.date) && Number.isFinite(Number(entry.weight)) && Number(entry.weight) > 0)
+      && Array.isArray(value.weights) && value.weights.every(entry => isRecord(entry) && validDate(entry.date) && Number.isFinite(Number(entry.weight)) && Number(entry.weight) >= 0)
       && (value.activeWorkout == null || (exercisesReadable(value.activeWorkout) && validDate(value.activeWorkout.startedAt)));
   }
   const persistenceError = code => Object.assign(new Error('Local training data was not changed.'), { code });
