@@ -34,6 +34,11 @@ test('a coordinated release rotation with a fresh registration passes', () => {
   assert.equal(checkReleaseSources(sources).release, rotated);
 });
 
+test('coordinated pins cannot reuse a retired release ID even with its unchanged registration', () => {
+  const sources = new Map([...baseline].map(([file, source]) => [file, releaseFiles.includes(file) ? source.replaceAll(release, 'v120-train-premium-pass-01') : source]));
+  assert.throws(() => checkReleaseSources(sources), /retired release ID cannot be reused/);
+});
+
 for (const file of releaseFiles.filter(file => file !== 'asset-manifest.js')) {
   test(`release rotation rejects stale current reference in ${file}`, () => {
     const sources = rotateShell(baseline);
@@ -90,6 +95,12 @@ test('real Git provenance rejects a committed rewrite and accepts a fresh regist
   const result = checkReleaseSources(await readReleaseSources(root));
   assert.equal(result.release, rotated);
   assert.equal(result.registrationMigration, fresh);
+  // A committed rollback must also fail: the latest history entry alone is
+  // insufficient evidence that an identifier has never been retired.
+  for (const file of releaseFiles) await put(file, baseline.get(file));
+  await commit('Incorrect reuse of a retired release');
+  const reused = await readReleaseSources(root);
+  assert.throws(() => checkReleaseSources(reused), /retired release ID cannot be reused/);
 });
 
 test('matching shell pins without a release registration fail closed', () => {

@@ -84,14 +84,17 @@ test('swapping an exercise recalculates progress from the replacement without ch
   expect(after.activeWorkout.exercises[1]).toEqual(before.activeWorkout.exercises[1]);
 });
 
-test('custom routine targets preserve non-repetition measurement text without inventing units', async ({ page }) => {
+test('custom routine targets preserve measurement text and free-form units without inventing units', async ({ page }) => {
   await seed(page);
   const before = await snapshot(page);
   await page.evaluate(() => {
     state.customRoutines.Push = [
       { exerciseId: 'plank', workingSets: 2, targetReps: '60' },
       { exerciseId: 'farmer-carry', workingSets: 2, targetReps: '40 m' },
-      { exerciseId: 'barbell-bench-press', workingSets: 2, targetReps: '5' }
+      { exerciseId: 'barbell-bench-press', workingSets: 2, targetReps: '5' },
+      { exerciseId: 'dumbbell-lateral-raise', workingSets: 2, targetReps: '8 reps' },
+      { exerciseId: 'push-up', workingSets: 2, targetReps: 'Failure' },
+      { exerciseId: 'lat-pulldown', workingSets: 2, targetReps: '5–8' }
     ];
     saveState();
     workoutSessionController.replace('Push', { loadRoutine: true, scroll: false });
@@ -105,7 +108,10 @@ test('custom routine targets preserve non-repetition measurement text without in
   await expect(carry.locator('input[data-field="distance"]')).toHaveCount(2);
   await expect(carry.locator('input[data-field="reps"]')).toHaveCount(0);
   await expect(page.locator('[data-exercise-id="barbell-bench-press"] [data-target-reps]')).toHaveText('5 reps');
-  expect((await snapshot(page)).activeWorkout.exercises.map(exercise => exercise.targetReps)).toEqual(['60', '40 m', '5']);
+  await expect(page.locator('[data-exercise-id="dumbbell-lateral-raise"] [data-target-reps]')).toHaveText('8 reps');
+  await expect(page.locator('[data-exercise-id="push-up"] [data-target-reps]')).toHaveText('Failure');
+  await expect(page.locator('[data-exercise-id="lat-pulldown"] [data-target-reps]')).toHaveText('5–8 reps');
+  expect((await snapshot(page)).activeWorkout.exercises.map(exercise => exercise.targetReps)).toEqual(['60', '40 m', '5', '8 reps', 'Failure', '5–8']);
   expect((await snapshot(page)).workouts).toEqual(before.workouts);
 });
 

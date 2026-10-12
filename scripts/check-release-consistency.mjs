@@ -7,6 +7,7 @@ import { promisify } from 'node:util';
 
 const git = promisify(execFile);
 const introducedKey = file => `migration-introduction:${file}`;
+const releaseHistoryKey = 'manifest-release-history';
 
 export const releaseFiles = [
   'asset-manifest.js', 'index.html', 'auth-setup.html', 'service-worker.js',
@@ -22,6 +23,10 @@ export async function readReleaseSources(root = new URL('../', import.meta.url))
   const cwd = fileURLToPath(root);
   const shallow = await git('git', ['rev-parse', '--is-shallow-repository'], { cwd });
   if (shallow.stdout.trim() !== 'false') throw new Error('Registration provenance requires complete Git history; fetch unshallow before checking.');
+  const manifestHistory = await git('git', ['log', '--reverse', '--format=', '-p', '--', 'asset-manifest.js'], { cwd });
+  const releases = [...manifestHistory.stdout.matchAll(/^\+\s*const release = ['"]([^'"]+)['"];$/gm)].map(match => match[1]);
+  if (!releases.length) throw new Error('Manifest release provenance requires recorded release history.');
+  sources.set(releaseHistoryKey, JSON.stringify(releases.filter((release, index) => index === 0 || release !== releases[index - 1])));
   await Promise.all(migrations.filter(file => /insert\s+into\s+private\.product_releases/i.test(sources.get(file))).map(async file => {
     // Use path introduction, not --follow: copy detection can incorrectly trace
     // a genuinely new registration back to a similar historical SQL file.
@@ -53,6 +58,12 @@ export function checkReleaseSources(sources) {
     throw new Error('asset-manifest.js: missing or invalid release/config version');
   }
   const errors = [];
+  const releaseHistory = JSON.parse(sources.get(releaseHistoryKey) || 'null');
+  if (!Array.isArray(releaseHistory) || !releaseHistory.length) {
+    errors.push('asset-manifest.js: complete release history is required');
+  } else if (releaseHistory.slice(0, releaseHistory.at(-1) === manifest.release ? -1 : undefined).includes(manifest.release)) {
+    errors.push('asset-manifest.js: a retired release ID cannot be reused; choose a fresh release and registration');
+  }
   const registrationMigration = registrationFor(sources, manifest.release);
   if (!registrationMigration) errors.push('supabase/migrations: current release requires an unchanged operator-classified product_releases registration; add a fresh migration rather than rewriting an existing one');
   function pin(file, pattern, expected, label) {
