@@ -6,6 +6,9 @@ async function seed(page, { corrupt = null, kind = 'managed-owner', version = 5 
   const workout = activeWorkout({ startedAt: new Date().toISOString() });
   workout.exercises[0].sets[1].completed = true;
   const value = { ...blankState('jorge'), version, workouts: [completedWorkout()], activeWorkout: workout };
+  // Include the existing display default so the compatibility assertion can
+  // compare the entire History record without conflating UI normalization.
+  if (version !== 5) value.workouts.forEach(entry => entry.exercises.forEach(exercise => { exercise.collapsed = true; }));
   await page.context().route('**/*', route => new URL(route.request().url()).origin === new URL(test.info().project.use.baseURL).origin ? route.continue() : route.abort());
   await page.addInitScript(({ value, corrupt, kind }) => {
     if (localStorage.getItem('__integrity_seed')) return;
