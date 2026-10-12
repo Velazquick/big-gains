@@ -26,10 +26,11 @@ export async function readReleaseSources(root = new URL('../', import.meta.url))
   const gateParents = gateIntroduction ? (await git('git', ['rev-list', '--parents', '-n', '1', gateIntroduction], { cwd })).stdout.trim().split(/\s+/) : [];
   const checkpoint = gateParents[1];
   const checkpointPaths = checkpoint ? (await git('git', ['ls-tree', '-r', '--name-only', checkpoint, '--', 'supabase/migrations'], { cwd })).stdout.trim().split('\n') : [];
+  const laterPaths = (await git('git', ['log', '--diff-filter=A', '--name-only', '--format=', ...(checkpoint ? [`${checkpoint}..HEAD`] : []), '--', 'supabase/migrations'], { cwd })).stdout.trim().split('\n');
   const committedPaths = (await git('git', ['ls-tree', '-r', '--name-only', 'HEAD', '--', 'supabase/migrations'], { cwd })).stdout.trim().split('\n');
   const indexPaths = (await git('git', ['ls-files', '--', 'supabase/migrations'], { cwd })).stdout.trim().split('\n');
   const diskPaths = (await readdir(new URL('supabase/migrations/', root))).map(file => `supabase/migrations/${file}`);
-  const migrations = [...new Set([...diskPaths, ...committedPaths, ...indexPaths, ...checkpointPaths])]
+  const migrations = [...new Set([...diskPaths, ...committedPaths, ...indexPaths, ...checkpointPaths, ...laterPaths])]
     .filter(file => /^supabase\/migrations\/\d{14}_.*\.sql$/.test(file));
   const sources = new Map(await Promise.all([...releaseFiles, ...migrations].map(async file => {
     try { return [file, await readFile(new URL(file, root), 'utf8')]; }

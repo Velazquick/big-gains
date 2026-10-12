@@ -138,6 +138,14 @@ test('real Git provenance preserves the accepted baseline, rejects later rewrite
   assert.throws(() => checkReleaseSources(deleted), /historical registration must remain unchanged/);
   await put(registration, acceptedSql);
   await commit('Restore deleted historical registration');
+  const replacement = 'supabase/migrations/20990101000001_operator_replacement_registration.sql';
+  await put(replacement, freshSql);
+  await rm(new URL(fresh, root));
+  await commit('Incorrect post-gate deletion masked by replacement registration');
+  const deletedLater = await readReleaseSources(root);
+  assert.throws(() => checkReleaseSources(deletedLater), /historical registration must remain unchanged/);
+  await put(fresh, freshSql);
+  await commit('Restore post-gate registration');
   // A committed rollback must also fail: the latest history entry alone is
   // insufficient evidence that an identifier has never been retired.
   for (const file of releaseFiles) await put(file, baseline.get(file));
