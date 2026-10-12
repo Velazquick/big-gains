@@ -65,3 +65,19 @@ test('a revisioned runtime asset omitted from offline core is rejected', () => {
   ));
   assert.throws(() => checkReleaseSources(sources), /offline core omits.*timer-controller/);
 });
+
+test('stale manifestAsset URL fails despite consistent entrypoint pins', () => {
+  const sources = new Map(baseline);
+  sources.set('asset-manifest.js', sources.get('asset-manifest.js').replace(
+    'encodeURIComponent(deploymentVersion)', 'encodeURIComponent("v1-stale-config-0000000000000000")'
+  ));
+  assert.throws(() => checkReleaseSources(sources), /inconsistent manifestAsset URL/);
+});
+
+test('the current manifest URL must be present in offline core', () => {
+  const sources = new Map(baseline);
+  sources.set('asset-manifest.js', sources.get('asset-manifest.js').replace(
+    '    manifestAsset,', '    "./old-manifest.js?v=v1-stale",'
+  ));
+  assert.throws(() => checkReleaseSources(sources), /offline core omits current manifestAsset URL/);
+});

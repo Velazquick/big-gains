@@ -6,7 +6,7 @@ import { runInNewContext } from 'node:vm';
 export const releaseFiles = [
   'asset-manifest.js', 'index.html', 'auth-setup.html', 'service-worker.js',
   'tests/offline.spec.js', 'tests/helpers/telemetry.js', 'tests/user-data-export.spec.js',
-  'tests/startup-interactivity.spec.js'
+  'tests/startup-interactivity.spec.js', 'tests/pwa-update.spec.js'
 ];
 
 export async function readReleaseSources(root = new URL('../', import.meta.url)) {
@@ -33,6 +33,9 @@ export function checkReleaseSources(sources) {
   }
   const deployment = `${manifest.release}-${manifest.cloudConfigVersion}`;
   if (manifest.deploymentVersion !== deployment) errors.push('asset-manifest.js: inconsistent deployment version');
+  const manifestAsset = `./asset-manifest.js?v=${encodeURIComponent(deployment)}`;
+  if (manifest.manifestAsset !== manifestAsset) errors.push('asset-manifest.js: inconsistent manifestAsset URL');
+  if (!manifest.coreAssets.includes(manifestAsset)) errors.push('asset-manifest.js: offline core omits current manifestAsset URL');
   for (const file of ['index.html', 'auth-setup.html', 'service-worker.js']) {
     pin(file, /asset-manifest\.js\?v=([^"'\s]+)/g, encodeURIComponent(deployment), 'deployment manifest reference');
   }
@@ -42,6 +45,7 @@ export function checkReleaseSources(sources) {
   pin('tests/helpers/telemetry.js', /expect\(event\.release\)\.toBe\('([^']+)'\)/g, manifest.release, 'current telemetry expectation');
   pin('tests/user-data-export.spec.js', /metadata:\s*\{\s*exportedAt: EXPORTED_AT, appVersion: '([^']+)'/g, manifest.release, 'current export expectation');
   pin('tests/startup-interactivity.spec.js', /expect\(result\.release\)\.toBe\('([^']+)'\)/g, manifest.release, 'current startup expectation');
+  pin('tests/pwa-update.spec.js', /const RELEASE = '([^']+)';/g, manifest.release, 'current PWA harness RELEASE');
   for (const key of ['styles', 'scripts', 'authSetupStyles', 'authSetupScripts']) {
     for (const asset of manifest[key]) {
       const url = new URL(asset, 'https://synthetic.invalid/');
