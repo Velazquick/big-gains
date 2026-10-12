@@ -8,7 +8,10 @@ async function seed(page, { corrupt = null, kind = 'managed-owner', version = 5 
   const value = { ...blankState('jorge'), version, workouts: [completedWorkout()], activeWorkout: workout };
   // Include the existing display default so the compatibility assertion can
   // compare the entire History record without conflating UI normalization.
-  if (version !== 5) value.workouts.forEach(entry => entry.exercises.forEach(exercise => { exercise.collapsed = true; }));
+  if (version !== 5) {
+    value.workouts.forEach(entry => entry.exercises.forEach(exercise => { exercise.collapsed = true; }));
+    value.weights = [{ weight: 0, date: '2026-10-12T12:00:00.000Z' }];
+  }
   await page.context().route('**/*', route => new URL(route.request().url()).origin === new URL(test.info().project.use.baseURL).origin ? route.continue() : route.abort());
   await page.addInitScript(({ value, corrupt, kind }) => {
     if (localStorage.getItem('__integrity_seed')) return;
@@ -240,6 +243,7 @@ for (const version of [2, 3, 4]) {
     await page.evaluate(() => saveState());
     expect(JSON.parse(await raw(page)).workouts).toEqual(before);
     expect(JSON.parse(await raw(page)).version).toBe(5);
+    expect(JSON.parse(await raw(page)).weights).toEqual([{ weight: 0, date: '2026-10-12T12:00:00.000Z' }]);
   });
 }
 

@@ -263,7 +263,7 @@
     }
 
     function clearCommittedRuntime(hideActive = true) {
-      // The profile document already has no active session. Presentation or
+      // The saved profile already has no active session. Presentation or
       // timer cleanup errors cannot turn that durable success into a failure.
       for (const cleanup of [clearWorkoutTicker, deactivateTimer, () => setPetState(null), () => onRuntimeCleared({ hideActive })]) {
         try { cleanup(); } catch (error) { console.warn('Workout committed; runtime cleanup failed.', error); }
@@ -601,7 +601,7 @@
         state.prs = nextPrs;
         if (sequenceResult?.capture) state.programCapture = sequenceResult.capture;
         // Stage only the data. Timer, ticker, focus and controls remain usable
-        // until the single profile document has committed.
+        // until the single profile snapshot has committed.
         setActiveWorkout(null);
         state.restTimerEndsAt = null;
         if (persist()?.committed !== true) throw new Error('Workout was not committed.');
