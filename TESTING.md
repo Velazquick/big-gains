@@ -27,6 +27,14 @@ On Linux CI hosts, install Chromium and its system dependencies with `npx playwr
 
 ## Run
 
+Before focused browser tests, run `npm run check:release` and `npm run test:release`.
+These dependency-free Node checks also run at the start of `npm test` and in the
+protected Browser tests workflow. They compare the current asset manifest with
+entrypoint URLs and the offline, startup, telemetry, and export expectations.
+Historical caches and synthetic release fixtures are intentionally excluded.
+This is source consistency evidence; it does not prove deployment or replace
+browser/offline validation.
+
 ```sh
 npm test
 npx playwright test --workers=1

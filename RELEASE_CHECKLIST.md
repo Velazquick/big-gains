@@ -14,6 +14,10 @@ Use this checklist for every production change. Documentation-only changes that 
 
 ## Required tests
 
+- [ ] Run `npm run check:release` and `npm run test:release` before the focused
+  tests. Update current startup, telemetry, export, and offline expectations
+  together when rotating the asset release; preserve historical fixtures.
+
 From a clean dependency install when dependencies or the environment changed:
 
 ```sh
