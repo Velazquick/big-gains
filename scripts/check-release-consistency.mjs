@@ -32,8 +32,8 @@ export async function readReleaseSources(root = new URL('../', import.meta.url))
     // a genuinely new registration back to a similar historical SQL file.
     const history = await git('git', ['log', '--reverse', '--diff-filter=A', '--format=%H', '--', file], { cwd });
     const introduction = history.stdout.trim().split(/\s+/)[0];
-    const tracked = (await git('git', ['ls-files', '--', file], { cwd })).stdout.trim();
-    const original = introduction ? (await git('git', ['show', `${introduction}:${file}`], { cwd })).stdout : tracked ? '' : sources.get(file);
+    const committed = (await git('git', ['ls-tree', '--name-only', 'HEAD', '--', file], { cwd })).stdout.trim();
+    const original = introduction ? (await git('git', ['show', `${introduction}:${file}`], { cwd })).stdout : committed ? '' : sources.get(file);
     sources.set(introducedKey(file), original);
   }));
   return sources;

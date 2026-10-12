@@ -91,6 +91,9 @@ test('real Git provenance rejects a committed rewrite and accepts a fresh regist
   await put(registration, baseline.get(registration));
   const fresh = 'supabase/migrations/20990101000000_operator_synthetic_release.sql';
   await put(fresh, `insert into private.product_releases(release) values ('${rotated}') on conflict do nothing;\n`);
+  await git('add', '.');
+  const staged = checkReleaseSources(await readReleaseSources(root));
+  assert.equal(staged.registrationMigration, fresh, 'an index-only added registration must pass before commit');
   await commit('Fresh synthetic registration');
   const result = checkReleaseSources(await readReleaseSources(root));
   assert.equal(result.release, rotated);
