@@ -6,6 +6,15 @@ const baseline = await readReleaseSources();
 const release = checkReleaseSources(baseline).release;
 const rotated = 'v999-synthetic-release';
 const registration = registrationFor(baseline, release);
+function rotateShell(sources) {
+  return new Map([...sources].map(([file, source]) => [file, releaseFiles.includes(file) ? source.replaceAll(release, rotated) : source]));
+}
+function addFreshRegistration(sources) {
+  const file = 'supabase/migrations/20990101000000_operator_synthetic_release.sql';
+  const sql = `insert into private.product_releases(release) values ('${rotated}') on conflict do nothing;`;
+  sources.set(file, sql);
+  sources.set(`migration-introduction:${file}`, sql);
+}
 
 test('checked-in current release is consistent; historical fixtures remain allowed', () => {
   const sources = new Map(baseline);
@@ -13,17 +22,34 @@ test('checked-in current release is consistent; historical fixtures remain allow
   assert.equal(checkReleaseSources(sources).release, release);
 });
 
-test('a coordinated release rotation passes', () => {
-  const sources = new Map([...baseline].map(([file, source]) => [file, source.replaceAll(release, rotated)]));
+test('a coordinated release rotation with a fresh registration passes', () => {
+  const sources = rotateShell(baseline);
+  addFreshRegistration(sources);
   assert.equal(checkReleaseSources(sources).release, rotated);
 });
 
-for (const file of [...releaseFiles, registration].filter(file => file !== 'asset-manifest.js')) {
+for (const file of releaseFiles.filter(file => file !== 'asset-manifest.js')) {
   test(`release rotation rejects stale current reference in ${file}`, () => {
-    const sources = new Map([...baseline].map(([path, source]) => [path, path === file ? source : source.replaceAll(release, rotated)]));
-    assert.throws(() => checkReleaseSources(sources), error => error.message.includes(file === registration ? 'product_releases registration' : file));
+    const sources = rotateShell(baseline);
+    sources.set(file, baseline.get(file));
+    addFreshRegistration(sources);
+    assert.throws(() => checkReleaseSources(sources), error => error.message.includes(file));
   });
 }
+
+test('rotated shell with a stale or rewritten historical registration fails', () => {
+  for (const rewritten of [false, true]) {
+    const sources = rotateShell(baseline);
+    if (rewritten) sources.set(registration, sources.get(registration).replaceAll(release, rotated));
+    assert.throws(() => checkReleaseSources(sources), /add a fresh migration/);
+  }
+});
+
+test('even a matching release cannot edit its committed registration', () => {
+  const sources = new Map(baseline);
+  sources.set(registration, sources.get(registration) + '\n-- changed after introduction\n');
+  assert.throws(() => checkReleaseSources(sources), /unchanged operator-classified/);
+});
 
 test('matching shell pins without a release registration fail closed', () => {
   const sources = new Map(baseline);

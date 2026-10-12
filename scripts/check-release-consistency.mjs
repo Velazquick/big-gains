@@ -2,6 +2,11 @@ import { readFile, readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { runInNewContext } from 'node:vm';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
+const git = promisify(execFile);
+const introducedKey = file => `migration-introduction:${file}`;
 
 export const releaseFiles = [
   'asset-manifest.js', 'index.html', 'auth-setup.html', 'service-worker.js',
@@ -12,12 +17,27 @@ export const releaseFiles = [
 export async function readReleaseSources(root = new URL('../', import.meta.url)) {
   const migrations = (await readdir(new URL('supabase/migrations/', root)))
     .filter(file => /^\d{14}_.*\.sql$/.test(file)).map(file => `supabase/migrations/${file}`);
-  return new Map(await Promise.all([...releaseFiles, ...migrations].map(async file =>
+  const sources = new Map(await Promise.all([...releaseFiles, ...migrations].map(async file =>
     [file, await readFile(new URL(file, root), 'utf8')])));
+  const cwd = fileURLToPath(root);
+  const shallow = await git('git', ['rev-parse', '--is-shallow-repository'], { cwd });
+  if (shallow.stdout.trim() !== 'false') throw new Error('Registration provenance requires complete Git history; fetch unshallow before checking.');
+  await Promise.all(migrations.filter(file => /insert\s+into\s+private\.product_releases/i.test(sources.get(file))).map(async file => {
+    const history = await git('git', ['log', '--follow', '--diff-filter=A', '--format=%H', '--name-only', '--', file], { cwd });
+    const lines = history.stdout.split(/\r?\n/).filter(Boolean);
+    const introductions = lines.flatMap((line, index) => /^[a-f0-9]{40,64}$/.test(line) && lines[index + 1] ? [{ commit: line, path: lines[index + 1] }] : []);
+    const introduction = introductions.at(-1);
+    const tracked = (await git('git', ['ls-files', '--', file], { cwd })).stdout.trim();
+    const original = introduction ? (await git('git', ['show', `${introduction.commit}:${introduction.path}`], { cwd })).stdout : tracked ? '' : sources.get(file);
+    sources.set(introducedKey(file), original);
+  }));
+  return sources;
 }
 
 export function registrationFor(sources, release) {
   return [...sources].find(([file, sql]) => /^supabase\/migrations\/\d{14}_operator_.*\.sql$/.test(file)
+    && sources.has(introducedKey(file))
+    && sql.replace(/\r\n/g, '\n') === sources.get(introducedKey(file)).replace(/\r\n/g, '\n')
     && [...sql.replace(/--[^\n]*|\/\*[\s\S]*?\*\//g, '').matchAll(/insert\s+into\s+private\.product_releases\s*\(\s*release\s*\)\s*values\s*\(\s*'([^']+)'\s*\)\s*on\s+conflict\s+do\s+nothing\s*;/gi)]
       .some(match => match[1] === release))?.[0] || null;
 }
@@ -34,7 +54,7 @@ export function checkReleaseSources(sources) {
   }
   const errors = [];
   const registrationMigration = registrationFor(sources, manifest.release);
-  if (!registrationMigration) errors.push('supabase/migrations: current release requires an operator-classified product_releases registration');
+  if (!registrationMigration) errors.push('supabase/migrations: current release requires an unchanged operator-classified product_releases registration; add a fresh migration rather than rewriting an existing one');
   function pin(file, pattern, expected, label) {
     const matches = [...sources.get(file).matchAll(pattern)];
     if (matches.length !== 1 || matches[0][1] !== expected) {
