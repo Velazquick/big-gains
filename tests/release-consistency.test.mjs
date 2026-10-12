@@ -81,3 +81,15 @@ test('the current manifest URL must be present in offline core', () => {
   ));
   assert.throws(() => checkReleaseSources(sources), /offline core omits current manifestAsset URL/);
 });
+
+for (const key of ['cacheName', 'runtimeCacheName']) {
+  test(`a stale ${key} fails despite matching release and asset URLs`, () => {
+    const sources = new Map(baseline);
+    const prefix = key === 'cacheName' ? 'cachePrefix' : 'runtimeCachePrefix';
+    sources.set('asset-manifest.js', sources.get('asset-manifest.js').replace(
+      `${key}: \u0060\u0024{${prefix}}\u0024{release}-\u0024{cloudConfigVersion}\u0060`,
+      `${key}: 'big-gains-stale-cache'`
+    ));
+    assert.throws(() => checkReleaseSources(sources), new RegExp(`inconsistent ${key}`));
+  });
+}

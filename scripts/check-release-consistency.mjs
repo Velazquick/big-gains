@@ -33,6 +33,8 @@ export function checkReleaseSources(sources) {
   }
   const deployment = `${manifest.release}-${manifest.cloudConfigVersion}`;
   if (manifest.deploymentVersion !== deployment) errors.push('asset-manifest.js: inconsistent deployment version');
+  if (manifest.cacheName !== `${manifest.cachePrefix}${deployment}`) errors.push('asset-manifest.js: inconsistent cacheName');
+  if (manifest.runtimeCacheName !== `${manifest.runtimeCachePrefix}${deployment}`) errors.push('asset-manifest.js: inconsistent runtimeCacheName');
   const manifestAsset = `./asset-manifest.js?v=${encodeURIComponent(deployment)}`;
   if (manifest.manifestAsset !== manifestAsset) errors.push('asset-manifest.js: inconsistent manifestAsset URL');
   if (!manifest.coreAssets.includes(manifestAsset)) errors.push('asset-manifest.js: offline core omits current manifestAsset URL');
