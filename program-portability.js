@@ -181,6 +181,7 @@
   function writeAccepted(mapping, remote) {
     const key = acceptedKey();
     if (!key || !mapping || !remote?.record || !isRecord(remote?.envelope)) return false;
+    scope.bigGainsStatePersistence?.assertWriter?.();
     scope.localStorage.setItem(key, JSON.stringify({
       format: ACCEPTED_FORMAT,
       owner: clone(mapping.owner),

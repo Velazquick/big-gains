@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { blankState, installLocalStorageFixture, STORAGE_KEYS, readStoredJson } from './fixtures/local-storage.js';
-import { openApp, openExerciseOptions } from './helpers/app.js';
+import { openApp, openExerciseOptions, waitForAppRuntime } from './helpers/app.js';
 
 const NOW = '2026-09-10T12:00:00.000Z';
 const DAY = 86400000;
@@ -13,7 +13,6 @@ function historyState() {
     workout('seven-boundary',7,[ex('dumbbell-lateral-raise','Dumbbell Lateral Raise','Shoulders',3)]),
     workout('thirty-boundary',30,[ex('dumbbell-lateral-raise','Dumbbell Lateral Raise','Shoulders',100)]),
     workout('future',-1,[ex('dumbbell-lateral-raise','Dumbbell Lateral Raise','Shoulders',100)]),
-    {...workout('unfinished',0,[ex('dumbbell-lateral-raise','Dumbbell Lateral Raise','Shoulders',100)]),completedAt:null},
     workout('excluded-sets',2,[{...ex('dumbbell-lateral-raise','Dumbbell Lateral Raise','Shoulders',0),sets:[{id:'warm',weight:20,reps:10,completed:true,warmup:true},{id:'entered',weight:20,reps:10,completed:false}]}])
   ]};
 }
@@ -29,7 +28,7 @@ for (const profile of ['jorge','alexa']) test(`Body Map ${profile}: six live App
   await seed(page);
   if(profile==='alexa') {
     await page.evaluate(({key,active,state})=>{localStorage.setItem(key,JSON.stringify(state));localStorage.setItem(active,'alexa');},{key:STORAGE_KEYS.alexa,active:STORAGE_KEYS.activeProfile,state:{...historyState(),profileId:'alexa',goals:blankState('alexa').goals}});
-    await page.reload();
+    await page.reload(); await waitForAppRuntime(page);
   }
   await progress(page);
   const fills=[];
@@ -66,6 +65,38 @@ test('Body Map owns exact completed windows, primary sets, canonical contributor
   expect((await readStoredJson(page,STORAGE_KEYS.jorge)).workouts).toEqual(before);
 });
 
+test('unfinished input contributes no analytics and never replaces valid persisted History',async({page})=>{
+  await seed(page);
+  const before=await page.evaluate(key=>localStorage.getItem(key),STORAGE_KEYS.jorge);
+  const unfinished={...historyState().workouts[0],id:'unfinished',completedAt:null};
+  const totals=await page.evaluate(unfinished=>{
+    const now=Date.now();
+    return {
+      valid:BigGainsAnalytics.muscleWorkloadWindows(state.workouts,{now}),
+      withUnfinished:BigGainsAnalytics.muscleWorkloadWindows([...state.workouts,unfinished],{now})
+    };
+  },unfinished);
+  expect(totals.withUnfinished).toEqual(totals.valid);
+  expect(totals.valid.sevenDay.muscles.Shoulders.workingSets).toBe(7);
+  expect(totals.valid.thirtyDay.muscles.Shoulders.workingSets).toBe(10);
+  expect(await page.evaluate(key=>localStorage.getItem(key),STORAGE_KEYS.jorge)).toBe(before);
+});
+
+test('unfinished persisted History enters recovery and retains original bytes after background and reload',async({page})=>{
+  const malformed=historyState();
+  malformed.workouts.push({...malformed.workouts[0],id:'unfinished',completedAt:null});
+  await seed(page,malformed);
+  const before=JSON.stringify(malformed);
+  expect(await page.evaluate(()=>BigGainsBootGate.status().state)).toBe('recovery');
+  expect(await page.evaluate(key=>localStorage.getItem(key),STORAGE_KEYS.jorge)).toBe(before);
+  expect(await page.evaluate(()=>{try{statePersistenceApi.save(state,active);return null;}catch(error){return error.code;}})).toBe('local-state-unreadable');
+  await page.evaluate(()=>window.dispatchEvent(new Event('pagehide')));
+  expect(await page.evaluate(key=>localStorage.getItem(key),STORAGE_KEYS.jorge)).toBe(before);
+  await page.reload();await waitForAppRuntime(page);
+  expect(await page.evaluate(()=>BigGainsBootGate.status().state)).toBe('recovery');
+  expect(await page.evaluate(key=>localStorage.getItem(key),STORAGE_KEYS.jorge)).toBe(before);
+});
+
 test('front/back regions, keyboard selection, accessible alternatives and neutral no-history state',async({page})=>{
   await page.setViewportSize({width:375,height:812});
   await seed(page,blankState('jorge')); await progress(page);
@@ -92,7 +123,7 @@ test('front/back regions, keyboard selection, accessible alternatives and neutra
 test('Body Map cannot disclose contributors from a different profile',async({page})=>{
   await seed(page); await progress(page);
   await page.evaluate(({active,alexa,state})=>{localStorage.setItem(active,'alexa');localStorage.setItem(alexa,JSON.stringify(state));},{active:STORAGE_KEYS.activeProfile,alexa:STORAGE_KEYS.alexa,state:blankState('alexa')});
-  await page.reload(); await progress(page);
+  await page.reload(); await waitForAppRuntime(page); await progress(page);
   await page.locator('.muscle-region-list [data-muscle-key="Shoulders"]').click();
   await expect(page.locator('#progressMuscleDetail')).toContainText('0 sets');
   await expect(page.locator('#progressMuscleDetail [data-progress-exercise]')).toHaveCount(0);
