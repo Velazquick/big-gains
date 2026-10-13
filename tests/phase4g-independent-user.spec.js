@@ -1,6 +1,6 @@
 import { openLibraryFromMore } from './helpers/app.js';
 import { expect, test } from '@playwright/test';
-import { openApp } from './helpers/app.js';
+import { openApp, waitForAppRuntime } from './helpers/app.js';
 
 const authUserId = '82000000-0000-0000-0000-000000000002';
 const cloudAccountId = '82a00000-0000-0000-0000-000000000002';
@@ -315,6 +315,7 @@ test('independent logging stays local first, queues only into its account namesp
   expect(queued.managedQueue).toBeNull();
 
   await page.reload({ waitUntil: 'domcontentloaded' });
+  await waitForAppRuntime(page);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem(statePersistenceApi.storageKey)).workouts[0].id)).toBe('friend-offline-workout');
   expect(await page.evaluate(() => BigGainsCloudSync.queue.pending().length)).toBe(1);
   await context.setOffline(false);

@@ -33,8 +33,10 @@ async function seed(page, { corrupt = null, kind = 'managed-owner', version = 5 
 
 async function open(page) {
   await page.goto('/');
-  await page.waitForFunction(() => (window.BigGainsAppRuntime?.initialized || window.bigGainsStatePersistence)
-    && BigGainsBootGate.status().state !== 'unresolved');
+  await page.waitForFunction(() => window.bigGainsStatePersistence
+    && ((window.BigGainsAppRuntime?.initialized
+      && (window.BigGainsRuntimeGate?.canInteract() || BigGainsBootGate.status().state === 'recovery'))
+      || (bigGainsStatePersistence.writerStatus() === 'occupied' && BigGainsBootGate.status().state === 'recovery')));
 }
 
 const raw = page => page.evaluate(() => localStorage.getItem(bigGainsAccounts.registry.loadActive().storageKey));
@@ -62,6 +64,13 @@ for (const kind of ['managed-owner', 'independent', 'managed-member', 'guest']) 
     await page.close();
     // No automatic promotion of the old in-memory document when the owner exits.
     await other.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+    expect(await raw(other)).toBe(committed);
+    // page.close resolves before the browser releases its document's lock.
+    // Observe teardown without promoting the denied document or sleeping.
+    await other.evaluate(() => navigator.locks.request(
+      `big-gains-writer:${bigGainsAccounts.runtime.storageNamespace}`,
+      { signal: AbortSignal.timeout(3000) }, () => {}));
+    expect(await other.evaluate(() => bigGainsStatePersistence.writerStatus())).toBe('occupied');
     expect(await raw(other)).toBe(committed);
     await other.reload();
     await other.waitForFunction(() => BigGainsBootGate.canRender());

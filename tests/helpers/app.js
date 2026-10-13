@@ -5,7 +5,15 @@ export async function openApp(page) {
   await page.goto('/');
   await expect(page).toHaveTitle('Big Gains');
   await expect(page.locator('#sessionTypeSelector')).toBeAttached();
-  await page.waitForFunction(() => window.BigGainsAppRuntime?.initialized === true);
+  await waitForAppRuntime(page);
+}
+
+export async function waitForAppRuntime(page) {
+  // DOMContentLoaded and the app binding precede owned shell composition.
+  // Recovery is also a terminal startup outcome; its assertions remain visible.
+  await page.waitForFunction(() => window.BigGainsAppRuntime?.initialized === true
+    && (window.BigGainsRuntimeGate?.canInteract() === true
+      || window.BigGainsBootGate?.status().state === 'recovery'));
 }
 
 export async function clickCentered(locator) {

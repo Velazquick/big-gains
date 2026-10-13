@@ -20,6 +20,22 @@ async function switchProfile(page, profileId) {
   await expect(page.locator('#sessionTypeSelector')).toBeAttached();
 }
 
+test('missing optional notes preferences do not cause a startup write and normalize only on an explicit save', async ({ page }) => {
+  const value=blankState('jorge');
+  delete value.exercisePreferences;
+  value.workouts=[completedWorkout()];
+  value.workouts[0].exercises[0].collapsed=true;
+  const original=JSON.stringify(value);
+  await page.addInitScript(({key,original})=>{if(!localStorage.getItem('__optional_pref_seed')){localStorage.setItem('big-gains-active-profile','jorge');localStorage.setItem(key,original);localStorage.setItem('__optional_pref_seed','1');}}, {key:STORAGE_KEYS.jorge,original});
+  await openApp(page);
+  expect(await page.evaluate(key=>localStorage.getItem(key),STORAGE_KEYS.jorge)).toBe(original);
+  await page.evaluate(()=>saveState());
+  const saved=await readStoredJson(page,STORAGE_KEYS.jorge);
+  expect(saved.exercisePreferences).toEqual({});
+  const {exercisePreferences,...facts}=saved;
+  expect(facts).toEqual(value);
+});
+
 test('loads, normalizes, and saves a profile through the persistence API', async ({ page }) => {
   await installLocalStorageFixture(page, 'completedWorkouts');
   await openApp(page);
