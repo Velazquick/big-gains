@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture, readStoredJson, STORAGE_KEYS } from './fixtures/local-storage.js';
 import { openApp, reloadApp } from './helpers/app.js';
+// Synthetic transport contracts do not exercise installed-worker fallback.
+test.use({ serviceWorkers: 'block' });
 
 const configured = {
   supabaseUrl: 'https://synthetic-project.supabase.co',

@@ -7,13 +7,18 @@ export function recoveryResponseGate() {
   return { pending, release };
 }
 
-export async function observeRestorationThenReady(page, { hostname, tables, gate, text, storageKey, originalRaw }) {
-  const recordRead = page.waitForRequest(request => request.method() === 'GET'
+export async function observeRestorationThenReady(page, { hostname, tables, gate, text, storageKey, originalRaw, recordRead: nativeRecordRead }) {
+  const recordRead = nativeRecordRead || page.waitForRequest(request => request.method() === 'GET'
     && new URL(request.url()).hostname === hostname
     && tables.includes(new URL(request.url()).pathname.split('/').pop()));
+  let observed = false, observationError;
+  recordRead.then(() => { observed = true; }, error => { observationError = error; });
   try {
     await page.goto('/');
-    await recordRead;
+    await expect.poll(() => {
+      if (observationError) throw observationError;
+      return observed;
+    }, { message: 'The synthetic recovery record GET must reach its transport gate.' }).toBe(true);
     await expect(page.locator('#independentAccountOnboarding')).toBeVisible();
     await expect(page.locator('#independentAccountOnboarding')).toContainText(text);
     expect(await page.evaluate(() => BigGainsBootGate.canRender())).toBe(false);

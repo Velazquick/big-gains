@@ -2,6 +2,9 @@ import { assertTelemetryRequest } from './helpers/telemetry.js';
 import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp, reloadApp } from './helpers/app.js';
+// This corpus mocks remote readback; real installed/offline workers are covered
+// separately. A worker-owned request can bypass page routing entirely.
+test.use({ serviceWorkers: 'block' });
 
 const authUserId = '84000000-0000-0000-0000-000000000001';
 const accountId = '84a00000-0000-0000-0000-000000000001';

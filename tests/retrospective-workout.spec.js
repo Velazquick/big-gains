@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test';
+import { expect } from '@playwright/test';
+import { test } from './helpers/network-outage.js';
 import { activeWorkout, blankState, installLocalStorageFixture, readStoredJson, STORAGE_KEYS } from './fixtures/local-storage.js';
 import { openApp, switchProfile } from './helpers/app.js';
 import { openHistoryCalendar } from './helpers/history.js';
@@ -297,10 +298,10 @@ test('account isolation and backup normalization preserve optional retrospective
   expect(result).toEqual({ backupMethod: 'retrospective', roundTripMethod: 'retrospective', invalidPresent: false, profileId: 'riley' });
 });
 
-test('retrospective logging and save work from the offline v44 app shell', async ({ page, context }) => {
+test('retrospective logging and save work from the offline v44 app shell', async ({ page, context, setAppNetworkUnavailable }) => {
   await openCalendar(page);
   await page.evaluate(() => navigator.serviceWorker.ready);
-  await context.setOffline(true);
+  await setAppNetworkUnavailable(true);
   try {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await openHistoryCalendar(page);
@@ -310,6 +311,6 @@ test('retrospective logging and save work from the offline v44 app shell', async
     await expect(page.locator('#calendarDayWorkouts')).toContainText('Entered later');
     expect((await readStoredJson(page, STORAGE_KEYS.jorge)).workouts).toHaveLength(1);
   } finally {
-    await context.setOffline(false);
+    await setAppNetworkUnavailable(false);
   }
 });

@@ -35,6 +35,18 @@ Route-held startup tests block service workers so their transport gate is actual
 observed. Dedicated offline/PWA suites retain real service workers and real server
 outages. These are different test boundaries, not interchangeable acceptance.
 
+Route-mocked cloud contract contexts block workers explicitly. Managed recovery
+uses a real loopback HTTP mock instead: worker-forwarded requests must still hit
+the synthetic handler. Handler assertions fail fixture teardown, and teardown
+closes owned sockets and awaits pending handlers. The progress observer always
+releases its held responses, including when the expected GET is absent.
+
+Offline tests keep real workers. Chromium retains driver-level offline coverage;
+WebKit uses the existing real app-server outage fixture to exercise cached shell
+fallback without its driver-level offline navigation error. Neither boundary is
+physical-device acceptance. Do not add a reconciliation-idle gate to an
+adversarial overlap test merely to hide a catalog/version race.
+
 Reliability measurement uses bounded repetitions with `retries: 0`, matching
 browser builds, worker counts, order and fixture inputs. A subsequent pass never
 erases a failure. Preserve each outcome, exact source head and PR merge-tree SHA.

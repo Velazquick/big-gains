@@ -1,5 +1,6 @@
 import { openLibraryFromMore } from './helpers/app.js';
-import { expect, test } from '@playwright/test';
+import { expect } from '@playwright/test';
+import { test } from './helpers/network-outage.js';
 import { openApp, reloadApp } from './helpers/app.js';
 
 const authUserId = '82000000-0000-0000-0000-000000000002';
@@ -177,6 +178,8 @@ async function installCloudIdentityShape(page, profileClientId) {
   });
 }
 
+test.describe('routed cloud identity shapes', () => {
+test.use({ serviceWorkers: 'block' });
 for (const identityShape of [
   { label: 'lone Jorge', profileClientId: 'jorge', expectedStatus: 'unexpected', expectedShape: 'unexpected' },
   { label: 'lone Alexa', profileClientId: 'alexa', expectedStatus: 'unexpected', expectedShape: 'unexpected' },
@@ -233,6 +236,7 @@ for (const identityShape of [
     expect(result).toMatchObject({ runtimeKind: 'independent', runtimeError: null, ownerMatchesRuntime: true });
   });
 }
+});
 
 test('independent runtime renders one identity with cobalt performance tokens and no managed-profile or pet leakage', async ({ page }) => {
   await installIndependentRuntime(page);
@@ -267,7 +271,7 @@ test('independent runtime renders one identity with cobalt performance tokens an
   });
 });
 
-test('independent logging stays local first, queues only into its account namespace, survives offline reload, and reaches one-profile parity', async ({ page, context }) => {
+test('independent logging stays local first, queues only into its account namespace, survives offline reload, and reaches one-profile parity', async ({ page, context, setAppNetworkUnavailable }) => {
   await installIndependentRuntime(page);
   await openApp(page);
   await page.evaluate(async ({ catalogKey, cloudAccountId, cloudProfileId, authUserId, clientId }) => {
@@ -292,7 +296,7 @@ test('independent logging stays local first, queues only into its account namesp
       await new Promise(resolve => navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true }));
     }
   });
-  await context.setOffline(true);
+  await setAppNetworkUnavailable(true);
 
   const local = await page.evaluate(() => {
     state.workouts.unshift({
@@ -318,7 +322,7 @@ test('independent logging stays local first, queues only into its account namesp
   await reloadApp(page, { waitUntil: 'domcontentloaded' });
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem(statePersistenceApi.storageKey)).workouts[0].id)).toBe('friend-offline-workout');
   expect(await page.evaluate(() => BigGainsCloudSync.queue.pending().length)).toBe(1);
-  await context.setOffline(false);
+  await setAppNetworkUnavailable(false);
 
   const parity = await page.evaluate(async ({ cloudAccountId, cloudProfileId, clientId }) => {
     const localProfiles = await BigGainsCloudShadow.readLocalProfiles();
@@ -346,6 +350,8 @@ test('independent logging stays local first, queues only into its account namesp
   expect(Object.keys(parity.profiles)).toEqual([clientId]);
 });
 
+test.describe('routed cloud provisioning', () => {
+test.use({ serviceWorkers: 'block' });
 test('fresh invited Auth user sees onboarding, provisions once through RPC, and reloads into isolated friend storage', async ({ page }) => {
   const now = new Date().toISOString();
   let provisioned = false;
@@ -431,6 +437,7 @@ test('fresh invited Auth user sees onboarding, provisions once through RPC, and 
   await reloadApp(page);
   await expect(page.locator('#firstRunOnboarding')).toBeHidden();
   expect(rpcCalls).toBe(1);
+});
 });
 
 test('independent production transport recovers a lost ACK and preserves friend tombstone semantics', async ({ page }) => {

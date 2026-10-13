@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { nativeMockHttp } from './helpers/native-mock-http.js';
 const childEnvironment = { ...process.env };
 // A standalone test-runner subprocess must not inherit a Node test worker's
 // internal recursive-run marker, which suppresses its real test execution.
@@ -41,3 +42,25 @@ async function removeFixture(directory) {
   assert.match(basename(directory), /^big-gains-ci-(?:collection|node)-/);
   await rm(directory, { recursive: true, force: true });
 }
+
+test('native mock transport serves exact requests and fails teardown for fixture exceptions', async () => {
+  const transport = await nativeMockHttp();
+  let closed = false;
+  try {
+    await transport.setHandler(async route => {
+      const request = route.request();
+      assert.equal(request.method(), 'POST');
+      assert.deepEqual(request.postDataJSON(), { synthetic: true });
+      await route.fulfill({ status: 201, contentType: 'application/json', body: '{"verified":true}' });
+    });
+    const response = await fetch(`${transport.origin}/rest/v1/synthetic`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"synthetic":true}' });
+    assert.equal(response.status, 201);
+    assert.deepEqual(await response.json(), { verified: true });
+    await transport.setHandler(async () => { throw new Error('deliberate fixture exception'); });
+    const failed = await fetch(`${transport.origin}/rest/v1/failure`);
+    assert.equal(failed.status, 500);
+    await failed.text();
+    closed = true;
+    await assert.rejects(transport.close(), error => error instanceof AggregateError && error.errors[0].message === 'deliberate fixture exception');
+  } finally { if (!closed) await transport.close(); }
+});

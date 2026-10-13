@@ -1,9 +1,26 @@
 import { assertTelemetryRequest } from './helpers/telemetry.js';
 import { createHash } from 'node:crypto';
-import { expect, test } from '@playwright/test';
+import { expect } from '@playwright/test';
+import { test as outageTest } from './helpers/network-outage.js';
+import { nativeMockHttp } from './helpers/native-mock-http.js';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp, reloadApp } from './helpers/app.js';
 import { recoveryResponseGate, observeRestorationThenReady } from './helpers/recovery.js';
+const transports = new WeakMap();
+const test = outageTest.extend({
+  cloudTransport: [async ({ page }, use) => {
+    const transport = await nativeMockHttp();
+    transports.set(page, transport);
+    try { await use(transport); } finally { transports.delete(page); await transport.close(); }
+  }, { auto: true }],
+  setAppNetworkUnavailable: async ({ context, appTransport, cloudTransport }, use) => {
+    await use(async value => {
+      cloudTransport.setUnavailable(value);
+      if (appTransport) appTransport.setUnavailable(value);
+      else await context.setOffline(value);
+    });
+  }
+});
 
 const authUserId = '92000000-0000-0000-0000-000000000002';
 const ownerUserId = '91000000-0000-0000-0000-000000000001';
@@ -125,9 +142,9 @@ function cloudFixture() {
 }
 
 async function installSession(page, { runtime = false, localState = null } = {}) {
-  await page.addInitScript(({ authUserId, accountId, alexaProfileId, now, runtime, localState, storageKey }) => {
+  await page.addInitScript(({ authUserId, accountId, alexaProfileId, now, runtime, localState, storageKey, supabaseUrl }) => {
     window.__BIG_GAINS_CLOUD_CONFIG__ = {
-      supabaseUrl: 'https://synthetic-phase4h.supabase.co',
+      supabaseUrl,
       supabasePublishableKey: 'sb_publishable_phase4h',
       authRedirectUrl: 'https://app.getbiggains.com/'
     };
@@ -153,11 +170,13 @@ async function installSession(page, { runtime = false, localState = null } = {})
       }));
     }
     if (localState !== null) localStorage.setItem(storageKey, JSON.stringify(localState));
-  }, { authUserId, accountId, alexaProfileId, now, runtime, localState, storageKey });
+  }, { authUserId, accountId, alexaProfileId, now, runtime, localState, storageKey, supabaseUrl: transports.get(page).origin });
 }
 
 async function installCloudRoutes(page, { membershipRow = membership, slowRecovery = false, activeSessionDeleted = false, holdRecovery = false } = {}) {
   const gate = recoveryResponseGate();
+  let observeRecord;
+  const recordRead = new Promise(resolve => { observeRecord = resolve; });
   const fixture = cloudFixture();
   if (activeSessionDeleted) {
     fixture.records.active_sessions[0].version = 2;
@@ -170,7 +189,7 @@ async function installCloudRoutes(page, { membershipRow = membership, slowRecove
   }
   const applicationWrites = [];
   let delayed = false;
-  await page.route('https://synthetic-phase4h.supabase.co/**', async route => {
+  await transports.get(page).setHandler(async route => {
     const request = route.request();
     const url = new URL(request.url());
     const headers = { 'access-control-allow-origin': '*', 'content-type': 'application/json' };
@@ -203,6 +222,7 @@ async function installCloudRoutes(page, { membershipRow = membership, slowRecove
     } else if (table === 'sync_metadata') {
       data = [];
     } else if (fixture.records[table]) {
+      if (request.method() === 'GET') observeRecord();
       if (holdRecovery) await gate.pending;
       if (slowRecovery && !delayed) {
         delayed = true;
@@ -216,7 +236,7 @@ async function installCloudRoutes(page, { membershipRow = membership, slowRecove
       body: request.method() === 'HEAD' ? '' : JSON.stringify(data)
     });
   });
-  return { fixture, applicationWrites, gate };
+  return { fixture, applicationWrites, gate, recordRead };
 }
 
 test('stale independent onboarding cannot bootstrap after managed membership resolves', async ({ page }) => {
@@ -250,10 +270,10 @@ test('stale independent onboarding cannot bootstrap after managed membership res
   expect(cloud.applicationWrites).toEqual([]);
 });
 
-test('fresh managed member restores exact Alexa schema v5, adopts a zero-queue baseline, and remains local-first offline', async ({ page, context }) => {
+test('fresh managed member restores exact Alexa schema v5, adopts a zero-queue baseline, and remains local-first offline', async ({ page, context, setAppNetworkUnavailable }) => {
   await installSession(page);
   const cloud = await installCloudRoutes(page, { holdRecovery: true });
-  await observeRestorationThenReady(page, { hostname: 'synthetic-phase4h.supabase.co', tables: Object.keys(cloud.fixture.records), gate: cloud.gate,
+  await observeRestorationThenReady(page, { recordRead: cloud.recordRead, gate: cloud.gate,
     text: 'Restoring your profile to this device', storageKey, originalRaw: null });
   await expect(page.locator('html')).toHaveAttribute('data-account-mode', 'managed-member');
   await expect(page.locator('#independentAccountOnboarding')).toBeHidden();
@@ -314,7 +334,7 @@ test('fresh managed member restores exact Alexa schema v5, adopts a zero-queue b
       await new Promise(resolve => navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true }));
     }
   });
-  await context.setOffline(true);
+  await setAppNetworkUnavailable(true);
   await reloadApp(page, { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#independentAccountOnboarding')).toBeHidden();
   await expect(page.locator('#greeting')).toContainText('Alexa');
@@ -370,7 +390,7 @@ test('a non-empty managed-member namespace is never overwritten or merged', asyn
   expect(cloud.applicationWrites).toEqual([]);
 });
 
-test('managed-member active session upsert then delete adopts the higher tombstone winner and returns to in sync', async ({ page, context }) => {
+test('managed-member active session upsert then delete adopts the higher tombstone winner and returns to in sync', async ({ page, context, setAppNetworkUnavailable }) => {
   await installSession(page);
   const cloud = await installCloudRoutes(page);
   await openApp(page);
@@ -384,7 +404,7 @@ test('managed-member active session upsert then delete adopts the higher tombsto
   // Exercise ordinary offline queue semantics, not stale-session recovery.
   // The upcoming set edit persists this recent start in the same queued mutation.
   await page.evaluate(() => { active.startedAt = new Date().toISOString(); });
-  await context.setOffline(true);
+  await setAppNetworkUnavailable(true);
   await page.locator('#activeExercises input[data-field="weight"]').first().fill('95');
   await expect.poll(() => page.evaluate(() => BigGainsCloudSync.queue.pending().length)).toBe(1);
   await page.evaluate(() => workoutSessionController.discard());
@@ -425,7 +445,7 @@ test('managed-member active session upsert then delete adopts the higher tombsto
     return JSON.parse(localStorage.getItem(comparisonKey)).comparedAt;
   }, { catalogKey, comparisonKey });
 
-  await context.setOffline(false);
+  await setAppNetworkUnavailable(false);
   await page.unrouteAll({ behavior: 'wait' });
   const deletedCloud = await installCloudRoutes(page, { activeSessionDeleted: true });
   await reloadApp(page, { waitUntil: 'domcontentloaded' });
