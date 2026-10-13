@@ -1,10 +1,39 @@
 import { expect } from '@playwright/test';
 import { readStoredJson, STORAGE_KEYS } from '../fixtures/local-storage.js';
 
-export async function openApp(page) {
+export async function openApp(page, readiness = {}) {
   await page.goto('/');
   await expect(page).toHaveTitle('Big Gains');
   await expect(page.locator('#sessionTypeSelector')).toBeAttached();
+  await waitForAppRuntime(page, readiness);
+}
+
+export async function waitForAppRuntime(page, { expected = 'interactive', profileId, reason } = {}) {
+  if (!['interactive', 'recovery'].includes(expected)) throw new Error(`Unknown startup expectation: ${expected}`);
+  await page.waitForFunction(({ expected, profileId, reason }) => {
+    const boot = window.BigGainsBootGate?.status();
+    const runtime = window.BigGainsRuntimeGate?.status();
+    if (expected === 'recovery') return (boot?.state === 'recovery' || runtime?.state === 'recovery')
+      && (!reason || boot?.reason === reason || runtime?.reason === reason);
+    return window.BigGainsAppRuntime?.initialized === true
+      && window.BigGainsBootGate?.canRender() === true
+      && window.BigGainsRuntimeGate?.canInteract() === true
+      && (!profileId || window.BigGainsAppRuntime.profileId === profileId);
+  }, { expected, profileId, reason });
+}
+
+export async function reloadApp(page, { waitUntil = 'load', ...readiness } = {}) {
+  const response = await page.reload({ waitUntil });
+  await waitForAppRuntime(page, readiness);
+  return response;
+}
+
+export async function switchProfile(page, profileId) {
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+    page.locator('#profileSelect').selectOption(profileId)
+  ]);
+  await waitForAppRuntime(page, { profileId });
 }
 
 export async function clickCentered(locator) {
@@ -38,6 +67,17 @@ export async function openExerciseOptions(page, name) {
   const details=card.locator('.exercise-management');
   if(!await details.evaluate(e=>e.open)) await details.locator('summary').click();
 }
+export async function openExerciseSwap(page, exerciseIndex, { confirmation = false } = {}) {
+  const button = page.locator(`[data-swap-exercise="${exerciseIndex}"]`);
+  await clickCentered(button);
+  if (confirmation) {
+    await expect(button).toHaveText('Sure?');
+    await expect(button).toHaveClass(/is-confirming/);
+    await expect(page.locator('#exercisePickerDialog')).toBeHidden();
+    await clickCentered(button);
+  }
+  await expect(page.locator('#exercisePickerDialog')).toBeVisible();
+}
 export async function openSetAdjustments(page, exerciseIndex, setIndex) {
   const toggle=page.locator(`[data-set-adjustments="${setIndex}"][data-ei="${exerciseIndex}"]`);
   if(await toggle.getAttribute('aria-expanded')!=='true') await toggle.click();
@@ -50,8 +90,7 @@ export async function openLibraryFromMore(page) {
 }
 
 export async function waitForControlledAppShell(page) {
-  await page.evaluate(async()=>{
-    await navigator.serviceWorker.ready;
-    if(!navigator.serviceWorker.controller)await new Promise(resolve=>navigator.serviceWorker.addEventListener('controllerchange',resolve,{once:true}));
-  });
+  // Observe actual control rather than subscribing after a state check, where
+  // activation/controllerchange can occur before the listener is installed.
+  await page.waitForFunction(() => Boolean(navigator.serviceWorker?.controller));
 }

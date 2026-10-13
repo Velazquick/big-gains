@@ -21,7 +21,7 @@ async function openWorkoutDetail(page, workoutId) {
 }
 
 function exercise({ id, definitionId, name, muscle, equipment, sets, note = '' }) {
-  return { id, ...(definitionId ? { definitionId } : {}), name, muscle, equipment, note, sets };
+  return { id, ...(definitionId ? { definitionId } : {}), name, muscle, equipment, note, sets, collapsed: true };
 }
 
 test('editing a reps typo updates the same workout and derived analytics without rewriting unrelated history', async ({ page }) => {
