@@ -4,6 +4,10 @@ import { openApp } from './helpers/app.js';
 const ORIGIN = 'https://synthetic-self-serve.supabase.co';
 const EMAIL = 'new.person@example.test';
 
+// All cases assert page-routed synthetic Auth responses. Installed-worker
+// authentication/offline behavior remains in the dedicated real-worker suites.
+test.use({ serviceWorkers: 'block' });
+
 // These flows deliberately have no authorized account/profile. Observe the
 // genuine recovery shell, then exercise and assert its real authentication UI.
 async function openAuthentication(page) {
