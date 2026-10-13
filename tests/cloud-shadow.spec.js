@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { blankState, installLocalStorageFixture, STORAGE_KEYS } from './fixtures/local-storage.js';
-import { openApp } from './helpers/app.js';
+import { openApp, reloadApp } from './helpers/app.js';
 
 const accountId = 'account-phase4f';
 const profiles = {
@@ -218,7 +218,7 @@ test('normal local mutations enqueue only after schema-v5 storage and survive si
       format: 'big-gains.shadow-catalog.v1', version: 1, accountId, authUserId: 'auth-owner', migrationId: 'migration-baseline', profiles: catalogProfiles
     }));
   }, { accountId, profiles, alexa: blankState('alexa') });
-  await page.reload();
+  await reloadApp(page);
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;
     if (!navigator.serviceWorker.controller) {
@@ -267,7 +267,7 @@ test('normal local mutations enqueue only after schema-v5 storage and survive si
     return BigGainsCloudSync.queue.pending().find(operation => operation.owner.profileId === 'profile-alexa');
   });
   expect(alexaOperation).toMatchObject({ owner: { accountId, profileId: 'profile-alexa' }, entityType: 'preferences', entityId: 'goals' });
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  await reloadApp(page, { waitUntil: 'domcontentloaded' });
   const restored = await page.evaluate(() => ({
     pending: BigGainsCloudSync.queue.pending().length,
     storedWorkout: JSON.parse(localStorage.getItem('big-gains-v2')).workouts[0].id,

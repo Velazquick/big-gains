@@ -1,7 +1,7 @@
 import { assertTelemetryRequest } from './helpers/telemetry.js';
 import { expect, test } from '@playwright/test';
 import { createHash } from 'node:crypto';
-import { openApp } from './helpers/app.js';
+import { openApp, reloadApp, waitForAppRuntime } from './helpers/app.js';
 
 const authUserId = '85000000-0000-0000-0000-000000000001';
 const accountId = '85a00000-0000-0000-0000-000000000001';
@@ -323,7 +323,7 @@ for (const direction of [
   test(`${direction.label} automatically applies a guarded remote fast-forward`, async ({ page }) => {
     await installReceiver(page);
     const writes = await installAuthenticatedCloud(page, direction.remotePrimary);
-    await page.reload({ waitUntil: 'domcontentloaded' });
+    await reloadApp(page, { waitUntil: 'domcontentloaded' });
 
     await expectAutomaticRemoteFastForward(page, direction.remotePrimary);
     expect(writes).toEqual([]);
@@ -356,7 +356,7 @@ test('a guarded remote fast-forward preserves validated local-only Program captu
     return result.version.routineVersionId;
   });
   const writes = await installAuthenticatedCloud(page, 'Remote advancement with local Program');
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  await reloadApp(page, { waitUntil: 'domcontentloaded' });
 
   await expect(page.locator('#cloudShadowHeading')).toHaveText('In sync');
   await expect.poll(() => page.evaluate(storageKeyValue => {
@@ -378,7 +378,7 @@ test('the rollout flag can keep guarded remote advancement manual on one device'
     goalVersion: 2,
     automaticReconciliation: false
   });
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  await reloadApp(page, { waitUntil: 'domcontentloaded' });
 
   await page.locator('.bottom-nav [data-view="more"]').click();
   await page.locator('#openSettings').click();
@@ -389,6 +389,7 @@ test('the rollout flag can keep guarded remote advancement manual on one device'
   const reloaded = page.waitForEvent('framenavigated');
   await page.locator('#cloudRemoteFastForward').click();
   await reloaded;
+    await waitForAppRuntime(page);
   await expect.poll(() => page.evaluate(storageKey => JSON.parse(localStorage.getItem(storageKey)).goals.primary, storageKey)).toBe('Manual rollout advancement');
   expect(writes).toEqual([]);
 });
@@ -400,7 +401,7 @@ test('a missing rollout flag defaults guarded remote advancement to manual', asy
     goalVersion: 2,
     includeAutomaticReconciliation: false
   });
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  await reloadApp(page, { waitUntil: 'domcontentloaded' });
 
   await page.locator('.bottom-nav [data-view="more"]').click();
   await page.locator('#openSettings').click();
@@ -427,7 +428,7 @@ test('runtime OFF keeps a capability-enabled remote advancement manual', async (
     goalVersion: 2,
     runtimeControlPayload: { automaticReconciliation: false, revision: 1 }
   });
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  await reloadApp(page, { waitUntil: 'domcontentloaded' });
 
   await page.locator('.bottom-nav [data-view="more"]').click();
   await page.locator('#openSettings').click();
@@ -452,7 +453,7 @@ for (const status of [401, 403]) {
       runtimeControlStatus: status,
       runtimeControlPayload: { error: 'unauthorized' }
     });
-    await page.reload({ waitUntil: 'domcontentloaded' });
+    await reloadApp(page, { waitUntil: 'domcontentloaded' });
 
   await page.locator('.bottom-nav [data-view="more"]').click();
   await page.locator('#openSettings').click();
@@ -473,7 +474,7 @@ test('the device-local emergency pause overrides runtime ON before the endpoint 
     remotePrimary: 'Paused advancement',
     goalVersion: 2
   });
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  await reloadApp(page, { waitUntil: 'domcontentloaded' });
 
   await page.locator('.bottom-nav [data-view="more"]').click();
   await page.locator('#openSettings').click();
@@ -492,7 +493,7 @@ test('runtime control network failure fails closed while explicit manual adoptio
     goalVersion: 2,
     runtimeControlNetworkError: true
   });
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  await reloadApp(page, { waitUntil: 'domcontentloaded' });
 
   await page.locator('.bottom-nav [data-view="more"]').click();
   await page.locator('#openSettings').click();
@@ -503,6 +504,7 @@ test('runtime control network failure fails closed while explicit manual adoptio
   const reloaded = page.waitForEvent('framenavigated');
   await page.locator('#cloudRemoteFastForward').click();
   await reloaded;
+    await waitForAppRuntime(page);
   await expect.poll(() => page.evaluate(storageKey => JSON.parse(localStorage.getItem(storageKey)).goals.primary, storageKey))
     .toBe('Manual recovery after runtime outage');
   expect(writes.runtimeControlRequests.length).toBeGreaterThanOrEqual(1);
@@ -537,7 +539,7 @@ test('startup rolls an interrupted automatic adoption back to the complete pre-a
     return { adoptionKey, catalogBefore, queueBefore };
   }, { storageKey, catalogKey });
 
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  await reloadApp(page, { waitUntil: 'domcontentloaded' });
   const restored = await page.evaluate(({ storageKey, catalogKey, adoptionKey }) => ({
     state: JSON.parse(localStorage.getItem(storageKey)),
     catalog: localStorage.getItem(catalogKey),
@@ -558,7 +560,7 @@ test('an active workout defers automatic adoption without changing local history
     goalVersion: 2,
     remoteActiveSessions: [activeSessionRow(workout)]
   });
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  await reloadApp(page, { waitUntil: 'domcontentloaded' });
 
   await expect(page.locator('#cloudShadowHeading')).toHaveText('Updates waiting until the workout ends');
   await expect.poll(() => page.evaluate(storageKey => ({
@@ -602,7 +604,7 @@ test('a stale stored rest deadline rejects that adoption generation while canoni
     goalVersion: 2,
     remoteActiveSessions: [activeSessionRow(workout, staleDeadline)]
   });
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  await reloadApp(page, { waitUntil: 'domcontentloaded' });
 
   await expect(page.locator('#cloudShadowHeading')).toHaveText('Retry needed');
   await expect.poll(() => page.evaluate(() => BigGainsCloudSync.status().observability.counters.verificationRejections)).toBe(1);
@@ -626,7 +628,7 @@ test('concurrent local edit remains a real conflict and never overwrites local s
     statePersistenceApi.save(state, state.activeWorkout);
   });
   const writes = await installAuthenticatedCloud(page, 'Remote concurrent edit');
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  await reloadApp(page, { waitUntil: 'domcontentloaded' });
 
   await expect(page.locator('#cloudShadowHeading')).toHaveText('SYNC CONFLICT');
   await expect(page.locator('#cloudAuthDetail')).toContainText('both changed');
@@ -651,7 +653,7 @@ test('a higher completed-workout revision fast-forwards onto the second device w
   const writes = await installAuthenticatedCloud(page, {
     remoteWorkouts: [workoutRow(corrected, 2, advancedAt), workoutRow(unrelated, 1, baselineAt)]
   });
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  await reloadApp(page, { waitUntil: 'domcontentloaded' });
 
   await expect(page.locator('#cloudShadowHeading')).toHaveText('In sync');
   await page.locator('.bottom-nav [data-view="more"]').click();
@@ -684,7 +686,7 @@ test('a higher workout tombstone fast-forwards onto the second device and cannot
     remoteWorkouts: [workoutRow(deleted, 1, baselineAt), workoutRow(retained, 1, baselineAt)],
     remoteTombstones: [tombstoneRow(deleted.id)]
   });
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  await reloadApp(page, { waitUntil: 'domcontentloaded' });
 
   await expect(page.locator('#cloudShadowHeading')).toHaveText('In sync');
   await page.locator('.bottom-nav [data-view="more"]').click();
@@ -719,7 +721,7 @@ test('a stale local workout correction remains blocked when the same workout adv
   const writes = await installAuthenticatedCloud(page, {
     remoteWorkouts: [workoutRow(remote, 2, advancedAt)]
   });
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  await reloadApp(page, { waitUntil: 'domcontentloaded' });
 
   await expect(page.locator('#cloudShadowHeading')).toHaveText('SYNC CONFLICT');
   await expect(page.locator('#cloudRemoteFastForward')).toBeHidden();
@@ -741,7 +743,7 @@ test('equal revision with a different fingerprint remains drift and cannot fast-
     goalVersion: 1,
     goalUpdatedAt: baselineAt
   });
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  await reloadApp(page, { waitUntil: 'domcontentloaded' });
 
   await expect(page.locator('#cloudShadowHeading')).toHaveText('Retry needed');
   await expect(page.locator('#cloudRemoteFastForward')).toBeHidden();
@@ -772,7 +774,7 @@ for (const choice of [
     const remoteEdit = completedWorkout(baseline.id, 11);
     const unrelated = completedWorkout('remote-only-workout', 7, '2026-08-11T19:00:00.000Z');
     await installReceiver(page, profileState('Shared baseline', { workouts: [baseline] }));
-    await page.reload({ waitUntil: 'domcontentloaded' });
+    await reloadApp(page, { waitUntil: 'domcontentloaded' });
     await page.evaluate(async localEdit => {
       state.workouts = [localEdit];
       statePersistenceApi.save(state, state.activeWorkout);
@@ -789,7 +791,7 @@ for (const choice of [
       remoteBodyweights: [bodyweightRow()],
       allowWrites: choice.expectedVersion === 4
     });
-    await page.reload({ waitUntil: 'domcontentloaded' });
+    await reloadApp(page, { waitUntil: 'domcontentloaded' });
     await page.locator('.bottom-nav [data-view="more"]').click();
   await page.locator('#openSettings').click();
 
@@ -815,6 +817,7 @@ for (const choice of [
     const reloaded = page.waitForEvent('framenavigated');
     await page.locator(choice.button).click();
     await reloaded;
+    await waitForAppRuntime(page);
     await expect(page.locator('#cloudShadowHeading')).toHaveText('In sync');
     const after = await page.evaluate(({ storageKey, catalogKey, clientId, workoutId }) => {
       const state = JSON.parse(localStorage.getItem(storageKey));
@@ -854,7 +857,7 @@ test('Strength correctness: cloud History fast-forward refreshes Goal path witho
     id:'synthetic-routine',account_id:accountId,profile_id:profileId,client_id:routineRecord.clientId,idempotency_key:'synthetic-routine-v1',version:1,created_at:baselineAt,updated_at:baselineAt,
     payload:{contract:'big-gains.shadow.v1',version:1,profileClientId:clientId,entityType:'customRoutine',clientId:routineRecord.clientId,data:routineRecord.data}
   }]});
-  await page.reload({waitUntil:'domcontentloaded'});
+  await reloadApp(page, {waitUntil:'domcontentloaded'});
   await expect(page.locator('#cloudShadowHeading')).toHaveText('In sync');
   await expect(page.locator('#activeGoalsList .goal-trajectory')).toContainText('Current next exposure: 225 lb × 5 × 5');
   const after=await page.evaluate(()=>({workouts:state.workouts,goal:state.goals.strengthGoals[0],adoptions:BigGainsCloudSync.status().observability.counters.automaticAdoptions}));

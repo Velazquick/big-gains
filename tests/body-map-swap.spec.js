@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { blankState, installLocalStorageFixture, STORAGE_KEYS, readStoredJson } from './fixtures/local-storage.js';
-import { openApp, openExerciseOptions } from './helpers/app.js';
+import { openApp, openExerciseOptions, openExerciseSwap, reloadApp } from './helpers/app.js';
 
 const NOW = '2026-09-10T12:00:00.000Z';
 const DAY = 86400000;
@@ -133,13 +133,12 @@ test('active swap preserves source data, units and rest; persists offline and su
   await startSwap(page);
   await page.locator('[data-exercise-unit="kg"][data-ei="0"]').click();
   await expect(page.locator('[data-exercise-unit="kg"][data-ei="0"]')).toHaveAttribute('aria-pressed','true');
-  await page.reload();await openExerciseOptions(page,'Dumbbell Lateral Raise');
+  await reloadApp(page);await openExerciseOptions(page,'Dumbbell Lateral Raise');
   const before=await readStoredJson(page,STORAGE_KEYS.jorge);
   expect(before.activeWorkout.exercises[0].displayUnitOverride).toBe('kg');
   await context.setOffline(true);
-  await page.locator('[data-swap-exercise="0"]').click();
-  // Existing blank warm-up templates count as entered data under the accepted safeguard.
-  if(!await page.locator('#exercisePickerDialog').isVisible()) await page.locator('[data-swap-exercise="0"]').click();
+  // Blank warm-up templates require the real entered-data confirmation.
+  await openExerciseSwap(page, 0, { confirmation: true });
   await expect(page.locator('#exercisePickerSearch')).toBeHidden();
   await expect(page.locator('#exercisePickerDialog')).toHaveClass(/is-compact/);
   expect(await page.locator('#exercisePickerDialog').evaluate(e=>e.getBoundingClientRect().height/innerHeight)).toBeLessThanOrEqual(.86);
@@ -150,7 +149,7 @@ test('active swap preserves source data, units and rest; persists offline and su
   expect(after.activeWorkout.programOrigin).toEqual(before.activeWorkout.programOrigin);
   expect(after.activeWorkout.exercises[0].sets.every(s=>!s.completed&&Number(s.weight)===0)).toBe(true);
   for(const key of ['customRoutines','programs','programCapture','goals','workouts','prs','restTimerEndsAt','timerPreferences'])expect(after[key]).toEqual(before[key]);
-  await context.setOffline(false);await page.reload();
+  await context.setOffline(false);await reloadApp(page);
   expect((await readStoredJson(page,STORAGE_KEYS.jorge)).activeWorkout.exercises[0].id).toBe('cable-lateral-raise');
 });
 
@@ -194,9 +193,7 @@ test('swap safeguards entered/completed sets and rejects stale slot callbacks; C
   const blocked=await page.evaluate(()=>workoutSessionController.swapExercise(0,'cable-lateral-raise'));
   expect(blocked).toMatchObject({swapped:false,confirmationRequired:true});
   await openExerciseOptions(page,'Dumbbell Lateral Raise');
-  await page.locator('[data-swap-exercise="0"]').click();
-  await expect(page.locator('#exercisePickerDialog')).not.toBeVisible();
-  await page.locator('[data-swap-exercise="0"]').click();
+  await openExerciseSwap(page, 0, { confirmation: true });
   await expect(page.locator('#exercisePickerDialog')).toBeVisible();
   await page.locator('[data-exercise-picker-browse]').click();
   await expect(page.locator('#exercisePickerDialog')).not.toHaveClass(/is-compact/);
@@ -204,7 +201,7 @@ test('swap safeguards entered/completed sets and rejects stale slot callbacks; C
   await page.locator('#closeExercisePicker').click();
   await expect(page.locator('[data-swap-exercise="0"]')).toBeFocused();
   expect((await readStoredJson(page,STORAGE_KEYS.jorge)).activeWorkout).toEqual(before.activeWorkout);
-  await page.locator('[data-swap-exercise="0"]').click();await page.locator('[data-swap-exercise="0"]').click();
+  await openExerciseSwap(page, 0, { confirmation: true });
   await page.evaluate(()=>workoutSessionController.updateSet(0,1,'weight','30'));
   await page.locator('.exercise-picker-suggested [data-exercise-picker-select]').first().click();
   expect((await readStoredJson(page,STORAGE_KEYS.jorge)).activeWorkout.exercises[0].id).toBe('dumbbell-lateral-raise');

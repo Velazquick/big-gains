@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { activeWorkout, blankState, installLocalStorageFixture, readStoredJson, STORAGE_KEYS } from './fixtures/local-storage.js';
-import { openApp } from './helpers/app.js';
+import { openApp, switchProfile } from './helpers/app.js';
 import { openHistoryCalendar } from './helpers/history.js';
 
 test.use({ timezoneId: 'America/New_York' });
@@ -269,7 +269,7 @@ test('account isolation and backup normalization preserve optional retrospective
   await completeFirstWorkingSet(page);
   await page.locator('#saveRetrospectiveWorkout').click();
   const jorge = await readStoredJson(page, STORAGE_KEYS.jorge);
-  await Promise.all([page.waitForNavigation(), page.locator('#profileSelect').selectOption('alexa')]);
+  await switchProfile(page, 'alexa');
   expect((await readStoredJson(page, STORAGE_KEYS.alexa)).workouts).toHaveLength(0);
   expect((await readStoredJson(page, STORAGE_KEYS.jorge)).workouts).toEqual(jorge.workouts);
   await openHistoryCalendar(page);

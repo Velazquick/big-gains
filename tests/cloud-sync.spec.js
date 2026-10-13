@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture, readStoredJson, STORAGE_KEYS } from './fixtures/local-storage.js';
-import { openApp } from './helpers/app.js';
+import { openApp, reloadApp } from './helpers/app.js';
 
 const configured = {
   supabaseUrl: 'https://synthetic-project.supabase.co',
@@ -22,7 +22,7 @@ test('durable queue survives reload outside the schema-v5 backup object', async 
     BigGainsCloudSync.queue.enqueue(value);
     return value;
   });
-  await page.reload();
+  await reloadApp(page);
 
   const restored = await page.evaluate(key => ({
     pending: BigGainsCloudSync.queue.pending(),
