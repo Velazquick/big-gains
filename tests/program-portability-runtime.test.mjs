@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
+import vm from 'node:vm';
 
 await import('../program-portability.js');
 
@@ -116,4 +117,62 @@ test('runtime assets and deployment config are attached without exposing fingerp
   assert.match(html, /id="programPortabilityStatus"/);
   assert.doesNotMatch(source, /Revision [${}]/);
   assert.doesNotMatch(source, /Fingerprint [${}]/);
+});
+
+for (const interleaving of ['normal-save', 'Program-queue', 'unchanged']) test(`accepted Program continuation preserves ownership after ${interleaving}`, async () => {
+  const storage = new Map(), pending = [];
+  const key = 'synthetic-profile-state';
+  const profile = { id: 'synthetic-profile', goals: {} };
+  const account = { accountId: 'local-account', profileId: profile.id, storageKey: key };
+  const cloudOwner = { account: { id: 'cloud-account' }, profiles: [{ id: 'cloud-profile', client_id: profile.id, account_id: 'cloud-account' }] };
+  const localStorage = { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, String(value)), removeItem: key => storage.delete(key) };
+  const before = { version: 5, profileId: profile.id, goals: {}, workouts: [], weights: [], activeWorkout: null, restTimerEndsAt: null, customRoutines: {} };
+  storage.set(key, JSON.stringify(before));
+  const scope = { console, localStorage, queueMicrotask, navigator: { onLine: true, locks: { request: async (_name, _options, callback) => callback({ name: 'owned' }) } }, addEventListener() {},
+    document: { visibilityState: 'visible', getElementById: () => null, addEventListener() {} },
+    bigGainsAccounts: { registry: { accounts: [account], resolve: () => account }, activeSelectionKey: 'selection', runtime: { kind: 'independent', authUserId: 'user', storageNamespace: 'synthetic-runtime' }, matchesCloudOwner: () => true },
+    BigGainsProgramModel: { normalizeCapture: value => value },
+    BigGainsSupabase: { getClient: () => ({}), verifiedUser: async () => ({ id: 'user' }), readCloudAccount: async () => cloudOwner },
+    __BIG_GAINS_CLOUD_CONFIG__: { programPortability: true, programPortabilityVersion: 1 },
+    BigGainsCloud: { createDurableQueue: () => ({ pending: () => pending }) },
+    BigGainsProgramDomainSync: { isProgramDomainOperation: operation => operation.entityType === 'program_domains', createService: () => ({}) },
+    BigGainsProgramDomainCutover: { createService: () => ({ inspectCutover: async () => ({ state: 'cloud_available' }) }) },
+    PROFILE: profile, ACCOUNT: account, state: before, active: null, exerciseCatalog: {} };
+  scope.window = scope; vm.createContext(scope);
+  vm.runInContext(await readFile(new URL('../state-persistence.js', import.meta.url), 'utf8'), scope);
+  await scope.bigGainsStatePersistence.writerReady;
+  const store = scope.bigGainsStatePersistence.create({ account, profile, profileConfig: { [profile.id]: profile }, validWorkoutTypes: ['Push'], createId: () => 'id', slug: value => value });
+  store.load(); scope.statePersistenceApi = store;
+  const acceptedKey = 'big-gains-program-domain-accepted-v1-synthetic-runtime-synthetic-profile';
+  const accepted = JSON.stringify({ format: 'big-gains.program-domain-accepted.v1', owner: { accountId: 'cloud-account', profileId: 'cloud-profile' }, scope: { accountId: account.accountId, profileId: profile.id }, remote: { record: { version: 1 }, envelope: {} } });
+  storage.set(acceptedKey, accepted);
+  const remote = { record: { version: 2 }, envelope: { synthetic: 'remote' } };
+  let candidateRaw, newerRaw;
+  scope.BigGainsProgramDomainRecovery = { states: { REMOTE_FAST_FORWARD_SAFE: 'safe' },
+    readRemote: async () => ({ state: 'valid', remote }), classify: async () => ({ state: 'safe' }),
+    adopt: async () => {
+      const candidate = { ...before, programCapture: { synthetic: 'adopted' } };
+      store.save(candidate, null); candidateRaw = storage.get(key);
+      // Run between the async domain result and the runtime's accepted-base write.
+      queueMicrotask(() => {
+        if (interleaving === 'normal-save') {
+          const newer = { ...candidate, workouts: [{ id: 'new-durable-history', type: 'Push', completedAt: '2026-10-14T12:00:00.000Z', exercises: [{ name: 'Bench', sets: [] }] }] };
+          store.save(newer, null); newerRaw = storage.get(key);
+        } else if (interleaving === 'Program-queue') pending.push({ entityType: 'program_domains', idempotencyKey: 'newer-program-operation' });
+      });
+      return { ok: true, profileRaw: candidateRaw };
+    } };
+  vm.runInContext(await readFile(new URL('../program-portability.js', import.meta.url), 'utf8'), scope);
+  const api = scope.BigGainsProgramPortability; api.initialize(); await new Promise(resolve => setImmediate(resolve));
+  const result = await api.useCloud();
+  if (interleaving === 'unchanged') {
+    assert.equal(JSON.parse(storage.get(acceptedKey)).remote.record.version, 2);
+    assert.equal(storage.get(key), candidateRaw);
+  } else {
+    assert.equal(result.status, 'error');
+    assert.equal(result.reasonCode, 'PROGRAM_RECOVERY_ADOPTION_STATE_CHANGED');
+    assert.equal(storage.get(acceptedKey), accepted);
+    assert.equal(storage.get(key), newerRaw || candidateRaw);
+    assert.equal(pending.length, interleaving === 'Program-queue' ? 1 : 0);
+  }
 });

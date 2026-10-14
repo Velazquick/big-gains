@@ -274,6 +274,8 @@
       readRaw: raw,
       writeRaw: value => scope.bigGainsStatePersistence.writeRawOwnedState(store.storageKey, value),
       removeRaw: () => scope.bigGainsStatePersistence.removeRawOwnedState(store.storageKey),
+      replaceRaw: (expected, next) => scope.bigGainsStatePersistence.compareAndReplaceRawOwnedState(store.storageKey, expected, next),
+      retainRecoveryEvidence: evidence => scope.bigGainsStatePersistence.retainRawOwnedStateRecovery(store.storageKey, evidence),
       ...extra
     };
   }
@@ -401,6 +403,8 @@
           readRaw: prepared.readRaw,
           writeRaw: prepared.writeRaw,
           removeRaw: prepared.removeRaw,
+          replaceRaw: prepared.replaceRaw,
+          retainRecoveryEvidence: prepared.retainRecoveryEvidence,
           candidateProfile: prepared.pristine ? snapshot : null,
           getOperations: () => queue.pending(),
           initialized: true,
@@ -415,10 +419,18 @@
         result = await cutoverService.resolveConflict('keep_cloud', currentInspection.snapshot, prepared);
       } else return summary({ status: STATUS.BLOCKED, reasonCode: classification.reasonCode });
       if (!result?.ok) return summary({ status: result?.status === 'blocked' ? STATUS.BLOCKED : STATUS.ERROR,
-        reasonCode: result?.reasonCode || 'PROGRAM_ADOPTION_FAILED' });
+        reasonCode: result?.reasonCode || 'PROGRAM_ADOPTION_FAILED', recoveryRequired: result?.recoveryRequired === true });
+      // adopt() resolves asynchronously. A normal save or Program capture can
+      // finish before this continuation; never accept that obsolete result.
+      if (!result.profileRaw || prepared.replaceRaw(result.profileRaw, result.profileRaw) !== true
+        || queue.pending().some(scope.BigGainsProgramDomainSync.isProgramDomainOperation)) {
+        return summary({ status: STATUS.ERROR, reasonCode: 'PROGRAM_RECOVERY_ADOPTION_STATE_CHANGED' });
+      }
       writeAccepted(mapping, remoteRead.remote);
       reloadAfterAdoption();
       return await refresh({ force: true });
+    } catch (error) {
+      return summary({ status: STATUS.ERROR, reasonCode: error?.code || 'PROGRAM_ADOPTION_FAILED' });
     } finally {
       busy = false;
       render();
