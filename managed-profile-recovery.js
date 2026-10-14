@@ -30,6 +30,15 @@
     statePersistence.assertWriter?.();
     return trainingKeys.has(key) ? statePersistence.removeRawOwnedState(key) : localStorage.removeItem(key);
   };
+  const replaceStorage = (key, expected, replacement) => {
+    statePersistence.assertWriter?.();
+    if (trainingKeys.has(key)) return statePersistence.compareAndReplaceRawOwnedState(key, expected, replacement);
+    if (readStorage(key) !== expected) return false;
+    if (replacement === null) removeStorage(key);
+    else writeStorage(key, replacement);
+    if (readStorage(key) !== replacement) throw new Error('Transaction document readback failed.');
+    return true;
+  };
   const readJson = key => {
     try { return JSON.parse(readStorage(key) || 'null'); } catch { return null; }
   };
@@ -840,16 +849,49 @@
     return [...new Set([...documents.map(document => document.key), runtime.cloudKeys.queue])];
   }
 
-  function restoreAdoptionSnapshots(snapshots) {
-    const errors = [];
-    for (const snapshot of snapshots) {
-      try {
-        if (snapshot.before === null) removeStorage(snapshot.key);
-        else writeStorage(snapshot.key, snapshot.before);
-        if (readStorage(snapshot.key) !== snapshot.before) throw new Error(`Rollback readback failed for ${snapshot.key}.`);
-      } catch (error) { errors.push(error?.message || String(error)); }
+  const ownershipChanged = () => Object.assign(new Error('Transaction ownership changed; retained documents and journal require recovery.'), {
+    code: 'automatic-adoption-state-changed'
+  });
+
+  function requireAdoptionIntent(raw) {
+    statePersistence.assertWriter?.();
+    if (readStorage(ADOPTION_KEY) !== raw) throw ownershipChanged();
+  }
+
+  function validSnapshotProfile(snapshot) {
+    const descriptor = runtime.descriptors.find(value => value.storageKey === snapshot.key);
+    if (!descriptor) return true;
+    return [snapshot.before, snapshot.candidate].every(raw => {
+      if (raw === null) return true;
+      try { return JSON.parse(raw)?.profileId === descriptor.profileId; } catch { return false; }
+    });
+  }
+
+  // The adopter never writes the queue. Legacy intents used candidate:null for
+  // that untouched key; it must still equal before, even when before is present.
+  const candidateForSnapshot = snapshot => snapshot.key === runtime.cloudKeys.queue ? snapshot.before : snapshot.candidate;
+
+  function restoreAdoptionSnapshots(snapshots, intentRaw) {
+    requireAdoptionIntent(intentRaw);
+    // Check every document before changing any: one unknown successor keeps the
+    // entire recovery set intact. A partially completed rollback is retryable.
+    const current = snapshots.map(snapshot => {
+      if (!validSnapshotProfile(snapshot)) throw ownershipChanged();
+      const raw = readStorage(snapshot.key);
+      if (raw !== snapshot.before && raw !== candidateForSnapshot(snapshot)) throw ownershipChanged();
+      return { snapshot, raw };
+    });
+    for (const { snapshot, raw } of current) {
+      requireAdoptionIntent(intentRaw);
+      if (raw === snapshot.before) continue;
+      if (!replaceStorage(snapshot.key, raw, snapshot.before)) throw ownershipChanged();
     }
-    if (errors.length) throw Object.assign(new Error('Automatic-adoption rollback could not be verified.'), { rollbackErrors: errors });
+    requireAdoptionIntent(intentRaw);
+    if (snapshots.some(snapshot => readStorage(snapshot.key) !== snapshot.before)) throw ownershipChanged();
+  }
+
+  function clearAdoptionIntent(raw) {
+    if (!replaceStorage(ADOPTION_KEY, raw, null)) throw ownershipChanged();
   }
 
   function recoverInterruptedAdoption() {
@@ -877,43 +919,45 @@
       return blocked('automatic-adoption-journal-invalid', 'An interrupted device update needs manual storage recovery before sync can continue.');
     }
     try {
-      restoreAdoptionSnapshots(intent.snapshots);
-      removeStorage(ADOPTION_KEY);
-      if (readStorage(ADOPTION_KEY) !== null) throw new Error('The completed rollback journal could not be cleared.');
+      restoreAdoptionSnapshots(intent.snapshots, raw);
+      clearAdoptionIntent(raw);
       return Object.freeze({ ok: true, recovered: true });
     } catch (error) {
       commitProtection = true;
-      return blocked('automatic-adoption-rollback-failed', 'An interrupted device update could not be rolled back safely.', {
-        error: error?.message || String(error), rollbackErrors: error?.rollbackErrors || []
+      return blocked(error?.code || 'automatic-adoption-rollback-failed', 'An interrupted device update needs recovery. Its journal and unverified documents were retained.', {
+        error: error?.message || String(error), rollbackErrors: error?.rollbackErrors || [], recoveryRequired: true
       });
     }
   }
 
   function beginAdoptionTransaction(documents, validate) {
     const candidateByKey = new Map(documents.map(document => [document.key, JSON.stringify(document.value)]));
-    const snapshots = adoptionSnapshotKeys(documents).map(key => Object.freeze({
-      key,
-      before: readStorage(key),
-      candidate: candidateByKey.get(key) || null
-    }));
+    const snapshots = adoptionSnapshotKeys(documents).map(key => {
+      const before = readStorage(key);
+      return Object.freeze({ key, before, candidate: candidateByKey.has(key) ? candidateByKey.get(key) : before });
+    });
+    if (snapshots.some(snapshot => !validSnapshotProfile(snapshot))) throw ownershipChanged();
     const intent = {
       format: ADOPTION_FORMAT,
       version: 1,
       createdAt: new Date().toISOString(),
       snapshots
     };
-    writeStorage(ADOPTION_KEY, JSON.stringify(intent));
-    if (!valuesMatch(readJson(ADOPTION_KEY), intent)) throw new Error('The automatic-adoption journal was not retained before the device update.');
+    const intentRaw = JSON.stringify(intent);
+    if (!replaceStorage(ADOPTION_KEY, null, intentRaw)) throw ownershipChanged();
     let closed = false;
     const rollback = () => {
       if (closed) return;
-      restoreAdoptionSnapshots(snapshots);
-      removeStorage(ADOPTION_KEY);
-      if (readStorage(ADOPTION_KEY) !== null) throw new Error('The rolled-back automatic-adoption journal could not be cleared.');
+      restoreAdoptionSnapshots(snapshots, intentRaw);
+      clearAdoptionIntent(intentRaw);
       closed = true;
     };
     try {
-      for (const { key, value } of documents) writeStorage(key, JSON.stringify(value));
+      for (const snapshot of snapshots) {
+        requireAdoptionIntent(intentRaw);
+        if (!candidateByKey.has(snapshot.key)) continue;
+        if (!replaceStorage(snapshot.key, snapshot.before, snapshot.candidate)) throw ownershipChanged();
+      }
       for (const { key, value } of documents) {
         if (readStorage(key) !== JSON.stringify(value)) throw new Error(`Device storage did not retain ${key}.`);
       }
@@ -926,8 +970,9 @@
       rollback,
       complete() {
         if (closed) return;
-        removeStorage(ADOPTION_KEY);
-        if (readStorage(ADOPTION_KEY) !== null) throw new Error('The verified automatic-adoption journal could not be cleared.');
+        requireAdoptionIntent(intentRaw);
+        if (snapshots.some(snapshot => readStorage(snapshot.key) !== candidateForSnapshot(snapshot))) throw ownershipChanged();
+        clearAdoptionIntent(intentRaw);
         closed = true;
       }
     });
@@ -1041,8 +1086,11 @@
       commitProtection = Boolean(error.rollbackErrors?.length || unresolvedIntent);
       return blocked(
         'remote-fast-forward-persistence-failed',
-        'The device update could not be finalized. All local writes were rolled back and cloud data was left untouched.',
-        { error: error?.message || String(error), rollbackErrors: error?.rollbackErrors || [] }
+        commitProtection
+          ? 'The device update needs recovery. Transaction ownership could not be established; its retained documents and journal were preserved.'
+          : 'The device update could not be finalized. Its owned local writes were rolled back and cloud data was left untouched.',
+        { error: error?.message || String(error), rollbackErrors: error?.rollbackErrors || [],
+          rolledBack: !commitProtection, recoveryRequired: commitProtection }
       );
     }
     return Object.freeze({
