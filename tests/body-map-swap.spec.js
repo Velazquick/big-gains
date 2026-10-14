@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { blankState, installLocalStorageFixture, STORAGE_KEYS, readStoredJson } from './fixtures/local-storage.js';
-import { openApp, openExerciseOptions, waitForAppRuntime } from './helpers/app.js';
+import { openApp, openExerciseOptions, openExerciseSwap, reloadApp, waitForAppRuntime } from './helpers/app.js';
 
 const NOW = '2026-09-10T12:00:00.000Z';
 const DAY = 86400000;
@@ -16,10 +16,10 @@ function historyState() {
     workout('excluded-sets',2,[{...ex('dumbbell-lateral-raise','Dumbbell Lateral Raise','Shoulders',0),sets:[{id:'warm',weight:20,reps:10,completed:true,warmup:true},{id:'entered',weight:20,reps:10,completed:false}]}])
   ]};
 }
-async function seed(page,state=historyState()) {
+async function seed(page,state=historyState(),readiness={}) {
   await installLocalStorageFixture(page,'blankJorge',{now:NOW});
   await page.addInitScript(({key,state})=>{if(!sessionStorage.getItem('bodymap-seed')) {localStorage.setItem(key,JSON.stringify(state));sessionStorage.setItem('bodymap-seed','1');}}, {key:STORAGE_KEYS.jorge,state});
-  await openApp(page);
+  await openApp(page,readiness);
 }
 async function progress(page) {await page.evaluate(()=>bigGainsViewShell.showView('progress',{workout:false}));}
 
@@ -85,14 +85,14 @@ test('unfinished input contributes no analytics and never replaces valid persist
 test('unfinished persisted History enters recovery and retains original bytes after background and reload',async({page})=>{
   const malformed=historyState();
   malformed.workouts.push({...malformed.workouts[0],id:'unfinished',completedAt:null});
-  await seed(page,malformed);
+  await seed(page,malformed,{expected:'recovery'});
   const before=JSON.stringify(malformed);
   expect(await page.evaluate(()=>BigGainsBootGate.status().state)).toBe('recovery');
   expect(await page.evaluate(key=>localStorage.getItem(key),STORAGE_KEYS.jorge)).toBe(before);
   expect(await page.evaluate(()=>{try{statePersistenceApi.save(state,active);return null;}catch(error){return error.code;}})).toBe('local-state-unreadable');
   await page.evaluate(()=>window.dispatchEvent(new Event('pagehide')));
   expect(await page.evaluate(key=>localStorage.getItem(key),STORAGE_KEYS.jorge)).toBe(before);
-  await page.reload();await waitForAppRuntime(page);
+  await reloadApp(page,{expected:'recovery'});
   expect(await page.evaluate(()=>BigGainsBootGate.status().state)).toBe('recovery');
   expect(await page.evaluate(key=>localStorage.getItem(key),STORAGE_KEYS.jorge)).toBe(before);
 });
@@ -164,13 +164,12 @@ test('active swap preserves source data, units and rest; persists offline and su
   await startSwap(page);
   await page.locator('[data-exercise-unit="kg"][data-ei="0"]').click();
   await expect(page.locator('[data-exercise-unit="kg"][data-ei="0"]')).toHaveAttribute('aria-pressed','true');
-  await page.reload();await openExerciseOptions(page,'Dumbbell Lateral Raise');
+  await reloadApp(page);await openExerciseOptions(page,'Dumbbell Lateral Raise');
   const before=await readStoredJson(page,STORAGE_KEYS.jorge);
   expect(before.activeWorkout.exercises[0].displayUnitOverride).toBe('kg');
   await context.setOffline(true);
-  await page.locator('[data-swap-exercise="0"]').click();
-  // Existing blank warm-up templates count as entered data under the accepted safeguard.
-  if(!await page.locator('#exercisePickerDialog').isVisible()) await page.locator('[data-swap-exercise="0"]').click();
+  // Blank warm-up templates require the real entered-data confirmation.
+  await openExerciseSwap(page, 0, { confirmation: true });
   await expect(page.locator('#exercisePickerSearch')).toBeHidden();
   await expect(page.locator('#exercisePickerDialog')).toHaveClass(/is-compact/);
   expect(await page.locator('#exercisePickerDialog').evaluate(e=>e.getBoundingClientRect().height/innerHeight)).toBeLessThanOrEqual(.86);
@@ -181,7 +180,7 @@ test('active swap preserves source data, units and rest; persists offline and su
   expect(after.activeWorkout.programOrigin).toEqual(before.activeWorkout.programOrigin);
   expect(after.activeWorkout.exercises[0].sets.every(s=>!s.completed&&Number(s.weight)===0)).toBe(true);
   for(const key of ['customRoutines','programs','programCapture','goals','workouts','prs','restTimerEndsAt','timerPreferences'])expect(after[key]).toEqual(before[key]);
-  await context.setOffline(false);await page.reload();
+  await context.setOffline(false);await reloadApp(page);
   expect((await readStoredJson(page,STORAGE_KEYS.jorge)).activeWorkout.exercises[0].id).toBe('cable-lateral-raise');
 });
 
@@ -225,9 +224,7 @@ test('swap safeguards entered/completed sets and rejects stale slot callbacks; C
   const blocked=await page.evaluate(()=>workoutSessionController.swapExercise(0,'cable-lateral-raise'));
   expect(blocked).toMatchObject({swapped:false,confirmationRequired:true});
   await openExerciseOptions(page,'Dumbbell Lateral Raise');
-  await page.locator('[data-swap-exercise="0"]').click();
-  await expect(page.locator('#exercisePickerDialog')).not.toBeVisible();
-  await page.locator('[data-swap-exercise="0"]').click();
+  await openExerciseSwap(page, 0, { confirmation: true });
   await expect(page.locator('#exercisePickerDialog')).toBeVisible();
   await page.locator('[data-exercise-picker-browse]').click();
   await expect(page.locator('#exercisePickerDialog')).not.toHaveClass(/is-compact/);
@@ -235,7 +232,7 @@ test('swap safeguards entered/completed sets and rejects stale slot callbacks; C
   await page.locator('#closeExercisePicker').click();
   await expect(page.locator('[data-swap-exercise="0"]')).toBeFocused();
   expect((await readStoredJson(page,STORAGE_KEYS.jorge)).activeWorkout).toEqual(before.activeWorkout);
-  await page.locator('[data-swap-exercise="0"]').click();await page.locator('[data-swap-exercise="0"]').click();
+  await openExerciseSwap(page, 0, { confirmation: true });
   await page.evaluate(()=>workoutSessionController.updateSet(0,1,'weight','30'));
   await page.locator('.exercise-picker-suggested [data-exercise-picker-select]').first().click();
   expect((await readStoredJson(page,STORAGE_KEYS.jorge)).activeWorkout.exercises[0].id).toBe('dumbbell-lateral-raise');

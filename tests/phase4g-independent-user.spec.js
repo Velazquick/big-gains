@@ -1,6 +1,7 @@
 import { openLibraryFromMore } from './helpers/app.js';
-import { expect, test } from '@playwright/test';
-import { openApp, waitForAppRuntime } from './helpers/app.js';
+import { expect } from '@playwright/test';
+import { test } from './helpers/network-outage.js';
+import { openApp, reloadApp } from './helpers/app.js';
 
 const authUserId = '82000000-0000-0000-0000-000000000002';
 const cloudAccountId = '82a00000-0000-0000-0000-000000000002';
@@ -52,7 +53,7 @@ test('new independent profile sees welcome once and can finish a blank first wor
   await expect(page.locator('.today-stage')).toHaveAttribute('data-priority','freeform');
   await expect(page.locator('#firstRunOnboarding')).toBeVisible();
   await expect(page.locator('#firstRunOnboarding')).toContainText('Private training');
-  await page.reload();
+  await reloadApp(page);
   await expect(page.locator('#firstRunOnboarding')).toBeVisible();
   await page.locator('#firstRunTrain').click();
   await expect(page.locator('body')).toHaveAttribute('data-view', 'train');
@@ -79,7 +80,7 @@ test('new independent profile sees welcome once and can finish a blank first wor
   expect(saved.onboarding).toMatchObject({ contractVersion: 1, status: 'completed', lastStage: 'first_success' });
 
   await page.locator('#closeHistoryDialog').click();
-  await page.reload();
+  await reloadApp(page);
   await expect(page.locator('#firstRunOnboarding')).toBeHidden();
 });
 
@@ -177,6 +178,8 @@ async function installCloudIdentityShape(page, profileClientId) {
   });
 }
 
+test.describe('routed cloud identity shapes', () => {
+test.use({ serviceWorkers: 'block' });
 for (const identityShape of [
   { label: 'lone Jorge', profileClientId: 'jorge', expectedStatus: 'unexpected', expectedShape: 'unexpected' },
   { label: 'lone Alexa', profileClientId: 'alexa', expectedStatus: 'unexpected', expectedShape: 'unexpected' },
@@ -185,7 +188,8 @@ for (const identityShape of [
 ]) {
   test(`${identityShape.label} obeys the browser identity-shape invariant`, async ({ page }) => {
     await installCloudIdentityShape(page, identityShape.profileClientId);
-    await openApp(page);
+    await openApp(page, identityShape.expectedStatus === 'unexpected'
+      ? { expected: 'recovery' } : {});
 
     if (identityShape.expectedStatus === 'unexpected') {
       await expect(page.locator('#independentAccountOnboarding')).toBeVisible();
@@ -232,6 +236,7 @@ for (const identityShape of [
     expect(result).toMatchObject({ runtimeKind: 'independent', runtimeError: null, ownerMatchesRuntime: true });
   });
 }
+});
 
 test('independent runtime renders one identity with cobalt performance tokens and no managed-profile or pet leakage', async ({ page }) => {
   await installIndependentRuntime(page);
@@ -266,7 +271,7 @@ test('independent runtime renders one identity with cobalt performance tokens an
   });
 });
 
-test('independent logging stays local first, queues only into its account namespace, survives offline reload, and reaches one-profile parity', async ({ page, context }) => {
+test('independent logging stays local first, queues only into its account namespace, survives offline reload, and reaches one-profile parity', async ({ page, context, setAppNetworkUnavailable }) => {
   await installIndependentRuntime(page);
   await openApp(page);
   await page.evaluate(async ({ catalogKey, cloudAccountId, cloudProfileId, authUserId, clientId }) => {
@@ -284,14 +289,14 @@ test('independent logging stays local first, queues only into its account namesp
   // Finish first installation before this fixture's deliberate catalog reload.
   // A navigation overlapping initial activation/claim may remain uncontrolled.
   await page.evaluate(async () => { await navigator.serviceWorker.ready; });
-  await page.reload();
+  await reloadApp(page);
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;
     if (!navigator.serviceWorker.controller) {
       await new Promise(resolve => navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true }));
     }
   });
-  await context.setOffline(true);
+  await setAppNetworkUnavailable(true);
 
   const local = await page.evaluate(() => {
     state.workouts.unshift({
@@ -314,11 +319,10 @@ test('independent logging stays local first, queues only into its account namesp
   expect(queued.queue.pending).toHaveLength(1);
   expect(queued.managedQueue).toBeNull();
 
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await waitForAppRuntime(page);
+  await reloadApp(page, { waitUntil: 'domcontentloaded' });
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem(statePersistenceApi.storageKey)).workouts[0].id)).toBe('friend-offline-workout');
   expect(await page.evaluate(() => BigGainsCloudSync.queue.pending().length)).toBe(1);
-  await context.setOffline(false);
+  await setAppNetworkUnavailable(false);
 
   const parity = await page.evaluate(async ({ cloudAccountId, cloudProfileId, clientId }) => {
     const localProfiles = await BigGainsCloudShadow.readLocalProfiles();
@@ -346,6 +350,8 @@ test('independent logging stays local first, queues only into its account namesp
   expect(Object.keys(parity.profiles)).toEqual([clientId]);
 });
 
+test.describe('routed cloud provisioning', () => {
+test.use({ serviceWorkers: 'block' });
 test('fresh invited Auth user sees onboarding, provisions once through RPC, and reloads into isolated friend storage', async ({ page }) => {
   const now = new Date().toISOString();
   let provisioned = false;
@@ -405,7 +411,7 @@ test('fresh invited Auth user sees onboarding, provisions once through RPC, and 
     return route.fulfill({ status: 200, headers: { ...headers, 'content-range': '*/0' }, body: '[]' });
   });
 
-  await openApp(page);
+  await openApp(page, { expected: 'recovery', reason: 'profile-provisioning' });
   await expect(page.locator('#independentAccountOnboarding')).toBeVisible();
   await expect(page.locator('#independentAccountOnboarding')).toContainText('Create your private profile');
   await expect(page.locator('#independentAccountOnboarding')).not.toContainText(/Jorge|Alexa/);
@@ -428,9 +434,10 @@ test('fresh invited Auth user sees onboarding, provisions once through RPC, and 
   expect(result.runtime.accounts[authUserId]).toMatchObject({ kind: 'independent', cloudAccountId, cloudProfileId, clientId });
   expect(result.managed).toBeNull();
   expect(result.alexa).toBeNull();
-  await page.reload();
+  await reloadApp(page);
   await expect(page.locator('#firstRunOnboarding')).toBeHidden();
   expect(rpcCalls).toBe(1);
+});
 });
 
 test('independent production transport recovers a lost ACK and preserves friend tombstone semantics', async ({ page }) => {

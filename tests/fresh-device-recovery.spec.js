@@ -1,7 +1,8 @@
 import { assertTelemetryRequest } from './helpers/telemetry.js';
 import { createHash } from 'node:crypto';
 import { expect, test } from '@playwright/test';
-import { openApp, waitForAppRuntime } from './helpers/app.js';
+import { openApp } from './helpers/app.js';
+import { recoveryResponseGate, observeRestorationThenReady } from './helpers/recovery.js';
 
 // Keep synthetic cloud traffic inside Playwright routing in every browser.
 // Root-domain worker control/offline behavior has separate real-network tests.
@@ -221,13 +222,12 @@ async function installIdentity(page, identity, {
 }
 
 async function installCloud(page, identity, { malformed = false, slow = false, holdRecovery = false } = {}) {
+  const gate = recoveryResponseGate();
   const fixture = cloudFixture(identity, { malformed });
   const writes = [];
   const reads = [];
   let delayed = false;
   let changedMapping = false;
-  let releaseRecovery;
-  const recoveryResponse = new Promise(resolve => { releaseRecovery = resolve; });
   await page.route('https://synthetic-phase4k.supabase.co/**', async route => {
     const request = route.request();
     const url = new URL(request.url());
@@ -270,9 +270,7 @@ async function installCloud(page, identity, { malformed = false, slow = false, h
       }, version: 1, created_at: NOW, updated_at: NOW
     }] : [];
     else if (fixture.records[table]) {
-      // A controllable transport boundary lets tests observe real progress
-      // before restoration finishes, without relying on elapsed time.
-      if (holdRecovery) await recoveryResponse;
+      if (holdRecovery) await gate.pending;
       if (slow && !delayed) { delayed = true; await new Promise(resolve => setTimeout(resolve, 1_500)); }
       data = fixture.records[table];
     }
@@ -282,27 +280,7 @@ async function installCloud(page, identity, { malformed = false, slow = false, h
       body: request.method() === 'HEAD' ? '' : JSON.stringify(data)
     });
   });
-  return { fixture, writes, reads, releaseRecovery, changeMapping: () => { changedMapping = true; } };
-}
-
-async function observeRestorationThenReady(page, cloud, storage, originalRaw) {
-  const recordRead = page.waitForRequest(request => request.method() === 'GET'
-    && new URL(request.url()).hostname === 'synthetic-phase4k.supabase.co'
-    && Object.hasOwn(cloud.fixture.records, new URL(request.url()).pathname.split('/').pop()));
-  try {
-    await page.goto('/');
-    await recordRead;
-    await expect(page.locator('#independentAccountOnboarding')).toBeVisible();
-    await expect(page.locator('#independentAccountOnboarding')).toContainText('Restoring your training to this device');
-    expect(await page.evaluate(() => ({ writer: bigGainsStatePersistence.writerStatus(), authorized: BigGainsBootGate.canRender() })))
-      .toEqual({ writer: 'owned', authorized: false });
-    expect(await page.evaluate(key => localStorage.getItem(key), storage.states[SZW_CLIENT])).toBe(originalRaw);
-    expect(cloud.writes).toEqual([]);
-  } finally {
-    cloud.releaseRecovery();
-  }
-  await waitForAppRuntime(page);
-  expect(await page.evaluate(() => BigGainsRuntimeGate.canInteract() && BigGainsBootGate.canRender())).toBe(true);
+  return { fixture, writes, reads, gate, changeMapping: () => { changedMapping = true; } };
 }
 
 function blankLocal(profileId, primary = 'Local sentinel') {
@@ -637,7 +615,8 @@ test('existing independent user restores over an exact blank startup artifact', 
     localStates: { [SZW_CLIENT]: blankArtifact(SZW_CLIENT) }
   });
   const cloud = await installCloud(page, independentIdentity, { holdRecovery: true });
-  await observeRestorationThenReady(page, cloud, storage, JSON.stringify(blankArtifact(SZW_CLIENT)));
+  await observeRestorationThenReady(page, { hostname: 'synthetic-phase4k.supabase.co', tables: Object.keys(cloud.fixture.records), gate: cloud.gate,
+    expectedWriter: 'owned', writes: cloud.writes, text: 'Restoring your training to this device', storageKey: storage.states[SZW_CLIENT], originalRaw: JSON.stringify(blankArtifact(SZW_CLIENT)) });
   await expect.poll(async () => {
     try {
       return await page.evaluate(key => JSON.parse(localStorage.getItem(key) || 'null')?.workouts?.[0]?.id || null,
@@ -743,7 +722,8 @@ test('managed owner restores Jorge and Alexa from fresh cloud despite prior drif
 test('existing SZW independent profile restores schema v5 and preserves stable presentation identity', async ({ page }) => {
   const storage = await installIdentity(page, independentIdentity);
   const cloud = await installCloud(page, independentIdentity, { holdRecovery: true });
-  await observeRestorationThenReady(page, cloud, storage, null);
+  await observeRestorationThenReady(page, { hostname: 'synthetic-phase4k.supabase.co', tables: Object.keys(cloud.fixture.records), gate: cloud.gate,
+    expectedWriter: 'owned', writes: cloud.writes, text: 'Restoring your training to this device', storageKey: storage.states[SZW_CLIENT], originalRaw: null });
   await expect(page.locator('#independentAccountOnboarding')).toBeHidden();
   await expect(page.locator('html')).toHaveAttribute('data-profile-config', SZW_CLIENT);
   await expect(page.locator('html')).toHaveAttribute('data-accent', 'merlot');
@@ -762,9 +742,9 @@ test('existing SZW independent profile restores schema v5 and preserves stable p
     timerPreferences: { sound: true, vibration: false }, activeWorkout: { type: 'SzwPull1' }
   });
   expect(restored.comparison.parity).toBe(true);
-  expect(restored.state.workouts).toEqual([cloud.fixture.profiles[SZW_CLIENT].workout]);
   expect(await page.evaluate(() => [localStorage.getItem('big-gains-v2'), localStorage.getItem('big-gains-alexa-v1')])).toEqual([null, null]);
   expect(restored.marker).toMatchObject({ format: 'big-gains.fresh-device-recovery.v1', kind: 'independent' });
+  expect(restored.state.workouts).toEqual([cloud.fixture.profiles[SZW_CLIENT].workout]);
   expect(restored.runtime.descriptors[0]).toMatchObject({ profileId: SZW_CLIENT, cloudProfileId: SZW_PROFILE });
   expect(cloud.writes).toEqual([]);
 });
@@ -833,7 +813,7 @@ test('account/profile ownership mismatch blocks before reconstruction', async ({
 test('malformed cloud record stops safely and leaves both managed training namespaces absent', async ({ page }) => {
   const storage = await installIdentity(page, managedIdentity);
   const cloud = await installCloud(page, managedIdentity, { malformed: true });
-  await openApp(page);
+  await openApp(page, { expected: 'recovery', reason: 'profile-recovery-failed' });
 
   await expect(page.locator('#independentAccountOnboarding')).toContainText('Recovery stopped safely');
   await expect(page.locator('#independentAccountOnboarding')).toContainText('unsupported payload contract');
@@ -857,7 +837,7 @@ test('persistence failure rolls back reconstructed profiles and preserves prior 
     failPersistenceKey: storage.catalog
   });
   const cloud = await installCloud(page, managedIdentity);
-  await openApp(page);
+  await openApp(page, { expected: 'recovery', reason: 'profile-recovery-failed' });
 
   await expect(page.locator('#independentAccountOnboarding')).toContainText('Recovery stopped safely');
   await expect(page.locator('#independentAccountOnboarding')).toContainText('rolled back');
