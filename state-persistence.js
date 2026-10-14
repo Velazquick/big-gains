@@ -14,8 +14,75 @@
     return Number.isFinite(number) && number >= 0 ? number : fallback;
   };
   const read = key => localStorage.getItem(key);
-  const write = (key, value) => localStorage.setItem(key, value);
-  const remove = key => localStorage.removeItem(key);
+  // Keep the synchronous local-first ports, but give the entire account's
+  // profile/recovery writers one document owner. Never promote stale memory.
+  let writerState = 'pending';
+  let releaseWriter;
+  let resolveWriter;
+  const writerReady = new Promise(resolve => { resolveWriter = resolve; });
+  const writerLifetime = new Promise(resolve => { releaseWriter = resolve; });
+  const expectedRaw = new Map();
+  const protectedKeys = new Map();
+  const profileKeys = new Map(accountRegistry.accounts.map(account => [account.storageKey, account.profileId]));
+  function readableProfile(value, profileId) {
+    const exercisesReadable = workout => isRecord(workout) && typeof workout.type === 'string' && workout.type
+      && Array.isArray(workout.exercises) && workout.exercises.every(exercise => isRecord(exercise)
+        && typeof exercise.name === 'string' && exercise.name.trim() && Array.isArray(exercise.sets)
+        && exercise.sets.every(isRecord));
+    return isRecord(value) && (!Object.hasOwn(value, 'version') || [2, 3, 4, 5].includes(value.version))
+      && (!Object.hasOwn(value, 'profileId') || value.profileId === profileId)
+      && Array.isArray(value.workouts) && value.workouts.every(workout => exercisesReadable(workout) && validDate(workout.completedAt))
+      && Array.isArray(value.weights) && value.weights.every(entry => isRecord(entry) && validDate(entry.date) && Number.isFinite(Number(entry.weight)) && Number(entry.weight) >= 0)
+      && (value.activeWorkout == null || (exercisesReadable(value.activeWorkout) && validDate(value.activeWorkout.startedAt)));
+  }
+  const persistenceError = code => Object.assign(new Error('Local training data was not changed.'), { code });
+  function requireWriter() {
+    if (writerState !== 'owned') throw persistenceError('local-writer-unavailable');
+  }
+  function requireUnchanged(key) {
+    requireWriter();
+    if (protectedKeys.has(key)) throw persistenceError(protectedKeys.get(key));
+    const current = read(key);
+    if (expectedRaw.has(key) && expectedRaw.get(key) !== current) {
+      protectedKeys.set(key, 'local-state-changed');
+      throw persistenceError('local-state-changed');
+    }
+    return current;
+  }
+  const write = (key, value) => {
+    requireUnchanged(key);
+    localStorage.setItem(key, value);
+    expectedRaw.set(key, value);
+  };
+  const remove = key => {
+    requireUnchanged(key);
+    localStorage.removeItem(key);
+    expectedRaw.set(key, null);
+  };
+  try {
+    if (!navigator.locks?.request) throw persistenceError('local-coordination-unavailable');
+    navigator.locks.request(`big-gains-writer:${window.bigGainsAccounts.runtime.storageNamespace}`, { ifAvailable: true }, lock => {
+      writerState = lock ? 'owned' : 'occupied';
+      if (lock) for (const [key, profileId] of profileKeys) {
+        try {
+          const raw = read(key);
+          expectedRaw.set(key, raw);
+          if (raw !== null && !readableProfile(JSON.parse(raw), profileId)) protectedKeys.set(key, 'local-state-unreadable');
+        } catch { protectedKeys.set(key, 'local-state-unreadable'); }
+      }
+      resolveWriter(Boolean(lock));
+      return lock ? writerLifetime : undefined;
+    }).catch(() => { writerState = 'unavailable'; resolveWriter(false); });
+  } catch { writerState = 'unavailable'; resolveWriter(false); }
+  window.addEventListener('pagehide', event => {
+    if (!event.persisted) return;
+    // A cached document must reload before it can own a newer snapshot.
+    writerState = 'retired';
+    releaseWriter();
+  });
+  window.addEventListener('pageshow', event => {
+    if (event.persisted) window.BigGainsBootGate?.recover('Reload to reopen your saved training safely.', 'local-writer-retired');
+  });
   const ownedStorageKeys = new Set(Object.values(STORAGE_KEYS).filter(Boolean));
 
   function requireOwnedStorageKey(key) {
@@ -23,7 +90,11 @@
     return key;
   }
 
-  const readRawOwnedState = key => read(requireOwnedStorageKey(key));
+  const readRawOwnedState = key => {
+    const value = read(requireOwnedStorageKey(key));
+    if (!expectedRaw.has(key)) expectedRaw.set(key, value);
+    return value;
+  };
   const writeRawOwnedState = (key, value) => write(requireOwnedStorageKey(key), value);
   const removeRawOwnedState = key => remove(requireOwnedStorageKey(key));
 
@@ -62,6 +133,8 @@
     if (!ownerAccount) throw new Error(`Unknown account for profile: ${profile.id}`);
     const storageKey = ownerAccount.storageKey;
     const workoutTypes = new Set(validWorkoutTypes);
+    let loadStatus = 'unread';
+    let originalRaw = null;
     const normalizeProgramOrigin = value => window.BigGainsProgramOrigin?.normalize(value, {
       accountId: ownerAccount.accountId,
       profileId: profile.id
@@ -414,17 +487,43 @@
 
     function load() {
       try {
-        const saved = JSON.parse(read(storageKey));
-        if (saved) return normalizeState(saved);
+        originalRaw = read(storageKey);
+        if (expectedRaw.has(storageKey) && expectedRaw.get(storageKey) !== originalRaw) {
+          protectedKeys.set(storageKey, 'local-state-changed');
+          throw persistenceError('local-state-changed');
+        }
+        if (!expectedRaw.has(storageKey)) expectedRaw.set(storageKey, originalRaw);
+        if (originalRaw !== null) {
+          const saved = JSON.parse(originalRaw);
+          const structurallySafe = readableProfile(saved, profile.id)
+            && saved.workouts.every(workout => normalizeWorkout(workout)
+              && Array.isArray(workout.exercises)
+              && workout.exercises.every(exercise => normalizeExercise(exercise)
+                && Array.isArray(exercise.sets) && exercise.sets.every(isRecord)))
+            && (saved.activeWorkout == null || (normalizeActiveWorkout(saved.activeWorkout)
+              && Array.isArray(saved.activeWorkout.exercises)
+              && saved.activeWorkout.exercises.every(exercise => normalizeExercise(exercise)
+                && Array.isArray(exercise.sets) && exercise.sets.every(isRecord))));
+          if (!structurallySafe) {
+            loadStatus = 'unsupported-or-invalid';
+            protectedKeys.set(storageKey, 'local-state-unreadable');
+            return normalizeState(saved);
+          }
+          loadStatus = 'loaded';
+          return normalizeState(saved);
+        }
+        loadStatus = 'missing';
         if (ownerAccount.legacyStateKey) {
           const legacy = JSON.parse(read(ownerAccount.legacyStateKey));
           if (legacy) {
             const migrated = migrateLegacyV1(legacy);
-            write(storageKey, JSON.stringify(migrated));
+            if (writerState === 'owned') write(storageKey, JSON.stringify(migrated));
             return migrated;
           }
         }
       } catch (error) {
+        loadStatus = error instanceof SyntaxError ? 'invalid-json' : 'storage-read-failed';
+        protectedKeys.set(storageKey, 'local-state-unreadable');
         console.warn('Could not load Big Gains data', error);
       }
       return blankState();
@@ -435,8 +534,10 @@
     }
 
     function save(value, activeWorkout = value.activeWorkout) {
+      const candidate = { ...value, activeWorkout };
+      if (candidate.profileId !== profile.id) throw persistenceError('local-profile-mismatch');
+      write(storageKey, JSON.stringify(candidate));
       value.activeWorkout = activeWorkout;
-      write(storageKey, JSON.stringify(value));
       return value;
     }
 
@@ -471,6 +572,8 @@
       normalizeState,
       normalizeOnboarding,
       hasStoredState,
+      status: () => Object.freeze({ loadStatus, writable: writerState === 'owned' && !protectedKeys.has(storageKey), reason: protectedKeys.get(storageKey) || null }),
+      originalRaw: () => originalRaw,
       load,
       save,
       prepareExport,
@@ -481,6 +584,9 @@
 
   window.bigGainsStatePersistence = Object.freeze({
     storageKeys: STORAGE_KEYS,
+    writerReady,
+    writerStatus: () => writerState,
+    assertWriter: requireWriter,
     storageKeyForProfile,
     readProfileSnapshot,
     readRawOwnedState,
@@ -490,4 +596,5 @@
     saveActiveProfileId,
     create
   });
+  writerReady.then(owned => window.BigGainsAssetStatus?.startOwnedScripts?.(owned));
 })();

@@ -129,6 +129,11 @@
   }
 
   async function performRefresh() {
+    // Recovery and sync must not start in a competing account document.
+    if (!await window.bigGainsStatePersistence.writerReady || window.bigGainsStatePersistence.writerStatus() !== 'owned') {
+      bootGate?.authorize('local-writer-check');
+      return null;
+    }
     if (!boundary?.configured) {
       if (window.bigGainsAccounts.runtime.kind === 'guest') show(signInMarkup('Private cloud is not configured on this build.'), { blocking: false });
       bootGate?.authorize('local-config-unavailable');

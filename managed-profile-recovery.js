@@ -22,8 +22,14 @@
     ...(runtime.kind === 'managed-owner' && window.bigGainsAccounts.legacyStateKey ? [window.bigGainsAccounts.legacyStateKey] : [])
   ]);
   const readStorage = key => trainingKeys.has(key) ? statePersistence.readRawOwnedState(key) : localStorage.getItem(key);
-  const writeStorage = (key, value) => trainingKeys.has(key) ? statePersistence.writeRawOwnedState(key, value) : localStorage.setItem(key, value);
-  const removeStorage = key => trainingKeys.has(key) ? statePersistence.removeRawOwnedState(key) : localStorage.removeItem(key);
+  const writeStorage = (key, value) => {
+    statePersistence.assertWriter?.();
+    return trainingKeys.has(key) ? statePersistence.writeRawOwnedState(key, value) : localStorage.setItem(key, value);
+  };
+  const removeStorage = key => {
+    statePersistence.assertWriter?.();
+    return trainingKeys.has(key) ? statePersistence.removeRawOwnedState(key) : localStorage.removeItem(key);
+  };
   const readJson = key => {
     try { return JSON.parse(readStorage(key) || 'null'); } catch { return null; }
   };

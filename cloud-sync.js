@@ -109,6 +109,7 @@
   }
 
   function writeJson(key, value) {
+    window.bigGainsStatePersistence?.assertWriter();
     localStorage.setItem(key, JSON.stringify(value));
   }
 
