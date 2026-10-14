@@ -351,6 +351,11 @@ function profileStore(capture, behavior = {}) {
     },
     async writeRaw(next) { writes += 1; raw = next; },
     async removeRaw() { raw = null; },
+    replaceRaw(expected, next) {
+      if (raw !== expected) return false;
+      if (raw !== next) { writes += 1; raw = next; }
+      return true;
+    },
     raw: () => raw,
     writes: () => writes
   };

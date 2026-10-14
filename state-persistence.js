@@ -27,6 +27,41 @@
   const writeRawOwnedState = (key, value) => write(requireOwnedStorageKey(key), value);
   const removeRawOwnedState = key => remove(requireOwnedStorageKey(key));
 
+  // Synchronous by contract: no promise boundary between ownership comparison
+  // and replacement. With 3A, write/remove also enforce its document owner and
+  // expected-byte guards. This does not replace that cross-document ownership.
+  function compareAndReplaceRawOwnedState(key, expected, replacement) {
+    requireOwnedStorageKey(key);
+    const profile = accountRegistry.accounts.find(account => account.storageKey === key);
+    if (!profile || (expected !== null && typeof expected !== 'string')
+      || (replacement !== null && typeof replacement !== 'string')) throw new Error('Invalid owned profile replacement.');
+    if (replacement !== null && JSON.parse(replacement)?.profileId !== profile.profileId) {
+      throw new Error('Local profile identity changed.');
+    }
+    window.bigGainsStatePersistence?.assertWriter?.();
+    if (read(key) !== expected) return false;
+    if (replacement === null) remove(key);
+    else write(key, replacement);
+    if (read(key) !== replacement) throw new Error('Owned profile replacement readback failed.');
+    return true;
+  }
+
+  function retainRawOwnedStateRecovery(key, evidence) {
+    requireOwnedStorageKey(key);
+    if (!accountRegistry.accounts.some(account => account.storageKey === key)
+      || !evidence?.transactionId || !/^[a-zA-Z0-9-]+$/.test(evidence.transactionId)) {
+      throw new Error('Invalid local recovery evidence.');
+    }
+    window.bigGainsStatePersistence?.assertWriter?.();
+    const recoveryKey = `${key}-program-adoption-recovery-v1-${evidence.transactionId}`;
+    const raw = JSON.stringify(evidence);
+    const previous = read(recoveryKey);
+    if (previous !== null && previous !== raw) throw new Error('Local recovery evidence already exists.');
+    localStorage.setItem(recoveryKey, raw);
+    if (read(recoveryKey) !== raw) throw new Error('Local recovery evidence was not retained.');
+    return recoveryKey;
+  }
+
   function storageKeyForProfile(profileId) {
     return accountRegistry.resolve(profileId)?.storageKey || null;
   }
@@ -486,6 +521,8 @@
     readRawOwnedState,
     writeRawOwnedState,
     removeRawOwnedState,
+    compareAndReplaceRawOwnedState,
+    retainRawOwnedStateRecovery,
     loadActiveProfileId,
     saveActiveProfileId,
     create
