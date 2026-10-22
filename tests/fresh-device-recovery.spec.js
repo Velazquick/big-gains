@@ -1,5 +1,6 @@
 import { assertTelemetryRequest } from './helpers/telemetry.js';
 import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 import { openApp } from './helpers/app.js';
 import { recoveryResponseGate, observeRestorationThenReady } from './helpers/recovery.js';
@@ -517,7 +518,12 @@ test('wrong profile ID cannot normalize into a disposable blank artifact', async
   const mismatched = { ...blankArtifact('jorge'), profileId: 'alexa' };
   const storage = await installIdentity(page, managedIdentity, { localStates: { jorge: mismatched } });
   const cloud = await installCloud(page, managedIdentity);
-  await openApp(page);
+  await openApp(page, { expected: 'recovery', reason: 'local-state-unreadable' });
+  expect(await page.evaluate(() => BigGainsBootGate.canRender())).toBe(false);
+  await expect(page.locator('#bootShell')).toBeVisible();
+  const download = page.waitForEvent('download');
+  await page.locator('#downloadRecoveryData').click();
+  expect(await readFile(await (await download).path(), 'utf8')).toBe(JSON.stringify(mismatched));
 
   expect(await page.evaluate(() => BigGainsManagedProfileRecovery.needsRecoveryForCurrentRuntime())).toBe(false);
   const result = await directRecovery(page);
@@ -530,7 +536,12 @@ test('wrong profile ID cannot normalize into a disposable blank artifact', async
 test('invalid local profile JSON cannot normalize into a disposable blank artifact', async ({ page }) => {
   const storage = await installIdentity(page, managedIdentity, { localStateRaw: { jorge: '{invalid-profile-json' } });
   const cloud = await installCloud(page, managedIdentity);
-  await openApp(page);
+  await openApp(page, { expected: 'recovery', reason: 'local-state-unreadable' });
+  expect(await page.evaluate(() => BigGainsBootGate.canRender())).toBe(false);
+  await expect(page.locator('#bootShell')).toBeVisible();
+  const download = page.waitForEvent('download');
+  await page.locator('#downloadRecoveryData').click();
+  expect(await readFile(await (await download).path(), 'utf8')).toBe('{invalid-profile-json');
 
   expect(await page.evaluate(() => BigGainsManagedProfileRecovery.needsRecoveryForCurrentRuntime())).toBe(false);
   const result = await directRecovery(page);

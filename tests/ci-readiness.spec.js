@@ -1,19 +1,37 @@
 import { test, expect } from '@playwright/test';
 import { openApp, waitForAppRuntime } from './helpers/app.js';
 import { installLocalStorageFixture, STORAGE_KEYS } from './fixtures/local-storage.js';
-// These tests hold script transport. A controlling worker can fulfill it before
-// Playwright routing; installed/offline behavior has separate real-worker tests.
+// Hold required script insertion, so cached transport cannot bypass the actual
+// composition boundary. Installed/offline behavior has real-worker tests.
 test.use({ serviceWorkers: 'block' });
 
 for (const transition of ['cold navigation', 'reload']) test(`runtime readiness waits for real shell composition after ${transition}`, async ({ page }) => {
   await installLocalStorageFixture(page, 'completedWorkouts');
   if (transition === 'reload') await openApp(page);
-  let release, requested, settled = false;
-  const held = new Promise(resolve => { release = resolve; });
-  const observed = new Promise(resolve => { requested = resolve; });
-  await page.route('**/v2-shell.js?*', async route => { requested(); await held; await route.continue(); });
+  let settled = false;
+  await page.addInitScript(() => {
+    const append = Node.prototype.appendChild;
+    let pending = null;
+    window.__bigGainsTestShellGate = {
+      requested: false,
+      release() {
+        Node.prototype.appendChild = append;
+        if (pending) append.call(pending.parent, pending.script);
+      }
+    };
+    Node.prototype.appendChild = function (child) {
+      if (this === document.body && child.tagName === 'SCRIPT'
+          && new URL(child.src, location.href).pathname === '/v2-shell.js') {
+        pending = { parent: this, script: child };
+        window.__bigGainsTestShellGate.requested = true;
+        return child;
+      }
+      return append.call(this, child);
+    };
+  });
   const navigation = transition === 'reload' ? page.reload({ waitUntil: 'domcontentloaded' }) : page.goto('/', { waitUntil: 'domcontentloaded' });
-  await observed;
+  await navigation;
+  await page.waitForFunction(() => window.__bigGainsTestShellGate?.requested === true);
   const ready = waitForAppRuntime(page, { profileId: 'jorge' }).then(() => { settled = true; });
   try {
     await page.waitForFunction(() => window.BigGainsAppRuntime?.initialized === true);
@@ -21,8 +39,7 @@ for (const transition of ['cold navigation', 'reload']) test(`runtime readiness 
     expect(await page.evaluate(() => ({ interactive: BigGainsRuntimeGate.canInteract(), shell: typeof window.bigGainsViewShell })))
       .toEqual({ interactive: false, shell: 'undefined' });
     expect(settled).toBe(false);
-  } finally { release(); }
-  await navigation;
+  } finally { await page.evaluate(() => window.__bigGainsTestShellGate.release()); }
   await ready;
   expect(settled).toBe(true);
   expect(await page.evaluate(() => BigGainsBootGate.canRender() && BigGainsRuntimeGate.canInteract())).toBe(true);
