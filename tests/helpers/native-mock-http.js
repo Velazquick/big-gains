@@ -22,6 +22,7 @@ export async function nativeMockHttp() {
       if (!handler) throw new Error('Synthetic HTTP handler is not installed.');
       await handler({
         request: () => mockRequest,
+        abort: async () => { request.socket.destroy(); },
         fulfill: async ({ status = 200, headers = {}, contentType, body = '' }) => {
           response.writeHead(status, { ...cors, ...(contentType ? { 'content-type': contentType } : {}), ...headers });
           response.end(body);

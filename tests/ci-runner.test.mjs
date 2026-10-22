@@ -56,6 +56,10 @@ test('native mock transport serves exact requests and fails teardown for fixture
     const response = await fetch(`${transport.origin}/rest/v1/synthetic`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"synthetic":true}' });
     assert.equal(response.status, 201);
     assert.deepEqual(await response.json(), { verified: true });
+    let aborted = false;
+    await transport.setHandler(async route => { aborted = true; await route.abort('connectionfailed'); });
+    await assert.rejects(fetch(`${transport.origin}/rest/v1/aborted`), TypeError);
+    assert.equal(aborted, true, 'the native handler must actually abort the request');
     await transport.setHandler(async () => { throw new Error('deliberate fixture exception'); });
     const failed = await fetch(`${transport.origin}/rest/v1/failure`);
     assert.equal(failed.status, 500);

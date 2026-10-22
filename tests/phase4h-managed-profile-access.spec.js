@@ -250,7 +250,10 @@ test('stale independent onboarding cannot bootstrap after managed membership res
     }));
   }, { authUserId, accountId, alexaProfileId, storageKey, recoveryKey });
   const cloud = await installCloudRoutes(page);
-  await openApp(page);
+  // The deliberately incomplete saved document remains protected by #127.
+  // Account membership must still prevent stale independent bootstrapping.
+  await openApp(page, { expected: 'recovery', reason: 'local-state-unreadable' });
+  expect(await page.evaluate(() => BigGainsBootGate.canRender())).toBe(false);
 
   const result = await page.evaluate(async () => {
     try {
@@ -267,6 +270,9 @@ test('stale independent onboarding cannot bootstrap after managed membership res
     accessKind: 'managed-member'
   });
   expect(result.message).toContain('Managed profile access is already active');
+  expect(await page.evaluate(key => localStorage.getItem(key), storageKey))
+    .toBe(JSON.stringify({ version: 5, profileId: 'alexa' }));
+  expect(await page.evaluate(() => BigGainsBootGate.canRender())).toBe(false);
   expect(cloud.applicationWrites).toEqual([]);
 });
 

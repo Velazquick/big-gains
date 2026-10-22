@@ -1,7 +1,17 @@
 import { assertTelemetryRequest } from './helpers/telemetry.js';
-import { expect, test } from '@playwright/test';
+import { expect, test as base } from '@playwright/test';
 import { createHash } from 'node:crypto';
 import { openApp, reloadApp, waitForAppRuntime } from './helpers/app.js';
+import { nativeMockHttp } from './helpers/native-mock-http.js';
+
+const transports = new WeakMap();
+const test = base.extend({
+  cloudTransport: [async ({ page }, use) => {
+    const transport = await nativeMockHttp();
+    transports.set(page, transport);
+    try { await use(transport); } finally { transports.delete(page); await transport.close(); }
+  }, { auto: true }]
+});
 
 const authUserId = '85000000-0000-0000-0000-000000000001';
 const accountId = '85a00000-0000-0000-0000-000000000001';
@@ -99,9 +109,9 @@ async function installAuthenticatedCloud(page, remoteInput) {
     runtimeControlNetworkError = false
   } = options;
   const now = advancedAt;
-  await page.addInitScript(({ authUserId, now, automaticReconciliation, includeAutomaticReconciliation }) => {
+  await page.addInitScript(({ authUserId, now, automaticReconciliation, includeAutomaticReconciliation, supabaseUrl }) => {
     const config = {
-      supabaseUrl: 'https://synthetic-cross-device.supabase.co',
+      supabaseUrl,
       supabasePublishableKey: 'sb_publishable_cross_device'
     };
     if (includeAutomaticReconciliation) config.automaticReconciliation = automaticReconciliation;
@@ -117,12 +127,12 @@ async function installAuthenticatedCloud(page, remoteInput) {
         user_metadata: {}, identities: [], created_at: now
       }
     }));
-  }, { authUserId, now, automaticReconciliation, includeAutomaticReconciliation });
+  }, { authUserId, now, automaticReconciliation, includeAutomaticReconciliation, supabaseUrl: transports.get(page).origin });
 
   const writes = [];
   const runtimeControlRequests = [];
   Object.defineProperty(writes, 'runtimeControlRequests', { value: runtimeControlRequests });
-  await page.route('https://synthetic-cross-device.supabase.co/**', async route => {
+  await transports.get(page).setHandler(async route => {
     const request = route.request();
     const url = new URL(request.url());
     const headers = { 'access-control-allow-origin': '*', 'content-type': 'application/json' };
@@ -294,6 +304,20 @@ function completedWorkout(id, reps, completedAt = '2026-08-10T18:30:00.000Z') {
   };
 }
 
+async function reloadForAutomaticAdoption(page) {
+  // Arm before the explicit reload so fast adoption cannot outrun the observer.
+  // The second real document is the app's own post-commit reload. Keep every
+  // final data/UI assertion and the test's existing 30-second budget.
+  let navigations = 0;
+  const adopted = page.waitForEvent('framenavigated', {
+    predicate: frame => frame === page.mainFrame() && ++navigations === 2
+  });
+  adopted.catch(() => {}); // The original promise is awaited below.
+  await reloadApp(page, { waitUntil: 'domcontentloaded' });
+  await adopted;
+  await waitForAppRuntime(page);
+}
+
 async function expectAutomaticRemoteFastForward(page, expectedPrimary) {
   await expect(page.locator('#cloudShadowHeading')).toHaveText('In sync');
   await page.locator('.bottom-nav [data-view="more"]').click();
@@ -323,7 +347,7 @@ for (const direction of [
   test(`${direction.label} automatically applies a guarded remote fast-forward`, async ({ page }) => {
     await installReceiver(page);
     const writes = await installAuthenticatedCloud(page, direction.remotePrimary);
-    await reloadApp(page, { waitUntil: 'domcontentloaded' });
+    await reloadForAutomaticAdoption(page);
 
     await expectAutomaticRemoteFastForward(page, direction.remotePrimary);
     expect(writes).toEqual([]);
@@ -356,7 +380,7 @@ test('a guarded remote fast-forward preserves validated local-only Program captu
     return result.version.routineVersionId;
   });
   const writes = await installAuthenticatedCloud(page, 'Remote advancement with local Program');
-  await reloadApp(page, { waitUntil: 'domcontentloaded' });
+  await reloadForAutomaticAdoption(page);
 
   await expect(page.locator('#cloudShadowHeading')).toHaveText('In sync');
   await expect.poll(() => page.evaluate(storageKeyValue => {
@@ -621,26 +645,83 @@ test('a stale stored rest deadline rejects that adoption generation while canoni
   expect(writes).toEqual([]);
 });
 
+async function acceptedBaseFor(page, entityType, entityId) {
+  return page.evaluate(({ catalogKey, clientId, entityType, entityId }) => {
+    const record = JSON.parse(localStorage.getItem(catalogKey)).profiles[clientId].records[BigGainsCloudShadow.keyFor(entityType, entityId)];
+    return { version: record.version, updatedAt: record.updatedAt, fingerprint: record.fingerprint, tombstone: record.tombstone };
+  }, { catalogKey, clientId, entityType, entityId });
+}
+
+async function expectRetainedMissedCaptureConflict(page, { originalRaw, acceptedBase, entityType, entityId }) {
+  // Transport refusal can label the heading before staged comparison publishes
+  // its verified choice. Observe that specific choice before taking a snapshot.
+  await expect(page.locator('#cloudConflictResolution')).toBeAttached();
+  await expect(page.locator('#cloudConflictResolution')).not.toHaveAttribute('hidden');
+  const result = await page.evaluate(({ storageKey, catalogKey, clientId, entityType, entityId }) => {
+    const status = BigGainsCloudSync.status(), pending = BigGainsCloudSync.queue.pending();
+    return {
+      raw: localStorage.getItem(storageKey), pending, conflict: status.sameEntityConflict,
+      fastForward: status.remoteFastForward, backupVerified: status.backupVerified,
+      automaticAdoptions: status.observability.counters.automaticAdoptions,
+      journal: localStorage.getItem(BigGainsManagedProfileRecovery.adoptionKey),
+      acknowledgement: pending.length === 1 ? BigGainsCloudSync.queue.acknowledgement(pending[0].idempotencyKey) : null,
+      record: JSON.parse(localStorage.getItem(catalogKey)).profiles[clientId].records[BigGainsCloudShadow.keyFor(entityType, entityId)]
+    };
+  }, { storageKey, catalogKey, clientId, entityType, entityId });
+  expect(result.raw).toBe(originalRaw);
+  // Reconciliation must retain the missed local intent before remote dispatch.
+  // The owned v2/base-v1 operation conflicts with remote v2; it cannot be ACKed
+  // or discarded to reach the older queue-empty fast-forward branch.
+  expect(result.pending).toHaveLength(1);
+  const operation = result.pending[0], original = JSON.parse(originalRaw);
+  const data = entityType === 'workouts' ? original.workouts.find(workout => workout.id === entityId) : original.goals;
+  expect(operation).toMatchObject({
+    owner: { accountId, profileId }, entityType, entityId, mutation: 'upsert', version: 2,
+    baseRevision: { version: 1, updatedAt: baselineAt, tombstone: false },
+    payload: { contract: 'big-gains.shadow.v1', version: 1, profileClientId: clientId, clientId: entityId, data }
+  });
+  expect(operation.baseRevision.fingerprint).not.toBe(operation.payloadFingerprint);
+  expect(operation.baseRevision).toEqual(acceptedBase);
+  expect(operation.payload.entityType).toBe(entityType === 'workouts' ? 'completedWorkout' : 'goals');
+  expect(operation.payload.data).toEqual(data);
+  expect(result.conflict).toMatchObject({
+    eligible: true, reason: 'same-entity-conflict', profileClientId: clientId,
+    entityType, entityId, mutation: 'upsert', idempotencyKey: operation.idempotencyKey,
+    localRevision: 2, remoteRevision: 2, remoteUpdatedAt: advancedAt,
+    remoteTombstone: false, unrelatedAdvancements: 0
+  });
+  expect(result.conflict.remoteFingerprint).not.toBe(operation.payloadFingerprint);
+  expect(result.fastForward).toMatchObject({ eligible: false, conflict: true, reason: 'remote-revision-conflict' });
+  expect(result.record).toMatchObject({ version: 2, updatedAt: operation.updatedAt, fingerprint: operation.payloadFingerprint, data });
+  expect(result.acknowledgement).toBeNull();
+  expect(result.journal).toBeNull();
+  expect(result.automaticAdoptions).toBe(0);
+  expect(result.backupVerified).toBe(false);
+}
+
 test('concurrent local edit remains a real conflict and never overwrites local state', async ({ page }) => {
   await installReceiver(page);
-  await page.evaluate(() => {
+  const acceptedBase = await acceptedBaseFor(page, 'preferences', 'goals');
+  const originalRaw = await page.evaluate(storageKey => {
     state.goals.primary = 'Local concurrent edit';
     statePersistenceApi.save(state, state.activeWorkout);
-  });
+    return localStorage.getItem(storageKey);
+  }, storageKey);
   const writes = await installAuthenticatedCloud(page, 'Remote concurrent edit');
   await reloadApp(page, { waitUntil: 'domcontentloaded' });
 
   await expect(page.locator('#cloudShadowHeading')).toHaveText('SYNC CONFLICT');
-  await expect(page.locator('#cloudAuthDetail')).toContainText('both changed');
+  await expect(page.locator('#cloudAuthDetail')).toHaveText('One saved item was edited on two devices. Choose which version to keep.');
   await expect(page.locator('#cloudRemoteFastForward')).toBeHidden();
+  await expectRetainedMissedCaptureConflict(page, { originalRaw, acceptedBase, entityType: 'preferences', entityId: 'goals' });
   const result = await page.evaluate(storageKey => ({
     primary: JSON.parse(localStorage.getItem(storageKey)).goals.primary,
     pending: BigGainsCloudSync.queue.pending().length,
     fastForward: BigGainsCloudSync.status().remoteFastForward
   }), storageKey);
   expect(result.primary).toBe('Local concurrent edit');
-  expect(result.pending).toBe(0);
-  expect(result.fastForward).toMatchObject({ eligible: false, conflict: true, reason: 'concurrent-local-edit' });
+  expect(result.pending).toBe(1);
+  expect(result.fastForward).toMatchObject({ eligible: false, conflict: true, reason: 'remote-revision-conflict' });
   expect(writes).toEqual([]);
 });
 
@@ -653,7 +734,7 @@ test('a higher completed-workout revision fast-forwards onto the second device w
   const writes = await installAuthenticatedCloud(page, {
     remoteWorkouts: [workoutRow(corrected, 2, advancedAt), workoutRow(unrelated, 1, baselineAt)]
   });
-  await reloadApp(page, { waitUntil: 'domcontentloaded' });
+  await reloadForAutomaticAdoption(page);
 
   await expect(page.locator('#cloudShadowHeading')).toHaveText('In sync');
   await page.locator('.bottom-nav [data-view="more"]').click();
@@ -686,7 +767,7 @@ test('a higher workout tombstone fast-forwards onto the second device and cannot
     remoteWorkouts: [workoutRow(deleted, 1, baselineAt), workoutRow(retained, 1, baselineAt)],
     remoteTombstones: [tombstoneRow(deleted.id)]
   });
-  await reloadApp(page, { waitUntil: 'domcontentloaded' });
+  await reloadForAutomaticAdoption(page);
 
   await expect(page.locator('#cloudShadowHeading')).toHaveText('In sync');
   await page.locator('.bottom-nav [data-view="more"]').click();
@@ -714,10 +795,12 @@ test('a stale local workout correction remains blocked when the same workout adv
   const baseline = completedWorkout('conflicting-workout', 8);
   const remote = completedWorkout('conflicting-workout', 10);
   await installReceiver(page, profileState('Shared baseline', { workouts: [baseline] }));
-  await page.evaluate(() => {
+  const acceptedBase = await acceptedBaseFor(page, 'workouts', baseline.id);
+  const originalRaw = await page.evaluate(storageKey => {
     state.workouts[0].exercises[0].sets[0].reps = 9;
     statePersistenceApi.save(state, state.activeWorkout);
-  });
+    return localStorage.getItem(storageKey);
+  }, storageKey);
   const writes = await installAuthenticatedCloud(page, {
     remoteWorkouts: [workoutRow(remote, 2, advancedAt)]
   });
@@ -725,14 +808,15 @@ test('a stale local workout correction remains blocked when the same workout adv
 
   await expect(page.locator('#cloudShadowHeading')).toHaveText('SYNC CONFLICT');
   await expect(page.locator('#cloudRemoteFastForward')).toBeHidden();
+  await expectRetainedMissedCaptureConflict(page, { originalRaw, acceptedBase, entityType: 'workouts', entityId: baseline.id });
   const result = await page.evaluate(storageKey => ({
     reps: JSON.parse(localStorage.getItem(storageKey)).workouts[0].exercises[0].sets[0].reps,
     fastForward: BigGainsCloudSync.status().remoteFastForward,
     pending: BigGainsCloudSync.queue.pending().length
   }), storageKey);
   expect(result.reps).toBe(9);
-  expect(result.fastForward).toMatchObject({ eligible: false, conflict: true, reason: 'concurrent-local-edit', advancedRevisions: 1 });
-  expect(result.pending).toBe(0);
+  expect(result.fastForward).toMatchObject({ eligible: false, conflict: true, reason: 'remote-revision-conflict' });
+  expect(result.pending).toBe(1);
   expect(writes).toEqual([]);
 });
 
@@ -857,7 +941,7 @@ test('Strength correctness: cloud History fast-forward refreshes Goal path witho
     id:'synthetic-routine',account_id:accountId,profile_id:profileId,client_id:routineRecord.clientId,idempotency_key:'synthetic-routine-v1',version:1,created_at:baselineAt,updated_at:baselineAt,
     payload:{contract:'big-gains.shadow.v1',version:1,profileClientId:clientId,entityType:'customRoutine',clientId:routineRecord.clientId,data:routineRecord.data}
   }]});
-  await reloadApp(page, {waitUntil:'domcontentloaded'});
+  await reloadForAutomaticAdoption(page);
   await expect(page.locator('#cloudShadowHeading')).toHaveText('In sync');
   await expect(page.locator('#activeGoalsList .goal-trajectory')).toContainText('Current next exposure: 225 lb × 5 × 5');
   const after=await page.evaluate(()=>({workouts:state.workouts,goal:state.goals.strengthGoals[0],adoptions:BigGainsCloudSync.status().observability.counters.automaticAdoptions}));
