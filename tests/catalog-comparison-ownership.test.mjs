@@ -156,3 +156,31 @@ test('transient startup read refusal keeps the missed-capture obligation for the
   assert.equal(fresh.queue.pending().filter(op=>op.entityId==='interrupted-finalization').length,1);
   assert.equal(JSON.parse(f.storage.get('synthetic-profile')).workouts[0].id,'interrupted-finalization');
 });
+
+for(const entry of ['reconciliation','direct-flush'])test(`ordinary refused capture is recovered by ${entry} after successful startup`,async()=>{
+  const f=await fixture();await f.reconcile(f.api);assert.equal(f.api.queue.pending().length,0);
+  f.store.save({...f.before,workouts:[completedWorkout({id:'ordinary-missed-capture'}),...f.before.workouts]},null);
+  const raw=f.storage.get('synthetic-profile'),original=f.ctx.bigGainsStatePersistence;let refuse=true;
+  f.ctx.bigGainsStatePersistence={...original,readProfileSnapshot(id){if(refuse){refuse=false;return {ok:false,reason:'storage-read-failed'};}return original.readProfileSnapshot(id);}};
+  assert.equal((await f.api.captureLocalSnapshot('jorge')).reason,'storage-read-failed');
+  assert.equal(f.api.queue.pending().length,0);
+  if(entry==='reconciliation')await f.reconcile(f.api);else await f.api.flush();
+  assert.equal(f.api.queue.pending().filter(op=>op.entityId==='ordinary-missed-capture').length,1);
+  assert.equal(f.storage.get('synthetic-profile'),raw);assert.equal(f.api.status().backupVerified,false);
+});
+
+for(const mode of ['older-delete','missing-delete','equal-fingerprint-mismatch','equal-deletion-mismatch','exact-delete'])test(`pure tombstone comparison preserves upsert2/delete3 with ${mode}`,async()=>{
+  const f=await fixture(),changed=structuredClone(f.before),id=changed.workouts[0].id,key=f.shadow.keyFor('workouts',id);
+  changed.workouts[0].exercises[0].sets[0].reps=31;f.store.save(changed,null);await f.api.captureLocalSnapshot('jorge');
+  f.store.save({...changed,workouts:[]},null);await f.api.captureLocalSnapshot('jorge');
+  const before=JSON.parse(f.storage.get('catalog')).profiles.jorge.records[key],queue=f.storage.get('queue');
+  assert.equal(before.version,3);assert.equal(before.tombstone,true);
+  const cloud=await f.ctx.BigGainsCloudShadow.reconstructCloud();cloud.profiles.jorge.current=cloud.profiles.jorge.current.filter(record=>record.clientId!==id);
+  cloud.profiles.jorge.winners.set(key,{...before,...(mode==='older-delete'?{version:2}:mode==='equal-fingerprint-mismatch'?{fingerprint:'wrong-fingerprint'}:mode==='equal-deletion-mismatch'?{tombstone:false}:{})});
+  if(mode==='missing-delete')cloud.profiles.jorge.winners.delete(key);
+  const result=await f.api.compareShadow();
+  assert.equal(result.parity,mode==='exact-delete');
+  assert.equal(JSON.parse(f.storage.get('catalog')).profiles.jorge.records[key].version,3);
+  assert.equal(f.storage.get('queue'),queue);
+  assert.deepEqual(JSON.parse(JSON.stringify(f.api.queue.pending().filter(op=>op.entityType==='workouts').map(op=>[op.mutation,op.version]))),[['upsert',2],['delete',3]]);
+});

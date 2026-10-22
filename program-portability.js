@@ -460,15 +460,20 @@
   async function useDevice() {
     if (!capability().enabled || busy || currentInspection?.state !== 'conflict') return currentSnapshot;
     busy = true;
+    replacingProfile = true;
     render();
     try {
       const mapping = currentMapping || await resolveMapping();
       const result = await cutoverService.resolveConflict('keep_device', currentInspection.snapshot, input(mapping));
-      if (!result.ok) return summary({ status: result.status === 'pending' ? STATUS.PENDING
-        : result.status === 'blocked' ? STATUS.BLOCKED : STATUS.ERROR, reasonCode: result.reasonCode });
+      if (!result.ok) {
+        if (result.recoveryRequired === true) adoptionRecoveryRequired = true;
+        return summary({ status: result.status === 'pending' ? STATUS.PENDING
+          : result.status === 'blocked' ? STATUS.BLOCKED : STATUS.ERROR, reasonCode: result.reasonCode, recoveryRequired:adoptionRecoveryRequired });
+      }
       if (result.localMutation) reloadAfterAdoption();
       return await refresh({ force: true });
     } finally {
+      replacingProfile = false;
       busy = false;
       render();
     }

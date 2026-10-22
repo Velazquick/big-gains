@@ -27,7 +27,6 @@
   let capturePending = 0;
   let localMutationGeneration = 0;
   let lifecycleGeneration = 0;
-  let startupCaptureRequired = true;
   let reconciliationTimer = null;
   let reconciliationInFlight = null;
   let lastReconciliationTrigger = null;
@@ -776,7 +775,14 @@
     return owner;
   }
 
-  async function flush() {
+  async function captureDurableProfiles() {
+    if (!validCatalog(catalog) || !window.bigGainsStatePersistence?.readProfileSnapshot) return null;
+    const captures = await Promise.all(shadow.profileIds.map(id => captureLocalSnapshot(id,{reconcile:false})));
+    const reasons = captures.map(result=>result.reason).filter(Boolean);
+    return reasons.length ? Object.freeze({ok:false,blocked:true,reason:'startup-capture-failed',captureReasons:reasons,pending:queue.pending().length}) : null;
+  }
+
+  async function flush({ capture = true } = {}) {
     if (busy) return Object.freeze({ ok: false, busy: true, sent: 0, pending: queue.pending().length });
     if (!online()) { lastResult = { ok: false, offline: true, pending: queue.pending().length }; render(); return lastResult; }
     busy = true;
@@ -786,6 +792,12 @@
       if (!cloudOwner) return (lastResult = Object.freeze({ ok: false, signedOut: true, sent: 0, pending: queue.pending().length }));
       if (!catalog) await compareShadow({ adopt: true });
       if (!catalog || !sameOwnerMapping(cloudOwner)) return (lastResult = Object.freeze({ ok: false, blocked: true, reason: 'baseline-or-owner-unverified', pending: queue.pending().length }));
+      if (capture) {
+        const generation = lifecycleGeneration;
+        const refused = await captureDurableProfiles();
+        if (refused) return (lastResult = refused);
+        if (!pageLifecycleCurrent(generation)) return Object.freeze({ok:false,deferred:true,reason:'reconciliation-generation-superseded'});
+      }
       const ownedOperations = () => queue.pending().filter(operation => operation.owner.accountId === catalog.accountId
         && Object.values(catalog.profiles).some(profile => profile.profileId === operation.owner.profileId));
       if (ownedOperations().length !== queue.pending().length) return (lastResult = Object.freeze({ ok: false, blocked: true, reason: 'queue-owner-mismatch', pending: queue.pending().length }));
@@ -1261,18 +1273,15 @@
       if (capturePending > 0) {
         return (lastResult = Object.freeze({ ok: false, deferred: true, reason: 'local-mutation-in-flight', pending: queue.pending().length }));
       }
-      if (startupCaptureRequired && validCatalog(catalog) && window.bigGainsStatePersistence?.readProfileSnapshot) {
-        const captures = await Promise.all(shadow.profileIds.map(id => captureLocalSnapshot(id,{reconcile:false})));
-        if (captures.some(result => result.reason)) {
-          return (lastResult = Object.freeze({ok:false,blocked:true,reason:'startup-capture-failed',captureReasons:captures.map(result=>result.reason).filter(Boolean),pending:queue.pending().length}));
-        }
-        startupCaptureRequired = false;
-        if (!pageLifecycleCurrent(generation)) return Object.freeze({ok:false,deferred:true,reason:'reconciliation-generation-superseded'});
-      }
+      // Every owned retry derives missed intent again. A one-time startup flag
+      // cannot cover a later refused capture or interrupted optional setup.
+      const refusedCapture = await captureDurableProfiles();
+      if (refusedCapture) return (lastResult = refusedCapture);
+      if (!pageLifecycleCurrent(generation)) return Object.freeze({ok:false,deferred:true,reason:'reconciliation-generation-superseded'});
       const comparedMutationGeneration = localMutationGeneration;
       const previousComparison = lastComparison;
       const previousResult = lastResult;
-      if (queue.pending().length || !catalog) await flush();
+      if (queue.pending().length || !catalog) await flush({capture:false});
       else await compareShadow();
       if (!pageLifecycleCurrent(generation)) {
         return Object.freeze({ ok: false, deferred: true, reason: 'reconciliation-generation-superseded' });

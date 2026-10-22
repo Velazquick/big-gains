@@ -7,7 +7,7 @@ await import('../program-portability.js');
 
 const runtime = globalThis.BigGainsProgramPortability;
 
-test('unresolved adoption recovery stays latched while refresh replaces presentation status',async()=>{
+for(const action of ['useCloud','useDevice'])test(`${action} unresolved adoption recovery stays latched while refresh replaces presentation status`,async()=>{
   const storage=new Map(),pending=[];
   const profile={id:'synthetic-profile'},account={accountId:'local-account',storageKey:'synthetic-profile-state'};
   const before={version:5,profileId:profile.id,goals:{},workouts:[],weights:[],activeWorkout:null,restTimerEndsAt:null,customRoutines:{}};
@@ -20,19 +20,19 @@ test('unresolved adoption recovery stays latched while refresh replaces presenta
     __BIG_GAINS_CLOUD_CONFIG__:{programPortability:true,programPortabilityVersion:1},
     BigGainsCloud:{createDurableQueue:()=>({pending:()=>pending})},
     BigGainsProgramDomainSync:{isProgramDomainOperation:o=>o.entityType==='program_domains',createService:()=>({})},
-    BigGainsProgramDomainCutover:{createService:()=>({inspectCutover:async()=>({state:'cloud_available'})})},
+    BigGainsProgramDomainCutover:{createService:()=>({inspectCutover:async()=>({state:action==='useDevice'?'conflict':'cloud_available',snapshot:{}}),resolveConflict:async()=>({ok:false,status:'failed',reasonCode:'PROGRAM_LOCAL_ADOPTION_FAILED',recoveryRequired:true,recoveryEvidenceKey:null})})},
     BigGainsProgramDomainRecovery:{states:{REMOTE_FAST_FORWARD_SAFE:'safe'},readRemote:async()=>({state:'valid',remote:{record:{version:2},envelope:{}}}),classify:async()=>({state:'safe'}),adopt:async()=>({ok:false,recoveryRequired:true,reasonCode:'PROGRAM_RECOVERY_ADOPTION_STATE_CHANGED'})},
     BigGainsProgramModel:{normalizeCapture:x=>x},bigGainsStatePersistence:{readRawOwnedState:()=>JSON.stringify(before)},
     statePersistenceApi:{storageKey:account.storageKey,hasStoredState:()=>true,status:()=>({writable:true})},state:before,active:null,ACCOUNT:account,PROFILE:profile,exerciseCatalog:{}};
   scope.window=scope;vm.createContext(scope);
   vm.runInContext(await readFile(new URL('../program-portability.js',import.meta.url),'utf8'),scope);
   const api=scope.BigGainsProgramPortability;api.initialize();await new Promise(r=>setImmediate(r));
-  assert.equal((await api.useCloud()).recoveryRequired,true);assert.equal(api.localMutationSafety(),false);
+  assert.equal((await api[action]()).recoveryRequired,true);assert.equal(api.localMutationSafety(),false);
   hold=true;const refresh=api.refresh();await entered;
   assert.equal(api.status().status,'checking');assert.equal(api.status().recoveryRequired,true);
   assert.equal(api.localMutationSafety(),false);assert.equal(api.updateSafety(),false);
   release();await refresh;
-  assert.equal(api.status().status,'update_available');assert.equal(api.localMutationSafety(),false);assert.equal(api.updateSafety(),false);
+  assert.equal(api.status().status,action==='useDevice'?'conflict':'update_available');assert.equal(api.localMutationSafety(),false);assert.equal(api.updateSafety(),false);
 });
 
 function sequence(programVersionId, nextSlotIndex, completedCycles, updatedAt, lastTransition = null) {
