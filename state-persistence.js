@@ -575,10 +575,14 @@
       // A delayed replacement owns the bytes captured when that operation
       // began, not the writer's most recently advanced expected-byte map.
       if (Object.hasOwn(options, 'expectedRaw')) {
-        if (!compareAndReplaceRawOwnedState(storageKey, options.expectedRaw, raw)) {
+        if (requireUnchanged(storageKey) !== options.expectedRaw) {
           throw persistenceError('local-import-state-changed');
         }
-      } else write(storageKey, raw);
+      }
+      // localStorage.setItem returning is the ordinary local commit contract.
+      // Do not add a fallible post-write read before the caller publishes live
+      // state: that would strand a committed import behind the previous draft.
+      write(storageKey, raw);
       value.activeWorkout = activeWorkout;
       return value;
     }

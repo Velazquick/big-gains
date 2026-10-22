@@ -49,7 +49,7 @@ function staleRecoverySafety(){
       ||['busy','comparing','reconciliationInFlight'].some(key=>typeof sync[key]!=='boolean'))return blocked('unknown');
     // Outbound work and unverified backup parity do not own the local workout.
     // Actual conflicting recovery/replacement still fails closed.
-    if(sync.sameEntityConflict?.eligible||sync.remoteFastForward?.conflict)return blocked('recovery');
+    if(sync.sameEntityConflict?.eligible||(sync.remoteFastForward?.conflict&&sync.remoteFastForward.reason!=='local-queue-not-empty'))return blocked('recovery');
     if(statePersistenceApi.status().writable!==true)return blocked('recovery');
     for(const [owner,reason,port] of [[window.BigGainsManagedProfileRecovery,'recovery','updateSafety'],[window.BigGainsProgramPortability,'program','localMutationSafety']]){
       const safe=owner?.[port]?.();
@@ -71,11 +71,11 @@ function observeSupport({workout=active,action=null,presented=false}={}){
       ?Boolean(sync.sameEntityConflict?.eligible||sync.remoteFastForward?.conflict):undefined;
     window.BigGainsTelemetry?.support?.({
       active_unfinished:Boolean(active&&!active.completedAt),stale,
-      finish_permitted:Boolean(active&&(!stale||safety.safe)&&active.exercises.some(e=>e.sets.some(s=>s.completed))),
-      discard_permitted:Boolean(active&&(!stale||safety.safe)),blocker:!stale||safety.safe?'none':safety.reason,
-      reconciliation:!sync||['comparing','reconciliationInFlight'].some(k=>typeof sync[k]!=='boolean')||!Number.isSafeInteger(sync.pending)?'unknown':sync.reconciliationInFlight||sync.comparing?'checking':sync.pending?'pending':sync.lastResult?.blocked||comparison?.parity===false?'blocked':comparison?.parity===true?'verified':'idle',
+      finish_permitted:Boolean(active&&safety.safe&&active.exercises.some(e=>e.sets.some(s=>s.completed))),
+      discard_permitted:Boolean(active&&safety.safe),blocker:safety.safe?'none':safety.reason,
+      reconciliation:!sync||['comparing','reconciliationInFlight'].some(k=>typeof sync[k]!=='boolean')||!Number.isSafeInteger(sync.pending)?'unknown':sync.reconciliationInFlight||sync.comparing||sync.capturePending?'checking':sync.pending?'pending':sync.lastResult?.blocked||comparison?.parity===false?'blocked':sync.backupVerified===true?'verified':'idle',
       pending_sync:sync?.pending,conflict_open:conflict,program_state:program?.status,
-      parity_verified_at:comparison?.parity===true?comparison.comparedAt:undefined,
+      parity_verified_at:sync?.backupVerified===true?comparison.comparedAt:undefined,
       completion_observed:action==='finish'?(completionCount===1?'once':completionCount>1?'multiple':'unknown'):'none'
     },{sessionKey:workout?.id||'idle',action,presented});
   }catch{}
@@ -83,7 +83,7 @@ function observeSupport({workout=active,action=null,presented=false}={}){
 function renderStaleRecovery(){
   const card=$('staleWorkoutRecovery');if(!card)return;
   const now=Date.now(),owner=active?`${ACCOUNT.storageNamespace}:${active.id}`:null;
-  const stale=staleSessionCondition(active,now),safety=staleRecoverySafety(),writable=!stale||safety.safe;
+  const stale=staleSessionCondition(active,now),safety=staleRecoverySafety(),writable=safety.safe;
   const diagnostic=$('diagnosticStaleRecovery');
   if(diagnostic)diagnostic.textContent=!stale?'No stale session':safety.safe?'Recovery safe':`Recovery blocked: ${safety.reason}`;
   $('cancelWorkout').disabled=!writable;

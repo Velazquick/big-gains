@@ -22,6 +22,7 @@
   let remoteFastForward = null;
   let sameEntityConflict = null;
   let catalog = readJson(CATALOG_KEY);
+  let verifiedComparison = null;
   let captureChain = Promise.resolve();
   let capturePending = 0;
   let localMutationGeneration = 0;
@@ -242,8 +243,10 @@
   }
 
   function beginLocalMutation() {
+    verifiedComparison = null;
     capturePending += 1;
     localMutationGeneration += 1;
+    render();
     let finished = false;
     return () => {
       if (finished) return;
@@ -251,6 +254,18 @@
       capturePending = Math.max(0, capturePending - 1);
       if (capturePending === 0) scheduleReconciliation('post-local-parity', 0);
     };
+  }
+
+  function backupVerified() {
+    try {
+      return Boolean(verifiedComparison && lastComparison?.parity === true
+        && !capturePending && !comparing && !queue.pending().length
+        && verifiedComparison.mutation === localMutationGeneration
+        && verifiedComparison.ownerIdentity === JSON.stringify(cloudOwner)
+        && verifiedComparison.catalogRaw === localStorage.getItem(CATALOG_KEY)
+        && verifiedComparison.queueRaw === localStorage.getItem(accountRuntime.cloudKeys.queue)
+        && verifiedComparison.profileBytes.every(([key, raw]) => !key || localStorage.getItem(key) === raw));
+    } catch { return false; }
   }
 
   async function captureLocalSnapshot(profileClientId, { tracked = false } = {}) {
@@ -615,50 +630,30 @@
       const cloudState = await shadow.reconstructCloud({ ...remote, profiles: cloudOwner.profiles, accountId: cloudOwner.account.id });
       const localProfiles = await shadow.readLocalProfiles();
       const comparison = await shadow.compare({ localProfiles, cloud: cloudState, expectedCatalog: catalog });
-      // No await between the final fence and publication. Never let an older
-      // parity response replace the revision allocated by an overlapping save.
-      requireCurrent();
-      lastComparison = comparison;
-      remoteFastForward = null;
-      sameEntityConflict = null;
-      writeJson(COMPARISON_KEY, {
-        contract: comparison.contract, parity: comparison.parity, comparedAt: comparison.comparedAt,
-        profiles: Object.fromEntries(shadow.profileIds.map(id => [id, {
-          parity: comparison.profiles[id].parity,
-          localChecksum: comparison.profiles[id].localChecksum,
-          cloudChecksum: comparison.profiles[id].cloudChecksum,
-          reasons: comparison.profiles[id].reasons
-        }])),
-        reasons: comparison.reasons
-      });
+      let nextCatalog = catalog, nextConflict = null, nextFastForward = null;
+      let captureEmptyBaseline = false;
       if (comparison.parity) {
-        if(!queue.pending().length && !capturePending){for(const profileId of shadow.profileIds){try{window.BigGainsTelemetry?.conflict('recovery',{profileId,verifiedResolved:true});}catch{}}}
-        const verifiedCatalog = shadow.catalogFromCloud({ cloud: cloudState, owner: cloudOwner, journal });
-        if (catalog?.migrationId) verifiedCatalog.migrationId = catalog.migrationId;
-        catalog = verifiedCatalog;
-        writeJson(CATALOG_KEY, catalog);
+        nextCatalog = shadow.catalogFromCloud({ cloud: cloudState, owner, journal });
+        if (catalog?.migrationId) nextCatalog.migrationId = catalog.migrationId;
       } else if (accountRuntime.kind === 'independent' && !catalog
         && shadow.profileIds.every(profileClientId => cloudState.profiles[profileClientId].current.length === 0)) {
-        catalog = shadow.emptyCatalogFromOwner(cloudOwner);
-        writeJson(CATALOG_KEY, catalog);
-        await Promise.all(shadow.profileIds.map(profileClientId => captureLocalSnapshot(profileClientId)));
+        nextCatalog = shadow.emptyCatalogFromOwner(owner);
+        captureEmptyBaseline = true;
       } else if (catalog && queue.pending().length) {
         const session = await supabaseBoundary.session();
-        requireCurrent();
-        sameEntityConflict = window.BigGainsManagedProfileRecovery.inspectSameEntityConflict({
-          owner: cloudOwner, session, localProfiles, cloud: cloudState, catalog, operations: queue.pending()
+        nextConflict = window.BigGainsManagedProfileRecovery.inspectSameEntityConflict({
+          owner, session, localProfiles, cloud: cloudState, catalog, operations: queue.pending()
         });
-        remoteFastForward = Object.freeze({
+        nextFastForward = Object.freeze({
           eligible: false,
-          conflict: sameEntityConflict.eligible === true,
-          reason: sameEntityConflict.eligible ? 'remote-revision-conflict' : sameEntityConflict.reason,
-          reasons: sameEntityConflict.reasons
+          conflict: nextConflict.eligible === true,
+          reason: nextConflict.eligible ? 'remote-revision-conflict' : nextConflict.reason,
+          reasons: nextConflict.reasons
         });
       } else if (catalog && window.BigGainsManagedProfileRecovery?.inspectRemoteFastForward) {
         const session = await supabaseBoundary.session();
-        requireCurrent();
-        remoteFastForward = window.BigGainsManagedProfileRecovery.inspectRemoteFastForward({
-          owner: cloudOwner,
+        nextFastForward = window.BigGainsManagedProfileRecovery.inspectRemoteFastForward({
+          owner,
           session,
           localProfiles,
           cloud: cloudState,
@@ -666,13 +661,38 @@
           localMutationPending: capturePending > 0
         });
       }
+      // Publish the entire result only after the last await. An obsolete
+      // mismatch must not clear a previously established conflict either.
+      requireCurrent();
+      if (nextCatalog !== catalog) {
+        writeJson(CATALOG_KEY, nextCatalog);
+        catalog = nextCatalog;
+      }
+      writeJson(COMPARISON_KEY, {
+        contract: comparison.contract, parity: comparison.parity, comparedAt: comparison.comparedAt,
+        profiles: Object.fromEntries(shadow.profileIds.map(id => [id, {
+          parity: comparison.profiles[id].parity, localChecksum: comparison.profiles[id].localChecksum,
+          cloudChecksum: comparison.profiles[id].cloudChecksum, reasons: comparison.profiles[id].reasons
+        }])), reasons: comparison.reasons
+      });
+      catalog = nextCatalog;
+      lastComparison = comparison;
+      sameEntityConflict = nextConflict;
+      remoteFastForward = nextFastForward;
+      verifiedComparison = comparison.parity && !queue.pending().length ? {
+        mutation, ownerIdentity, profileBytes,
+        catalogRaw: localStorage.getItem(CATALOG_KEY), queueRaw: localStorage.getItem(accountRuntime.cloudKeys.queue)
+      } : null;
+      if (verifiedComparison) for (const profileId of shadow.profileIds) {
+        try { window.BigGainsTelemetry?.conflict('recovery', {profileId, verifiedResolved:true}); } catch {}
+      }
+      if (captureEmptyBaseline) await Promise.all(shadow.profileIds.map(id => captureLocalSnapshot(id)));
       return comparison;
     } catch (error) {
+      verifiedComparison = null;
       if (error?.code === 'comparison-superseded') {
         return Object.freeze({ parity: false, errorCode: error.code, reasons: [error.message] });
       }
-      remoteFastForward = null;
-      sameEntityConflict = null;
       lastComparison = { parity: false, comparedAt: new Date().toISOString(), reasons: [error?.message || String(error)], errorCode: error?.code || 'comparison-failed' };
       return lastComparison;
     } finally {
@@ -1089,7 +1109,7 @@
     else if (lastResult?.blocked || (!pending && lastComparison?.parity === false)) state = 'DRIFT DETECTED';
     else if (pending && lastResult?.ok === false) state = 'CLOUD BEHIND / RETRYING';
     else if (pending) state = 'LOCAL CHANGES PENDING';
-    else if (lastComparison?.parity === true) state = 'IN SYNC';
+    else if (backupVerified()) state = 'IN SYNC';
     heading.textContent = state === 'IN SYNC' ? 'In sync'
       : state === 'UPDATING' ? 'Updating this device'
         : state === 'UPDATES WAITING' ? 'Updates waiting until the workout ends'
@@ -1139,7 +1159,7 @@
     queueStatus.textContent = `${pending} outbound change${pending === 1 ? '' : 's'} pending${lastResult?.reconciled ? ` · Reconciled ${lastResult.reconciled} obsolete queued change${lastResult.reconciled === 1 ? '' : 's'} after verified readback` : ''}${lastComparison?.comparedAt ? ` · Last checked ${new Date(lastComparison.comparedAt).toLocaleString()}` : ''}.`;
     const profileResults = lastComparison?.profiles;
     profileBox.hidden = !profileResults;
-    if (profileResults) profileBox.innerHTML = shadow.profileIds.map(id => `<span><strong>${window.bigGainsAccounts.registry.resolve(id)?.displayName || id}</strong>${profileResults[id]?.parity ? 'In sync' : 'Needs attention'}</span>`).join('');
+    if (profileResults) profileBox.innerHTML = shadow.profileIds.map(id => `<span><strong>${window.bigGainsAccounts.registry.resolve(id)?.displayName || id}</strong>${backupVerified() && profileResults[id]?.parity ? 'In sync' : profileResults[id]?.parity ? 'Checking' : 'Needs attention'}</span>`).join('');
     const reasons = [...(lastComparison?.reasons || [])];
     if (realConflict) reasons.push(...(remoteFastForward?.reasons || ['Local and remote training both changed after the last verified revision.']));
     for (const failure of lastResult?.failures || []) {
@@ -1386,6 +1406,7 @@
       observability: reconciliationObservability(),
       lastResult,
       lastComparison,
+      backupVerified: backupVerified(),
       remoteFastForward,
       sameEntityConflict
     })

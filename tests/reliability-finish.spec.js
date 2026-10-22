@@ -17,7 +17,7 @@ async function seed(page, age = 24) {
   await openApp(page);
 }
 
-for(const patch of [{pending:1},{busy:true},{comparing:true},{capturePending:1},{reconciliationInFlight:true},{lastComparison:{parity:false}},{lastResult:{blocked:true}}]) {
+for(const patch of [{pending:1},{busy:true},{comparing:true},{capturePending:1},{reconciliationInFlight:true},{lastComparison:{parity:false}},{lastResult:{blocked:true}},{remoteFastForward:{conflict:true,reason:'local-queue-not-empty'}}]) {
   test(`local Finish remains available with outbound ${JSON.stringify(patch)}`,async({page,context})=>{
     await seed(page);
     const before=await page.evaluate(patch=>{
@@ -67,4 +67,20 @@ test('partial delivery and lost History ACK preserve the original retry identity
   expect(proof.first.pending).toBe(1);expect(proof.tombstoneAcknowledged).toBe(true);
   expect(proof.retained).toEqual([proof.historyKey]);expect(proof.second.pending).toBe(0);
   expect(proof.delivered).toHaveLength(2);expect(proof.historyAck).toBe(true);expect(proof.unchanged).toBe(true);
+});
+
+test('retained Program adoption evidence blocks local replacement through refresh and reload',async({page})=>{
+  await seed(page);
+  const before=await page.evaluate(()=>{
+    localStorage.setItem(`${ACCOUNT.storageKey}-program-adoption-recovery-v1-synthetic-retained`,JSON.stringify({transactionId:'synthetic-retained',reason:'ownership-uncertain'}));
+    renderStaleRecovery();return localStorage.getItem(ACCOUNT.storageKey);
+  });
+  await page.evaluate(()=>BigGainsProgramPortability.refresh());
+  await expect(page.locator('#staleWorkoutFinish')).toBeDisabled();
+  expect(await page.evaluate(()=>workoutSessionController.complete())).toBe(false);
+  expect(await page.evaluate(()=>localStorage.getItem(ACCOUNT.storageKey))).toBe(before);
+  await reloadApp(page);
+  await expect(page.locator('#staleWorkoutFinish')).toBeDisabled();
+  expect(await page.evaluate(()=>BigGainsProgramPortability.localMutationSafety())).toBe(false);
+  expect(await page.evaluate(()=>localStorage.getItem(`${ACCOUNT.storageKey}-program-adoption-recovery-v1-synthetic-retained`))).not.toBeNull();
 });

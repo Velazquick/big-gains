@@ -131,8 +131,20 @@
   let captureChain = Promise.resolve();
   let busy = false;
   let replacingProfile = false;
+  let adoptionRecoveryRequired = false;
 
   function liveState() { return typeof state === 'object' && state ? state : null; }
+  function retainedAdoptionEvidence() {
+    try {
+      const key = persistence()?.storageKey;
+      if (!key) return false;
+      const prefix = `${key}-program-adoption-recovery-v1-`;
+      for (let index = 0; index < localStorage.length; index += 1) {
+        if (localStorage.key(index)?.startsWith(prefix)) return true;
+      }
+      return false;
+    } catch { return true; }
+  }
   function liveActive() { return typeof active === 'object' && active ? active : null; }
   function liveAccount() { return typeof ACCOUNT === 'object' && ACCOUNT ? ACCOUNT : null; }
   function liveProfile() { return typeof PROFILE === 'object' && PROFILE ? PROFILE : null; }
@@ -196,6 +208,7 @@
     currentSnapshot = freeze({
       enabled: capability().enabled,
       pending: queue?.pending?.().filter(scope.BigGainsProgramDomainSync?.isProgramDomainOperation || (() => false)).length || 0,
+      recoveryRequired: adoptionRecoveryRequired || retainedAdoptionEvidence(),
       ...next
     });
     render();
@@ -421,8 +434,11 @@
       } else if (currentInspection?.state === 'conflict') {
         result = await cutoverService.resolveConflict('keep_cloud', currentInspection.snapshot, prepared);
       } else return summary({ status: STATUS.BLOCKED, reasonCode: classification.reasonCode });
-      if (!result?.ok) return summary({ status: result?.status === 'blocked' ? STATUS.BLOCKED : STATUS.ERROR,
-        reasonCode: result?.reasonCode || 'PROGRAM_ADOPTION_FAILED', recoveryRequired: result?.recoveryRequired === true });
+      if (!result?.ok) {
+        if (result?.recoveryRequired === true) adoptionRecoveryRequired = true;
+        return summary({ status: result?.status === 'blocked' ? STATUS.BLOCKED : STATUS.ERROR,
+          reasonCode: result?.reasonCode || 'PROGRAM_ADOPTION_FAILED', recoveryRequired: adoptionRecoveryRequired });
+      }
       // adopt() resolves asynchronously. A normal save or Program capture can
       // finish before this continuation; never accept that obsolete result.
       if (!result.profileRaw || prepared.replaceRaw(result.profileRaw, result.profileRaw) !== true
@@ -584,8 +600,8 @@
     // Finish is a local profile commit. Outbound Program captures/queues must
     // not block it, while an explicit profile replacement or unresolved
     // adoption recovery still does. Keep updateSafety's stronger PWA contract.
-    localMutationSafety: () => !replacingProfile && currentSnapshot.recoveryRequired !== true,
-    updateSafety: () => !busy && !updateCaptures && !(queue?.pending().length)
+    localMutationSafety: () => !replacingProfile && !adoptionRecoveryRequired && !retainedAdoptionEvidence(),
+    updateSafety: () => !adoptionRecoveryRequired && !retainedAdoptionEvidence() && !busy && !updateCaptures && !(queue?.pending().length)
       && [STATUS.OFF, STATUS.LOCAL_ONLY, STATUS.NO_PROGRAM, STATUS.IN_SYNC, STATUS.UPDATE_AVAILABLE].includes(currentSnapshot.status),
     queue: () => queue
   });

@@ -104,3 +104,47 @@ test('wrong-profile backup cannot replace local training', async ({ page }) => {
   expect(messages[0]).toContain('belongs to Alexa');
   expect(await page.evaluate(() => localStorage.getItem(ACCOUNT.storageKey))).toBe(before);
 });
+
+for(const change of ['active-session','auth-generation','external-durable'])test(`import refuses changed ${change} intent without losing newer facts`,async({page})=>{
+  await seed(page);const messages=await holdImport(page);
+  const before=await page.evaluate(change=>{
+    if(change==='active-session'){
+      active={...structuredClone(active),id:'replacement-session'};state.activeWorkout=active;saveState();
+    }else if(change==='auth-generation'){
+      const api=BigGainsCloudSync;
+      window.BigGainsCloudSync={...api,status:()=>({...api.status(),lifecycleGeneration:api.status().lifecycleGeneration+1})};
+    }else{
+      localStorage.setItem(ACCOUNT.storageKey,JSON.stringify({...state,goals:{primary:'New external durable fact'}}));
+    }
+    return localStorage.getItem(ACCOUNT.storageKey);
+  },change);
+  await release(page);
+  expect(messages[0]).toContain('training changed');
+  expect(await page.evaluate(()=>localStorage.getItem(ACCOUNT.storageKey))).toBe(before);
+});
+
+test('committed import survives optional presentation failure and background save',async({page})=>{
+  await seed(page);const messages=await holdImport(page,value=>{value.workouts[0].exercises[0].note='Committed imported fact';return value;});
+  await page.evaluate(()=>{window.renderAll=()=>{throw Error('Synthetic presentation failure');};});
+  await release(page);
+  expect(messages).toEqual(['Backup restored for Jorge.']);
+  await page.evaluate(()=>window.dispatchEvent(new Event('pagehide')));
+  await reloadApp(page);
+  expect(await page.evaluate(()=>state.workouts[0].exercises[0].note)).toBe('Committed imported fact');
+});
+
+test('import publishes committed live state without a new post-write readback failure window',async({page})=>{
+  await seed(page);const messages=await holdImport(page,value=>{value.workouts[0].exercises[0].note='Retained imported fact';return value;});
+  await page.evaluate(()=>{
+    const get=Storage.prototype.getItem,set=Storage.prototype.setItem;let afterWrite=false;
+    window.restoreImportFault=()=>{Storage.prototype.getItem=get;Storage.prototype.setItem=set;};
+    Storage.prototype.setItem=function(key,value){const result=set.call(this,key,value);if(key===ACCOUNT.storageKey)afterWrite=true;return result;};
+    Storage.prototype.getItem=function(key){if(key===ACCOUNT.storageKey&&afterWrite){afterWrite=false;window.importReadFaultObserved=true;throw Error('Synthetic one-shot post-write read fault');}return get.call(this,key);};
+  });
+  await release(page);
+  await page.evaluate(()=>{restoreImportFault();saveBackgroundState();});
+  expect(messages).toEqual(['Backup restored for Jorge.']);
+  expect(await page.evaluate(()=>state.workouts[0].exercises[0].note)).toBe('Retained imported fact');
+  await reloadApp(page);
+  expect(await page.evaluate(()=>state.workouts[0].exercises[0].note)).toBe('Retained imported fact');
+});

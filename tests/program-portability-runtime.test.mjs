@@ -7,6 +7,34 @@ await import('../program-portability.js');
 
 const runtime = globalThis.BigGainsProgramPortability;
 
+test('unresolved adoption recovery stays latched while refresh replaces presentation status',async()=>{
+  const storage=new Map(),pending=[];
+  const profile={id:'synthetic-profile'},account={accountId:'local-account',storageKey:'synthetic-profile-state'};
+  const before={version:5,profileId:profile.id,goals:{},workouts:[],weights:[],activeWorkout:null,restTimerEndsAt:null,customRoutines:{}};
+  const owner={account:{id:'cloud-account'},profiles:[{id:'cloud-profile',client_id:profile.id,account_id:'cloud-account'}]};
+  let hold=false,release,enter;const entered=new Promise(r=>enter=r),held=new Promise(r=>release=r);
+  const scope={console,navigator:{onLine:true},addEventListener(){},document:{getElementById:()=>null,addEventListener(){}},
+    localStorage:{get length(){return storage.size;},key:i=>[...storage.keys()][i],getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,String(v))},
+    bigGainsAccounts:{runtime:{kind:'independent',authUserId:'user',storageNamespace:'synthetic-runtime'},matchesCloudOwner:()=>true},
+    BigGainsSupabase:{getClient:()=>({}),verifiedUser:async()=>{if(hold){enter();await held;}return {id:'user'};},readCloudAccount:async()=>owner},
+    __BIG_GAINS_CLOUD_CONFIG__:{programPortability:true,programPortabilityVersion:1},
+    BigGainsCloud:{createDurableQueue:()=>({pending:()=>pending})},
+    BigGainsProgramDomainSync:{isProgramDomainOperation:o=>o.entityType==='program_domains',createService:()=>({})},
+    BigGainsProgramDomainCutover:{createService:()=>({inspectCutover:async()=>({state:'cloud_available'})})},
+    BigGainsProgramDomainRecovery:{states:{REMOTE_FAST_FORWARD_SAFE:'safe'},readRemote:async()=>({state:'valid',remote:{record:{version:2},envelope:{}}}),classify:async()=>({state:'safe'}),adopt:async()=>({ok:false,recoveryRequired:true,reasonCode:'PROGRAM_RECOVERY_ADOPTION_STATE_CHANGED'})},
+    BigGainsProgramModel:{normalizeCapture:x=>x},bigGainsStatePersistence:{readRawOwnedState:()=>JSON.stringify(before)},
+    statePersistenceApi:{storageKey:account.storageKey,hasStoredState:()=>true,status:()=>({writable:true})},state:before,active:null,ACCOUNT:account,PROFILE:profile,exerciseCatalog:{}};
+  scope.window=scope;vm.createContext(scope);
+  vm.runInContext(await readFile(new URL('../program-portability.js',import.meta.url),'utf8'),scope);
+  const api=scope.BigGainsProgramPortability;api.initialize();await new Promise(r=>setImmediate(r));
+  assert.equal((await api.useCloud()).recoveryRequired,true);assert.equal(api.localMutationSafety(),false);
+  hold=true;const refresh=api.refresh();await entered;
+  assert.equal(api.status().status,'checking');assert.equal(api.status().recoveryRequired,true);
+  assert.equal(api.localMutationSafety(),false);assert.equal(api.updateSafety(),false);
+  release();await refresh;
+  assert.equal(api.status().status,'update_available');assert.equal(api.localMutationSafety(),false);assert.equal(api.updateSafety(),false);
+});
+
 function sequence(programVersionId, nextSlotIndex, completedCycles, updatedAt, lastTransition = null) {
   return { programId: 'program-1', programVersionId, nextSlotIndex, completedCycles, updatedAt, lastTransition };
 }

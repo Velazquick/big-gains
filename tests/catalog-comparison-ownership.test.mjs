@@ -69,4 +69,39 @@ test('unchanged comparison still verifies and adopts the real remote catalog',as
   assert.equal(result.parity,true);assert.equal(f.api.status().lastComparison.parity,true);
   assert.equal(JSON.parse(f.storage.get('comparison')).parity,true);
   assert.equal(f.api.queue.pending().length,0);
+  assert.equal(f.api.status().backupVerified,true);
+});
+
+test('superseded comparison never advertises current backup while capture is pending',async()=>{
+  const f=await fixture();assert.equal(f.api.status().backupVerified,true);
+  const nodes=new Map();const node=id=>{
+    if(!nodes.has(id))nodes.set(id,{textContent:'',hidden:false,disabled:false,innerHTML:'',classList:{add(){},remove(){}},querySelectorAll:()=>[]});
+    return nodes.get(id);
+  };
+  f.ctx.document.getElementById=node;
+  const paused=await f.pause();
+  const newer=structuredClone(f.before);newer.workouts[0].exercises[0].sets[0].reps=19;
+  f.store.save(newer,null);const finish=f.api.beginLocalMutation();
+  paused.release();await paused.result;await new Promise(r=>setImmediate(r));
+  assert.equal(f.api.status().backupVerified,false);
+  assert.notEqual(node('cloudShadowHeading').textContent,'In sync');
+  assert.notEqual(node('cloudAuthDetail').textContent,'Your cloud backup is up to date.');
+  assert.equal(f.api.queue.pending().length,0);assert.equal(f.api.status().capturePending,1);
+  finish();assert.equal(f.api.status().backupVerified,false);
+});
+
+test('known conflict survives an obsolete comparison through its final session await',async()=>{
+  const f=await fixture();
+  f.ctx.BigGainsManagedProfileRecovery.inspectSameEntityConflict=()=>({eligible:true,reason:'remote-revision-conflict',reasons:['Known synthetic conflict']});
+  const newer=structuredClone(f.before);newer.workouts[0].exercises[0].sets[0].reps=20;
+  f.store.save(newer,null);await f.api.captureLocalSnapshot('jorge');await f.api.compareShadow();
+  const known=f.api.status().sameEntityConflict;assert.equal(known.eligible,true);
+  let enter,release;const entered=new Promise(r=>enter=r),held=new Promise(r=>release=r);
+  f.ctx.BigGainsSupabase.session=async()=>{enter();await held;return {user:{id:'user'}};};
+  const comparing=f.api.compareShadow();await entered;
+  assert.equal(f.api.status().sameEntityConflict,known);
+  const before=[...f.storage];f.api.beginLocalMutation()();release();const result=await comparing;
+  assert.equal(result.errorCode,'comparison-superseded');
+  assert.equal(f.api.status().sameEntityConflict,known);assert.equal(f.api.status().remoteFastForward.conflict,true);
+  assert.deepEqual([...f.storage],before);
 });
