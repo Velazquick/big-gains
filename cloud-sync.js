@@ -27,6 +27,7 @@
   let capturePending = 0;
   let localMutationGeneration = 0;
   let lifecycleGeneration = 0;
+  let startupCaptureRequired = true;
   let reconciliationTimer = null;
   let reconciliationInFlight = null;
   let lastReconciliationTrigger = null;
@@ -242,7 +243,7 @@
     return Object.freeze({ ok: true, reconciled: plan.operationCount, logicalEntities: plan.entities.length });
   }
 
-  function beginLocalMutation() {
+  function beginLocalMutation({ reconcile = true } = {}) {
     verifiedComparison = null;
     capturePending += 1;
     localMutationGeneration += 1;
@@ -252,7 +253,7 @@
       if (finished) return;
       finished = true;
       capturePending = Math.max(0, capturePending - 1);
-      if (capturePending === 0) scheduleReconciliation('post-local-parity', 0);
+      if (capturePending === 0 && reconcile) scheduleReconciliation('post-local-parity', 0);
     };
   }
 
@@ -268,14 +269,61 @@
     } catch { return false; }
   }
 
-  async function captureLocalSnapshot(profileClientId, { tracked = false } = {}) {
-    const finishLocalMutation = tracked ? null : beginLocalMutation();
+  async function recoverPendingCatalog(profileClientId) {
+    const currentCatalog = catalog, rawCatalog = localStorage.getItem(CATALOG_KEY);
+    const rawQueue = localStorage.getItem(accountRuntime.cloudKeys.queue);
+    const operations = queue.pending(), pendingIdentity = JSON.stringify(operations);
+    const candidate = clone(currentCatalog), records = candidate.profiles[profileClientId].records;
+    const owner = ownerForProfile(profileClientId);
+    const owned = operations.filter(op => op.owner.accountId === owner.accountId && op.owner.profileId === owner.profileId
+      && shadow.tables.includes(op.entityType)).sort((a,b) => a.version-b.version);
+    let recovered = 0;
+    const refuse = () => { throw Object.assign(new Error('Pending capture does not form an unambiguous owned revision chain. Original queue and catalog were retained.'), {code:'capture-pending-catalog-conflict'}); };
+    for (const op of owned) {
+      const key = shadow.keyFor(op.entityType, op.entityId), previous = records[key];
+      if (previous && op.version < previous.version) continue;
+      if (previous && op.version === previous.version) {
+        if (op.payloadFingerprint !== previous.fingerprint || (op.mutation === 'delete') !== previous.tombstone) refuse();
+        continue;
+      }
+      const base = op.baseRevision;
+      if (previous ? !base || op.version !== previous.version+1 || base.version !== previous.version
+        || base.fingerprint !== previous.fingerprint || base.tombstone !== previous.tombstone
+        || new Date(base.updatedAt).toISOString() !== new Date(previous.updatedAt).toISOString()
+        : op.version !== 1 || base) refuse();
+      const deleted = op.mutation === 'delete', envelope = op.payload;
+      if (!deleted && (envelope?.contract !== shadow.contract || envelope?.version !== shadow.version
+        || envelope.profileClientId !== profileClientId || envelope.clientId !== op.entityId || !envelope.data)) refuse();
+      if (deleted && !previous) refuse();
+      const fingerprint = await shadow.fingerprint(profileClientId, op.entityType, op.entityId, deleted ? null : envelope.data, deleted);
+      if (fingerprint !== op.payloadFingerprint) refuse();
+      records[key] = {
+        table:op.entityType, entityType:deleted ? previous.entityType : envelope.entityType, clientId:op.entityId,
+        version:op.version, updatedAt:op.updatedAt, fingerprint, tombstone:deleted, data:deleted ? null : clone(envelope.data)
+      };
+      recovered += 1;
+    }
+    if (recovered) {
+      if (catalog !== currentCatalog || localStorage.getItem(CATALOG_KEY) !== rawCatalog
+        || localStorage.getItem(accountRuntime.cloudKeys.queue) !== rawQueue || JSON.stringify(queue.pending()) !== pendingIdentity) refuse();
+      writeJson(CATALOG_KEY,candidate);
+      catalog = candidate;
+    }
+    return recovered;
+  }
+
+  async function captureLocalSnapshot(profileClientId, { tracked = false, reconcile = true } = {}) {
+    const finishLocalMutation = tracked ? null : beginLocalMutation({reconcile});
     captureChain = captureChain.then(async () => {
       if (!validCatalog(catalog) || !shadow.profileIds.includes(profileClientId)) return Object.freeze({ queued: 0, reason: 'baseline-not-adopted' });
+      // The durable pending operation is the journal for a queue-before-catalog
+      // interruption. Reuse its exact identity/base before deriving new work.
+      await recoverPendingCatalog(profileClientId);
       const snapshot = window.bigGainsStatePersistence.readProfileSnapshot(profileClientId);
       if (!snapshot.ok) return Object.freeze({ queued: 0, reason: snapshot.reason });
       const localRecords = await shadow.localRecords(profileClientId, snapshot.value);
-      const profileCatalog = catalog.profiles[profileClientId];
+      const captureCatalog = catalog, rawCatalog = localStorage.getItem(CATALOG_KEY), candidateCatalog = clone(catalog);
+      const profileCatalog = candidateCatalog.profiles[profileClientId];
       const desiredByKey = new Map(localRecords.map(record => [shadow.keyFor(record.table, record.clientId), record]));
       let queued = 0;
       const now = () => new Date().toISOString();
@@ -328,7 +376,9 @@
       }
 
       if (queued) {
-        writeJson(CATALOG_KEY, catalog);
+        if (catalog !== captureCatalog || localStorage.getItem(CATALOG_KEY) !== rawCatalog) throw new Error('Catalog changed during capture. Pending operations were retained.');
+        writeJson(CATALOG_KEY, candidateCatalog);
+        catalog = candidateCatalog;
         lastResult = { ok: true, queued, pending: queue.pending().length };
         render();
       }
@@ -1204,6 +1254,14 @@
       }
       if (capturePending > 0) {
         return (lastResult = Object.freeze({ ok: false, deferred: true, reason: 'local-mutation-in-flight', pending: queue.pending().length }));
+      }
+      if (startupCaptureRequired && validCatalog(catalog) && window.bigGainsStatePersistence?.readProfileSnapshot) {
+        const captures = await Promise.all(shadow.profileIds.map(id => captureLocalSnapshot(id,{reconcile:false})));
+        if (captures.some(result => result.reason === 'capture-failed')) {
+          return (lastResult = Object.freeze({ok:false,blocked:true,reason:'startup-capture-failed',pending:queue.pending().length}));
+        }
+        startupCaptureRequired = false;
+        if (!pageLifecycleCurrent(generation)) return Object.freeze({ok:false,deferred:true,reason:'reconciliation-generation-superseded'});
       }
       const comparedMutationGeneration = localMutationGeneration;
       const previousComparison = lastComparison;
