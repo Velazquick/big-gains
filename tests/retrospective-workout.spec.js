@@ -265,12 +265,19 @@ test('cancel and reload discard only the draft while an active workout and retur
 });
 
 test('account isolation and backup normalization preserve optional retrospective metadata for deployed and synthetic accounts', async ({ page }) => {
-  await openCalendar(page);
+  // Both owned profiles are explicit fixtures; reading an absent profile must
+  // not create durable state. The last fixture keeps Jorge initially active.
+  await openCalendar(page, ['blankAlexa', 'blankJorge']);
+  const alexaRaw = await page.evaluate(key => localStorage.getItem(key), STORAGE_KEYS.alexa);
+  expect(alexaRaw).not.toBeNull();
   await openEditor(page, '2026-08-03');
   await completeFirstWorkingSet(page);
   await page.locator('#saveRetrospectiveWorkout').click();
   const jorge = await readStoredJson(page, STORAGE_KEYS.jorge);
+  const jorgeRaw = await page.evaluate(key => localStorage.getItem(key), STORAGE_KEYS.jorge);
   await switchProfile(page, 'alexa');
+  expect(await page.evaluate(key => localStorage.getItem(key), STORAGE_KEYS.alexa)).toBe(alexaRaw);
+  expect(await page.evaluate(key => localStorage.getItem(key), STORAGE_KEYS.jorge)).toBe(jorgeRaw);
   expect((await readStoredJson(page, STORAGE_KEYS.alexa)).workouts).toHaveLength(0);
   expect((await readStoredJson(page, STORAGE_KEYS.jorge)).workouts).toEqual(jorge.workouts);
   await openHistoryCalendar(page);
@@ -283,6 +290,7 @@ test('account isolation and backup normalization preserve optional retrospective
   await expect(page.locator('.retrospective-exercise')).toHaveCount(5);
   await page.locator('#cancelRetrospectiveWorkout').click();
 
+  expect(await page.evaluate(() => localStorage.getItem('big-gains-test-riley-v1'))).toBeNull();
   const result = await page.evaluate(workout => {
     const third = { accountId: 'test-riley-account', profileId: 'riley', displayName: 'Riley', storageNamespace: 'riley-test', storageKey: 'big-gains-test-riley-v1', profileConfigRef: 'riley' };
     const profile = { id: 'riley', name: 'Riley', goals: { primary: 'General fitness' }, weekPlan: { 0: 'Rest', 1: 'Push' }, capabilities: { allExercises: false, restFallbackWorkout: 'Push', wellnessPresentation: false } };
@@ -296,6 +304,8 @@ test('account isolation and backup normalization preserve optional retrospective
     return { backupMethod: backup.workouts[0].entryMethod, roundTripMethod: roundTrip.state.workouts[0].entryMethod, invalidPresent: 'entryMethod' in invalidMetadata.workouts[0], profileId: roundTrip.state.profileId };
   }, jorge.workouts[0]);
   expect(result).toEqual({ backupMethod: 'retrospective', roundTripMethod: 'retrospective', invalidPresent: false, profileId: 'riley' });
+  expect(await page.evaluate(key => localStorage.getItem(key), STORAGE_KEYS.alexa)).toBe(alexaRaw);
+  expect(await page.evaluate(key => localStorage.getItem(key), STORAGE_KEYS.jorge)).toBe(jorgeRaw);
 });
 
 test('retrospective logging and save work from the offline v44 app shell', async ({ page, context, setAppNetworkUnavailable }) => {

@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test';
+import { expect } from '@playwright/test';
+import { test } from './helpers/network-outage.js';
 import { installLocalStorageFixture, readStoredJson, STORAGE_KEYS } from './fixtures/local-storage.js';
 import { createProgramFixture } from './helpers/program.js';
 
@@ -160,15 +161,18 @@ test('warm service-worker-controlled reload reaches the interactive boundary exa
   expect(await page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
 });
 
-test('offline cached reload becomes interactive or recovery, never a normal dead shell', async ({ context, page }) => {
+test('offline cached reload becomes interactive or recovery, never a normal dead shell', async ({ page, setAppNetworkUnavailable }) => {
   await observeInteractiveTransitions(page);
   await installLocalStorageFixture(page, 'completedWorkouts');
   await page.goto('/');
   await waitForServiceWorker(page);
+  const originalRaw = await page.evaluate(key => localStorage.getItem(key), STORAGE_KEYS.jorge);
+  expect(originalRaw).not.toBeNull();
 
-  await context.setOffline(true);
+  await setAppNetworkUnavailable(true);
   try {
     await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(page.locator('html')).toHaveAttribute('data-runtime-state', /^(interactive|recovery)$/);
     const state = await page.locator('html').getAttribute('data-runtime-state');
     expect(['interactive', 'recovery']).toContain(state);
     if (state === 'interactive') {
@@ -179,8 +183,9 @@ test('offline cached reload becomes interactive or recovery, never a normal dead
       await expect(page.locator('#bootShell')).toBeVisible();
       await expect(page.locator('.app-shell')).toBeHidden();
     }
+    expect(await page.evaluate(key => localStorage.getItem(key), STORAGE_KEYS.jorge)).toBe(originalRaw);
   } finally {
-    await context.setOffline(false);
+    await setAppNetworkUnavailable(false);
   }
 });
 
