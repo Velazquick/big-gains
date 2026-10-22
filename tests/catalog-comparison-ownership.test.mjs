@@ -133,13 +133,26 @@ for(const restart of [false,true])test(`queue-before-catalog interruption reuses
   assert.equal(record.version,2);assert.equal(record.updatedAt,fresh.queue.pending()[0].updatedAt);
 });
 
-for(const fault of ['gap','ambiguous','bad-fingerprint'])test(`pending catalog recovery refuses ${fault} without rewriting evidence`,async()=>{
+for(const fault of ['gap','ambiguous','same-fingerprint-sibling','bad-fingerprint'])test(`pending catalog recovery refuses ${fault} without rewriting evidence`,async()=>{
   const f=await fixture(),key=f.shadow.keyFor('workouts',f.before.workouts[0].id),base=JSON.parse(f.storage.get('catalog')).profiles.jorge.records[key];
   const data=structuredClone(base.data);data.exercises[0].sets[0].reps=25;
   const fingerprint=await f.shadow.fingerprint('jorge','workouts',base.clientId,data,false);
   const create=(version,fp,stamp='2026-10-22T12:00:00.000Z')=>f.ctx.BigGainsCloud.createOperation({owner:{accountId:'cloud-account',profileId:'cloud-profile'},entityType:'workouts',entityId:base.clientId,mutation:'upsert',version,updatedAt:stamp,payload:f.shadow.envelopeFor({profileClientId:'jorge',entityType:base.entityType,clientId:base.clientId,data}),payloadFingerprint:fp,baseRevision:{version:version-1,updatedAt:base.updatedAt,fingerprint:base.fingerprint,tombstone:false}});
   f.api.queue.enqueue(create(fault==='gap'?3:2,fault==='bad-fingerprint'?'invalid-fingerprint':fingerprint));
   if(fault==='ambiguous')f.api.queue.enqueue(create(2,'conflicting-fingerprint','2026-10-22T12:00:01.000Z'));
+  if(fault==='same-fingerprint-sibling')f.api.queue.enqueue(create(2,fingerprint,'2026-10-22T12:00:01.000Z'));
   const before=[...f.storage];const result=await f.api.captureLocalSnapshot('jorge');
   assert.equal(result.reason,'capture-failed');assert.deepEqual([...f.storage],before);
+});
+
+test('transient startup read refusal keeps the missed-capture obligation for the next reconciliation',async()=>{
+  const f=await fixture();f.store.save({...f.before,workouts:[completedWorkout({id:'interrupted-finalization'}),...f.before.workouts]},null);
+  const original=f.ctx.bigGainsStatePersistence;let reads=0;
+  f.ctx.bigGainsStatePersistence={...original,readProfileSnapshot(id){reads+=1;if(reads===1)return {ok:false,reason:'storage-read-failed'};return original.readProfileSnapshot(id);}};
+  const fresh=f.restart();await f.reconcile(fresh);
+  assert.equal(fresh.queue.pending().length,0);assert.equal(fresh.status().lastResult.reason,'startup-capture-failed');
+  assert.equal(reads,1);
+  await f.reconcile(fresh);
+  assert.equal(fresh.queue.pending().filter(op=>op.entityId==='interrupted-finalization').length,1);
+  assert.equal(JSON.parse(f.storage.get('synthetic-profile')).workouts[0].id,'interrupted-finalization');
 });

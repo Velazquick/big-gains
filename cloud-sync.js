@@ -279,6 +279,12 @@
       && shadow.tables.includes(op.entityType)).sort((a,b) => a.version-b.version);
     let recovered = 0;
     const refuse = () => { throw Object.assign(new Error('Pending capture does not form an unambiguous owned revision chain. Original queue and catalog were retained.'), {code:'capture-pending-catalog-conflict'}); };
+    const allocated = new Map();
+    for (const op of owned) {
+      const revision = JSON.stringify([op.entityType,op.entityId,op.version]);
+      if (allocated.has(revision) && allocated.get(revision) !== op.idempotencyKey) refuse();
+      allocated.set(revision,op.idempotencyKey);
+    }
     for (const op of owned) {
       const key = shadow.keyFor(op.entityType, op.entityId), previous = records[key];
       if (previous && op.version < previous.version) continue;
@@ -1257,8 +1263,8 @@
       }
       if (startupCaptureRequired && validCatalog(catalog) && window.bigGainsStatePersistence?.readProfileSnapshot) {
         const captures = await Promise.all(shadow.profileIds.map(id => captureLocalSnapshot(id,{reconcile:false})));
-        if (captures.some(result => result.reason === 'capture-failed')) {
-          return (lastResult = Object.freeze({ok:false,blocked:true,reason:'startup-capture-failed',pending:queue.pending().length}));
+        if (captures.some(result => result.reason)) {
+          return (lastResult = Object.freeze({ok:false,blocked:true,reason:'startup-capture-failed',captureReasons:captures.map(result=>result.reason).filter(Boolean),pending:queue.pending().length}));
         }
         startupCaptureRequired = false;
         if (!pageLifecycleCurrent(generation)) return Object.freeze({ok:false,deferred:true,reason:'reconciliation-generation-superseded'});
