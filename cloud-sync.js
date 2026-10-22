@@ -580,6 +580,28 @@
 
   async function compareShadow({ adopt = false } = {}) {
     if (comparing || !cloudOwner) return lastComparison;
+    const owner = cloudOwner;
+    const ownerIdentity = JSON.stringify(owner);
+    const generation = lifecycleGeneration, mutation = localMutationGeneration;
+    const catalogIdentity = catalog, catalogContent = JSON.stringify(catalog);
+    const catalogRaw = localStorage.getItem(CATALOG_KEY);
+    const queueRaw = localStorage.getItem(accountRuntime.cloudKeys.queue);
+    const pending = JSON.stringify(queue.pending());
+    const profileBytes = shadow.profileIds.map(id => {
+      const key = window.bigGainsStatePersistence?.storageKeyForProfile?.(id);
+      return [key, key ? localStorage.getItem(key) : null];
+    });
+    const current = () => pageLifecycleCurrent(generation)
+      && cloudOwner === owner && JSON.stringify(cloudOwner) === ownerIdentity
+      && mutation === localMutationGeneration && !capturePending
+      && catalog === catalogIdentity && JSON.stringify(catalog) === catalogContent
+      && localStorage.getItem(CATALOG_KEY) === catalogRaw
+      && localStorage.getItem(accountRuntime.cloudKeys.queue) === queueRaw
+      && JSON.stringify(queue.pending()) === pending
+      && profileBytes.every(([key, raw]) => !key || localStorage.getItem(key) === raw);
+    const requireCurrent = () => {
+      if (!current()) throw Object.assign(new Error('A newer local change or lifecycle superseded this comparison.'), { code: 'comparison-superseded' });
+    };
     resetAutomaticDecision();
     comparing = true;
     render();
@@ -593,6 +615,9 @@
       const cloudState = await shadow.reconstructCloud({ ...remote, profiles: cloudOwner.profiles, accountId: cloudOwner.account.id });
       const localProfiles = await shadow.readLocalProfiles();
       const comparison = await shadow.compare({ localProfiles, cloud: cloudState, expectedCatalog: catalog });
+      // No await between the final fence and publication. Never let an older
+      // parity response replace the revision allocated by an overlapping save.
+      requireCurrent();
       lastComparison = comparison;
       remoteFastForward = null;
       sameEntityConflict = null;
@@ -619,6 +644,7 @@
         await Promise.all(shadow.profileIds.map(profileClientId => captureLocalSnapshot(profileClientId)));
       } else if (catalog && queue.pending().length) {
         const session = await supabaseBoundary.session();
+        requireCurrent();
         sameEntityConflict = window.BigGainsManagedProfileRecovery.inspectSameEntityConflict({
           owner: cloudOwner, session, localProfiles, cloud: cloudState, catalog, operations: queue.pending()
         });
@@ -630,6 +656,7 @@
         });
       } else if (catalog && window.BigGainsManagedProfileRecovery?.inspectRemoteFastForward) {
         const session = await supabaseBoundary.session();
+        requireCurrent();
         remoteFastForward = window.BigGainsManagedProfileRecovery.inspectRemoteFastForward({
           owner: cloudOwner,
           session,
@@ -641,6 +668,9 @@
       }
       return comparison;
     } catch (error) {
+      if (error?.code === 'comparison-superseded') {
+        return Object.freeze({ parity: false, errorCode: error.code, reasons: [error.message] });
+      }
       remoteFastForward = null;
       sameEntityConflict = null;
       lastComparison = { parity: false, comparedAt: new Date().toISOString(), reasons: [error?.message || String(error)], errorCode: error?.code || 'comparison-failed' };
