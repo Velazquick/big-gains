@@ -289,7 +289,7 @@ test('manifest required and optional script partitions are complete and release-
       runtimeGateCount: manifest.coreAssets.filter(asset => asset.includes('runtime-interactivity-gate.js')).length
     };
   });
-  expect(result.release).toBe('v122-workout-integrity-3a');
+  expect(result.release).toBe('v123-reliability-completion');
   expect(new Set(result.partition)).toEqual(new Set(result.scripts));
   expect(result.overlap).toEqual([]);
   expect(result.runtimeGateCount).toBe(1);

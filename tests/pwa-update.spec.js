@@ -6,7 +6,7 @@ import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { createSyncSafetyFixture } from './helpers/sync-safety.mjs';
 import { waitForAppRuntime } from './helpers/app.js';
 
-const RELEASE = 'v122-workout-integrity-3a';
+const RELEASE = 'v123-reliability-completion';
 const V103 = 'v103-rc-hardening-pass-1';
 test.setTimeout(60000);
 // Exact v103 core from e728f76; shell reduced to its load-only registration and
