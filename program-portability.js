@@ -130,6 +130,7 @@
   let currentSnapshot = freeze({ status: STATUS.OFF, enabled: false, pending: 0, reasonCode: 'capability-disabled' });
   let captureChain = Promise.resolve();
   let busy = false;
+  let replacingProfile = false;
 
   function liveState() { return typeof state === 'object' && state ? state : null; }
   function liveActive() { return typeof active === 'object' && active ? active : null; }
@@ -371,6 +372,7 @@
   async function useCloud() {
     if (!capability().enabled || busy) return currentSnapshot;
     busy = true;
+    replacingProfile = true;
     render();
     try {
       const mapping = currentMapping || await resolveMapping();
@@ -433,6 +435,7 @@
     } catch (error) {
       return summary({ status: STATUS.ERROR, reasonCode: error?.code || 'PROGRAM_ADOPTION_FAILED' });
     } finally {
+      replacingProfile = false;
       busy = false;
       render();
     }
@@ -578,6 +581,10 @@
     retry,
     captureLocalSnapshot,
     status: () => currentSnapshot,
+    // Finish is a local profile commit. Outbound Program captures/queues must
+    // not block it, while an explicit profile replacement or unresolved
+    // adoption recovery still does. Keep updateSafety's stronger PWA contract.
+    localMutationSafety: () => !replacingProfile && currentSnapshot.recoveryRequired !== true,
     updateSafety: () => !busy && !updateCaptures && !(queue?.pending().length)
       && [STATUS.OFF, STATUS.LOCAL_ONLY, STATUS.NO_PROGRAM, STATUS.IN_SYNC, STATUS.UPDATE_AVAILABLE].includes(currentSnapshot.status),
     queue: () => queue

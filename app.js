@@ -47,11 +47,12 @@ function staleRecoverySafety(){
     if(!sync||!Number.isSafeInteger(sync.pending)||sync.pending<0
       ||!Number.isSafeInteger(sync.capturePending)||sync.capturePending<0
       ||['busy','comparing','reconciliationInFlight'].some(key=>typeof sync[key]!=='boolean'))return blocked('unknown');
-    if(sync.pending||sync.busy||sync.comparing||sync.capturePending||sync.reconciliationInFlight)return blocked('sync');
-    if(sync.sameEntityConflict?.eligible||sync.remoteFastForward?.conflict||sync.lastResult?.blocked
-      ||sync.lastResult?.conflict||sync.lastComparison?.parity===false)return blocked('recovery');
-    for(const [owner,reason] of [[window.BigGainsManagedProfileRecovery,'recovery'],[window.BigGainsProgramPortability,'program']]){
-      const safe=owner?.updateSafety?.();
+    // Outbound work and unverified backup parity do not own the local workout.
+    // Actual conflicting recovery/replacement still fails closed.
+    if(sync.sameEntityConflict?.eligible||sync.remoteFastForward?.conflict)return blocked('recovery');
+    if(statePersistenceApi.status().writable!==true)return blocked('recovery');
+    for(const [owner,reason,port] of [[window.BigGainsManagedProfileRecovery,'recovery','updateSafety'],[window.BigGainsProgramPortability,'program','localMutationSafety']]){
+      const safe=owner?.[port]?.();
       if(safe!==true)return blocked(safe===false?reason:'unknown');
     }
     const migration=window.BigGainsControlledMigration?.status?.();
@@ -339,7 +340,7 @@ function startBlankWorkout(){window.bigGainsViewShell?.showView('train',{workout
 const workoutSessionController=BigGainsWorkoutSessionController.create({
   getState:()=>state,
   getActiveWorkout:()=>active,
-  canResolveSession:()=>!staleSessionCondition(active)||staleRecoveryWritable(),
+  canResolveSession:()=>staleRecoveryWritable(),
   setActiveWorkout:next=>{if(active&&!next)staleClearedWorkout=staleSessionCondition(active)?{id:active.id}:null;active=next;state.activeWorkout=next;},
   getSelectedDay:()=>selectedDay,
   setSelectedDay:next=>{selectedDay=next;},
