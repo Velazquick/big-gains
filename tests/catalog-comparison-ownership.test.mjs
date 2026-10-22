@@ -31,7 +31,27 @@ async function fixture() {
   ctx.BigGainsCloudShadow={...shadow,createRepository:()=>({readAll:async()=>({journals:[]})}),reconstructCloud:async()=>cloud,compare:async args=>{const result=await shadow.compare(args);if(hold){entered();await held;}return result;}};
   execute('cloud-sync.js');const api=ctx.BigGainsCloudSync;
   await api.flush();
-  return {ctx,storage,store,api,before,shadow,owner,restart(){execute('cloud-sync.js');return ctx.BigGainsCloudSync;},async reconcile(api){timers.length=0;api.scheduleReconciliation('synthetic-reopen',0);timers.pop()();for(let n=0;api.status().reconciliationInFlight&&n<1000;n++)await new Promise(r=>setImmediate(r));assert.equal(api.status().reconciliationInFlight,false);},async pause(){hold=true;const result=api.compareShadow();await started;return {result,release(){hold=false;release();}};}};
+  return {ctx,storage,store,api,before,shadow,owner,restart(){execute('cloud-sync.js');return ctx.BigGainsCloudSync;},
+    async reconcile(api){
+      assert.equal(api.status().reconciliationInFlight,false);
+      let complete,armed=false;
+      const finished=new Promise(resolve=>complete=resolve),getElement=ctx.document.getElementById;
+      // The actual reconciliation finally clears inFlight then renders. Observe
+      // that terminal notification through the existing synthetic DOM port;
+      // event-loop turns do not bound real native hashing work.
+      ctx.document.getElementById=function(...args){
+        const node=getElement.apply(this,args);
+        if(armed&&args[0]==='cloudSettingsMount'&&!api.status().reconciliationInFlight)complete();
+        return node;
+      };
+      try{
+        timers.length=0;api.scheduleReconciliation('synthetic-reopen',0);timers.pop()();
+        assert.equal(api.status().reconciliationInFlight,true);armed=true;
+        await finished;
+        assert.equal(api.status().reconciliationInFlight,false);
+      }finally{ctx.document.getElementById=getElement;}
+    },
+    async pause(){hold=true;const result=api.compareShadow();await started;return {result,release(){hold=false;release();}};}};
 }
 
 test('obsolete parity cannot regress upsert2 or make deletion reuse revision2',async()=>{
@@ -166,6 +186,31 @@ for(const entry of ['reconciliation','direct-flush'])test(`ordinary refused capt
   assert.equal(f.api.queue.pending().length,0);
   if(entry==='reconciliation')await f.reconcile(f.api);else await f.api.flush();
   assert.equal(f.api.queue.pending().filter(op=>op.entityId==='ordinary-missed-capture').length,1);
+  assert.equal(f.storage.get('synthetic-profile'),raw);assert.equal(f.api.status().backupVerified,false);
+});
+
+test('reconciliation completion waits for held native hashing and preserves missed capture',async()=>{
+  const f=await fixture();
+  f.store.save({...f.before,workouts:[completedWorkout({id:'held-native-capture'}),...f.before.workouts]},null);
+  const raw=f.storage.get('synthetic-profile');
+  let enter,release,settled=false;
+  const entered=new Promise(resolve=>enter=resolve),held=new Promise(resolve=>release=resolve);
+  f.ctx.crypto={subtle:{async digest(...args){enter();await held;return webcrypto.subtle.digest(...args);}}};
+  const completion=f.reconcile(f.api).then(()=>{settled=true;return null;},error=>{settled=true;return error;});
+  let whileHeld;
+  try {
+    await entered;
+    // Advance beyond the former helper's event-loop-turn budget while the real
+    // hash is explicitly held. Turns cannot prove native work has completed.
+    for(let turn=0;turn<1100;turn++)await new Promise(resolve=>setImmediate(resolve));
+    whileHeld={settled,inFlight:f.api.status().reconciliationInFlight};
+    assert.equal(f.api.queue.pending().length,0);assert.equal(f.storage.get('synthetic-profile'),raw);
+  } finally {release();}
+  const error=await completion;
+  assert.equal(whileHeld.inFlight,true);
+  assert.equal(whileHeld.settled,false,'the helper must await actual completion, not count event-loop turns');
+  if(error)throw error;
+  assert.equal(f.api.queue.pending().filter(op=>op.entityId==='held-native-capture').length,1);
   assert.equal(f.storage.get('synthetic-profile'),raw);assert.equal(f.api.status().backupVerified,false);
 });
 
