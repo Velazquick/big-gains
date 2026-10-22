@@ -149,12 +149,12 @@ function setWorkoutPetState(next){if(next)document.body.dataset.workoutPetState=
 function saveState(){
   return commitState(state,active);
 }
-function commitState(value,workout){
+function commitState(value,workout,options={}){
   if((bigGainsAccounts.runtime.kind==='managed-member'&&!statePersistenceApi.hasStoredState())
     ||window.BigGainsManagedProfileRecovery?.suppressingLocalSave(value,workout)){
     throw Object.assign(new Error('Saved training is protected while recovery is pending.'),{code:'local-save-protected'});
   }
-  statePersistenceApi.save(value,workout);
+  statePersistenceApi.save(value,workout,options);
   // The profile write is the local commit. Optional backup setup and capture
   // must never turn an already committed workout into a rollback.
   try{
@@ -599,16 +599,23 @@ bind('importData','change',async e=>{
   const ownerState=state,ownerWorkout=active;
   let validated=false;
   try{
+    const runtime=bigGainsAccounts.runtime;
+    const identity=()=>JSON.stringify([ACCOUNT.accountId,PROFILE.id,ACCOUNT.storageKey,bigGainsAccounts.runtime.storageNamespace,bigGainsAccounts.runtime.authUserId,bigGainsAccounts.registry.loadActive().profileId]);
+    const live=()=>JSON.stringify({...state,activeWorkout:active});
+    const ownerIdentity=identity(),ownerLive=live(),ownerRaw=bigGainsStatePersistence.readRawOwnedState(ACCOUNT.storageKey);
+    const ownerGeneration=window.BigGainsCloudSync?.status?.().lifecycleGeneration;
     const imported=JSON.parse(await file.text()),result=statePersistenceApi.validateImport(imported);
     if(!result.ok){
       if(result.reason==='profile-mismatch'){alert(`This backup belongs to ${result.profileName}, not ${ACCOUNT.displayName}. Switch profiles before restoring it.`);return;}
       throw new Error('Invalid backup');
     }
     validated=true;
-    if(state!==ownerState||active!==ownerWorkout){alert('Your workout changed while the backup was being read. Choose the backup again.');return;}
+    if(state!==ownerState||active!==ownerWorkout||bigGainsAccounts.runtime!==runtime||identity()!==ownerIdentity||live()!==ownerLive
+      ||window.BigGainsCloudSync?.status?.().lifecycleGeneration!==ownerGeneration
+      ||bigGainsStatePersistence.readRawOwnedState(ACCOUNT.storageKey)!==ownerRaw){alert('Your training changed while the backup was being read. Choose the backup again.');return;}
     const nextActive=result.state.activeWorkout||null;
     // Persist the candidate before changing any live state or timer ports.
-    commitState(result.state,nextActive);
+    commitState(result.state,nextActive,{expectedRaw:ownerRaw});
     state=result.state;active=nextActive;
     const today=todaysWorkout();selectedDay=(active&&active.type)||(today==='Rest'?PROFILE.capabilities.restFallbackWorkout:today);
     try{renderAll();}catch(error){console.warn('Backup restored; presentation failed.',error);}

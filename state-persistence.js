@@ -568,10 +568,17 @@
       try { return read(storageKey) !== null; } catch { return false; }
     }
 
-    function save(value, activeWorkout = value.activeWorkout) {
+    function save(value, activeWorkout = value.activeWorkout, options = {}) {
       const candidate = { ...value, activeWorkout };
       if (candidate.profileId !== profile.id) throw persistenceError('local-profile-mismatch');
-      write(storageKey, JSON.stringify(candidate));
+      const raw = JSON.stringify(candidate);
+      // A delayed replacement owns the bytes captured when that operation
+      // began, not the writer's most recently advanced expected-byte map.
+      if (Object.hasOwn(options, 'expectedRaw')) {
+        if (!compareAndReplaceRawOwnedState(storageKey, options.expectedRaw, raw)) {
+          throw persistenceError('local-import-state-changed');
+        }
+      } else write(storageKey, raw);
       value.activeWorkout = activeWorkout;
       return value;
     }
