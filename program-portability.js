@@ -130,8 +130,21 @@
   let currentSnapshot = freeze({ status: STATUS.OFF, enabled: false, pending: 0, reasonCode: 'capability-disabled' });
   let captureChain = Promise.resolve();
   let busy = false;
+  let replacingProfile = false;
+  let adoptionRecoveryRequired = false;
 
   function liveState() { return typeof state === 'object' && state ? state : null; }
+  function retainedAdoptionEvidence() {
+    try {
+      const key = persistence()?.storageKey;
+      if (!key) return false;
+      const prefix = `${key}-program-adoption-recovery-v1-`;
+      for (let index = 0; index < localStorage.length; index += 1) {
+        if (localStorage.key(index)?.startsWith(prefix)) return true;
+      }
+      return false;
+    } catch { return true; }
+  }
   function liveActive() { return typeof active === 'object' && active ? active : null; }
   function liveAccount() { return typeof ACCOUNT === 'object' && ACCOUNT ? ACCOUNT : null; }
   function liveProfile() { return typeof PROFILE === 'object' && PROFILE ? PROFILE : null; }
@@ -181,6 +194,7 @@
   function writeAccepted(mapping, remote) {
     const key = acceptedKey();
     if (!key || !mapping || !remote?.record || !isRecord(remote?.envelope)) return false;
+    scope.bigGainsStatePersistence?.assertWriter?.();
     scope.localStorage.setItem(key, JSON.stringify({
       format: ACCEPTED_FORMAT,
       owner: clone(mapping.owner),
@@ -194,6 +208,7 @@
     currentSnapshot = freeze({
       enabled: capability().enabled,
       pending: queue?.pending?.().filter(scope.BigGainsProgramDomainSync?.isProgramDomainOperation || (() => false)).length || 0,
+      recoveryRequired: adoptionRecoveryRequired || retainedAdoptionEvidence(),
       ...next
     });
     render();
@@ -274,6 +289,8 @@
       readRaw: raw,
       writeRaw: value => scope.bigGainsStatePersistence.writeRawOwnedState(store.storageKey, value),
       removeRaw: () => scope.bigGainsStatePersistence.removeRawOwnedState(store.storageKey),
+      replaceRaw: (expected, next) => scope.bigGainsStatePersistence.compareAndReplaceRawOwnedState(store.storageKey, expected, next),
+      retainRecoveryEvidence: evidence => scope.bigGainsStatePersistence.retainRawOwnedStateRecovery(store.storageKey, evidence),
       ...extra
     };
   }
@@ -368,6 +385,7 @@
   async function useCloud() {
     if (!capability().enabled || busy) return currentSnapshot;
     busy = true;
+    replacingProfile = true;
     render();
     try {
       const mapping = currentMapping || await resolveMapping();
@@ -401,6 +419,8 @@
           readRaw: prepared.readRaw,
           writeRaw: prepared.writeRaw,
           removeRaw: prepared.removeRaw,
+          replaceRaw: prepared.replaceRaw,
+          retainRecoveryEvidence: prepared.retainRecoveryEvidence,
           candidateProfile: prepared.pristine ? snapshot : null,
           getOperations: () => queue.pending(),
           initialized: true,
@@ -414,12 +434,24 @@
       } else if (currentInspection?.state === 'conflict') {
         result = await cutoverService.resolveConflict('keep_cloud', currentInspection.snapshot, prepared);
       } else return summary({ status: STATUS.BLOCKED, reasonCode: classification.reasonCode });
-      if (!result?.ok) return summary({ status: result?.status === 'blocked' ? STATUS.BLOCKED : STATUS.ERROR,
-        reasonCode: result?.reasonCode || 'PROGRAM_ADOPTION_FAILED' });
+      if (!result?.ok) {
+        if (result?.recoveryRequired === true) adoptionRecoveryRequired = true;
+        return summary({ status: result?.status === 'blocked' ? STATUS.BLOCKED : STATUS.ERROR,
+          reasonCode: result?.reasonCode || 'PROGRAM_ADOPTION_FAILED', recoveryRequired: adoptionRecoveryRequired });
+      }
+      // adopt() resolves asynchronously. A normal save or Program capture can
+      // finish before this continuation; never accept that obsolete result.
+      if (!result.profileRaw || prepared.replaceRaw(result.profileRaw, result.profileRaw) !== true
+        || queue.pending().some(scope.BigGainsProgramDomainSync.isProgramDomainOperation)) {
+        return summary({ status: STATUS.ERROR, reasonCode: 'PROGRAM_RECOVERY_ADOPTION_STATE_CHANGED' });
+      }
       writeAccepted(mapping, remoteRead.remote);
       reloadAfterAdoption();
       return await refresh({ force: true });
+    } catch (error) {
+      return summary({ status: STATUS.ERROR, reasonCode: error?.code || 'PROGRAM_ADOPTION_FAILED' });
     } finally {
+      replacingProfile = false;
       busy = false;
       render();
     }
@@ -428,15 +460,20 @@
   async function useDevice() {
     if (!capability().enabled || busy || currentInspection?.state !== 'conflict') return currentSnapshot;
     busy = true;
+    replacingProfile = true;
     render();
     try {
       const mapping = currentMapping || await resolveMapping();
       const result = await cutoverService.resolveConflict('keep_device', currentInspection.snapshot, input(mapping));
-      if (!result.ok) return summary({ status: result.status === 'pending' ? STATUS.PENDING
-        : result.status === 'blocked' ? STATUS.BLOCKED : STATUS.ERROR, reasonCode: result.reasonCode });
+      if (!result.ok) {
+        if (result.recoveryRequired === true) adoptionRecoveryRequired = true;
+        return summary({ status: result.status === 'pending' ? STATUS.PENDING
+          : result.status === 'blocked' ? STATUS.BLOCKED : STATUS.ERROR, reasonCode: result.reasonCode, recoveryRequired:adoptionRecoveryRequired });
+      }
       if (result.localMutation) reloadAfterAdoption();
       return await refresh({ force: true });
     } finally {
+      replacingProfile = false;
       busy = false;
       render();
     }
@@ -565,7 +602,11 @@
     retry,
     captureLocalSnapshot,
     status: () => currentSnapshot,
-    updateSafety: () => !busy && !updateCaptures && !(queue?.pending().length)
+    // Finish is a local profile commit. Outbound Program captures/queues must
+    // not block it, while an explicit profile replacement or unresolved
+    // adoption recovery still does. Keep updateSafety's stronger PWA contract.
+    localMutationSafety: () => !replacingProfile && !adoptionRecoveryRequired && !retainedAdoptionEvidence(),
+    updateSafety: () => !adoptionRecoveryRequired && !retainedAdoptionEvidence() && !busy && !updateCaptures && !(queue?.pending().length)
       && [STATUS.OFF, STATUS.LOCAL_ONLY, STATUS.NO_PROGRAM, STATUS.IN_SYNC, STATUS.UPDATE_AVAILABLE].includes(currentSnapshot.status),
     queue: () => queue
   });

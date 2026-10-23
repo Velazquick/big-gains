@@ -136,7 +136,7 @@ async function routeAuth(page, {
 test('standalone Home Screen sign-in uses password auth, verifies getUser, and persists only in its own storage', async ({ page }) => {
   await installConfiguredApp(page, { standalone: true });
   const calls = await routeAuth(page);
-  await openApp(page);
+  await openApp(page, { expected: 'recovery', reason: 'signed-out' });
 
   await expect(page.locator('#accountOnboardingPassword')).toBeVisible();
   await expect(page.locator('#accountOnboardingMagicLink')).toHaveCount(0);
@@ -158,7 +158,7 @@ test('standalone Home Screen sign-in uses password auth, verifies getUser, and p
 test('password reset is generic, targets auth-setup, and enforces the resend cooldown even on provider failure', async ({ page }) => {
   await installConfiguredApp(page, { standalone: true });
   const calls = await routeAuth(page, { recoverStatus: 500 });
-  await openApp(page);
+  await openApp(page, { expected: 'recovery', reason: 'signed-out' });
 
   await page.locator('#accountOnboardingEmail').fill(AUTH_EMAIL);
   await page.locator('#accountOnboardingReset').click();
@@ -176,7 +176,7 @@ test('password reset is generic, targets auth-setup, and enforces the resend coo
 test('Safari keeps Magic Link as an explicit compatibility action while password remains primary', async ({ page }) => {
   await installConfiguredApp(page, { standalone: false });
   const calls = await routeAuth(page);
-  await openApp(page);
+  await openApp(page, { expected: 'recovery', reason: 'signed-out' });
 
   await expect(page.locator('#accountOnboardingPassword')).toBeVisible();
   await page.locator('#accountOnboardingEmail').fill(AUTH_EMAIL);
@@ -193,7 +193,7 @@ test('Safari keeps Magic Link as an explicit compatibility action while password
 test('a getUser identity mismatch is locally rejected before any account/profile read', async ({ page }) => {
   await installConfiguredApp(page, { standalone: true });
   const calls = await routeAuth(page, { tokenUserId: AUTH_USER_ID, verifiedUserId: OTHER_USER_ID });
-  await openApp(page);
+  await openApp(page, { expected: 'recovery', reason: 'signed-out' });
 
   await page.locator('#accountOnboardingEmail').fill(AUTH_EMAIL);
   await page.locator('#accountOnboardingPassword').fill('correct horse battery staple');
@@ -265,7 +265,7 @@ test('Safari and installed Home Screen sessions remain isolated until password s
     const homePage = await homeScreen.newPage();
     await installConfiguredApp(homePage, { standalone: true });
     await routeAuth(homePage);
-    await openApp(homePage);
+    await openApp(homePage, { expected: 'recovery', reason: 'signed-out' });
 
     expect(await safariPage.evaluate(key => JSON.parse(localStorage.getItem(key))?.user?.id, AUTH_STORAGE_KEY)).toBe(AUTH_USER_ID);
     expect(await homePage.evaluate(key => localStorage.getItem(key), AUTH_STORAGE_KEY)).toBeNull();

@@ -169,6 +169,7 @@
     clearWorkoutTicker = () => {},
     setPetState = () => {},
     onRuntimeCleared = () => {},
+    onPersistenceFailed = () => {},
     renderActiveSession = () => {},
     renderLoadedSession = () => {},
     renderActiveMutation = () => {},
@@ -261,6 +262,14 @@
       onRuntimeCleared({ hideActive });
     }
 
+    function clearCommittedRuntime(hideActive = true) {
+      // The saved profile already has no active session. Presentation or
+      // timer cleanup errors cannot turn that durable success into a failure.
+      for (const cleanup of [clearWorkoutTicker, deactivateTimer, () => setPetState(null), () => onRuntimeCleared({ hideActive })]) {
+        try { cleanup(); } catch (error) { console.warn('Workout committed; runtime cleanup failed.', error); }
+      }
+    }
+
     function start(day = getSelectedDay(), { loadRoutine: shouldLoad = true, scroll = true } = {}) {
       if (getActiveWorkout()) return resume(scroll);
       begin(day);
@@ -306,12 +315,24 @@
 
     function replace(day = getSelectedDay(), { loadRoutine: shouldLoad = true, scroll = true } = {}) {
       if (!getActiveWorkout()) return start(day, { loadRoutine: shouldLoad, scroll });
-      clearRuntime(false);
-      begin(day);
-      if (shouldLoad) appendRoutine(day);
-      persistActiveMutation();
+      const previous = getActiveWorkout(), previousDay = getSelectedDay(), state = getState(), previousDeadline = state.restTimerEndsAt;
+      let replacement;
+      try {
+        replacement = begin(day);
+        if (shouldLoad) appendRoutine(day);
+        state.restTimerEndsAt = null;
+        if (persist()?.committed !== true) throw new Error('Replacement was not committed.');
+      } catch (error) {
+        setActiveWorkout(previous);
+        setSelectedDay(previousDay);
+        state.restTimerEndsAt = previousDeadline;
+        onPersistenceFailed(error);
+        return false;
+      }
+      clearCommittedRuntime(false);
+      renderHero();
       renderActiveSession(scroll);
-      return getActiveWorkout();
+      return replacement;
     }
 
     function loadRoutine(day = getSelectedDay(), { scroll = true } = {}) {
@@ -506,9 +527,12 @@
       renderActiveMutation();
       if (set.completed) {
         startRestTimer(exerciseIndex);
+        const ownerId = current.id, exerciseId = exercise.id, setId = set.id;
         scheduleAfterCompletion(() => {
           const live = getActiveWorkout();
-          if (!live) return;
+          if (live !== current || live.id !== ownerId
+            || live.exercises?.[exerciseIndex] !== exercise || exercise.id !== exerciseId
+            || exercise.sets?.[setIndex] !== set || set.id !== setId || !set.completed) return;
           const result = advanceAfterCompletion(live, exerciseIndex);
           if (!result.advanced) return;
           persistActiveMutation();
@@ -531,6 +555,11 @@
       const { displayUnitOverride: ignoredDisplayUnitOverride, ...completedWorkout } = current;
       const workout = { ...completedWorkout, completedAt, durationSeconds, exercises: completed };
       const state = getState();
+      // Never prepend a second completed identity or silently replace its facts.
+      if (state.workouts.some(item => item.id === current.id)) {
+        onPersistenceFailed();
+        return false;
+      }
       const previous = {
         workouts: state.workouts,
         prs: state.prs,
@@ -571,8 +600,11 @@
         state.workouts = nextWorkouts;
         state.prs = nextPrs;
         if (sequenceResult?.capture) state.programCapture = sequenceResult.capture;
-        clearRuntime();
-        persist();
+        // Stage only the data. Timer, ticker, focus and controls remain usable
+        // until the single profile snapshot has committed.
+        setActiveWorkout(null);
+        state.restTimerEndsAt = null;
+        if (persist()?.committed !== true) throw new Error('Workout was not committed.');
       } catch (error) {
         state.workouts = previous.workouts;
         state.prs = previous.prs;
@@ -581,18 +613,33 @@
         setActiveWorkout(current);
         renderHero();
         renderActiveMutation();
+        onPersistenceFailed(error);
         return false;
       }
+      clearCommittedRuntime();
       observe('workout_completed', current.programOrigin ? 'program' : 'freeform');
-      onCompleted({ workout: savedWorkout, newPRs });
+      try { onCompleted({ workout: savedWorkout, newPRs }); }
+      catch (error) { console.warn('Workout committed; completion presentation failed.', error); }
       return true;
     }
 
     function discard() {
-      if (!getActiveWorkout() || !canResolveSession()) return false;
-      clearRuntime();
-      persist();
-      onDiscarded();
+      const current = getActiveWorkout();
+      if (!current || !canResolveSession()) return false;
+      const state = getState(), previousDeadline = state.restTimerEndsAt;
+      try {
+        setActiveWorkout(null);
+        state.restTimerEndsAt = null;
+        if (persist()?.committed !== true) throw new Error('Discard was not committed.');
+      } catch (error) {
+        setActiveWorkout(current);
+        state.restTimerEndsAt = previousDeadline;
+        onPersistenceFailed(error);
+        return false;
+      }
+      clearCommittedRuntime();
+      try { onDiscarded(); }
+      catch (error) { console.warn('Discard committed; presentation failed.', error); }
       return true;
     }
 

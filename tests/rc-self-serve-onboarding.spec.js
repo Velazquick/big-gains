@@ -4,6 +4,17 @@ import { openApp } from './helpers/app.js';
 const ORIGIN = 'https://synthetic-self-serve.supabase.co';
 const EMAIL = 'new.person@example.test';
 
+// All cases assert page-routed synthetic Auth responses. Installed-worker
+// authentication/offline behavior remains in the dedicated real-worker suites.
+test.use({ serviceWorkers: 'block' });
+
+// These flows deliberately have no authorized account/profile. Observe the
+// genuine recovery shell, then exercise and assert its real authentication UI.
+async function openAuthentication(page) {
+  await openApp(page, { expected: 'recovery' });
+  await expect(page.locator('#independentAccountOnboarding')).toBeVisible();
+}
+
 function encode(value) {
   return Buffer.from(JSON.stringify(value)).toString('base64url');
 }
@@ -63,7 +74,7 @@ async function routeSignup(page, { duplicate = false } = {}) {
 test('fresh signup sends only email/password, requires matching confirmation, and creates no profile', async ({ page }) => {
   await install(page);
   const calls = await routeSignup(page);
-  await openApp(page);
+  await openAuthentication(page);
 
   await page.locator('#accountOnboardingCreate').click();
   await page.locator('#accountSignupEmail').fill(EMAIL);
@@ -99,7 +110,7 @@ test('fresh signup sends only email/password, requires matching confirmation, an
 test('duplicate signup receives the same generic check-email state', async ({ page }) => {
   await install(page);
   const calls = await routeSignup(page, { duplicate: true });
-  await openApp(page);
+  await openAuthentication(page);
   await page.locator('#accountOnboardingCreate').click();
   await page.locator('#accountSignupEmail').fill(EMAIL);
   await page.locator('#accountSignupPassword').fill('correct horse battery staple');
@@ -114,7 +125,7 @@ test('duplicate signup receives the same generic check-email state', async ({ pa
 test('capability-off build exposes a clear unavailable create-account path', async ({ page }) => {
   await install(page, { signupAvailable: false });
   await routeSignup(page);
-  await openApp(page);
+  await openAuthentication(page);
   await expect(page.getByRole('button', { name: 'Create account unavailable' })).toBeVisible();
   await expect(page.getByText('production email delivery is ready')).toBeVisible();
   await expect(page.locator('#accountOnboardingSignup')).toHaveCount(0);
@@ -124,7 +135,7 @@ test('fresh authentication explains that a network connection is required', asyn
   await install(page);
   const calls = await routeSignup(page);
   await page.addInitScript(() => Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false }));
-  await openApp(page);
+  await openAuthentication(page);
   await page.locator('#accountOnboardingEmail').fill(EMAIL);
   await page.locator('#accountOnboardingPassword').fill('correct horse battery staple');
   await page.locator('#accountOnboardingSignIn button[type="submit"]').click();
@@ -150,7 +161,7 @@ test('an unconfirmed session is rejected before account or membership bootstrap'
     if (url.pathname.includes('/rest/v1/')) calls.accountReads += 1;
     return route.fulfill({ status: 200, headers: { ...headers, 'content-range': '*/0' }, body: '[]' });
   });
-  await openApp(page);
+  await openAuthentication(page);
   await expect(page.locator('#independentAccountOnboarding')).toContainText('Check your email');
   expect(calls.accountReads).toBe(0);
   expect(calls.logout).toBeGreaterThan(0);
