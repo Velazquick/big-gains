@@ -8,6 +8,11 @@ import { clickCentered, waitForAppRuntime } from './helpers/app.js';
 
 const RELEASE = 'v123-reliability-completion';
 const V103 = 'v103-rc-hardening-pass-1';
+function aggregatePwaFailures(errors, label) {
+  // Playwright serializes message/stack/cause, not AggregateError.errors.
+  return new AggregateError(errors, `${label}: ${errors.map(error => String(error)).join(' | ')}`,
+    { cause: errors[0] });
+}
 test.setTimeout(60000);
 // Exact v103 core from e728f76; shell reduced to its load-only registration and
 // marker. This models real worker lifecycle, not every historical v103 UI asset.
@@ -60,7 +65,7 @@ async function harness(browser, { legacy = false, pathPrefix = '' } = {}) {
       try { await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve())); }
       catch (error) { errors.push(error); }
       if (errors.length === 1) throw errors[0];
-      if (errors.length > 1) throw new AggregateError(errors, 'Context and owned server cleanup failed');
+      if (errors.length > 1) throw aggregatePwaFailures(errors, 'Context and owned server cleanup failed');
     } };
 }
 async function controlled(page) {
@@ -450,12 +455,12 @@ test('Advanced diagnostics shows the live blocker in the actual Settings view', 
         await info.attach('pwa-disclosure-failed-native-hits', { contentType: 'application/json', body: Buffer.from(JSON.stringify(hits, null, 2)) });
       }
     } catch (error) {
-      failure = failure ? new AggregateError([failure, error], 'PWA assertion and evidence capture failed') : error;
+      failure = failure ? aggregatePwaFailures([failure, error], 'PWA assertion and evidence capture failed') : error;
       throw failure;
     } finally {
       try { await h.close(); }
       catch (error) {
-        if (failure) throw new AggregateError([failure, error], 'PWA assertion and owned cleanup failed');
+        if (failure) throw aggregatePwaFailures([failure, error], 'PWA assertion and owned cleanup failed');
         throw error;
       }
     }
