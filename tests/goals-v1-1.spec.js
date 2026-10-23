@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture, readStoredJson, STORAGE_KEYS } from './fixtures/local-storage.js';
-import { openApp, switchProfile } from './helpers/app.js';
+import { clickCentered, openApp, switchProfile } from './helpers/app.js';
 
 const BENCH = 'fe9b24dd-e6db-41d3-9395-596830a0a37a';
 const NOW = '2026-08-19T16:00:00.000Z';
@@ -193,7 +193,8 @@ test('Goals v1.1: deleting one managed profile past goal cannot delete another p
 
   await switchProfile(page, 'jorge');
   await page.evaluate(() => bigGainsViewShell.showView('goals', { workout: false, instant: true }));
-  await page.locator('#pastGoalsSection summary').click();
+  await clickCentered(page.locator('#pastGoalsSection summary'));
+  await expect(page.locator('#pastGoalsSection')).toHaveAttribute('open', '');
   page.once('dialog', dialog => dialog.accept());
   await page.locator('#pastGoalsList [data-goal-action="delete"]').click();
   expect((await readStoredJson(page, STORAGE_KEYS.jorge)).goals.strengthGoals).toEqual([]);

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openApp, reloadApp } from './helpers/app.js';
+import { clickCentered, openApp, reloadApp } from './helpers/app.js';
 import { blankState, completedWorkout, readStoredJson, STORAGE_KEYS } from './fixtures/local-storage.js';
 
 async function installState(page, value) {
@@ -16,8 +16,9 @@ async function installState(page, value) {
 
 async function openWorkoutDetail(page, workoutId) {
   await page.locator('.bottom-nav [data-view="progress"]').click();
-  await page.locator(`[data-history-id="${workoutId}"]`).first().click();
+  await clickCentered(page.locator(`[data-history-id="${workoutId}"]`).first());
   await expect(page.locator('#historyDialog')).toBeVisible();
+  await expect(page.locator('#historyDialog')).toHaveAttribute('data-workout-id', workoutId);
 }
 
 function exercise({ id, definitionId, name, muscle, equipment, sets, note = '' }) {
