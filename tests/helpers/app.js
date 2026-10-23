@@ -37,10 +37,28 @@ export async function switchProfile(page, profileId) {
 }
 
 export async function clickCentered(locator) {
-  // WebKit can race CSS smooth scrolling when its automatic scroll starts above
-  // the sticky workout header. Put the control in view, then use a real click.
-  await locator.evaluate(element => element.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }));
-  await locator.click();
+  // Playwright can retry its scroll after checking stability. Keep that implicit
+  // scroll instant too; explicit application smooth/instant scrolls still run.
+  // Own a style node in this document, leaving inline styles and new documents alone.
+  const style = await locator.evaluateHandle(element => {
+    const node = element.ownerDocument.createElement('style');
+    node.textContent = 'html:root { scroll-behavior: auto; }';
+    element.ownerDocument.head.appendChild(node);
+    try {
+      if (getComputedStyle(element.ownerDocument.documentElement).scrollBehavior !== 'auto') throw new Error('Centered click requires instantaneous implicit scrolling.');
+      element.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });
+      return node;
+    } catch (error) { node.remove(); throw error; }
+  });
+  try {
+    await locator.click();
+  } finally {
+    try { await style.evaluate(node => node.remove()); }
+    catch (error) {
+      // A navigation discards the owned style with its old execution context.
+      if (!locator.page().isClosed() && !/Execution context was destroyed|Cannot find context with specified id/.test(error.message)) throw error;
+    } finally { await style.dispose(); }
+  }
 }
 
 export async function chooseSession(page, sessionType) {

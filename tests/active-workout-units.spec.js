@@ -215,8 +215,46 @@ test('completion and discard end override lifetime while History and the next wo
   await page.evaluate(() => workoutSessionController.start('Push', { loadRoutine: true, scroll: false }));
   await expect(unitButton(page, 'kg')).toHaveAttribute('aria-pressed', 'true');
   expect((await readStoredJson(page, STORAGE_KEYS.jorge)).activeWorkout).not.toHaveProperty('displayUnitOverride');
+  await page.evaluate(() => {
+    let armed = false;
+    const scrolling = () => ({ computed: getComputedStyle(document.documentElement).scrollBehavior,
+      value: document.documentElement.style.getPropertyValue('scroll-behavior'), priority: document.documentElement.style.getPropertyPriority('scroll-behavior') });
+    window.__unitSelectionHits = [];
+    window.__recordUnitSelection = event => {
+      if (!armed) {
+        if (event.type === 'click' && event.isTrusted && event.target.closest('#returnToWorkout')) {
+          armed = true;
+          window.__unitSelectionBefore = { canonicalSets: structuredClone(state.activeWorkout.exercises.map(exercise => exercise.sets)), scrolling: scrolling() };
+        }
+        return;
+      }
+      const button = event.target.closest('[data-exercise-unit]');
+      const rect = button?.getBoundingClientRect();
+      window.__unitSelectionHits.push({ type: event.type, trusted: event.isTrusted, unit: button?.dataset.exerciseUnit || null, index: button?.dataset.ei || null,
+        inside: Boolean(rect && event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom) });
+    };
+    window.addEventListener('pointerdown', window.__recordUnitSelection, true);
+    window.addEventListener('click', window.__recordUnitSelection, true);
+  });
   await page.getByRole('button', { name: 'Return to workout' }).click();
   await chooseExerciseUnit(page, 'lb');
+  const selection = await page.evaluate(() => {
+    window.removeEventListener('pointerdown', window.__recordUnitSelection, true);
+    window.removeEventListener('click', window.__recordUnitSelection, true);
+    return { hits: window.__unitSelectionHits, before: window.__unitSelectionBefore,
+      scrolling: { computed: getComputedStyle(document.documentElement).scrollBehavior,
+        value: document.documentElement.style.getPropertyValue('scroll-behavior'), priority: document.documentElement.style.getPropertyPriority('scroll-behavior') } };
+  });
+  expect(selection.hits).toEqual([
+    { type: 'pointerdown', trusted: true, unit: 'lb', index: '0', inside: true },
+    { type: 'click', trusted: true, unit: 'lb', index: '0', inside: true }
+  ]);
+  expect(selection.scrolling).toEqual(selection.before.scrolling);
+  const selected = await readStoredJson(page, STORAGE_KEYS.jorge);
+  expect(selected.activeWorkout.exercises[0].displayUnitOverride).toBe('lb');
+  expect(selected.activeWorkout.exercises.map(exercise => exercise.sets)).toEqual(selection.before.canonicalSets);
+  expect(selected.unitPreferences).toEqual(unitPreference('kg'));
+  expect(selected.workouts).toEqual(stored.workouts);
   expect(await page.evaluate(() => workoutSessionController.discard())).toBe(true);
   stored = await readStoredJson(page, STORAGE_KEYS.jorge);
   expect(stored.activeWorkout).toBeNull();
