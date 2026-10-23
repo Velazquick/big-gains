@@ -26,9 +26,6 @@ const test = outageTest.extend({
     });
   }
 });
-// Preserve successful native lifecycle evidence as well as failures for this corpus.
-test.use({ trace: 'on' });
-
 const authUserId = '92000000-0000-0000-0000-000000000002';
 const ownerUserId = '91000000-0000-0000-0000-000000000001';
 const accountId = '91a00000-0000-0000-0000-000000000001';
