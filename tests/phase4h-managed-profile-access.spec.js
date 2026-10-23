@@ -3,11 +3,16 @@ import { createHash } from 'node:crypto';
 import { expect } from '@playwright/test';
 import { test as outageTest } from './helpers/network-outage.js';
 import { nativeMockHttp } from './helpers/native-mock-http.js';
+import { installNativeWorkerObservation } from './helpers/native-worker-observation.js';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp, reloadApp } from './helpers/app.js';
 import { recoveryResponseGate, observeRestorationThenReady } from './helpers/recovery.js';
 const transports = new WeakMap();
 const test = outageTest.extend({
+  nativeWorkerObservation: [async ({ page, context, browser, browserName, appTransport, cloudTransport }, use, testInfo) => {
+    const observation = await installNativeWorkerObservation({ page, context, browser, browserName, appTransport }, testInfo);
+    try { await use(); } finally { await observation.finish(); }
+  }, { auto: true }],
   cloudTransport: [async ({ page }, use) => {
     const transport = await nativeMockHttp();
     transports.set(page, transport);
@@ -21,6 +26,8 @@ const test = outageTest.extend({
     });
   }
 });
+// Preserve successful native lifecycle evidence as well as failures for this corpus.
+test.use({ trace: 'on' });
 
 const authUserId = '92000000-0000-0000-0000-000000000002';
 const ownerUserId = '91000000-0000-0000-0000-000000000001';
@@ -335,10 +342,17 @@ test('fresh managed member restores exact Alexa schema v5, adopts a zero-queue b
   expect(cloud.applicationWrites).toEqual([]);
 
   await page.evaluate(async () => {
+    globalThis.__bgWorkerWaitMark?.('entered');
     await navigator.serviceWorker.ready;
+    globalThis.__bgWorkerWaitMark?.('ready-resolved');
     if (!navigator.serviceWorker.controller) {
-      await new Promise(resolve => navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true }));
+      await new Promise(resolve => {
+        navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true });
+        globalThis.__bgWorkerWaitMark?.('controller-subscribed');
+      });
+      globalThis.__bgWorkerWaitMark?.('controller-resolved');
     }
+    globalThis.__bgWorkerWaitMark?.('complete');
   });
   await setAppNetworkUnavailable(true);
   await reloadApp(page, { waitUntil: 'domcontentloaded' });

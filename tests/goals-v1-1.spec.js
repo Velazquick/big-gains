@@ -4,6 +4,17 @@ import { clickCentered, openApp, switchProfile } from './helpers/app.js';
 
 const BENCH = 'fe9b24dd-e6db-41d3-9395-596830a0a37a';
 const NOW = '2026-08-19T16:00:00.000Z';
+const PERMANENT_DELETE = 'Goals v1.1: permanent delete confirms, removes only the past goal, and survives preferences reload';
+
+test.afterEach(async ({ page }, testInfo) => {
+  if (testInfo.title !== PERMANENT_DELETE || testInfo.status === 'passed') return;
+  let evidence;
+  try { evidence = await page.evaluate(() => window.__goalDisclosurePointerEvidence ?? null); }
+  catch (error) { evidence = { snapshotUnavailable: String(error) }; }
+  if (evidence) await testInfo.attach('goals-disclosure-failed-native-hits', {
+    body: Buffer.from(JSON.stringify(evidence, null, 2)), contentType: 'application/json'
+  });
+});
 
 function historyExercise({ id = 'barbell-bench-press', definitionId = BENCH, canonicalId = null, name = 'Barbell Bench Press', load = 215, reps = [5, 5, 5, 5, 5] } = {}) {
   return {
@@ -48,7 +59,7 @@ async function configureGuidedBench(page, { workouts, target = 315, targetDate =
   }, { workouts, target, targetDate, routineDay, workingSets, bench: BENCH });
 }
 
-test('Goals v1.1: permanent delete confirms, removes only the past goal, and survives preferences reload', async ({ page }) => {
+test(PERMANENT_DELETE, async ({ page }, testInfo) => {
   await setup(page);
   const keepWorkout = workout(historyExercise(), { id: 'keep-workout' });
   const before = await page.evaluate(({ bench, keepWorkout }) => {
@@ -60,7 +71,30 @@ test('Goals v1.1: permanent delete confirms, removes only the past goal, and sur
     return structuredClone({ workouts: state.workouts, routines: state.customRoutines });
   }, { bench: BENCH, keepWorkout });
 
-  await page.locator('#pastGoalsSection summary').click();
+  await page.evaluate(() => {
+    window.__goalDisclosurePointerEvidence = [];
+    const capture = event => {
+      const target = event.target?.closest?.('#pastGoalsSection summary, #pastGoalsList [data-goal-action="delete"]');
+      const rect = target?.getBoundingClientRect();
+      window.__goalDisclosurePointerEvidence.push({
+        type: event.type, trusted: event.isTrusted,
+        kind: target?.matches('summary') ? 'summary' : target ? 'delete' : 'other',
+        inside: Boolean(rect && event.clientX >= rect.left && event.clientX <= rect.right
+          && event.clientY >= rect.top && event.clientY <= rect.bottom),
+        x: event.clientX, y: event.clientY,
+        rect: rect ? { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom } : null,
+        path: event.composedPath().slice(0, 6).map(node => ({ tag: node.tagName ?? null, id: node.id ?? null })),
+        openBeforeDefault: document.querySelector('#pastGoalsSection').open,
+        profile: document.documentElement.dataset.profile
+      });
+    };
+    window.__stopGoalDisclosurePointerEvidence = () => {
+      for (const type of ['pointerdown', 'click']) document.removeEventListener(type, capture, true);
+    };
+    for (const type of ['pointerdown', 'click']) document.addEventListener(type, capture, true);
+  });
+  await clickCentered(page.locator('#pastGoalsSection summary'));
+  await expect(page.locator('#pastGoalsSection')).toHaveAttribute('open', '');
   await expect(page.locator('#pastGoalsList [data-goal-action="delete"]')).toHaveText('Delete permanently');
   page.once('dialog', dialog => dialog.dismiss());
   await page.locator('#pastGoalsList [data-goal-action="delete"]').click();
@@ -79,6 +113,18 @@ test('Goals v1.1: permanent delete confirms, removes only the past goal, and sur
   expect(stored.goals.strengthGoals).toEqual([]);
   const shadow = await page.evaluate(async () => (await BigGainsCloudShadow.localRecords('jorge', state)).find(record => record.clientId === 'goals'));
   expect(shadow.data.strengthGoals).toEqual([]);
+  const hits = await page.evaluate(() => {
+    window.__stopGoalDisclosurePointerEvidence();
+    return window.__goalDisclosurePointerEvidence;
+  });
+  await testInfo.attach('goals-disclosure-native-hits', {
+    body: Buffer.from(JSON.stringify(hits, null, 2)), contentType: 'application/json'
+  });
+  expect(hits.map(({ type, trusted, kind, inside, profile }) => ({ type, trusted, kind, inside, profile }))).toEqual(
+    ['summary', 'delete', 'delete'].flatMap(kind => ['pointerdown', 'click'].map(type => ({
+      type, trusted: true, kind, inside: true, profile: 'jorge'
+    })))
+  );
   await page.reload();
   await expect(page.locator('#todayGoalsHeadline')).toHaveText('Set a strength goal');
 });

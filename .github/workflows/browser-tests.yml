@@ -28,6 +28,11 @@ jobs:
       - name: Check current release references before browser validation
         run: npm run check:release && npm run test:release
       - run: npx playwright install --with-deps webkit
+      - name: Capture native process inventory before WebKit
+        run: |
+          mkdir -p native-process-observation
+          node --version > native-process-observation/node-version.txt
+          ps -Ao pid,ppid,stat,comm > native-process-observation/before.txt
       - name: Verify mobile update, custom-domain, Auth and recovery in WebKit
         env:
           BIG_GAINS_WEBKIT_QA: 'true'
@@ -39,6 +44,9 @@ jobs:
           PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-pwa-repeat
         run: |
           npx playwright test --project=webkit --output=test-results-pwa-repeat tests/pwa-update.spec.js --grep 'real waiting worker: idle approval|new shell with older worker' --repeat-each=10
+      - name: Capture native process inventory after WebKit
+        if: always()
+        run: ps -Ao pid,ppid,stat,comm > native-process-observation/after.txt
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -46,6 +54,7 @@ jobs:
           path: |
             playwright-report-webkit/
             playwright-report-pwa-repeat/
+            native-process-observation/
           if-no-files-found: ignore
           retention-days: 7
 
