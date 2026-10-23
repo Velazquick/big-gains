@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { extname } from 'node:path';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { createSyncSafetyFixture } from './helpers/sync-safety.mjs';
-import { waitForAppRuntime } from './helpers/app.js';
+import { clickCentered, waitForAppRuntime } from './helpers/app.js';
 
 const RELEASE = 'v123-reliability-completion';
 const V103 = 'v103-rc-hardening-pass-1';
@@ -53,7 +53,15 @@ async function harness(browser, { legacy = false, pathPrefix = '' } = {}) {
   if (!legacy) await page.evaluate(() => bigGainsPwaUpdate.check(true));
   return { page, context, origin, deploy: value => { version = value; }, offline: value => { down = value; },
     redirect: value => { redirect = value; }, failWorker: value => { failWorker = value; },
-    close: async () => { await context.close(); await new Promise(resolve => server.close(resolve)); } };
+    close: async () => {
+      const errors = [];
+      try { await context.close(); } catch (error) { errors.push(error); }
+      try { server.closeAllConnections(); } catch (error) { errors.push(error); }
+      try { await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve())); }
+      catch (error) { errors.push(error); }
+      if (errors.length === 1) throw errors[0];
+      if (errors.length > 1) throw new AggregateError(errors, 'Context and owned server cleanup failed');
+    } };
 }
 async function controlled(page) {
   await page.evaluate(async () => {
@@ -392,15 +400,33 @@ test('durable queue drains and malformed records recover on the same visible ban
   } finally { await h.close(); }
 });
 
-test('Advanced diagnostics shows the live blocker in the actual Settings view', async ({ browser }) => {
+test('Advanced diagnostics shows the live blocker in the actual Settings view', async ({ browser }, info) => {
   const h = await harness(browser);
+  let inputEvidenceStarted = false, inputEvidenceAttached = false;
+  let failure;
   try {
     await offer(h);
     await h.page.locator('#pwaUpdateLater').click();
     await h.page.locator('.bottom-nav [data-view="more"]').click();
     await h.page.locator('#openSettings').click();
-    await h.page.locator('#advancedDiagnostics summary').evaluate(el => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
-    await h.page.locator('#advancedDiagnostics summary').click();
+    await h.page.evaluate(() => {
+      window.__pwaDisclosureHits = [];
+      const capture = event => {
+        const target = event.target?.closest?.('#advancedDiagnostics summary, #pwaCheckUpdate');
+        const rect = target?.getBoundingClientRect();
+        window.__pwaDisclosureHits.push({ type: event.type, trusted: event.isTrusted,
+          kind: target?.id === 'pwaCheckUpdate' ? 'check' : target ? 'summary' : 'other',
+          inside: Boolean(rect && event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom),
+          x: event.clientX, y: event.clientY, rect: rect ? { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom } : null,
+          path: event.composedPath().slice(0, 6).map(node => ({ tag: node.tagName ?? null, id: node.id ?? null })),
+          openBeforeDefault: document.querySelector('#advancedDiagnostics')?.open });
+      };
+      window.__stopPwaDisclosureHits = () => { for (const type of ['pointerdown', 'click']) document.removeEventListener(type, capture, true); };
+      for (const type of ['pointerdown', 'click']) document.addEventListener(type, capture, true);
+    });
+    inputEvidenceStarted = true;
+    await clickCentered(h.page.locator('#advancedDiagnostics summary'));
+    await expect(h.page.locator('#advancedDiagnostics')).toHaveAttribute('open', '');
     await h.page.locator('#pwaCheckUpdate').click();
     await expect(h.page.locator('#diagnosticUpdateBlocker')).toBeVisible();
     await expect(h.page.locator('#diagnosticUpdateBlocker')).toHaveText('Update safe');
@@ -410,5 +436,28 @@ test('Advanced diagnostics shows the live blocker in the actual Settings view', 
     await expect(h.page.locator('#pwaUpdateNow')).toBeDisabled();
     await h.page.evaluate(() => localStorage.setItem('big-gains-cloud-sync-queue-v1-proof', JSON.stringify({ version: 1, pending: [] })));
     await expect(h.page.locator('#pwaUpdateNow')).toBeEnabled();
-  } finally { await h.close(); }
+    const hits = await h.page.evaluate(() => { window.__stopPwaDisclosureHits(); return window.__pwaDisclosureHits; });
+    await info.attach('pwa-disclosure-native-hits', { contentType: 'application/json', body: Buffer.from(JSON.stringify(hits, null, 2)) });
+    inputEvidenceAttached = true;
+    expect(hits.map(({ type, trusted, kind, inside }) => ({ type, trusted, kind, inside }))).toEqual(
+      ['summary', 'check'].flatMap(kind => ['pointerdown', 'click'].map(type => ({ type, trusted: true, kind, inside: true }))));
+  } catch (error) { failure = error; throw error; } finally {
+    try {
+      if (inputEvidenceStarted && !inputEvidenceAttached) {
+        let hits;
+        try { hits = await h.page.evaluate(() => { window.__stopPwaDisclosureHits?.(); return window.__pwaDisclosureHits; }); }
+        catch (error) { hits = { snapshotUnavailable: String(error) }; }
+        await info.attach('pwa-disclosure-failed-native-hits', { contentType: 'application/json', body: Buffer.from(JSON.stringify(hits, null, 2)) });
+      }
+    } catch (error) {
+      failure = failure ? new AggregateError([failure, error], 'PWA assertion and evidence capture failed') : error;
+      throw failure;
+    } finally {
+      try { await h.close(); }
+      catch (error) {
+        if (failure) throw new AggregateError([failure, error], 'PWA assertion and owned cleanup failed');
+        throw error;
+      }
+    }
+  }
 });
