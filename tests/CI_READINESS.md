@@ -18,11 +18,23 @@ tests incidentally. Keep this split when adding coverage.
 | Writer-lock ownership or release | Lock-aware integrity tests must observe the actual same-name acquisition/release and reassert denied-document state before reload. Closing a page alone is not a release acknowledgment. Main has no writer-lock API; do not manufacture one in the harness. |
 
 Use `clickCentered` for a real click after an instant centered scroll, without
-forced pointer dispatch. History opening also asserts the visible dialog's exact
+forced pointer dispatch. Its original-document owned stylesheet keeps implicit
+framework retry scrolling instantaneous during that click, then is removed in
+finally. Explicit application smooth/instant scroll calls still run; visibility,
+stability, enabled, viewport and hit-target checks remain enabled. The helper
+does not change product CSS, inline styles, motion preferences or timeouts.
+History opening also asserts the visible dialog's exact
 workout ID. Exercise swapping with entered data asserts the actual `Sure?` and
 `is-confirming` state before the second real click; it never retries a failed
 click or opens a dialog through an application API. Existing durable facts,
 provenance, stale-callback and confirmation assertions remain mandatory.
+
+DOM/navigation completion and boot authorization alone do not promise feature
+globals. Await the existing interactive composition for the exact profile before
+ordinary feature access. Tests that require an optional feature assert its own
+capability after readiness; optional cloud failure must not become a universal
+blocker for local training. Actual owned-script insertion holds cover cloud
+reload and Goals/profile navigation, preserving both namespaces before release.
 
 Keep fresh browser contexts and worker isolation. Seed storage once per synthetic
 context, retain the seed marker across reloads, and combine dependent initialization

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openApp } from './helpers/app.js';
+import { openApp, reloadApp } from './helpers/app.js';
 import { blankState, completedWorkout, readStoredJson, STORAGE_KEYS } from './fixtures/local-storage.js';
 
 async function installState(page, value) {
@@ -184,7 +184,8 @@ test('delete confirms clearly, removes only the selected workout, and queues its
       migrationId: 'offline-delete-baseline', adoptedAt: '2026-08-05T12:00:00.000Z', profiles
     }));
   }, { alexaKey: STORAGE_KEYS.alexa, alexa: blankState('alexa') });
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  await reloadApp(page, { waitUntil: 'domcontentloaded', profileId: 'jorge' });
+  expect(await page.evaluate(() => typeof window.BigGainsCloudShadow?.localRecords)).toBe('function');
   const catalogDiagnostic = await page.evaluate(() => ({
     profileIds: BigGainsCloudShadow.profileIds,
     key: bigGainsAccounts.runtime.cloudKeys.catalog,
