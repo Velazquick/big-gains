@@ -3,8 +3,10 @@ import { clickCentered } from './app.js';
 
 export async function openHistory(page, view = 'list') {
   await page.locator('.bottom-nav [data-view="progress"]').click();
-  await page.locator('[data-open-history-archive]').first().click();
-  if (view === 'calendar') await page.locator('#historyCalendarTab').click();
+  await clickCentered(page.locator('[data-open-history-archive]').first());
+  await expect(page.locator('#historyArchiveDialog')).toBeVisible();
+  await expect(page.locator('body')).toHaveAttribute('data-route', 'history-list');
+  if (view === 'calendar') await clickCentered(page.locator('#historyCalendarTab'));
 }
 
 export async function openHistoryCalendar(page) {

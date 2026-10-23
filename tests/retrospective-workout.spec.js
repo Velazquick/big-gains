@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test';
 import { test } from './helpers/network-outage.js';
 import { activeWorkout, blankState, installLocalStorageFixture, readStoredJson, STORAGE_KEYS } from './fixtures/local-storage.js';
-import { openApp, switchProfile } from './helpers/app.js';
+import { clickCentered, openApp, switchProfile } from './helpers/app.js';
 import { openHistoryCalendar } from './helpers/history.js';
 
 test.use({ timezoneId: 'America/New_York' });
@@ -16,12 +16,12 @@ async function openCalendar(page, fixture = 'blankJorge') {
 }
 
 async function selectDate(page, dateKey) {
-  await page.locator(`[data-calendar-date="${dateKey}"]`).click();
+  await clickCentered(page.locator(`[data-calendar-date="${dateKey}"]`));
 }
 
 async function openEditor(page, dateKey) {
   await selectDate(page, dateKey);
-  await page.locator('#logRetrospectiveWorkout').click();
+  await clickCentered(page.locator('#logRetrospectiveWorkout'));
   await expect(page.locator('#retrospectiveDialog')).toBeVisible();
   await expect(page.locator('#retrospectiveTitle')).toBeFocused();
 }
@@ -240,9 +240,46 @@ test('cancel and reload discard only the draft while an active workout and retur
   }, { key: STORAGE_KEYS.jorge, value: { ...blankState('jorge'), activeWorkout: active } });
   await page.clock.setFixedTime(FIXED_NOW);
   await openApp(page);
+  await page.evaluate(() => {
+    let armed = false;
+    let navigationObserved = false;
+    window.retrospectiveHistoryOpenHits = [];
+    const record = event => {
+      if (!armed) return;
+      const button = document.querySelector('[data-open-history-archive]');
+      const rect = button?.getBoundingClientRect();
+      window.retrospectiveHistoryOpenHits.push({
+        type: event.type, trusted: event.isTrusted, hit: button?.contains(event.target) === true,
+        x: event.clientX, y: event.clientY,
+        rect: rect ? { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom } : null
+      });
+      if (event.type === 'click') armed = false;
+    };
+    document.addEventListener('pointerdown', record, true);
+    document.addEventListener('click', event => {
+      if (!navigationObserved && event.isTrusted && event.target.closest?.('.bottom-nav [data-view="progress"]')) {
+        navigationObserved = true;
+        window.retrospectiveHistoryOpenHits = [];
+        armed = true;
+        return;
+      }
+      record(event);
+    }, true);
+  });
   await page.locator('#exitWorkoutMode').click();
   const petState = await page.locator('body').getAttribute('data-workout-pet-state');
   await openHistoryCalendar(page);
+  const historyHits = await page.evaluate(() => window.retrospectiveHistoryOpenHits);
+  expect(historyHits.map(hit => hit.type)).toEqual(['pointerdown', 'click']);
+  for (const hit of historyHits) {
+    expect(hit.trusted).toBe(true);
+    expect(hit.hit).toBe(true);
+    expect(hit.rect).not.toBeNull();
+    expect(hit.x).toBeGreaterThanOrEqual(hit.rect.left);
+    expect(hit.x).toBeLessThanOrEqual(hit.rect.right);
+    expect(hit.y).toBeGreaterThanOrEqual(hit.rect.top);
+    expect(hit.y).toBeLessThanOrEqual(hit.rect.bottom);
+  }
   await openEditor(page, '2026-08-03');
   await completeFirstWorkingSet(page);
   await page.locator('#cancelRetrospectiveWorkout').click();
