@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { blankState, installLocalStorageFixture, STORAGE_KEYS, readStoredJson } from './fixtures/local-storage.js';
-import { openApp, openExerciseOptions, openExerciseSwap, reloadApp, waitForAppRuntime } from './helpers/app.js';
+import { clickCentered, openApp, openExerciseOptions, openExerciseSwap, reloadApp, waitForAppRuntime } from './helpers/app.js';
 
 const NOW = '2026-09-10T12:00:00.000Z';
 const DAY = 86400000;
@@ -23,6 +23,13 @@ async function seed(page,state=historyState(),readiness={}) {
 }
 async function progress(page) {await page.evaluate(()=>bigGainsViewShell.showView('progress',{workout:false}));}
 
+test.afterEach(async ({page},info)=>{
+  if(!info.title.startsWith('Body Map ')||!info.title.includes('six live Appearance')||info.status==='passed')return;
+  let evidence;
+  try{evidence=await page.evaluate(()=>window.__bodyMapPointerEvidence??null);}catch(error){evidence={snapshotUnavailable:String(error)};}
+  if(evidence)await info.attach('body-map-failed-native-hits',{contentType:'application/json',body:Buffer.from(JSON.stringify(evidence,null,2))});
+});
+
 for (const profile of ['jorge','alexa']) test(`Body Map ${profile}: six live Appearance accents, readable counts and mobile layout`,async({page},info)=>{
   await page.setViewportSize({width:390,height:844});
   await seed(page);
@@ -31,10 +38,26 @@ for (const profile of ['jorge','alexa']) test(`Body Map ${profile}: six live App
     await page.reload(); await waitForAppRuntime(page);
   }
   await progress(page);
+  await page.evaluate(()=>{
+    window.__bodyMapPointerEvidence=[];
+    const capture=event=>{
+      const target=event.target?.closest?.('.muscle-region-list [data-muscle-key="Shoulders"], button[data-anatomy-view="back"]');
+      const rect=target?.getBoundingClientRect();
+      window.__bodyMapPointerEvidence.push({type:event.type,trusted:event.isTrusted,
+        kind:target?.matches('[data-anatomy-view="back"]')?'back':target?'shoulders':'other',
+        inside:Boolean(rect&&event.clientX>=rect.left&&event.clientX<=rect.right&&event.clientY>=rect.top&&event.clientY<=rect.bottom),
+        x:event.clientX,y:event.clientY,rect:rect?{left:rect.left,top:rect.top,right:rect.right,bottom:rect.bottom}:null,
+        path:event.composedPath().slice(0,6).map(node=>({tag:node.tagName??null,id:node.id??null})),
+        selectedBeforeDefault:target?.getAttribute('aria-pressed')??null,profile:document.documentElement.dataset.profile});
+    };
+    window.__stopBodyMapPointerEvidence=()=>{for(const type of ['pointerdown','click'])document.removeEventListener(type,capture,true);};
+    for(const type of ['pointerdown','click'])document.addEventListener(type,capture,true);
+  });
   const fills=[];
   for(const accent of ['volt','cobalt','merlot','rose','violet','ember']) {
     await page.evaluate(a=>BigGainsAppearance.select(a),accent);
-    await page.locator('.muscle-region-list [data-muscle-key="Shoulders"]').click();
+    await clickCentered(page.locator('.muscle-region-list [data-muscle-key="Shoulders"]'));
+    await expect(page.locator('.muscle-region-list [data-muscle-key="Shoulders"]')).toHaveAttribute('aria-pressed','true');
     fills.push(await page.locator('g[data-muscle-key="Shoulders"] path').first().evaluate(e=>getComputedStyle(e).fill));
     await expect(page.locator('#progressMuscleDetail .muscle-detail-head>strong')).toHaveText('7 sets');
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
@@ -42,7 +65,13 @@ for (const profile of ['jorge','alexa']) test(`Body Map ${profile}: six live App
   }
   expect(new Set(fills).size).toBe(6);
   await page.getByRole('button',{name:'Back',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Back',exact:true})).toHaveAttribute('aria-pressed','true');
   await page.locator('.body-map-v2').screenshot({path:info.outputPath(`${profile}-back.png`),style:'.bottom-nav{visibility:hidden!important}'});
+  const hits=await page.evaluate(()=>{window.__stopBodyMapPointerEvidence();return window.__bodyMapPointerEvidence;});
+  await info.attach('body-map-native-hits',{contentType:'application/json',body:Buffer.from(JSON.stringify(hits,null,2))});
+  expect(hits.map(({type,trusted,kind,inside,profile})=>({type,trusted,kind,inside,profile}))).toEqual(
+    [...Array(6).fill('shoulders'),'back'].flatMap(kind=>['pointerdown','click'].map(type=>({type,trusted:true,kind,inside:true,profile})))
+  );
 });
 
 test('Body Map owns exact completed windows, primary sets, canonical contributors and drill-in without changing History',async({page})=>{

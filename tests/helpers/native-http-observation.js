@@ -10,7 +10,7 @@ export function nativeHttpObservationPort() {
     if (!enabled) return;
     const row = { event, epoch: Date.now(), ...detail };
     records.push(row);
-    const critical = event.startsWith('server-') || event === 'native-http-subscriber-installed'
+    const critical = event.startsWith('server-') || event.startsWith('worker-stage') || event === 'native-http-subscriber-installed'
       || event === 'outage-state' || event === 'request-aborted' || event === 'original-server-catch'
       || event === 'response-closed' && !row.writableFinished
       || ['/service-worker.js', '/', '/index.html'].includes(row.pathname);

@@ -35,7 +35,8 @@ export async function installNativeWorkerObservation({ page, context, browser, b
     workerIndex: testInfo.workerIndex, parallelIndex: testInfo.parallelIndex, retry: testInfo.retry,
     timeout: testInfo.timeout, configuredWorkers: testInfo.config.workers,
     contextPages: context.pages().length, browserConnected: browser.isConnected(),
-    reuseContextEnvironmentPresent: Boolean(process.env.PW_TEST_REUSE_CONTEXT)
+    reuseContextEnvironmentPresent: Boolean(process.env.PW_TEST_REUSE_CONTEXT),
+    workerStageMode: appTransport?.workerStageMode?.() ?? { requested: process.env.BIG_GAINS_NATIVE_WORKER_STAGE_DIAGNOSTICS === 'true', enabled: false, transport: 'original-static-server' }
   });
   listen(browser, 'disconnected', () => nodeRecord('browser-disconnected'));
   listen(context, 'close', () => nodeRecord('context-close'));
@@ -148,7 +149,8 @@ export async function installNativeWorkerObservation({ page, context, browser, b
   return {
     async finish() {
       nodeRecord('observation-end', { status: testInfo.status, expectedStatus: testInfo.expectedStatus,
-        browserConnected: browser.isConnected(), pageClosed: page.isClosed(), contextPages: context.pages().length });
+        browserConnected: browser.isConnected(), pageClosed: page.isClosed(), contextPages: context.pages().length,
+        workerStageMode: appTransport?.workerStageMode?.() ?? { requested: process.env.BIG_GAINS_NATIVE_WORKER_STAGE_DIAGNOSTICS === 'true', enabled: false, transport: 'original-static-server' } });
       for (const off of cleanup.reverse()) off();
       // No new page evaluation, worker-state wait, timer or readiness gate here.
       await testInfo.attach('native-worker-observation', { contentType: 'application/json', body: Buffer.from(JSON.stringify({ records }, null, 2)) });
