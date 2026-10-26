@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { activeWorkout, blankState, completedWorkout, installLocalStorageFixture, readStoredJson, STORAGE_KEYS } from './fixtures/local-storage.js';
-import { openApp } from './helpers/app.js';
+import { openApp, reloadApp } from './helpers/app.js';
 
 const ZERO_COUNTS = Object.freeze({
   workouts: 0,
@@ -50,9 +50,14 @@ async function build(page, snapshots = localSnapshots(), remote = remoteFixture(
   }), { snapshots, remote, options });
 }
 
+async function expectPreviewCapability(page) {
+  expect(await page.evaluate(() => typeof window.BigGainsMigrationPreview?.buildPreview)).toBe('function');
+}
+
 test.beforeEach(async ({ page }) => {
   await installLocalStorageFixture(page, ['blankJorge', 'blankAlexa'], { activeProfile: 'jorge' });
   await openApp(page);
+  await expectPreviewCapability(page);
 });
 
 test('maps synthetic Jorge and Alexa profiles to one signed-in account and becomes ready', async ({ page }) => {
@@ -156,7 +161,8 @@ test('canonical SHA-256 is stable across object key order, line endings, and pre
 test('checksum is stable across reloads', async ({ page }) => {
   const snapshots = localSnapshots({ jorge: { workouts: [completedWorkout()] } });
   const before = await build(page, snapshots);
-  await page.reload();
+  await reloadApp(page, { profileId: 'jorge' });
+  await expectPreviewCapability(page);
   const after = await build(page, snapshots);
 
   expect(after.profiles.jorge.checksum).toBe(before.profiles.jorge.checksum);
