@@ -1,0 +1,41 @@
+name: PR130 corrected download pilot
+on:
+  push:
+    branches: [diagnostics-pr130-download-20261028]
+    paths: ['scripts/controlled/**', '.github/workflows/pr130-download-pilot.yml']
+permissions:
+  contents: read
+jobs:
+  download:
+    runs-on: macos-15-intel
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps webkit
+      - name: Record environment and bytes
+        run: |
+          mkdir -p controlled-evidence
+          git rev-parse HEAD > controlled-evidence/source-sha.txt
+          uname -a > controlled-evidence/uname.txt
+          sw_vers > controlled-evidence/sw-vers.txt
+          cp package-lock.json controlled-evidence/package-lock.json
+          cp node_modules/playwright-core/browsers.json controlled-evidence/browsers.json
+          find "$HOME/Library/Caches/ms-playwright" -type f -perm +111 -exec shasum -a 256 {} \; > controlled-evidence/binary-sha256.txt
+      - name: Original native test, alternating observers, fresh browser each execution
+        env:
+          DEBUG: pw:browser
+        run: node scripts/controlled/download-pilot.mjs > controlled-evidence/b1-runner.log 2>&1
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: controlled-b1-corrected
+          path: controlled-evidence/
+          retention-days: 30
+          if-no-files-found: error
