@@ -43,3 +43,117 @@ jobs:
           path: final-evidence/
           retention-days: 30
           if-no-files-found: error
+  download-sequence:
+    if: contains(github.event.head_commit.message, 'diag:B')
+    runs-on: macos-15-intel
+    timeout-minutes: 26
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps webkit
+      - name: Bind unchanged original source and native runner
+        run: |
+          mkdir -p final-evidence/B
+          git rev-parse HEAD > final-evidence/source-sha.txt
+          git diff --exit-code 070f4b6215481f965375226af4df2b46357a93eb -- . ':!scripts/final-diagnostic/**' ':!.github/workflows/pr130-final-diagnostic.yml'
+          sw_vers > final-evidence/B/sw-vers.txt
+          uname -a > final-evidence/B/uname.txt
+          cp node_modules/playwright-core/browsers.json final-evidence/B/browsers.json
+          find "$HOME/Library/Caches/ms-playwright" -type f -name MiniBrowser -exec shasum -a 256 {} \; > final-evidence/B/browser-sha256.txt
+      - name: One measured original-order recovery-download replay
+        run: node scripts/final-diagnostic/webkit-sequence.mjs > final-evidence/B/driver.log 2>&1
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: pr130-final-download-sequence
+          path: final-evidence/
+          retention-days: 30
+          if-no-files-found: error
+  resilience-pilot:
+    if: contains(github.event.head_commit.message, 'diag:Cpilot')
+    runs-on: macos-15-intel
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps webkit
+      - name: Bind exact app and authentic old worker
+        run: |
+          mkdir -p controlled-v122 final-evidence/C
+          git archive 4565a9d3c0be8be3898160a3134695016ec53d92 | tar -x -C controlled-v122
+          git rev-parse HEAD > final-evidence/source-sha.txt
+          git diff --exit-code 070f4b6215481f965375226af4df2b46357a93eb -- . ':!scripts/final-diagnostic/**' ':!.github/workflows/pr130-final-diagnostic.yml'
+          sw_vers > final-evidence/C/sw-vers.txt
+          uname -a > final-evidence/C/uname.txt
+          cp node_modules/playwright-core/browsers.json final-evidence/C/browsers.json
+          shasum -a 256 controlled-v122/service-worker.js service-worker.js > final-evidence/C/worker-sha256.txt
+          find "$HOME/Library/Caches/ms-playwright" -type f -name MiniBrowser -exec shasum -a 256 {} \; > final-evidence/C/browser-sha256.txt
+      - name: One repaired selection, initial and update interruption
+        env:
+          DEBUG: pw:browser
+          DIAG_ENGINE: webkit
+        run: node scripts/final-diagnostic/resilience.mjs > final-evidence/C/runner.log 2>&1
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: pr130-final-resilience-pilot
+          path: final-evidence/
+          retention-days: 30
+          if-no-files-found: error
+  resilience-controls:
+    if: contains(github.event.head_commit.message, 'diag:Ccontrols')
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: macos-15
+            engine: webkit
+          - os: ubuntu-26.04
+            engine: chromium
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps ${{ matrix.engine }}
+      - name: Bind exact app and authentic old worker
+        run: |
+          mkdir -p controlled-v122 final-evidence/C
+          git archive 4565a9d3c0be8be3898160a3134695016ec53d92 | tar -x -C controlled-v122
+          git rev-parse HEAD > final-evidence/source-sha.txt
+          git diff --exit-code 070f4b6215481f965375226af4df2b46357a93eb -- . ':!scripts/final-diagnostic/**' ':!.github/workflows/pr130-final-diagnostic.yml'
+          uname -a > final-evidence/C/uname.txt
+          if command -v sw_vers >/dev/null 2>&1; then sw_vers > final-evidence/C/sw-vers.txt; else ldd --version > final-evidence/C/glibc.txt; fi
+          cp node_modules/playwright-core/browsers.json final-evidence/C/browsers.json
+          shasum -a 256 controlled-v122/service-worker.js service-worker.js > final-evidence/C/worker-sha256.txt
+          if [ '${{ matrix.engine }}' = webkit ]; then find "$HOME/Library/Caches/ms-playwright" -type f -name MiniBrowser -exec shasum -a 256 {} \; > final-evidence/C/browser-sha256.txt; else find "$HOME/.cache/ms-playwright" -type f -name chrome-headless-shell -exec sha256sum {} \; > final-evidence/C/browser-sha256.txt; fi
+      - name: Same repaired initial and update selection
+        env:
+          DEBUG: pw:browser
+          DIAG_ENGINE: ${{ matrix.engine }}
+        run: node scripts/final-diagnostic/resilience.mjs > final-evidence/C/runner.log 2>&1
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: pr130-final-resilience-${{ matrix.os }}-${{ matrix.engine }}
+          path: final-evidence/
+          retention-days: 30
+          if-no-files-found: error
