@@ -1,0 +1,41 @@
+name: PR130 WebKit independent durable reopen observation
+on:
+  push:
+    branches: [diagnostics-pr130-webkit-reopen-20261028]
+    paths: ['scripts/controlled/c1-webkit-reopen-once.mjs', '.github/workflows/pr130-webkit-reopen-once.yml']
+permissions:
+  contents: read
+jobs:
+  reopen:
+    runs-on: macos-15-intel
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps webkit
+      - name: Preserve source and toolchain
+        run: |
+          mkdir -p controlled-v122 controlled-evidence
+          git archive 4565a9d3c0be8be3898160a3134695016ec53d92 | tar -x -C controlled-v122
+          git rev-parse HEAD > controlled-evidence/source-sha.txt
+          uname -a > controlled-evidence/uname.txt
+          cp node_modules/playwright-core/browsers.json controlled-evidence/browsers.json
+          cp package-lock.json controlled-evidence/package-lock.json
+      - name: One initial-install cell, native durable snapshots before scripts load
+        env:
+          DIAG_ENGINE: webkit
+          DEBUG: pw:browser
+        run: node scripts/controlled/c1-webkit-reopen-once.mjs > controlled-evidence/c1-reopen-once.log 2>&1
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: controlled-webkit-reopen-once
+          path: controlled-evidence/
+          retention-days: 30
+          if-no-files-found: error
