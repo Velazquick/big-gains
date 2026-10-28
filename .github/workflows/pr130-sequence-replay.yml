@@ -1,0 +1,85 @@
+name: PR130 bounded original Chromium sequence replay
+on:
+  push:
+    branches: [diagnostics-pr130-sequence-20261028]
+    paths: ['.github/workflows/pr130-sequence-replay.yml']
+permissions:
+  contents: read
+jobs:
+  original-sequence:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-26.04]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 80
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Bind original sequence, source and native toolchain
+        run: |
+          mkdir -p sequence-evidence
+          git rev-parse HEAD > sequence-evidence/source-sha.txt
+          git diff 732973ee4409f6586e928baab39b14599cd6d789 --name-only > sequence-evidence/changed-paths.txt
+          git diff --exit-code 732973ee4409f6586e928baab39b14599cd6d789 -- '*.js' '*.cjs' '*.mjs' '*.sql' 'package*.json' 'playwright.config.js' 'tests/' ':!scripts/controlled/**'
+          npx playwright test --project=chromium --list > sequence-evidence/collection.txt
+          tail -n 1 sequence-evidence/collection.txt | grep '^Total: 780 tests in 87 files$'
+          uname -a > sequence-evidence/uname.txt
+          ldd --version > sequence-evidence/glibc.txt
+          node --version > sequence-evidence/node-version.txt
+          cp node_modules/playwright-core/browsers.json sequence-evidence/browsers.json
+          cp package-lock.json sequence-evidence/package-lock.json
+          find "$HOME/.cache/ms-playwright" -type f -name chrome-headless-shell -exec sha256sum {} \; > sequence-evidence/executable-sha256.txt
+          native_shell=$(find "$HOME/.cache/ms-playwright" -type f -name chrome-headless-shell -print -quit)
+          ldd "$native_shell" > sequence-evidence/shared-libraries.txt
+          awk '/=> \// {print $3} /^[[:space:]]*\// {print $1}' sequence-evidence/shared-libraries.txt | xargs -r sha256sum > sequence-evidence/library-sha256.txt
+          readelf --sections "$native_shell" > sequence-evidence/executable-sections.txt
+          readelf --notes "$native_shell" > sequence-evidence/executable-notes.txt
+          python3 --version > sequence-evidence/python-version.txt
+          ulimit -a > sequence-evidence/ulimits.txt
+          cat /proc/sys/kernel/core_pattern > sequence-evidence/core-pattern.txt
+      - name: One original collection, API/protocol receipts and external resource samples
+        env:
+          DEBUG: pw:browser,pw:api,pw:protocol
+        run: |
+          ulimit -c unlimited
+          export DIAG_BROWSER_BINARY=$(find "$HOME/.cache/ms-playwright" -type f -name chrome-headless-shell -print -quit)
+          python3 scripts/controlled/linux-resource-sampler.py > sequence-evidence/resources.ndjson 2>sequence-evidence/resource-observer-errors.txt &
+          monitor_pid=$!
+          trap 'kill "$monitor_pid" 2>/dev/null || true' EXIT
+          set +e
+          npx playwright test --project=chromium --output=sequence-evidence/test-results > sequence-evidence/runner.log 2>&1
+          result=$?
+          set -e
+          echo "$result" > sequence-evidence/exit-status.txt
+          exit "$result"
+      - name: Preserve actual core candidates and process inventory
+        if: always()
+        run: |
+          ps -Ao pid,ppid,stat,comm > sequence-evidence/processes-after.txt
+          mkdir -p sequence-evidence/dumps
+          find . -maxdepth 2 -type f \( -name core -o -name 'core.[0-9]*' -o -name '*.dmp' \) -print > sequence-evidence/core-candidates.txt
+          while IFS= read -r candidate; do
+            cp "$candidate" sequence-evidence/dumps/
+          done < sequence-evidence/core-candidates.txt
+          if command -v coredumpctl >/dev/null 2>&1; then
+            coredumpctl --help > sequence-evidence/coredumpctl-help.txt 2>&1
+            coredumpctl --no-pager list > sequence-evidence/coredumpctl-list.txt 2>&1 || true
+          fi
+          python3 scripts/controlled/extract-owned-coredumps.py
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: controlled-sequence-${{ matrix.runner }}
+          path: |
+            sequence-evidence/
+            playwright-report/
+          retention-days: 30
+          if-no-files-found: error
