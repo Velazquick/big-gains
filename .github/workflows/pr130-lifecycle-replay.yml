@@ -1,0 +1,80 @@
+name: PR130 final bounded Chromium lifecycle replay
+on:
+  push:
+    branches: [diagnostics-pr130-lifecycle-20261028]
+    paths: ['scripts/controlled/context-observer.cjs', '.github/workflows/pr130-lifecycle-replay.yml']
+permissions:
+  contents: read
+jobs:
+  lifecycle:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Bind original cases and native toolchain
+        run: |
+          mkdir -p lifecycle-evidence sequence-evidence
+          git rev-parse HEAD > lifecycle-evidence/source-sha.txt
+          git diff --exit-code 732973ee4409f6586e928baab39b14599cd6d789 -- '*.js' '*.cjs' '*.mjs' '*.sql' 'package*.json' 'playwright.config.js' 'tests/' ':!scripts/controlled/**'
+          npx playwright test --project=chromium --list > lifecycle-evidence/collection.txt
+          tail -n 1 lifecycle-evidence/collection.txt | grep '^Total: 780 tests in 87 files$'
+          uname -a > lifecycle-evidence/uname.txt
+          ldd --version > lifecycle-evidence/glibc.txt
+          cp package-lock.json lifecycle-evidence/package-lock.json
+          cp node_modules/playwright-core/browsers.json lifecycle-evidence/browsers.json
+          find "$HOME/.cache/ms-playwright" -type f -name chrome-headless-shell -exec sha256sum {} \; > lifecycle-evidence/executable-sha256.txt
+          native_shell=$(find "$HOME/.cache/ms-playwright" -type f -name chrome-headless-shell -print -quit)
+          ldd "$native_shell" > lifecycle-evidence/shared-libraries.txt
+          awk '/=> \// {print $3} /^[[:space:]]*\// {print $1}' lifecycle-evidence/shared-libraries.txt | xargs -r sha256sum > lifecycle-evidence/library-sha256.txt
+          readelf --sections "$native_shell" > lifecycle-evidence/executable-sections.txt
+          readelf --notes "$native_shell" > lifecycle-evidence/executable-notes.txt
+          cat /proc/sys/kernel/core_pattern > lifecycle-evidence/core-pattern.txt
+      - name: Third replay, small lifecycle ledger and native stderr
+        env:
+          DEBUG: pw:browser
+          NODE_OPTIONS: --require ./scripts/controlled/context-observer.cjs
+          DIAG_CONTEXT_LEDGER: lifecycle-evidence/context-events.ndjson
+        run: |
+          ulimit -c unlimited
+          native_shell=$(find "$HOME/.cache/ms-playwright" -type f -name chrome-headless-shell -print -quit)
+          export DIAG_BROWSER_BINARY="$native_shell"
+          python3 scripts/controlled/linux-resource-sampler.py > lifecycle-evidence/resources.ndjson 2>lifecycle-evidence/resource-observer-errors.txt &
+          monitor_pid=$!
+          trap 'kill "$monitor_pid" 2>/dev/null || true' EXIT
+          set +e
+          node node_modules/@playwright/test/cli.js test --project=chromium --output=lifecycle-evidence/test-results > lifecycle-evidence/runner.log 2>&1
+          result=$?
+          set -e
+          echo "$result" > lifecycle-evidence/exit-status.txt
+          # Preserve observer failures without replacing the original CLI result.
+          if grep -q DIAG_OBSERVER_ERROR lifecycle-evidence/runner.log; then echo INCOMPLETE_OBSERVER > lifecycle-evidence/observer-status.txt; fi
+          exit "$result"
+      - name: Preserve bounded native dump extraction
+        if: always()
+        run: |
+          cp lifecycle-evidence/runner.log sequence-evidence/runner.log
+          cp lifecycle-evidence/executable-sha256.txt sequence-evidence/executable-sha256.txt
+          mkdir -p sequence-evidence/dumps
+          if command -v coredumpctl >/dev/null 2>&1; then coredumpctl --no-pager list > sequence-evidence/coredumpctl-list.txt 2>&1 || true; fi
+          python3 scripts/controlled/extract-owned-coredumps.py
+          ps -Ao pid,ppid,stat,comm > lifecycle-evidence/processes-after.txt
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: controlled-lifecycle-final
+          path: |
+            lifecycle-evidence/
+            sequence-evidence/coredump*
+            sequence-evidence/gdb*
+            sequence-evidence/dumps/
+            playwright-report/
+          retention-days: 30
+          if-no-files-found: error
