@@ -1,0 +1,44 @@
+name: PR130 final finite diagnostic
+on:
+  push:
+    branches: [diagnostics-pr130-final-20261028]
+    paths: ['scripts/final-diagnostic/**', '.github/workflows/pr130-final-diagnostic.yml']
+permissions:
+  contents: read
+jobs:
+  fresh-files:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Bind immutable baseline and toolchain
+        run: |
+          mkdir -p final-evidence/A
+          git rev-parse HEAD > final-evidence/source-sha.txt
+          git diff --exit-code 070f4b6215481f965375226af4df2b46357a93eb -- . ':!scripts/final-diagnostic/**' ':!.github/workflows/pr130-final-diagnostic.yml'
+          uname -a > final-evidence/A/uname.txt
+          ldd --version > final-evidence/A/glibc.txt
+          cp node_modules/playwright-core/browsers.json final-evidence/A/browsers.json
+          native_shell=$(find "$HOME/.cache/ms-playwright" -type f -name chrome-headless-shell -print -quit)
+          sha256sum "$native_shell" > final-evidence/A/executable-sha256.txt
+          ldd "$native_shell" > final-evidence/A/libraries.txt
+          awk '/=> \// {print $3} /^[[:space:]]*\// {print $1}' final-evidence/A/libraries.txt | xargs -r sha256sum > final-evidence/A/library-sha256.txt
+      - name: Original assertions with fresh browser process per file
+        env:
+          CI: 'true'
+        run: node scripts/final-diagnostic/fresh-files.mjs > final-evidence/A/driver.log 2>&1
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: pr130-final-fresh-files
+          path: final-evidence/
+          retention-days: 30
+          if-no-files-found: error
