@@ -1,0 +1,47 @@
+name: PR130 page error attribution
+on:
+  push:
+    branches: [diagnostics-pr130-pageerrors-20261028]
+    paths: ['scripts/pageerrors/**', '.github/workflows/pr130-pageerrors.yml']
+permissions:
+  contents: read
+jobs:
+  original-initial-install:
+    runs-on: macos-15-intel
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps webkit
+      - name: Bind unchanged application and original diagnostic
+        run: |
+          mkdir -p attribution-evidence/C controlled-v122
+          git archive 4565a9d3c0be8be3898160a3134695016ec53d92 | tar -x -C controlled-v122
+          git rev-parse HEAD > attribution-evidence/source-sha.txt
+          git diff --exit-code ee2b3bcf2675e914ac7b1daee94ef64096b9607f -- . ':!scripts/pageerrors/**' ':!.github/workflows/pr130-pageerrors.yml'
+          cp node_modules/playwright-core/browsers.json attribution-evidence/browsers.json
+          cp node_modules/playwright-core/package.json attribution-evidence/playwright-core-package.json
+          sw_vers > attribution-evidence/sw-vers.txt
+          uname -a > attribution-evidence/uname.txt
+          shasum -a 256 vendor/supabase.js service-worker.js > attribution-evidence/source-hashes.txt
+      - name: One iteration, unchanged transport origins and retained assertions
+        env:
+          DEBUG: pw:browser
+          DIAG_ENGINE: webkit
+        run: |
+          export NODE_OPTIONS="--require $PWD/scripts/pageerrors/protocol-observer.cjs"
+          export PAGEERROR_PROTOCOL_LEDGER="$PWD/attribution-evidence/protocol.ndjson"
+          node scripts/pageerrors/resilience-traced.mjs > attribution-evidence/runner.log 2>&1
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: pr130-pageerrors-iteration1
+          path: attribution-evidence/
+          retention-days: 30
+          if-no-files-found: error
