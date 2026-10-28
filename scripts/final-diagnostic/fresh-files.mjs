@@ -5,8 +5,9 @@ const cli=path.resolve('node_modules/@playwright/test/cli.js'),observer=path.res
 const clean={...process.env};delete clean.NODE_OPTIONS;delete clean.DEBUG;
 const collected=spawnSync(process.execPath,[cli,'test','--project=chromium','--list','--reporter=json'],{env:clean,encoding:'utf8',maxBuffer:16*1024*1024});
 fs.writeFileSync(path.join(out,'collection.json'),collected.stdout);assert.equal(collected.status,0,collected.stderr);
-const listing=JSON.parse(collected.stdout),files=listing.suites.map(s=>s.file),expected=listing.suites.reduce((n,s)=>{const count=s=>s.specs.length+s.suites.reduce((n,s)=>n+count(s),0);return n+count(s)},0);
+const listing=JSON.parse(collected.stdout),files=listing.suites.map(s=>s.file),expected=listing.suites.reduce((n,s)=>{const count=s=>(s.specs||[]).length+(s.suites||[]).reduce((n,s)=>n+count(s),0);return n+count(s)},0);
 assert.equal(files.length,87);assert.equal(expected,780);assert.equal(new Set(files).size,87);
+if(process.env.FINAL_COLLECTION_ONLY==='true'){console.log(JSON.stringify({files:files.length,expected}));process.exit(0);}
 const rows=[];fs.writeFileSync(path.join(out,'file-order.json'),JSON.stringify({files,expected},null,2));
 for (let i=0;i<files.length;i++) {
  const file=files[i],folder=path.join(out,String(i+1).padStart(2,'0'));fs.mkdirSync(folder);
