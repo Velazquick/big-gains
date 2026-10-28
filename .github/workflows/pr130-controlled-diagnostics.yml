@@ -1,0 +1,107 @@
+name: PR130 controlled diagnostic pilots
+on:
+  push:
+    branches: [diagnostics-pr130-20261028]
+    paths: ['scripts/controlled/**', 'tests/controlled/**', '.github/workflows/pr130-controlled-diagnostics.yml']
+permissions:
+  contents: read
+jobs:
+  pilot:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - cell: a1
+            runner: ubuntu-26.04
+            engines: chromium
+          - cell: b1
+            runner: macos-15-intel
+            engines: webkit
+          - cell: c0-intel
+            runner: macos-15-intel
+            engines: webkit
+          - cell: c0-chromium
+            runner: ubuntu-24.04
+            engines: chromium
+          - cell: c0-arm64
+            runner: macos-15
+            engines: webkit
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps ${{ matrix.engines }}
+      - name: Preserve environment and binary identity
+        env:
+          CELL: ${{ matrix.cell }}
+        run: |
+          mkdir -p controlled-evidence
+          git rev-parse HEAD > controlled-evidence/source-sha.txt
+          git diff 732973ee4409f6586e928baab39b14599cd6d789 --name-only > controlled-evidence/changed-paths.txt
+          uname -a > controlled-evidence/uname.txt
+          node --version > controlled-evidence/node.txt
+          cp package-lock.json controlled-evidence/package-lock.json
+          cp node_modules/playwright-core/browsers.json controlled-evidence/browsers.json
+          env | sort | grep -E '^(Image|RUNNER_OS|RUNNER_ARCH|RUNNER_NAME|GITHUB_RUN_ID|GITHUB_RUN_ATTEMPT|GITHUB_SHA)=' > controlled-evidence/runner.txt
+          if [ "$RUNNER_OS" = Linux ]; then
+            ldd --version > controlled-evidence/glibc.txt
+            ulimit -a > controlled-evidence/ulimits.txt
+            cat /proc/sys/kernel/core_pattern > controlled-evidence/core-pattern.txt
+            find "$HOME/.cache/ms-playwright" -type f -name chrome-headless-shell -exec sha256sum {} \; > controlled-evidence/binary-sha256.txt
+            native_shell=$(find "$HOME/.cache/ms-playwright" -type f -name chrome-headless-shell -print -quit)
+            ldd "$native_shell" > controlled-evidence/shared-libraries.txt
+            awk '/=> \// {print $3} /^[[:space:]]*\// {print $1}' controlled-evidence/shared-libraries.txt | xargs -r sha256sum > controlled-evidence/library-sha256.txt
+          else
+            sw_vers > controlled-evidence/sw-vers.txt
+            find "$HOME/Library/Caches/ms-playwright" -type f -perm +111 -exec shasum -a 256 {} \; > controlled-evidence/binary-sha256.txt
+          fi
+      - name: Execute frozen pilot
+        env:
+          CELL: ${{ matrix.cell }}
+          DEBUG: pw:browser
+        run: |
+          ulimit -c unlimited
+          if [ "$CELL" = a1 ]; then
+            (
+              while true; do
+                date -u +%FT%TZ
+                ps -eo pid,ppid,rss,nlwp,comm
+                for pid in $(pgrep -f chrome-headless-shell || true); do
+                  if [ -d "/proc/$pid/fd" ]; then echo "fd $pid $(ls -1 /proc/$pid/fd 2>/dev/null | wc -l)"; fi
+                done
+                cat /proc/self/cgroup
+                for filename in /sys/fs/cgroup/memory.current /sys/fs/cgroup/memory.peak /sys/fs/cgroup/memory.events /sys/fs/cgroup/memory.max /sys/fs/cgroup/pids.current /sys/fs/cgroup/pids.events; do
+                  if [ -f "$filename" ]; then echo "$filename"; cat "$filename"; fi
+                done
+                sleep 1
+              done
+            ) > controlled-evidence/resources.log 2>&1 &
+            monitor_pid=$!
+            trap 'kill "$monitor_pid" 2>/dev/null || true' EXIT
+            node scripts/controlled/a1-churn.mjs > controlled-evidence/a1-runner.log 2>&1
+          elif [ "$CELL" = b1 ]; then
+            node scripts/controlled/download-pilot.mjs > controlled-evidence/b1-runner.log 2>&1
+          else
+            if [ "$CELL" = c0-chromium ]; then export DIAG_ENGINE=chromium; else export DIAG_ENGINE=webkit; fi
+            export BG_REPRO_OUTPUT=controlled-evidence/c0-worker.json
+            node scripts/controlled/c0-worker-probe.mjs > controlled-evidence/c0-runner.log 2>&1
+          fi
+      - name: Capture remaining processes and dumps
+        if: always()
+        run: |
+          ps -Ao pid,ppid,stat,comm > controlled-evidence/processes-after.txt
+          find . -maxdepth 3 -type f -name 'core*' -print > controlled-evidence/core-files.txt
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: controlled-${{ matrix.cell }}
+          path: controlled-evidence/
+          retention-days: 30
+          if-no-files-found: error
