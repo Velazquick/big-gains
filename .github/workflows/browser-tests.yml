@@ -19,7 +19,10 @@ jobs:
     # Linux libsoup emitted internal WebKit errors during genuine offline
     # fallback. Keep identical assertions on Apple's networking backend; the
     # protected playwright job cannot succeed unless this job succeeds.
-    runs-on: macos-15
+    # macos-15 ARM64 failed runner acquisition in PR run 40367649229.
+    # Keep Apple's networking backend and every protected assertion on a
+    # supported Intel pool; this addresses capacity, not the worker-ready defect.
+    runs-on: macos-15-intel
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7

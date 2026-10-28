@@ -16,8 +16,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runner: [ubuntu-latest, macos-15]
-        playwright: ['1.62.1', '1.64.1']
+        # ARM64 and both Linux toolchains are already retained at 033149f.
+        # One new architecture comparison; do not repeat those completed cells.
+        runner: [macos-15-intel]
+        playwright: ['1.62.1']
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
     steps:
@@ -43,7 +45,7 @@ jobs:
         env:
           RUNNER_KIND: ${{ matrix.runner }}
         run: |
-          if [ "$RUNNER_KIND" = macos-15 ]; then
+          if [ "$RUNNER_KIND" = macos-15-intel ]; then
             node "$RUNNER_TEMP/native-forensics/node_modules/playwright/cli.js" install --with-deps webkit
           else
             node "$RUNNER_TEMP/native-forensics/node_modules/playwright/cli.js" install --with-deps chromium
@@ -54,7 +56,7 @@ jobs:
           BG_REPRO_PACKAGE: ${{ runner.temp }}/native-forensics/package.json
           DEBUG: pw:browser
         run: |
-          if [ "$RUNNER_KIND" = macos-15 ]; then
+          if [ "$RUNNER_KIND" = macos-15-intel ]; then
             BG_REPRO_OUTPUT=native-forensics/worker-navigation.json node scripts/diagnostics/native-worker-navigation.mjs
           else
             BG_REPRO_OUTPUT=native-forensics/context-lifecycle.json node scripts/diagnostics/native-context-lifecycle.mjs

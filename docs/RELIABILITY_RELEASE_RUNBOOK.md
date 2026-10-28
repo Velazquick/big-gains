@@ -4,6 +4,19 @@ Prepared for `v123-reliability-completion`. No deployment is authorized by this 
 
 ## 1. Software and owner prerequisites
 
+Recovery evidence must distinguish runner allocation from executed tests. At
+`033149f003adcad8385bcec420a65bd0e275c12a`, Browser PR run `40367649229`
+and Train run `40367649246` had no assigned runner and no executed steps;
+GitHub annotated hosted ARM64 capacity/acquisition failure. The supported
+`macos-15-intel` pool is the bounded capacity correction for those workflows.
+It does not establish a WebKit lifecycle repair, ARM64 equivalence, physical
+iPhone acceptance, or a disposition for historical native Chromium crashes.
+Supplementary native-prefix diagnostics retain every failed cell and do not
+replace the protected WebKit dependency or required Linux/database coverage.
+Bind final outcomes and the reviewed commit in the recovery validation matrix;
+keep this release on HOLD while any required check or failure disposition is
+failed, cancelled or incomplete.
+
 1. Verify freshly fetched main and the exact PR head. Rebase/merge changes, runtime corrections or release-pin changes invalidate the earlier exact-head approval and require review/checks appropriate to that change. Preserve existing PR branches and registration history.
 2. Require successful Browser macOS WebKit and dependent Chromium/disposable-PostgreSQL jobs, Astra mobile/WebKit and Train lifecycle on the final PR candidate. Both protected PR and branch-push Browser workflows must terminate successfully for the same candidate SHA; verify that the tested PR merge tree equals the candidate tree. Preserve failures and their causes. A passing rerun alone cannot close an unexplained intermittent failure. A skipped deployment job is expected on this branch; a skipped required test is not a pass. No retries, forced clicks or assertion weakening may manufacture readiness.
 3. Complete physical acceptance on actual supported iPhones. Record model, iOS, app/container/build and support floor; do not invent them. Test Safari and a genuinely installed Home Screen PWA separately. Include offline set logging and Finish, background/lock/reopen, process termination/restart, History/set/provenance retention, two-device sync/partial delivery, profile isolation, PWA update/failed install and VoiceOver controls. Viewport emulation and Windows/macOS WebKit receive no phone credit. If unavailable, **INCOMPLETE: do not declare production-ready**.
