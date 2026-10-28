@@ -1,0 +1,53 @@
+name: PR130 persistent profile resilience
+on:
+  push:
+    branches: [diagnostics-pr130-resilience-20261028]
+    paths: ['scripts/controlled/c1-resilience.mjs', '.github/workflows/pr130-resilience-pilot.yml']
+permissions:
+  contents: read
+jobs:
+  persistent:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15-intel
+            engine: webkit
+          - runner: ubuntu-24.04
+            engine: chromium
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps ${{ matrix.engine }}
+      - name: Export authentic v122 and preserve environment
+        run: |
+          mkdir -p controlled-v122 controlled-evidence
+          git archive 4565a9d3c0be8be3898160a3134695016ec53d92 | tar -x -C controlled-v122
+          git rev-parse HEAD > controlled-evidence/source-sha.txt
+          uname -a > controlled-evidence/uname.txt
+          cp package-lock.json controlled-evidence/package-lock.json
+          cp node_modules/playwright-core/browsers.json controlled-evidence/browsers.json
+          git rev-parse 4565a9d3c0be8be3898160a3134695016ec53d92^{tree} > controlled-evidence/v122-tree.txt
+      - name: Interrupted installation and update with synthetic durable state
+        env:
+          DIAG_ENGINE: ${{ matrix.engine }}
+          DEBUG: pw:browser
+        run: node scripts/controlled/c1-resilience.mjs > controlled-evidence/c1-runner.log 2>&1
+      - name: Retain authentic source fixture
+        if: always()
+        run: git archive --format=zip --output=controlled-evidence/authentic-v122.zip 4565a9d3c0be8be3898160a3134695016ec53d92
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: controlled-c1-${{ matrix.engine }}
+          path: controlled-evidence/
+          retention-days: 30
+          if-no-files-found: error

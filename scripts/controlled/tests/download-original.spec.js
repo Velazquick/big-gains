@@ -1,6 +1,6 @@
-import { expect, test } from '../../scripts/controlled/download-fixture.mjs';
+import { expect, test } from '../download-fixture.mjs';
 import { readFile } from 'node:fs/promises';
-import { blankState, activeWorkout, completedWorkout } from '../fixtures/local-storage.js';
+import { blankState, activeWorkout, completedWorkout } from '../../../tests/fixtures/local-storage.js';
 
 async function seed(page, { corrupt = null, kind = 'managed-owner', version = 5 } = {}) {
   const workout = activeWorkout({ startedAt: new Date().toISOString() });
@@ -55,4 +55,3 @@ for (const corrupt of ['null', '{"version":99,"profileId":"jorge","workouts":[],
     expect(await readFile(await (await downloadPromise).path(), 'utf8')).toBe(corrupt);
   });
 }
-
