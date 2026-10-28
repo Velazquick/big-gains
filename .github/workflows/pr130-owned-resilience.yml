@@ -1,0 +1,43 @@
+name: PR130 owned offline completion resilience
+on:
+  push:
+    branches: [diagnostics-pr130-owned-20261028]
+    paths: ['scripts/controlled/c1-owned-native.mjs', '.github/workflows/pr130-owned-resilience.yml']
+permissions:
+  contents: read
+jobs:
+  owned:
+    runs-on: macos-15-intel
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps webkit
+      - name: Preserve authentic worker and toolchain
+        run: |
+          mkdir -p controlled-v122 owned-evidence
+          git archive 4565a9d3c0be8be3898160a3134695016ec53d92 | tar -x -C controlled-v122
+          git rev-parse HEAD > owned-evidence/source-sha.txt
+          git diff --exit-code 732973ee4409f6586e928baab39b14599cd6d789 -- '*.js' '*.cjs' '*.mjs' '*.sql' 'package*.json' 'playwright.config.js' 'tests/' ':!scripts/controlled/**'
+          uname -a > owned-evidence/uname.txt
+          sw_vers > owned-evidence/sw-vers.txt
+          cp package-lock.json owned-evidence/package-lock.json
+          cp node_modules/playwright-core/browsers.json owned-evidence/browsers.json
+          shasum -a 256 controlled-v122/service-worker.js service-worker.js > owned-evidence/worker-sha256.txt
+      - name: One initial and one update cell with real owned capture and transport
+        env:
+          DEBUG: pw:browser
+        run: node scripts/controlled/c1-owned-native.mjs > owned-evidence/runner.log 2>&1
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: controlled-owned-resilience
+          path: owned-evidence/
+          retention-days: 30
+          if-no-files-found: error
