@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { blankState, installLocalStorageFixture, STORAGE_KEYS, readStoredJson } from './fixtures/local-storage.js';
-import { openApp, openExerciseOptions } from './helpers/app.js';
+import { clickCentered, openApp, openExerciseOptions, openExerciseSwap, reloadApp, waitForAppRuntime } from './helpers/app.js';
 
 const NOW = '2026-09-10T12:00:00.000Z';
 const DAY = 86400000;
@@ -13,29 +13,51 @@ function historyState() {
     workout('seven-boundary',7,[ex('dumbbell-lateral-raise','Dumbbell Lateral Raise','Shoulders',3)]),
     workout('thirty-boundary',30,[ex('dumbbell-lateral-raise','Dumbbell Lateral Raise','Shoulders',100)]),
     workout('future',-1,[ex('dumbbell-lateral-raise','Dumbbell Lateral Raise','Shoulders',100)]),
-    {...workout('unfinished',0,[ex('dumbbell-lateral-raise','Dumbbell Lateral Raise','Shoulders',100)]),completedAt:null},
     workout('excluded-sets',2,[{...ex('dumbbell-lateral-raise','Dumbbell Lateral Raise','Shoulders',0),sets:[{id:'warm',weight:20,reps:10,completed:true,warmup:true},{id:'entered',weight:20,reps:10,completed:false}]}])
   ]};
 }
-async function seed(page,state=historyState()) {
+async function seed(page,state=historyState(),readiness={}) {
   await installLocalStorageFixture(page,'blankJorge',{now:NOW});
   await page.addInitScript(({key,state})=>{if(!sessionStorage.getItem('bodymap-seed')) {localStorage.setItem(key,JSON.stringify(state));sessionStorage.setItem('bodymap-seed','1');}}, {key:STORAGE_KEYS.jorge,state});
-  await openApp(page);
+  await openApp(page,readiness);
 }
 async function progress(page) {await page.evaluate(()=>bigGainsViewShell.showView('progress',{workout:false}));}
+
+test.afterEach(async ({page},info)=>{
+  if(!info.title.startsWith('Body Map ')||!info.title.includes('six live Appearance')||info.status==='passed')return;
+  let evidence;
+  try{evidence=await page.evaluate(()=>window.__bodyMapPointerEvidence??null);}catch(error){evidence={snapshotUnavailable:String(error)};}
+  if(evidence)await info.attach('body-map-failed-native-hits',{contentType:'application/json',body:Buffer.from(JSON.stringify(evidence,null,2))});
+});
 
 for (const profile of ['jorge','alexa']) test(`Body Map ${profile}: six live Appearance accents, readable counts and mobile layout`,async({page},info)=>{
   await page.setViewportSize({width:390,height:844});
   await seed(page);
   if(profile==='alexa') {
     await page.evaluate(({key,active,state})=>{localStorage.setItem(key,JSON.stringify(state));localStorage.setItem(active,'alexa');},{key:STORAGE_KEYS.alexa,active:STORAGE_KEYS.activeProfile,state:{...historyState(),profileId:'alexa',goals:blankState('alexa').goals}});
-    await page.reload();
+    await page.reload(); await waitForAppRuntime(page);
   }
   await progress(page);
+  await page.evaluate(()=>{
+    window.__bodyMapPointerEvidence=[];
+    const capture=event=>{
+      const target=event.target?.closest?.('.muscle-region-list [data-muscle-key="Shoulders"], button[data-anatomy-view="back"]');
+      const rect=target?.getBoundingClientRect();
+      window.__bodyMapPointerEvidence.push({type:event.type,trusted:event.isTrusted,
+        kind:target?.matches('[data-anatomy-view="back"]')?'back':target?'shoulders':'other',
+        inside:Boolean(rect&&event.clientX>=rect.left&&event.clientX<=rect.right&&event.clientY>=rect.top&&event.clientY<=rect.bottom),
+        x:event.clientX,y:event.clientY,rect:rect?{left:rect.left,top:rect.top,right:rect.right,bottom:rect.bottom}:null,
+        path:event.composedPath().slice(0,6).map(node=>({tag:node.tagName??null,id:node.id??null})),
+        selectedBeforeDefault:target?.getAttribute('aria-pressed')??null,profile:document.documentElement.dataset.profile});
+    };
+    window.__stopBodyMapPointerEvidence=()=>{for(const type of ['pointerdown','click'])document.removeEventListener(type,capture,true);};
+    for(const type of ['pointerdown','click'])document.addEventListener(type,capture,true);
+  });
   const fills=[];
   for(const accent of ['volt','cobalt','merlot','rose','violet','ember']) {
     await page.evaluate(a=>BigGainsAppearance.select(a),accent);
-    await page.locator('.muscle-region-list [data-muscle-key="Shoulders"]').click();
+    await clickCentered(page.locator('.muscle-region-list [data-muscle-key="Shoulders"]'));
+    await expect(page.locator('.muscle-region-list [data-muscle-key="Shoulders"]')).toHaveAttribute('aria-pressed','true');
     fills.push(await page.locator('g[data-muscle-key="Shoulders"] path').first().evaluate(e=>getComputedStyle(e).fill));
     await expect(page.locator('#progressMuscleDetail .muscle-detail-head>strong')).toHaveText('7 sets');
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
@@ -43,7 +65,13 @@ for (const profile of ['jorge','alexa']) test(`Body Map ${profile}: six live App
   }
   expect(new Set(fills).size).toBe(6);
   await page.getByRole('button',{name:'Back',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Back',exact:true})).toHaveAttribute('aria-pressed','true');
   await page.locator('.body-map-v2').screenshot({path:info.outputPath(`${profile}-back.png`),style:'.bottom-nav{visibility:hidden!important}'});
+  const hits=await page.evaluate(()=>{window.__stopBodyMapPointerEvidence();return window.__bodyMapPointerEvidence;});
+  await info.attach('body-map-native-hits',{contentType:'application/json',body:Buffer.from(JSON.stringify(hits,null,2))});
+  expect(hits.map(({type,trusted,kind,inside,profile})=>({type,trusted,kind,inside,profile}))).toEqual(
+    [...Array(6).fill('shoulders'),'back'].flatMap(kind=>['pointerdown','click'].map(type=>({type,trusted:true,kind,inside:true,profile})))
+  );
 });
 
 test('Body Map owns exact completed windows, primary sets, canonical contributors and drill-in without changing History',async({page})=>{
@@ -64,6 +92,38 @@ test('Body Map owns exact completed windows, primary sets, canonical contributor
   await expect(page.locator('#progressMuscleDetail .muscle-detail-head>strong')).toHaveText('10 sets');
   await expect(page.locator('g[data-muscle-key="Shoulders"]')).toHaveClass(/heat-3/);
   expect((await readStoredJson(page,STORAGE_KEYS.jorge)).workouts).toEqual(before);
+});
+
+test('unfinished input contributes no analytics and never replaces valid persisted History',async({page})=>{
+  await seed(page);
+  const before=await page.evaluate(key=>localStorage.getItem(key),STORAGE_KEYS.jorge);
+  const unfinished={...historyState().workouts[0],id:'unfinished',completedAt:null};
+  const totals=await page.evaluate(unfinished=>{
+    const now=Date.now();
+    return {
+      valid:BigGainsAnalytics.muscleWorkloadWindows(state.workouts,{now}),
+      withUnfinished:BigGainsAnalytics.muscleWorkloadWindows([...state.workouts,unfinished],{now})
+    };
+  },unfinished);
+  expect(totals.withUnfinished).toEqual(totals.valid);
+  expect(totals.valid.sevenDay.muscles.Shoulders.workingSets).toBe(7);
+  expect(totals.valid.thirtyDay.muscles.Shoulders.workingSets).toBe(10);
+  expect(await page.evaluate(key=>localStorage.getItem(key),STORAGE_KEYS.jorge)).toBe(before);
+});
+
+test('unfinished persisted History enters recovery and retains original bytes after background and reload',async({page})=>{
+  const malformed=historyState();
+  malformed.workouts.push({...malformed.workouts[0],id:'unfinished',completedAt:null});
+  await seed(page,malformed,{expected:'recovery'});
+  const before=JSON.stringify(malformed);
+  expect(await page.evaluate(()=>BigGainsBootGate.status().state)).toBe('recovery');
+  expect(await page.evaluate(key=>localStorage.getItem(key),STORAGE_KEYS.jorge)).toBe(before);
+  expect(await page.evaluate(()=>{try{statePersistenceApi.save(state,active);return null;}catch(error){return error.code;}})).toBe('local-state-unreadable');
+  await page.evaluate(()=>window.dispatchEvent(new Event('pagehide')));
+  expect(await page.evaluate(key=>localStorage.getItem(key),STORAGE_KEYS.jorge)).toBe(before);
+  await reloadApp(page,{expected:'recovery'});
+  expect(await page.evaluate(()=>BigGainsBootGate.status().state)).toBe('recovery');
+  expect(await page.evaluate(key=>localStorage.getItem(key),STORAGE_KEYS.jorge)).toBe(before);
 });
 
 test('front/back regions, keyboard selection, accessible alternatives and neutral no-history state',async({page})=>{
@@ -92,7 +152,7 @@ test('front/back regions, keyboard selection, accessible alternatives and neutra
 test('Body Map cannot disclose contributors from a different profile',async({page})=>{
   await seed(page); await progress(page);
   await page.evaluate(({active,alexa,state})=>{localStorage.setItem(active,'alexa');localStorage.setItem(alexa,JSON.stringify(state));},{active:STORAGE_KEYS.activeProfile,alexa:STORAGE_KEYS.alexa,state:blankState('alexa')});
-  await page.reload(); await progress(page);
+  await page.reload(); await waitForAppRuntime(page); await progress(page);
   await page.locator('.muscle-region-list [data-muscle-key="Shoulders"]').click();
   await expect(page.locator('#progressMuscleDetail')).toContainText('0 sets');
   await expect(page.locator('#progressMuscleDetail [data-progress-exercise]')).toHaveCount(0);
@@ -133,13 +193,12 @@ test('active swap preserves source data, units and rest; persists offline and su
   await startSwap(page);
   await page.locator('[data-exercise-unit="kg"][data-ei="0"]').click();
   await expect(page.locator('[data-exercise-unit="kg"][data-ei="0"]')).toHaveAttribute('aria-pressed','true');
-  await page.reload();await openExerciseOptions(page,'Dumbbell Lateral Raise');
+  await reloadApp(page);await openExerciseOptions(page,'Dumbbell Lateral Raise');
   const before=await readStoredJson(page,STORAGE_KEYS.jorge);
   expect(before.activeWorkout.exercises[0].displayUnitOverride).toBe('kg');
   await context.setOffline(true);
-  await page.locator('[data-swap-exercise="0"]').click();
-  // Existing blank warm-up templates count as entered data under the accepted safeguard.
-  if(!await page.locator('#exercisePickerDialog').isVisible()) await page.locator('[data-swap-exercise="0"]').click();
+  // Blank warm-up templates require the real entered-data confirmation.
+  await openExerciseSwap(page, 0, { confirmation: true });
   await expect(page.locator('#exercisePickerSearch')).toBeHidden();
   await expect(page.locator('#exercisePickerDialog')).toHaveClass(/is-compact/);
   expect(await page.locator('#exercisePickerDialog').evaluate(e=>e.getBoundingClientRect().height/innerHeight)).toBeLessThanOrEqual(.86);
@@ -150,7 +209,7 @@ test('active swap preserves source data, units and rest; persists offline and su
   expect(after.activeWorkout.programOrigin).toEqual(before.activeWorkout.programOrigin);
   expect(after.activeWorkout.exercises[0].sets.every(s=>!s.completed&&Number(s.weight)===0)).toBe(true);
   for(const key of ['customRoutines','programs','programCapture','goals','workouts','prs','restTimerEndsAt','timerPreferences'])expect(after[key]).toEqual(before[key]);
-  await context.setOffline(false);await page.reload();
+  await context.setOffline(false);await reloadApp(page);
   expect((await readStoredJson(page,STORAGE_KEYS.jorge)).activeWorkout.exercises[0].id).toBe('cable-lateral-raise');
 });
 
@@ -194,9 +253,7 @@ test('swap safeguards entered/completed sets and rejects stale slot callbacks; C
   const blocked=await page.evaluate(()=>workoutSessionController.swapExercise(0,'cable-lateral-raise'));
   expect(blocked).toMatchObject({swapped:false,confirmationRequired:true});
   await openExerciseOptions(page,'Dumbbell Lateral Raise');
-  await page.locator('[data-swap-exercise="0"]').click();
-  await expect(page.locator('#exercisePickerDialog')).not.toBeVisible();
-  await page.locator('[data-swap-exercise="0"]').click();
+  await openExerciseSwap(page, 0, { confirmation: true });
   await expect(page.locator('#exercisePickerDialog')).toBeVisible();
   await page.locator('[data-exercise-picker-browse]').click();
   await expect(page.locator('#exercisePickerDialog')).not.toHaveClass(/is-compact/);
@@ -204,7 +261,7 @@ test('swap safeguards entered/completed sets and rejects stale slot callbacks; C
   await page.locator('#closeExercisePicker').click();
   await expect(page.locator('[data-swap-exercise="0"]')).toBeFocused();
   expect((await readStoredJson(page,STORAGE_KEYS.jorge)).activeWorkout).toEqual(before.activeWorkout);
-  await page.locator('[data-swap-exercise="0"]').click();await page.locator('[data-swap-exercise="0"]').click();
+  await openExerciseSwap(page, 0, { confirmation: true });
   await page.evaluate(()=>workoutSessionController.updateSet(0,1,'weight','30'));
   await page.locator('.exercise-picker-suggested [data-exercise-picker-select]').first().click();
   expect((await readStoredJson(page,STORAGE_KEYS.jorge)).activeWorkout.exercises[0].id).toBe('dumbbell-lateral-raise');

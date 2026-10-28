@@ -3,6 +3,7 @@ import { expect } from '@playwright/test';
 import { test } from './helpers/network-outage.js';
 import { blankState, installLocalStorageFixture, readStoredJson, STORAGE_KEYS } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
+import { openHistoryWorkout } from './helpers/history.js';
 
 async function installState(page, value) {
   await page.addInitScript(({ key, state }) => {
@@ -33,7 +34,7 @@ test('retrospective warm-up and working-set removal confirms, recomputes workloa
   });
 
   await page.locator('.bottom-nav [data-view="progress"]').click();
-  await page.locator('[data-history-id="newer"]').first().click();
+  await openHistoryWorkout(page, 'newer');
   await expect(page.locator('.record-chip')).toHaveText('Load record');
   await page.locator('#editCompletedWorkout').click();
 

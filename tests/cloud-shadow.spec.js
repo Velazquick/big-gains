@@ -1,6 +1,7 @@
-import { expect, test } from '@playwright/test';
+import { expect } from '@playwright/test';
+import { test } from './helpers/network-outage.js';
 import { blankState, installLocalStorageFixture, STORAGE_KEYS } from './fixtures/local-storage.js';
-import { openApp } from './helpers/app.js';
+import { openApp, reloadApp } from './helpers/app.js';
 
 const accountId = 'account-phase4f';
 const profiles = {
@@ -198,7 +199,7 @@ test('tombstone wins an exact tie and only a strictly later intentional recreati
   expect(result).toEqual({ tiedCount: 0, tiedWinnerDeleted: true, recreatedCount: 1, recreatedVersion: 3 });
 });
 
-test('normal local mutations enqueue only after schema-v5 storage and survive signed-out offline reload', async ({ page, context }) => {
+test('normal local mutations enqueue only after schema-v5 storage and survive signed-out offline reload', async ({ page, context, setAppNetworkUnavailable }) => {
   await openBlank(page);
   await page.evaluate(async ({ accountId, profiles, alexa }) => {
     localStorage.setItem('big-gains-alexa-v1', JSON.stringify(alexa));
@@ -218,14 +219,14 @@ test('normal local mutations enqueue only after schema-v5 storage and survive si
       format: 'big-gains.shadow-catalog.v1', version: 1, accountId, authUserId: 'auth-owner', migrationId: 'migration-baseline', profiles: catalogProfiles
     }));
   }, { accountId, profiles, alexa: blankState('alexa') });
-  await page.reload();
+  await reloadApp(page);
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;
     if (!navigator.serviceWorker.controller) {
       await new Promise(resolve => navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true }));
     }
   });
-  await context.setOffline(true);
+  await setAppNetworkUnavailable(true);
 
   const immediate = await page.evaluate(() => {
     state.goals = { primary: 'Updated strength goal' };
@@ -267,14 +268,14 @@ test('normal local mutations enqueue only after schema-v5 storage and survive si
     return BigGainsCloudSync.queue.pending().find(operation => operation.owner.profileId === 'profile-alexa');
   });
   expect(alexaOperation).toMatchObject({ owner: { accountId, profileId: 'profile-alexa' }, entityType: 'preferences', entityId: 'goals' });
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  await reloadApp(page, { waitUntil: 'domcontentloaded' });
   const restored = await page.evaluate(() => ({
     pending: BigGainsCloudSync.queue.pending().length,
     storedWorkout: JSON.parse(localStorage.getItem('big-gains-v2')).workouts[0].id,
     signedOut: !BigGainsCloudSync.status().ownerReady
   }));
   expect(restored).toEqual({ pending: 7, storedWorkout: 'workout-shadow', signedOut: true });
-  await context.setOffline(false);
+  await setAppNetworkUnavailable(false);
 });
 
 test('queue refuses a different signed-in account/profile mapping', async ({ page }) => {
