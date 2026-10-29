@@ -2,10 +2,10 @@ import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { openApp } from './helpers/app.js';
 
-const CURRENT_RELEASE = 'v121-train-premium-pass-02';
+const CURRENT_RELEASE = 'v123-reliability-completion';
 const CURRENT_CONFIG_VERSION = 'config-925e766c1b907250';
 const CURRENT_CACHE = `big-gains-shell-${CURRENT_RELEASE}-${CURRENT_CONFIG_VERSION}`;
-const PREVIOUS_CACHE = 'big-gains-shell-v120-train-premium-pass-01-config-dfadb48839db90f2';
+const PREVIOUS_CACHE = 'big-gains-shell-v121-train-premium-pass-02-config-dfadb48839db90f2';
 const PREVIOUS_CONFIG_CACHE = `big-gains-shell-${CURRENT_RELEASE}-config-0000000000000000`;
 
 async function waitForServiceWorker(page) {

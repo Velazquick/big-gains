@@ -26,7 +26,8 @@ export function blankState(profileId) {
     activeWorkout: null,
     restTimerEndsAt: null,
     customRoutines: {},
-    timerPreferences: { sound: true, vibration: true }
+    timerPreferences: { sound: true, vibration: true },
+    exercisePreferences: {}
   };
 }
 
@@ -44,6 +45,7 @@ export function completedWorkout(overrides = {}) {
         name: 'Seated Machine Chest Press',
         muscle: 'Chest',
         equipment: 'Machine',
+        collapsed: true,
         note: 'Strong setup and smooth reps.',
         sets: [
           { id: 'completed-set-1', weight: 100, reps: 10, warmup: false, completed: true }

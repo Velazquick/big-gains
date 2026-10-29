@@ -4,6 +4,12 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      native_worker_stage_diagnostics:
+        description: 'Diagnostic worker stages; changes selected test-served worker bytes'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -13,7 +19,10 @@ jobs:
     # Linux libsoup emitted internal WebKit errors during genuine offline
     # fallback. Keep identical assertions on Apple's networking backend; the
     # protected playwright job cannot succeed unless this job succeeds.
-    runs-on: macos-15
+    # macos-15 ARM64 failed runner acquisition in PR run 40367649229.
+    # Keep Apple's networking backend and every protected assertion on a
+    # supported Intel pool; this addresses capacity, not the worker-ready defect.
+    runs-on: macos-15-intel
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
@@ -28,17 +37,26 @@ jobs:
       - name: Check current release references before browser validation
         run: npm run check:release && npm run test:release
       - run: npx playwright install --with-deps webkit
+      - name: Capture native process inventory before WebKit
+        run: |
+          mkdir -p native-process-observation
+          node --version > native-process-observation/node-version.txt
+          ps -Ao pid,ppid,stat,comm > native-process-observation/before.txt
       - name: Verify mobile update, custom-domain, Auth and recovery in WebKit
         env:
           BIG_GAINS_WEBKIT_QA: 'true'
           PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-webkit
-        run: npx playwright test --project=webkit --output=test-results-webkit tests/train-premium-pass02.spec.js tests/operator.spec.js tests/operator-diagnostics.spec.js tests/swap-reorder-ux.spec.js tests/body-map-swap.spec.js tests/custom-domain-transition.spec.js tests/ios-home-screen-auth.spec.js tests/fresh-device-recovery.spec.js tests/pwa-update.spec.js tests/utility-recovery.spec.js
+          BIG_GAINS_NATIVE_WORKER_STAGE_DIAGNOSTICS: ${{ github.event_name == 'workflow_dispatch' && inputs.native_worker_stage_diagnostics && 'true' || 'false' }}
+        run: npx playwright test --project=webkit --output=test-results-webkit tests/ci-readiness.spec.js tests/workout-integrity.spec.js tests/reliability-import.spec.js tests/reliability-finish.spec.js tests/train-premium-pass02.spec.js tests/operator.spec.js tests/operator-diagnostics.spec.js tests/swap-reorder-ux.spec.js tests/body-map-swap.spec.js tests/custom-domain-transition.spec.js tests/ios-home-screen-auth.spec.js tests/fresh-device-recovery.spec.js tests/pwa-update.spec.js tests/utility-recovery.spec.js tests/cross-device-remote-fast-forward.spec.js tests/phase4h-managed-profile-access.spec.js tests/retrospective-workout.spec.js tests/startup-interactivity.spec.js tests/history-v2-workout-management.spec.js tests/goals-v1-1.spec.js
       - name: Repeat WebKit update-to-offline and failed-install transitions
         env:
           BIG_GAINS_WEBKIT_QA: 'true'
           PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-pwa-repeat
         run: |
           npx playwright test --project=webkit --output=test-results-pwa-repeat tests/pwa-update.spec.js --grep 'real waiting worker: idle approval|new shell with older worker' --repeat-each=10
+      - name: Capture native process inventory after WebKit
+        if: always()
+        run: ps -Ao pid,ppid,stat,comm > native-process-observation/after.txt
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -46,6 +64,7 @@ jobs:
           path: |
             playwright-report-webkit/
             playwright-report-pwa-repeat/
+            native-process-observation/
           if-no-files-found: ignore
           retention-days: 7
 
@@ -55,7 +74,11 @@ jobs:
     # explicit failure if the prerequisite fails, rather than skipping this job.
     if: ${{ always() }}
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # Measured qualification: dependency downloads consumed 10m33s, then the
+    # unchanged 778-case single-worker collection reached its job deadline.
+    # Budget setup plus the full collection; individual assertions/timeouts and
+    # zero retries remain unchanged.
+    timeout-minutes: 45
     services:
       appearance-postgres:
         image: postgres:17

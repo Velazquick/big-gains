@@ -2,7 +2,7 @@ import { waitForControlledAppShell } from './helpers/app.js';
 import { expect } from '@playwright/test';
 import { test } from './helpers/network-outage.js';
 import { activeWorkout, blankState, completedWorkout, readStoredJson, STORAGE_KEYS } from './fixtures/local-storage.js';
-import { openApp, openExerciseOptions, clickCentered } from './helpers/app.js';
+import { openApp, openExerciseOptions, clickCentered, waitForAppRuntime } from './helpers/app.js';
 
 const unitPreference = weightUnit => ({ contractVersion: 1, weightUnit });
 
@@ -91,7 +91,7 @@ test('explicit exercise overrides rerender immediately without changing either p
   await expect(unitButton(page, 'kg')).toHaveAttribute('aria-pressed', 'true');
 
   await page.evaluate(() => localStorage.setItem('big-gains-active-profile', 'alexa'));
-  await page.reload();
+  await page.reload(); await waitForAppRuntime(page);
   await expect(unitButton(page, 'kg')).toHaveAttribute('aria-pressed', 'true');
   await chooseExerciseUnit(page, 'lb');
   stored = await readStoredJson(page, STORAGE_KEYS.alexa);
@@ -132,7 +132,7 @@ test('repeated lb/kg toggles never mutate canonical sets and reload preserves on
     entityType: 'activeSession',
     data: { workout: { id: 'active-push-1', exercises: [{ displayUnitOverride: 'kg' }, {}, {}] } }
   });
-  await page.reload();
+  await page.reload(); await waitForAppRuntime(page);
   await expect(unitButton(page, 'kg')).toHaveAttribute('aria-pressed', 'true');
   await expect(weightInput(page, 0, 1)).toHaveValue('45.359');
   expect(JSON.stringify((await readStoredJson(page, STORAGE_KEYS.jorge)).activeWorkout.exercises.map(exercise => exercise.sets))).toBe(originalSets);
@@ -201,7 +201,8 @@ test('completion and discard end override lifetime while History and the next wo
     unitPreferences: unitPreference('kg'),
     activeWorkout: activeWorkout({ displayUnitOverride: 'lb' })
   });
-  await page.locator('button[data-complete-set][data-si="1"]').click();
+  await clickCentered(page.locator('button[data-complete-set][data-si="1"]'));
+  await expect.poll(async () => (await readStoredJson(page, STORAGE_KEYS.jorge)).activeWorkout.exercises[0].sets[1].completed).toBe(true);
   expect(await page.evaluate(() => workoutSessionController.complete())).toBe(true);
   let stored = await readStoredJson(page, STORAGE_KEYS.jorge);
   expect(stored.activeWorkout).toBeNull();
@@ -214,8 +215,46 @@ test('completion and discard end override lifetime while History and the next wo
   await page.evaluate(() => workoutSessionController.start('Push', { loadRoutine: true, scroll: false }));
   await expect(unitButton(page, 'kg')).toHaveAttribute('aria-pressed', 'true');
   expect((await readStoredJson(page, STORAGE_KEYS.jorge)).activeWorkout).not.toHaveProperty('displayUnitOverride');
+  await page.evaluate(() => {
+    let armed = false;
+    const scrolling = () => ({ computed: getComputedStyle(document.documentElement).scrollBehavior,
+      value: document.documentElement.style.getPropertyValue('scroll-behavior'), priority: document.documentElement.style.getPropertyPriority('scroll-behavior') });
+    window.__unitSelectionHits = [];
+    window.__recordUnitSelection = event => {
+      if (!armed) {
+        if (event.type === 'click' && event.isTrusted && event.target.closest('#returnToWorkout')) {
+          armed = true;
+          window.__unitSelectionBefore = { canonicalSets: structuredClone(state.activeWorkout.exercises.map(exercise => exercise.sets)), scrolling: scrolling() };
+        }
+        return;
+      }
+      const button = event.target.closest('[data-exercise-unit]');
+      const rect = button?.getBoundingClientRect();
+      window.__unitSelectionHits.push({ type: event.type, trusted: event.isTrusted, unit: button?.dataset.exerciseUnit || null, index: button?.dataset.ei || null,
+        inside: Boolean(rect && event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom) });
+    };
+    window.addEventListener('pointerdown', window.__recordUnitSelection, true);
+    window.addEventListener('click', window.__recordUnitSelection, true);
+  });
   await page.getByRole('button', { name: 'Return to workout' }).click();
   await chooseExerciseUnit(page, 'lb');
+  const selection = await page.evaluate(() => {
+    window.removeEventListener('pointerdown', window.__recordUnitSelection, true);
+    window.removeEventListener('click', window.__recordUnitSelection, true);
+    return { hits: window.__unitSelectionHits, before: window.__unitSelectionBefore,
+      scrolling: { computed: getComputedStyle(document.documentElement).scrollBehavior,
+        value: document.documentElement.style.getPropertyValue('scroll-behavior'), priority: document.documentElement.style.getPropertyPriority('scroll-behavior') } };
+  });
+  expect(selection.hits).toEqual([
+    { type: 'pointerdown', trusted: true, unit: 'lb', index: '0', inside: true },
+    { type: 'click', trusted: true, unit: 'lb', index: '0', inside: true }
+  ]);
+  expect(selection.scrolling).toEqual(selection.before.scrolling);
+  const selected = await readStoredJson(page, STORAGE_KEYS.jorge);
+  expect(selected.activeWorkout.exercises[0].displayUnitOverride).toBe('lb');
+  expect(selected.activeWorkout.exercises.map(exercise => exercise.sets)).toEqual(selection.before.canonicalSets);
+  expect(selected.unitPreferences).toEqual(unitPreference('kg'));
+  expect(selected.workouts).toEqual(stored.workouts);
   expect(await page.evaluate(() => workoutSessionController.discard())).toBe(true);
   stored = await readStoredJson(page, STORAGE_KEYS.jorge);
   expect(stored.activeWorkout).toBeNull();
@@ -308,7 +347,7 @@ test('mixed exercise units commit independently and only defaults follow live pr
   await expect(weightInput(page, 0, 1)).toHaveValue('40');
   await expect(weightInput(page, 1, 0)).toHaveValue('36.287');
   await expect(weightInput(page, 2, 0)).toHaveValue('50');
-  await page.reload();
+  await page.reload(); await waitForAppRuntime(page);
   stored = await readStoredJson(page, STORAGE_KEYS.jorge);
   expect(stored.activeWorkout).not.toHaveProperty('displayUnitOverride');
   expect(stored.activeWorkout.exercises.map(exercise => exercise.displayUnitOverride)).toEqual(['kg', undefined, 'lb']);
@@ -324,7 +363,7 @@ for (const legacyUnit of ['lb', 'kg']) test(`legacy ${legacyUnit} migrates once 
   expect(normalized.exercises.map(exercise => exercise.displayUnitOverride)).toEqual([legacyUnit, workout.exercises[1].displayUnitOverride, legacyUnit]);
   expect(normalized.exercises.map(exercise => exercise.sets)).toEqual(workout.exercises.map(exercise => exercise.sets));
   await page.evaluate(() => saveState());
-  await page.reload();
+  await page.reload(); await waitForAppRuntime(page);
   expect(await page.evaluate(() => active)).toEqual(normalized);
   await page.evaluate(() => workoutSessionController.addExercise('lat-pulldown', { scroll: false }));
   expect((await readStoredJson(page, STORAGE_KEYS.jorge)).activeWorkout.exercises.at(-1)).not.toHaveProperty('displayUnitOverride');

@@ -22,6 +22,7 @@
   let remoteFastForward = null;
   let sameEntityConflict = null;
   let catalog = readJson(CATALOG_KEY);
+  let verifiedComparison = null;
   let captureChain = Promise.resolve();
   let capturePending = 0;
   let localMutationGeneration = 0;
@@ -109,6 +110,7 @@
   }
 
   function writeJson(key, value) {
+    window.bigGainsStatePersistence?.assertWriter();
     localStorage.setItem(key, JSON.stringify(value));
   }
 
@@ -240,26 +242,93 @@
     return Object.freeze({ ok: true, reconciled: plan.operationCount, logicalEntities: plan.entities.length });
   }
 
-  function beginLocalMutation() {
+  function beginLocalMutation({ reconcile = true } = {}) {
+    verifiedComparison = null;
     capturePending += 1;
     localMutationGeneration += 1;
+    render();
     let finished = false;
     return () => {
       if (finished) return;
       finished = true;
       capturePending = Math.max(0, capturePending - 1);
-      if (capturePending === 0) scheduleReconciliation('post-local-parity', 0);
+      if (capturePending === 0 && reconcile) scheduleReconciliation('post-local-parity', 0);
     };
   }
 
-  async function captureLocalSnapshot(profileClientId, { tracked = false } = {}) {
-    const finishLocalMutation = tracked ? null : beginLocalMutation();
+  function backupVerified() {
+    try {
+      return Boolean(verifiedComparison && lastComparison?.parity === true
+        && !capturePending && !comparing && !queue.pending().length
+        && verifiedComparison.mutation === localMutationGeneration
+        && verifiedComparison.ownerIdentity === JSON.stringify(cloudOwner)
+        && verifiedComparison.catalogRaw === localStorage.getItem(CATALOG_KEY)
+        && verifiedComparison.queueRaw === localStorage.getItem(accountRuntime.cloudKeys.queue)
+        && verifiedComparison.profileBytes.every(([key, raw]) => !key || localStorage.getItem(key) === raw));
+    } catch { return false; }
+  }
+
+  async function recoverPendingCatalog(profileClientId) {
+    const currentCatalog = catalog, rawCatalog = localStorage.getItem(CATALOG_KEY);
+    const rawQueue = localStorage.getItem(accountRuntime.cloudKeys.queue);
+    const operations = queue.pending(), pendingIdentity = JSON.stringify(operations);
+    const candidate = clone(currentCatalog), records = candidate.profiles[profileClientId].records;
+    const owner = ownerForProfile(profileClientId);
+    const owned = operations.filter(op => op.owner.accountId === owner.accountId && op.owner.profileId === owner.profileId
+      && shadow.tables.includes(op.entityType)).sort((a,b) => a.version-b.version);
+    let recovered = 0;
+    const refuse = () => { throw Object.assign(new Error('Pending capture does not form an unambiguous owned revision chain. Original queue and catalog were retained.'), {code:'capture-pending-catalog-conflict'}); };
+    const allocated = new Map();
+    for (const op of owned) {
+      const revision = JSON.stringify([op.entityType,op.entityId,op.version]);
+      if (allocated.has(revision) && allocated.get(revision) !== op.idempotencyKey) refuse();
+      allocated.set(revision,op.idempotencyKey);
+    }
+    for (const op of owned) {
+      const key = shadow.keyFor(op.entityType, op.entityId), previous = records[key];
+      if (previous && op.version < previous.version) continue;
+      if (previous && op.version === previous.version) {
+        if (op.payloadFingerprint !== previous.fingerprint || (op.mutation === 'delete') !== previous.tombstone) refuse();
+        continue;
+      }
+      const base = op.baseRevision;
+      if (previous ? !base || op.version !== previous.version+1 || base.version !== previous.version
+        || base.fingerprint !== previous.fingerprint || base.tombstone !== previous.tombstone
+        || new Date(base.updatedAt).toISOString() !== new Date(previous.updatedAt).toISOString()
+        : op.version !== 1 || base) refuse();
+      const deleted = op.mutation === 'delete', envelope = op.payload;
+      if (!deleted && (envelope?.contract !== shadow.contract || envelope?.version !== shadow.version
+        || envelope.profileClientId !== profileClientId || envelope.clientId !== op.entityId || !envelope.data)) refuse();
+      if (deleted && !previous) refuse();
+      const fingerprint = await shadow.fingerprint(profileClientId, op.entityType, op.entityId, deleted ? null : envelope.data, deleted);
+      if (fingerprint !== op.payloadFingerprint) refuse();
+      records[key] = {
+        table:op.entityType, entityType:deleted ? previous.entityType : envelope.entityType, clientId:op.entityId,
+        version:op.version, updatedAt:op.updatedAt, fingerprint, tombstone:deleted, data:deleted ? null : clone(envelope.data)
+      };
+      recovered += 1;
+    }
+    if (recovered) {
+      if (catalog !== currentCatalog || localStorage.getItem(CATALOG_KEY) !== rawCatalog
+        || localStorage.getItem(accountRuntime.cloudKeys.queue) !== rawQueue || JSON.stringify(queue.pending()) !== pendingIdentity) refuse();
+      writeJson(CATALOG_KEY,candidate);
+      catalog = candidate;
+    }
+    return recovered;
+  }
+
+  async function captureLocalSnapshot(profileClientId, { tracked = false, reconcile = true } = {}) {
+    const finishLocalMutation = tracked ? null : beginLocalMutation({reconcile});
     captureChain = captureChain.then(async () => {
       if (!validCatalog(catalog) || !shadow.profileIds.includes(profileClientId)) return Object.freeze({ queued: 0, reason: 'baseline-not-adopted' });
+      // The durable pending operation is the journal for a queue-before-catalog
+      // interruption. Reuse its exact identity/base before deriving new work.
+      await recoverPendingCatalog(profileClientId);
       const snapshot = window.bigGainsStatePersistence.readProfileSnapshot(profileClientId);
       if (!snapshot.ok) return Object.freeze({ queued: 0, reason: snapshot.reason });
       const localRecords = await shadow.localRecords(profileClientId, snapshot.value);
-      const profileCatalog = catalog.profiles[profileClientId];
+      const captureCatalog = catalog, rawCatalog = localStorage.getItem(CATALOG_KEY), candidateCatalog = clone(catalog);
+      const profileCatalog = candidateCatalog.profiles[profileClientId];
       const desiredByKey = new Map(localRecords.map(record => [shadow.keyFor(record.table, record.clientId), record]));
       let queued = 0;
       const now = () => new Date().toISOString();
@@ -312,7 +381,9 @@
       }
 
       if (queued) {
-        writeJson(CATALOG_KEY, catalog);
+        if (catalog !== captureCatalog || localStorage.getItem(CATALOG_KEY) !== rawCatalog) throw new Error('Catalog changed during capture. Pending operations were retained.');
+        writeJson(CATALOG_KEY, candidateCatalog);
+        catalog = candidateCatalog;
         lastResult = { ok: true, queued, pending: queue.pending().length };
         render();
       }
@@ -579,6 +650,28 @@
 
   async function compareShadow({ adopt = false } = {}) {
     if (comparing || !cloudOwner) return lastComparison;
+    const owner = cloudOwner;
+    const ownerIdentity = JSON.stringify(owner);
+    const generation = lifecycleGeneration, mutation = localMutationGeneration;
+    const catalogIdentity = catalog, catalogContent = JSON.stringify(catalog);
+    const catalogRaw = localStorage.getItem(CATALOG_KEY);
+    const queueRaw = localStorage.getItem(accountRuntime.cloudKeys.queue);
+    const pending = JSON.stringify(queue.pending());
+    const profileBytes = shadow.profileIds.map(id => {
+      const key = window.bigGainsStatePersistence?.storageKeyForProfile?.(id);
+      return [key, key ? localStorage.getItem(key) : null];
+    });
+    const current = () => pageLifecycleCurrent(generation)
+      && cloudOwner === owner && JSON.stringify(cloudOwner) === ownerIdentity
+      && mutation === localMutationGeneration && !capturePending
+      && catalog === catalogIdentity && JSON.stringify(catalog) === catalogContent
+      && localStorage.getItem(CATALOG_KEY) === catalogRaw
+      && localStorage.getItem(accountRuntime.cloudKeys.queue) === queueRaw
+      && JSON.stringify(queue.pending()) === pending
+      && profileBytes.every(([key, raw]) => !key || localStorage.getItem(key) === raw);
+    const requireCurrent = () => {
+      if (!current()) throw Object.assign(new Error('A newer local change or lifecycle superseded this comparison.'), { code: 'comparison-superseded' });
+    };
     resetAutomaticDecision();
     comparing = true;
     render();
@@ -592,45 +685,30 @@
       const cloudState = await shadow.reconstructCloud({ ...remote, profiles: cloudOwner.profiles, accountId: cloudOwner.account.id });
       const localProfiles = await shadow.readLocalProfiles();
       const comparison = await shadow.compare({ localProfiles, cloud: cloudState, expectedCatalog: catalog });
-      lastComparison = comparison;
-      remoteFastForward = null;
-      sameEntityConflict = null;
-      writeJson(COMPARISON_KEY, {
-        contract: comparison.contract, parity: comparison.parity, comparedAt: comparison.comparedAt,
-        profiles: Object.fromEntries(shadow.profileIds.map(id => [id, {
-          parity: comparison.profiles[id].parity,
-          localChecksum: comparison.profiles[id].localChecksum,
-          cloudChecksum: comparison.profiles[id].cloudChecksum,
-          reasons: comparison.profiles[id].reasons
-        }])),
-        reasons: comparison.reasons
-      });
+      let nextCatalog = catalog, nextConflict = null, nextFastForward = null;
+      let captureEmptyBaseline = false;
       if (comparison.parity) {
-        if(!queue.pending().length && !capturePending){for(const profileId of shadow.profileIds){try{window.BigGainsTelemetry?.conflict('recovery',{profileId,verifiedResolved:true});}catch{}}}
-        const verifiedCatalog = shadow.catalogFromCloud({ cloud: cloudState, owner: cloudOwner, journal });
-        if (catalog?.migrationId) verifiedCatalog.migrationId = catalog.migrationId;
-        catalog = verifiedCatalog;
-        writeJson(CATALOG_KEY, catalog);
+        nextCatalog = shadow.catalogFromCloud({ cloud: cloudState, owner, journal });
+        if (catalog?.migrationId) nextCatalog.migrationId = catalog.migrationId;
       } else if (accountRuntime.kind === 'independent' && !catalog
         && shadow.profileIds.every(profileClientId => cloudState.profiles[profileClientId].current.length === 0)) {
-        catalog = shadow.emptyCatalogFromOwner(cloudOwner);
-        writeJson(CATALOG_KEY, catalog);
-        await Promise.all(shadow.profileIds.map(profileClientId => captureLocalSnapshot(profileClientId)));
+        nextCatalog = shadow.emptyCatalogFromOwner(owner);
+        captureEmptyBaseline = true;
       } else if (catalog && queue.pending().length) {
         const session = await supabaseBoundary.session();
-        sameEntityConflict = window.BigGainsManagedProfileRecovery.inspectSameEntityConflict({
-          owner: cloudOwner, session, localProfiles, cloud: cloudState, catalog, operations: queue.pending()
+        nextConflict = window.BigGainsManagedProfileRecovery.inspectSameEntityConflict({
+          owner, session, localProfiles, cloud: cloudState, catalog, operations: queue.pending()
         });
-        remoteFastForward = Object.freeze({
+        nextFastForward = Object.freeze({
           eligible: false,
-          conflict: sameEntityConflict.eligible === true,
-          reason: sameEntityConflict.eligible ? 'remote-revision-conflict' : sameEntityConflict.reason,
-          reasons: sameEntityConflict.reasons
+          conflict: nextConflict.eligible === true,
+          reason: nextConflict.eligible ? 'remote-revision-conflict' : nextConflict.reason,
+          reasons: nextConflict.reasons
         });
       } else if (catalog && window.BigGainsManagedProfileRecovery?.inspectRemoteFastForward) {
         const session = await supabaseBoundary.session();
-        remoteFastForward = window.BigGainsManagedProfileRecovery.inspectRemoteFastForward({
-          owner: cloudOwner,
+        nextFastForward = window.BigGainsManagedProfileRecovery.inspectRemoteFastForward({
+          owner,
           session,
           localProfiles,
           cloud: cloudState,
@@ -638,10 +716,38 @@
           localMutationPending: capturePending > 0
         });
       }
+      // Publish the entire result only after the last await. An obsolete
+      // mismatch must not clear a previously established conflict either.
+      requireCurrent();
+      if (nextCatalog !== catalog) {
+        writeJson(CATALOG_KEY, nextCatalog);
+        catalog = nextCatalog;
+      }
+      writeJson(COMPARISON_KEY, {
+        contract: comparison.contract, parity: comparison.parity, comparedAt: comparison.comparedAt,
+        profiles: Object.fromEntries(shadow.profileIds.map(id => [id, {
+          parity: comparison.profiles[id].parity, localChecksum: comparison.profiles[id].localChecksum,
+          cloudChecksum: comparison.profiles[id].cloudChecksum, reasons: comparison.profiles[id].reasons
+        }])), reasons: comparison.reasons
+      });
+      catalog = nextCatalog;
+      lastComparison = comparison;
+      sameEntityConflict = nextConflict;
+      remoteFastForward = nextFastForward;
+      verifiedComparison = comparison.parity && !queue.pending().length ? {
+        mutation, ownerIdentity, profileBytes,
+        catalogRaw: localStorage.getItem(CATALOG_KEY), queueRaw: localStorage.getItem(accountRuntime.cloudKeys.queue)
+      } : null;
+      if (verifiedComparison) for (const profileId of shadow.profileIds) {
+        try { window.BigGainsTelemetry?.conflict('recovery', {profileId, verifiedResolved:true}); } catch {}
+      }
+      if (captureEmptyBaseline) await Promise.all(shadow.profileIds.map(id => captureLocalSnapshot(id)));
       return comparison;
     } catch (error) {
-      remoteFastForward = null;
-      sameEntityConflict = null;
+      verifiedComparison = null;
+      if (error?.code === 'comparison-superseded') {
+        return Object.freeze({ parity: false, errorCode: error.code, reasons: [error.message] });
+      }
       lastComparison = { parity: false, comparedAt: new Date().toISOString(), reasons: [error?.message || String(error)], errorCode: error?.code || 'comparison-failed' };
       return lastComparison;
     } finally {
@@ -669,7 +775,14 @@
     return owner;
   }
 
-  async function flush() {
+  async function captureDurableProfiles() {
+    if (!validCatalog(catalog) || !window.bigGainsStatePersistence?.readProfileSnapshot) return null;
+    const captures = await Promise.all(shadow.profileIds.map(id => captureLocalSnapshot(id,{reconcile:false})));
+    const reasons = captures.map(result=>result.reason).filter(Boolean);
+    return reasons.length ? Object.freeze({ok:false,blocked:true,reason:'startup-capture-failed',captureReasons:reasons,pending:queue.pending().length}) : null;
+  }
+
+  async function flush({ capture = true } = {}) {
     if (busy) return Object.freeze({ ok: false, busy: true, sent: 0, pending: queue.pending().length });
     if (!online()) { lastResult = { ok: false, offline: true, pending: queue.pending().length }; render(); return lastResult; }
     busy = true;
@@ -679,6 +792,12 @@
       if (!cloudOwner) return (lastResult = Object.freeze({ ok: false, signedOut: true, sent: 0, pending: queue.pending().length }));
       if (!catalog) await compareShadow({ adopt: true });
       if (!catalog || !sameOwnerMapping(cloudOwner)) return (lastResult = Object.freeze({ ok: false, blocked: true, reason: 'baseline-or-owner-unverified', pending: queue.pending().length }));
+      if (capture) {
+        const generation = lifecycleGeneration;
+        const refused = await captureDurableProfiles();
+        if (refused) return (lastResult = refused);
+        if (!pageLifecycleCurrent(generation)) return Object.freeze({ok:false,deferred:true,reason:'reconciliation-generation-superseded'});
+      }
       const ownedOperations = () => queue.pending().filter(operation => operation.owner.accountId === catalog.accountId
         && Object.values(catalog.profiles).some(profile => profile.profileId === operation.owner.profileId));
       if (ownedOperations().length !== queue.pending().length) return (lastResult = Object.freeze({ ok: false, blocked: true, reason: 'queue-owner-mismatch', pending: queue.pending().length }));
@@ -1058,7 +1177,7 @@
     else if (lastResult?.blocked || (!pending && lastComparison?.parity === false)) state = 'DRIFT DETECTED';
     else if (pending && lastResult?.ok === false) state = 'CLOUD BEHIND / RETRYING';
     else if (pending) state = 'LOCAL CHANGES PENDING';
-    else if (lastComparison?.parity === true) state = 'IN SYNC';
+    else if (backupVerified()) state = 'IN SYNC';
     heading.textContent = state === 'IN SYNC' ? 'In sync'
       : state === 'UPDATING' ? 'Updating this device'
         : state === 'UPDATES WAITING' ? 'Updates waiting until the workout ends'
@@ -1108,7 +1227,7 @@
     queueStatus.textContent = `${pending} outbound change${pending === 1 ? '' : 's'} pending${lastResult?.reconciled ? ` · Reconciled ${lastResult.reconciled} obsolete queued change${lastResult.reconciled === 1 ? '' : 's'} after verified readback` : ''}${lastComparison?.comparedAt ? ` · Last checked ${new Date(lastComparison.comparedAt).toLocaleString()}` : ''}.`;
     const profileResults = lastComparison?.profiles;
     profileBox.hidden = !profileResults;
-    if (profileResults) profileBox.innerHTML = shadow.profileIds.map(id => `<span><strong>${window.bigGainsAccounts.registry.resolve(id)?.displayName || id}</strong>${profileResults[id]?.parity ? 'In sync' : 'Needs attention'}</span>`).join('');
+    if (profileResults) profileBox.innerHTML = shadow.profileIds.map(id => `<span><strong>${window.bigGainsAccounts.registry.resolve(id)?.displayName || id}</strong>${backupVerified() && profileResults[id]?.parity ? 'In sync' : profileResults[id]?.parity ? 'Checking' : 'Needs attention'}</span>`).join('');
     const reasons = [...(lastComparison?.reasons || [])];
     if (realConflict) reasons.push(...(remoteFastForward?.reasons || ['Local and remote training both changed after the last verified revision.']));
     for (const failure of lastResult?.failures || []) {
@@ -1154,10 +1273,15 @@
       if (capturePending > 0) {
         return (lastResult = Object.freeze({ ok: false, deferred: true, reason: 'local-mutation-in-flight', pending: queue.pending().length }));
       }
+      // Every owned retry derives missed intent again. A one-time startup flag
+      // cannot cover a later refused capture or interrupted optional setup.
+      const refusedCapture = await captureDurableProfiles();
+      if (refusedCapture) return (lastResult = refusedCapture);
+      if (!pageLifecycleCurrent(generation)) return Object.freeze({ok:false,deferred:true,reason:'reconciliation-generation-superseded'});
       const comparedMutationGeneration = localMutationGeneration;
       const previousComparison = lastComparison;
       const previousResult = lastResult;
-      if (queue.pending().length || !catalog) await flush();
+      if (queue.pending().length || !catalog) await flush({capture:false});
       else await compareShadow();
       if (!pageLifecycleCurrent(generation)) {
         return Object.freeze({ ok: false, deferred: true, reason: 'reconciliation-generation-superseded' });
@@ -1355,6 +1479,7 @@
       observability: reconciliationObservability(),
       lastResult,
       lastComparison,
+      backupVerified: backupVerified(),
       remoteFastForward,
       sameEntityConflict
     })
