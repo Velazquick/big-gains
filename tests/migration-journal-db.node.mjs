@@ -135,7 +135,9 @@ test('complete journal remains a managed-owner baseline and cannot restart migra
     runtime: { kind: 'managed-owner', expectedProfileIds: ['jorge', 'alexa'], storageNamespace: 'owned', cloudKeys: { queue: 'queue', catalog: 'catalog', comparison: 'comparison' } },
     registry: { resolve: id => ({ displayName: id }) }, matchesCloudOwner: () => true, cloudProfileShape: () => 'managed-owner'
   };
-  window.bigGainsStatePersistence = { readProfileSnapshot: id => f.localSnapshots[id] };
+  // This isolated comparison fixture owns its synthetic persistence ports. PR
+  // 130 calls assertWriter before publishing a catalog, unlike older main.
+  window.bigGainsStatePersistence = { readProfileSnapshot: id => f.localSnapshots[id], assertWriter() {} };
   window.BigGainsSupabase = { configured: true, getClient: () => f.AClient, session: async () => ({ user: { id: f.owner } }), verifiedUser: async () => ({ id: f.owner }), readCloudAccount: async () => owner, onAuthStateChange: () => ({ unsubscribe() {} }) };
   window.addEventListener = () => {};window.setTimeout = setTimeout;window.clearTimeout = clearTimeout;
   f.context.localStorage = window.localStorage;f.context.navigator = { onLine: true };f.context.document = { visibilityState: 'visible', getElementById: () => null, addEventListener() {} };
@@ -143,6 +145,7 @@ test('complete journal remains a managed-owner baseline and cannot restart migra
   const journal = window.BigGainsCloudShadow.completedMigrationJournal([f.initial], f.account.id);assert.equal(journal.id, f.initial.id);
   const sync = window.BigGainsCloudSync;sync.initialize();
   await bounded((async () => { while (!sync.status().lastComparison) await new Promise(r => setTimeout(r, 10)); })(), 'managed comparison');
+  lane.record('managed-comparison', { status: sync.status() });
   assert.equal(sync.status().lastComparison.parity, true);assert.equal(sync.status().baselineAdopted, true);
   assert.equal((await f.snapshot('after-consumers')).bytes, before.bytes);
 });
