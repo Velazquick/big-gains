@@ -55,7 +55,7 @@
     finally { flushing = false; }
   };
   function sample() {
-    if (!action || disposed) { sampling = false; return; }
+    if (disposed) { sampling = false; return; }
     const start = performance.now();
     record('frame', { state:safeState(true) });
     const elapsed = performance.now()-start;
@@ -101,8 +101,6 @@
   };
   const timer=setInterval(flush,100);
   window.__pointerDiagnostic={
-    begin(id,locator){action=id;record('action-begin',{locator,state:safeState(true)});if(!sampling){sampling=true;Reflect.apply(nativeRAF,window,[sample]);}return safeState(false);},
-    end(id,error){record('action-end',{id,error,state:safeState(true)});action=null;},
     async finish(){
       disposed=true;clearInterval(timer);record('observer-finish',{costs,dropped,sent,queued:queue.length,state:safeState(true)});
       for(let i=0;i<20&&(queue.length||flushing);i++){await flush();if(flushing)await new Promise(resolve=>setTimeout(resolve,5));}
@@ -110,4 +108,6 @@
     }
   };
   record('observer-installed',{limits:{limit,queueLimit},state:safeState(false)});
+  // M2 samples throughout this case; match actions offline with measurement age.
+  sampling=true;Reflect.apply(nativeRAF,window,[sample]);
 })();

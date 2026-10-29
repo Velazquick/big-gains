@@ -4,6 +4,10 @@ import crypto from 'node:crypto';
 import { spawnSync,execFileSync } from 'node:child_process';
 const root=process.cwd(),out=path.join(root,'pointer-evidence');fs.mkdirSync(out,{recursive:true});
 const base='d80f30f543e41fccc59224c4a5f7e2397bbaf884';
+// One aggregate budget: M1 21 invocations (including interrupted prefix),
+// one actual incidental target, and up to three reachable new incidental targets.
+const maximumInvocations=75,priorBudget=22,incidentalReserve=3;
+if(maximumInvocations+priorBudget+incidentalReserve>100)throw Error('Aggregate attempt budget exceeded.');
 const target='swap safeguards entered/completed sets and rejects stale slot callbacks; Cancel restores position';
 const original=fs.readFileSync('tests/body-map-swap.spec.js','utf8');
 const prefix=original.slice(0,original.indexOf("\ntest('Routine swap stays in draft"));
@@ -17,11 +21,11 @@ const allowed=new Set(['.github/workflows/body-map-pointer-diagnostic.yml','poin
 const changes=execFileSync('git',['diff','--name-status',base,'HEAD'],{encoding:'utf8'}).trim().split('\n').filter(Boolean).map(line=>line.split('\t'));
 if(changes.length!==allowed.size||changes.some(([kind,file])=>kind!=='A'||!allowed.has(file)))throw Error('Diagnostic contains an application/existing-test/protected-workflow change.');
 const hash=data=>crypto.createHash('sha256').update(data).digest('hex');
-fs.writeFileSync(path.join(out,'source-proof.json'),JSON.stringify({base,diagnostic:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),changes,originalTestSha256:hash(originalBlob),prefixSha256:hash(prefix),generatedSha256:hash(expected),originalPrefixEquivalentExceptImport:true,directTestDeclarations:(prefix.match(/^test\(/gm)||[]).length,expectedCollectedTests:11,maximumInvocations:100,referenceInvocations:1},null,2));
+fs.writeFileSync(path.join(out,'source-proof.json'),JSON.stringify({base,diagnostic:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),changes,originalTestSha256:hash(originalBlob),prefixSha256:hash(prefix),generatedSha256:hash(expected),originalPrefixEquivalentExceptImport:true,directTestDeclarations:(prefix.match(/^test\(/gm)||[]).length,expectedCollectedTests:11,method:'M2',maximumInvocations,priorBudget,incidentalReserve,maximumAggregate:100,referenceInvocations:0},null,2));
 const flatten=suites=>suites.flatMap(s=>[...(s.specs||[]),...flatten(s.suites||[])]);
-const summary={base,maximumInvocations:100,referenceContract:'Exactly one uninstrumented reference. Its target failure is retained but is not sufficient event attribution, so an observed phase still proceeds within the same100 total cap. Stop at first valid observed target failure or any invalid execution.',iterations:[],stop:null};
-for(let iteration=1;iteration<=100;iteration++){
-  const observe=iteration!==1;
+const summary={base,method:'M2',maximumInvocations,priorBudget,incidentalReserve,maximumAggregate:100,referenceContract:'No second reference. Preserve M1 reference failure,19 observed passes and interrupted prefix; M2 removes action-adjacent browser RPCs and continuously samples geometry. Stop first valid observed target failure, invalid execution, or remaining phase cap.',iterations:[],stop:null};
+for(let iteration=1;iteration<=maximumInvocations;iteration++){
+  const observe=true;
   const dir=path.join(out,'iterations',String(iteration).padStart(3,'0')+(observe?'-observed':'-reference'));fs.mkdirSync(dir,{recursive:true});
   const resultFile=path.join(dir,'results.json'),log=fs.openSync(path.join(dir,'stdout.log'),'w');
   const started=new Date().toISOString();
@@ -45,17 +49,22 @@ for(let iteration=1;iteration<=100;iteration++){
     try{row.observer=JSON.parse(fs.readFileSync(path.join(dir,'observer-health.json')));}catch{}
     const health=row.observer?.health;
     const captured=fs.existsSync(path.join(dir,'pointer-events.ndjson'))?fs.readFileSync(path.join(dir,'pointer-events.ndjson'),'utf8').trim().split('\n').filter(Boolean).map(line=>JSON.parse(line)):[];
-    const began=captured.filter(e=>e.kind==='action-begin');
-    const successfulActions=captured.filter(e=>e.kind==='action-end'&&!e.error);
-    const hasDownUp=successfulActions.every(a=>['pointerdown','pointerup'].every(type=>captured.some(e=>e.kind==='dom-event'&&e.event===type&&e.action===a.id&&e.isTrusted)));
-    const missingClicks=successfulActions.filter(a=>!captured.some(e=>e.kind==='dom-event'&&e.event==='click'&&e.action===a.id&&e.isTrusted)).map(a=>a.id);
-    row.eventIntegrity={actionBegins:began.length,successfulActions:successfulActions.length,successfulActionsHaveDownAndUp:hasDownUp,missingClicks,observedPointerDowns:health?.eventCounts?.pointerdown||0,observationErrors:health?.observationErrors,diagnosticErrors:row.observer?.diagnosticErrors};
-    row.valid=prefixValid&&!!health&&!(row.observer.diagnosticErrors||[]).length&&health.observationErrors===0&&health.dropped===0&&health.remaining===0&&health.flushing===false&&row.observer.eventsWritten===health.sent&&row.observer.eventsWritten>0&&row.observer.actions>=2&&began.length===row.observer.actions&&hasDownUp&&health.eventCounts.pointerdown>0&&(result.status!=='passed'||missingClicks.length===0);
+    const notes=fs.existsSync(path.join(dir,'pointer-actions.ndjson'))?fs.readFileSync(path.join(dir,'pointer-actions.ndjson'),'utf8').trim().split('\n').filter(Boolean).map(line=>JSON.parse(line)):[];
+    const windows=notes.filter(a=>a.phase==='before').map(a=>({id:a.id,locator:a.locator,before:a.nodeEpochMs,after:notes.find(b=>b.id===a.id&&b.phase==='after')}));
+    const native=captured.filter(e=>e.kind==='dom-event'&&e.isTrusted&&['pointerdown','pointerup','click'].includes(e.event));
+    const within=(e,a)=>!!a.after&&e.timeOrigin+e.at>=a.before&&e.timeOrigin+e.at<=a.after.nodeEpochMs;
+    const successfulActions=windows.filter(a=>a.after&&!a.after.error);
+    const hasDownUp=successfulActions.every(a=>['pointerdown','pointerup'].every(type=>native.some(e=>e.event===type&&within(e,a))));
+    const missingClicks=successfulActions.filter(a=>!native.some(e=>e.event==='click'&&within(e,a))).map(a=>a.id);
+    const ambiguousNative=native.filter(e=>windows.filter(a=>within(e,a)).length>1).map(e=>e.seq);
+    const actionWindows=windows.map(a=>{const frame=captured.filter(e=>e.kind==='frame'&&e.timeOrigin+e.at<=a.before).at(-1);return {...a,nativeSequences:native.filter(e=>within(e,a)).map(e=>e.seq),preActionFrame:frame?.seq,preActionGeometry:frame?.state?.geometry,preActionFrameAgeMs:frame?a.before-frame.timeOrigin-frame.at:null};});
+    row.eventIntegrity={actionWindows,clockBridge:'Browser performance.timeOrigin+at versus Node Date.now; verify margins offline. Sampled geometry is not Playwright internal actionability geometry.',successfulActions:successfulActions.length,successfulActionsHaveDownAndUp:hasDownUp,missingClicks,ambiguousNative,observedPointerDowns:health?.eventCounts?.pointerdown||0,observationErrors:health?.observationErrors,diagnosticErrors:row.observer?.diagnosticErrors};
+    row.valid=prefixValid&&!!health&&!(row.observer.diagnosticErrors||[]).length&&health.observationErrors===0&&health.dropped===0&&health.remaining===0&&health.flushing===false&&row.observer.eventsWritten===health.sent&&row.observer.eventsWritten>0&&row.observer.actions>=2&&windows.length===row.observer.actions&&windows.every(a=>a.after)&&hasDownUp&&ambiguousNative.length===0&&health.eventCounts.pointerdown>0&&(result.status!=='passed'||missingClicks.length===0);
   }else row.valid=prefixValid&&!!result;
   fs.writeFileSync(path.join(dir,'iteration.json'),JSON.stringify(row,null,2));summary.iterations.push(row);
   if(!row.valid){summary.stop='invalid-execution';}
   else if(observe&&result.status!=='passed'){summary.stop='captured-target-failure';}
-  else if(iteration===100){summary.stop='bounded-limit';}
+  else if(iteration===maximumInvocations){summary.stop='bounded-limit';}
   fs.writeFileSync(path.join(out,'summary.json'),JSON.stringify(summary,null,2));
   console.log(JSON.stringify({iteration,observe,target:row.targetStatus,valid:row.valid,stop:summary.stop}));
   if(summary.stop)break;

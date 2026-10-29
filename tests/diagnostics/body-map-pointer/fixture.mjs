@@ -24,24 +24,15 @@ export const test=base.extend({
       if(typeof selector==='string'&&selector.includes('data-swap-exercise')){
         const click=locator.click;
         try{locator.click=async function(...args){
-          const id='swap-'+(++actionCount),measurementStartedUTC=new Date().toISOString();
-          const measured=await observe('action-begin',async()=>{
-            const value=await page.evaluate(({id,selector})=>{
-              const element=document.querySelector(selector),r=element?.getBoundingClientRect();
-              const intendedBoundingBox=r?{x:r.x,y:r.y,width:r.width,height:r.height}:null;
-              const state=window.__pointerDiagnostic?.begin(id,selector);
-              return {intendedBoundingBox,state};
-            },{id,selector});
-            if(!value?.state)throw Error('Observer begin unavailable');return value;
-          });
-          const intendedBoundingBox=measured?.intendedBoundingBox,before=measured?.state,measuredUTC=new Date().toISOString();
-          enqueue(actions,JSON.stringify({phase:'before',id,locator:selector,nodeUTC:new Date().toISOString(),measurementStartedUTC,measuredUTC,intendedBoundingBox,state:before,arguments:args})+'\n');
+          const id='swap-'+(++actionCount);
+          // M2 adds no browser RPC or awaited observation around the real click.
+          const note=(phase,error=null)=>{try{const nodeEpochMs=Date.now();enqueue(actions,JSON.stringify({phase,id,locator:selector,nodeEpochMs,nodeUTC:new Date(nodeEpochMs).toISOString(),error})+'\n');}catch(e){failed('action-note',e);}};
+          note('before');
           let error=null;
           try{return await Reflect.apply(click,this,args);}
           catch(e){error=String(e);throw e;}
           finally{
-            await observe('action-end',()=>page.evaluate(({id,error})=>window.__pointerDiagnostic?.end(id,error),{id,error}));
-            enqueue(actions,JSON.stringify({phase:'after',id,nodeUTC:new Date().toISOString(),error})+'\n');
+            note('after',error);
           }
         };}catch(error){failed('decorate-locator',error);}
       }
