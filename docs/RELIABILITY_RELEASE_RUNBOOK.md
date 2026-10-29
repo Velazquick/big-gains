@@ -4,6 +4,10 @@ Prepared for `v123-reliability-completion`. No deployment is authorized by this 
 
 ## 1. Software and owner prerequisites
 
+A required-check failure may be re-executed once only if evidence shows it occurred outside application code before the test body ran (e.g., native browser crash in browser.newContext). Both attempts are recorded in the PR and the release record. All other failures STOP the release. Data-integrity, import, Finish, Discard, recovery, journal, database/security and Node suites are never re-executed to clear a failure.
+
+Before any merge, read back the `github-pages` environment: required reviewer Jorge (`Velazquick`), administrator bypass disabled, and only `main` allowed. A main push must wait for explicit owner approval before the environment job starts. Never approve a deployment during release preparation. A disposable nonproduction environment with equivalent reviewer/bypass rules may demonstrate the approval mechanism; report that proof separately from the production workflow/settings inspection and do not claim an actual main-push deployment rehearsal.
+
 Recovery evidence must distinguish runner allocation from executed tests. At
 `033149f003adcad8385bcec420a65bd0e275c12a`, Browser PR run `40367649229`
 and Train run `40367649246` had no assigned runner and no executed steps;
