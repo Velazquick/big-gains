@@ -60,14 +60,12 @@ jobs:
             const iteration=Number(process.env.CHUNK)*10+i, name='iteration-'+String(iteration).padStart(2,'0');
             const startedAt=new Date().toISOString();
             const result=spawnSync(process.execPath,[...args,'--reporter=line,json','--output=evidence/'+name+'-artifacts'],{encoding:'utf8',maxBuffer:64*1024*1024,env:{...process.env,PLAYWRIGHT_JSON_OUTPUT_NAME:'evidence/'+name+'.json'}});
-            writeFileSync('evidence/'+name+'.log', result.stdout+'
-          '+result.stderr);
+            writeFileSync('evidence/'+name+'.log', result.stdout+'\n'+result.stderr);
             process.stdout.write(result.stdout);process.stderr.write(result.stderr);
             let stats;try{stats=JSON.parse(readFileSync('evidence/'+name+'.json','utf8')).stats;}catch{}
             const passed=result.status===0 && stats?.expected===11 && stats?.unexpected===0 && stats?.skipped===0 && stats?.flaky===0;
             if(!passed)failures++;
-            appendFileSync('evidence/iterations.ndjson',JSON.stringify({iteration,head,startedAt,finishedAt:new Date().toISOString(),exitCode:result.status,signal:result.signal,passed,stats})+'
-          ');
+            appendFileSync('evidence/iterations.ndjson',JSON.stringify({iteration,head,startedAt,finishedAt:new Date().toISOString(),exitCode:result.status,signal:result.signal,passed,stats})+'\n');
           }
           process.exitCode=failures?1:0;
           NODE
