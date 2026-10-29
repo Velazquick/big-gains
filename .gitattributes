@@ -1,4 +1,0 @@
-vendor/supabase.js -diff
-# Generated catalog contracts compare exact bytes on every supported host.
-exercise-catalog.js text eol=lf
-ekf/** text eol=lf

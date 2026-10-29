@@ -1,0 +1,79 @@
+name: Release preparation nonproduction proof and Body Map repetition
+on:
+  push:
+    branches: [diagnostic-release-prep-20261029]
+permissions:
+  contents: read
+jobs:
+  approval-proof:
+    environment: nonproduction-approval-proof-20261029
+    permissions: {}
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Inert sentinel - cancel this job without approving
+        run: exit 1
+  body-map:
+    strategy:
+      fail-fast: false
+      matrix:
+        chunk: [0, 1, 2, 3, 4]
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      BIG_GAINS_WEBKIT_QA: 'true'
+      CHUNK: ${{ matrix.chunk }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: e3a1ff4550e4e78e0a46c7e6619207d17702fe08
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check:release && npm run test:release
+      - run: npx playwright install --with-deps webkit
+      - name: Repeat the unchanged original eleven-case prefix ten times
+        run: |
+          node --input-type=module <<'NODE'
+          import { spawnSync } from 'node:child_process';
+          import { appendFileSync, writeFileSync, readFileSync, mkdirSync } from 'node:fs';
+          const titles = ["Body Map jorge: six live Appearance accents, readable counts and mobile layout","Body Map alexa: six live Appearance accents, readable counts and mobile layout","Body Map owns exact completed windows, primary sets, canonical contributors and drill-in without changing History","front/back regions, keyboard selection, accessible alternatives and neutral no-history state","Body Map cannot disclose contributors from a different profile","deterministic equivalent families exclude unrelated delts, current ID, owner exclusions and incompatible measurement","Hanging Knee Raise is discoverable from Push in Library and picker, distinct from Hanging Leg Raise","active swap preserves source data, units and rest; persists offline and survives reload","real Program materialization retains pinned versions, prescription and provenance after active swap","empty sets swap without confirmation and duplicate canonical variants remain excluded","swap safeguards entered/completed sets and rejects stale slot callbacks; Cancel restores position"];
+          const regex = titles.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+          const args = ['node_modules/@playwright/test/cli.js', 'test', 'tests/body-map-swap.spec.js', '--project=webkit', '--workers=1', '--retries=0', '--grep', regex];
+          mkdirSync('evidence', {recursive:true});
+          const collection = spawnSync(process.execPath, [...args, '--list', '--reporter=json'], {encoding:'utf8', maxBuffer:64*1024*1024});
+          writeFileSync('evidence/collection.json', collection.stdout);
+          if (collection.status !== 0) throw new Error(collection.stderr || 'Collection failed');
+          const specs=[];
+          function visit(s) { for(const p of s.specs??[]) specs.push(p.title); for(const c of s.suites??[]) visit(c); }
+          visit(JSON.parse(collection.stdout));
+          if (JSON.stringify(specs) !== JSON.stringify(titles)) throw new Error('Frozen original prefix order/count mismatch: '+JSON.stringify(specs));
+          const head=spawnSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).stdout.trim();
+          if(head !== 'e3a1ff4550e4e78e0a46c7e6619207d17702fe08') throw new Error('Wrong source head');
+          writeFileSync('evidence/source.json',JSON.stringify({head,node:process.version,platform:process.platform,arch:process.arch,imageVersion:process.env.ImageVersion,chunk:process.env.CHUNK,workers:1,retries:0,titles},null,2));
+          let failures=0;
+          for(let i=1;i<=10;i++) {
+            const iteration=Number(process.env.CHUNK)*10+i, name='iteration-'+String(iteration).padStart(2,'0');
+            const startedAt=new Date().toISOString();
+            const result=spawnSync(process.execPath,[...args,'--reporter=line,json','--output=evidence/'+name+'-artifacts'],{encoding:'utf8',maxBuffer:64*1024*1024,env:{...process.env,PLAYWRIGHT_JSON_OUTPUT_NAME:'evidence/'+name+'.json'}});
+            writeFileSync('evidence/'+name+'.log', result.stdout+'
+          '+result.stderr);
+            process.stdout.write(result.stdout);process.stderr.write(result.stderr);
+            let stats;try{stats=JSON.parse(readFileSync('evidence/'+name+'.json','utf8')).stats;}catch{}
+            const passed=result.status===0 && stats?.expected===11 && stats?.unexpected===0 && stats?.skipped===0 && stats?.flaky===0;
+            if(!passed)failures++;
+            appendFileSync('evidence/iterations.ndjson',JSON.stringify({iteration,head,startedAt,finishedAt:new Date().toISOString(),exitCode:result.status,signal:result.signal,passed,stats})+'
+          ');
+          }
+          process.exitCode=failures?1:0;
+          NODE
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: body-map-chunk-${{ matrix.chunk }}
+          path: evidence/
+          retention-days: 14
