@@ -132,7 +132,9 @@ test('recovered reconciliation retires a historical blocked result only after fr
   const f = syncSafetyFixture(); await f.reconcile();
   assert.equal(f.api.status().lastResult.blocked, true);
   const gates = recoveredGates(f.api);
-  assert.equal(gates.stale().reason, 'recovery');
+  // Historical outbound failure does not veto an owned local commit. PWA
+  // activation retains its separate, stronger recovery/parity gate.
+  assert.equal(gates.stale().safe, true);
   assert.equal(gates.update().reason, 'recovery');
   f.controls.recovery = { ok: true }; await f.reconcile();
   assert.equal(f.api.status().lastComparison.parity, true);
@@ -157,7 +159,7 @@ test('recovered reconciliation retires historical conflict without mutating the 
   assert.equal(f.api.status().lastResult.conflict, true);
   assert.equal(f.controls.pending.length, 1);
   const gates = recoveredGates(f.api);
-  assert.equal(gates.stale().safe, false);
+  assert.equal(gates.stale().safe, true);
   f.controls.pending = []; // Synthetic owner has independently completed its work.
   await f.reconcile();
   assert.equal(Boolean(f.api.status().lastResult.conflict), false);
@@ -174,7 +176,8 @@ function recoveredGates(sync) {
   f.scope.BigGainsCloudSync = sync;
   f.scope.BigGainsBootGate = { canRender: () => true };
   const source = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
-  const ctx = { window: f.scope };
+  f.scope.BigGainsProgramPortability.localMutationSafety = () => true;
+  const ctx = { window: f.scope, statePersistenceApi: { status: () => ({writable:true}) } };
   vm.createContext(ctx);
   vm.runInContext(source.slice(source.indexOf('function staleRecoverySafety(){'), source.indexOf('function renderStaleRecovery(){')), ctx);
   return { stale: () => ctx.staleRecoverySafety(), update: f.safety };
