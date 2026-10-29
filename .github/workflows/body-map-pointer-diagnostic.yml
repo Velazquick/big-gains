@@ -1,0 +1,47 @@
+name: Body Map pointer diagnostic evidence only
+on:
+  push:
+    branches: ['diagnostics/body-map-pointer-20261029']
+permissions:
+  contents: read
+jobs:
+  pointer-diagnostic:
+    runs-on: macos-15
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.2'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps webkit
+      - name: Verify matching environment before any iteration
+        run: |
+          mkdir -p pointer-evidence
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';import {execFileSync} from 'node:child_process';
+          const env={node:process.version,imageVersion:process.env.ImageVersion,imageOS:process.env.ImageOS,runnerOS:process.env.RUNNER_OS,runnerArch:process.env.RUNNER_ARCH,macOS:execFileSync('sw_vers',['-productVersion'],{encoding:'utf8'}).trim(),build:execFileSync('sw_vers',['-buildVersion'],{encoding:'utf8'}).trim(),playwright:JSON.parse(fs.readFileSync('node_modules/playwright-core/package.json')).version,browsers:JSON.parse(fs.readFileSync('node_modules/playwright-core/browsers.json')).browsers};
+          fs.writeFileSync('pointer-evidence/environment.json',JSON.stringify(env,null,2));console.log(JSON.stringify(env));
+          if(env.imageVersion!=='20260907.0337.1'||env.macOS!=='15.7.9'||env.build!=='24G830'||env.runnerArch!=='ARM64'||env.playwright!=='1.62.1')throw Error('Historical environment mismatch; do not run an unmatched experiment.');
+          NODE
+      - name: Bounded original prefix with passive event evidence
+        env:
+          BIG_GAINS_WEBKIT_QA: 'true'
+        run: node scripts/body-map-pointer-run.mjs
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: body-map-pointer-evidence
+          retention-days: 7
+          path: |
+            pointer-evidence/*.json
+            pointer-evidence/iterations/*/*.json
+            pointer-evidence/iterations/*/*.ndjson
+            pointer-evidence/iterations/*/*.log
+            pointer-evidence/iterations/*/*.zip
+            pointer-evidence/iterations/*/*.png
+            pointer-evidence/iterations/*/*.webm
