@@ -20,6 +20,7 @@
     "test:program-domain-cutover": "node --test tests/program-domain-cutover.test.mjs",
     "test:program-portability-runtime": "node --test tests/program-portability-runtime.test.mjs",
     "test:pwa-update": "node --test tests/pwa-update-unit.test.mjs",
+    "test:migration-journal": "node --test tests/migration-journal.node.mjs tests/migration-journal-db.node.mjs",
     "test:browser": "playwright test",
     "test:browser:headed": "playwright test --headed",
     "test:browser:report": "playwright show-report",
