@@ -4,6 +4,26 @@ import { clickCentered, openApp, openExerciseOptions, openExerciseSwap, reloadAp
 
 const NOW = '2026-09-10T12:00:00.000Z';
 const DAY = 86400000;
+async function waitForScrollSettled(page, target) {
+  if (target.page() !== page) throw new Error('Swap settling target belongs to another page.');
+  await target.evaluate(element => new Promise((resolve, reject) => {
+    let previous, stableFrames = 0, frame;
+    const timer = setTimeout(() => {
+      cancelAnimationFrame(frame);
+      reject(new Error(`Swap scroll and target geometry did not settle within 2000 ms: ${JSON.stringify(previous)}`));
+    }, 2000);
+    const sample = () => {
+      const rect = element.getBoundingClientRect();
+      const current = [window.scrollX, window.scrollY, rect.x, rect.y, rect.width, rect.height];
+      stableFrames = element.isConnected && previous && current.every((value, index) => value === previous[index])
+        ? stableFrames + 1 : 0;
+      previous = current;
+      if (stableFrames >= 3) { clearTimeout(timer); resolve(); }
+      else frame = requestAnimationFrame(sample);
+    };
+    frame = requestAnimationFrame(sample);
+  }));
+}
 const sets = n => Array.from({length:n}, (_,i)=>({id:`set-${i}`,weight:15,reps:10,completed:true,warmup:false}));
 const ex = (id,name,muscle,n) => ({id,name,muscle,equipment:'Test',sets:sets(n)});
 function historyState() {
@@ -198,7 +218,7 @@ test('active swap preserves source data, units and rest; persists offline and su
   expect(before.activeWorkout.exercises[0].displayUnitOverride).toBe('kg');
   await context.setOffline(true);
   // Blank warm-up templates require the real entered-data confirmation.
-  await openExerciseSwap(page, 0, { confirmation: true });
+  await openExerciseSwap(page, 0, { confirmation: true, beforeClick: target => waitForScrollSettled(page, target) });
   await expect(page.locator('#exercisePickerSearch')).toBeHidden();
   await expect(page.locator('#exercisePickerDialog')).toHaveClass(/is-compact/);
   expect(await page.locator('#exercisePickerDialog').evaluate(e=>e.getBoundingClientRect().height/innerHeight)).toBeLessThanOrEqual(.86);
@@ -253,7 +273,7 @@ test('swap safeguards entered/completed sets and rejects stale slot callbacks; C
   const blocked=await page.evaluate(()=>workoutSessionController.swapExercise(0,'cable-lateral-raise'));
   expect(blocked).toMatchObject({swapped:false,confirmationRequired:true});
   await openExerciseOptions(page,'Dumbbell Lateral Raise');
-  await openExerciseSwap(page, 0, { confirmation: true });
+  await openExerciseSwap(page, 0, { confirmation: true, beforeClick: target => waitForScrollSettled(page, target) });
   await expect(page.locator('#exercisePickerDialog')).toBeVisible();
   await page.locator('[data-exercise-picker-browse]').click();
   await expect(page.locator('#exercisePickerDialog')).not.toHaveClass(/is-compact/);
@@ -261,7 +281,7 @@ test('swap safeguards entered/completed sets and rejects stale slot callbacks; C
   await page.locator('#closeExercisePicker').click();
   await expect(page.locator('[data-swap-exercise="0"]')).toBeFocused();
   expect((await readStoredJson(page,STORAGE_KEYS.jorge)).activeWorkout).toEqual(before.activeWorkout);
-  await openExerciseSwap(page, 0, { confirmation: true });
+  await openExerciseSwap(page, 0, { confirmation: true, beforeClick: target => waitForScrollSettled(page, target) });
   await page.evaluate(()=>workoutSessionController.updateSet(0,1,'weight','30'));
   await page.locator('.exercise-picker-suggested [data-exercise-picker-select]').first().click();
   expect((await readStoredJson(page,STORAGE_KEYS.jorge)).activeWorkout.exercises[0].id).toBe('dumbbell-lateral-raise');

@@ -36,7 +36,7 @@ export async function switchProfile(page, profileId) {
   await waitForAppRuntime(page, { profileId });
 }
 
-export async function clickCentered(locator) {
+export async function clickCentered(locator, { beforeClick } = {}) {
   // Playwright can retry its scroll after checking stability. Keep that implicit
   // scroll instant too; explicit application smooth/instant scrolls still run.
   // Own a style node in this document, leaving inline styles and new documents alone.
@@ -51,6 +51,7 @@ export async function clickCentered(locator) {
     } catch (error) { node.remove(); throw error; }
   });
   try {
+    if (beforeClick) await beforeClick(locator);
     await locator.click();
   } finally {
     try { await style.evaluate(node => node.remove()); }
@@ -85,14 +86,14 @@ export async function openExerciseOptions(page, name) {
   const details=card.locator('.exercise-management');
   if(!await details.evaluate(e=>e.open)) await details.locator('summary').click();
 }
-export async function openExerciseSwap(page, exerciseIndex, { confirmation = false } = {}) {
+export async function openExerciseSwap(page, exerciseIndex, { confirmation = false, beforeClick } = {}) {
   const button = page.locator(`[data-swap-exercise="${exerciseIndex}"]`);
-  await clickCentered(button);
+  await clickCentered(button, { beforeClick });
   if (confirmation) {
     await expect(button).toHaveText('Sure?');
     await expect(button).toHaveClass(/is-confirming/);
     await expect(page.locator('#exercisePickerDialog')).toBeHidden();
-    await clickCentered(button);
+    await clickCentered(button, { beforeClick });
   }
   await expect(page.locator('#exercisePickerDialog')).toBeVisible();
 }
