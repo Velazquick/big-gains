@@ -647,6 +647,8 @@
     readRaw,
     writeRaw,
     removeRaw,
+    replaceRaw,
+    retainRecoveryEvidence,
     candidateProfile = null,
     getOperations = () => [],
     initialized = true,
@@ -658,8 +660,8 @@
     ...options
   } = {}) {
     const mapping = ownerAndScope(options);
-    const portsValid = mapping && typeof readRaw === 'function' && typeof writeRaw === 'function'
-      && typeof removeRaw === 'function' && envelopeApi?.build && programModel?.normalizeCapture;
+    const portsValid = mapping && typeof readRaw === 'function' && typeof replaceRaw === 'function'
+      && envelopeApi?.build && programModel?.normalizeCapture;
     const permittedState = inspected?.state === STATES.REMOTE_FAST_FORWARD_SAFE
       || (explicitChoice === true && inspected?.state === STATES.DIVERGENT_CONFLICT);
     if (!portsValid || !permittedState || !remote?.record || !remote?.envelope) {
@@ -679,7 +681,9 @@
         return result({ ok: false, reasonCode: REASON_CODES.ADOPTION_STATE_CHANGED });
       }
       current = candidateProfile == null ? JSON.parse(beforeRaw) : clone(candidateProfile);
-      if (!isRecord(current)) throw new Error('Profile candidate is not an object.');
+      if (!isRecord(current) || current.profileId !== mapping.scope.profileId) {
+        throw new Error('Profile candidate identity does not match its local scope.');
+      }
     } catch {
       return result({ ok: false, reasonCode: REASON_CODES.ADOPTION_PERSISTENCE_FAILED });
     }
@@ -703,50 +707,60 @@
       next.programCapture = normalizeCapture(remoteCapture, mapping, { programModel, catalog });
     } else delete next.programCapture;
     const candidateRaw = JSON.stringify(next);
-    const rollback = async () => {
-      if (beforeRaw === null) await removeRaw();
-      else await writeRaw(beforeRaw);
-      if (await readRaw() !== beforeRaw) throw new Error(REASON_CODES.ADOPTION_ROLLBACK_FAILED);
-    };
+    const transactionId = scope.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    let wroteCandidate = false;
     try {
       if (programOperations(getOperations(), mapping).length) {
         return result({ ok: false, reasonCode: REASON_CODES.PROGRAM_QUEUE_PENDING });
       }
-      if (await readRaw() !== beforeRaw) {
+      wroteCandidate = true;
+      if (replaceRaw(beforeRaw, candidateRaw) !== true) {
         return result({ ok: false, reasonCode: REASON_CODES.ADOPTION_STATE_CHANGED });
       }
-      await writeRaw(candidateRaw);
       const afterRaw = await readRaw();
       if (afterRaw !== candidateRaw || !await verifyPersistedProfile(afterRaw, remote, mapping, {
         envelopeApi, programModel, catalog
       })) throw new Error(REASON_CODES.ADOPTION_READBACK_MISMATCH);
       if (programOperations(getOperations(), mapping).length) throw new Error(REASON_CODES.ADOPTION_STATE_CHANGED);
+      if (replaceRaw(candidateRaw, candidateRaw) !== true) throw new Error(REASON_CODES.ADOPTION_STATE_CHANGED);
       return result({
         ok: true,
         status: 'program-domain-adopted',
         profile: clone(next),
+        profileRaw: candidateRaw,
         remoteIdentity: identity(remote.record),
         queueChanged: false
       });
     } catch (error) {
+      let rolledBack = false;
+      let rollbackError = null;
       try {
-        await rollback();
-      } catch (rollbackError) {
-        return result({
-          ok: false,
-          reasonCode: REASON_CODES.ADOPTION_ROLLBACK_FAILED,
-          error: error?.message || String(error),
-          rollbackError: rollbackError?.message || String(rollbackError)
-        });
+        rolledBack = !wroteCandidate || replaceRaw(candidateRaw, beforeRaw) === true
+          || replaceRaw(beforeRaw, beforeRaw) === true;
+      } catch (failure) { rollbackError = failure?.message || String(failure); }
+      let recoveryEvidenceKey = null;
+      let evidenceError = null;
+      if (!rolledBack) {
+        const evidence = { format: 'big-gains.program-adoption-recovery.v1', transactionId,
+          owner: clone(mapping.owner), scope: clone(mapping.scope), beforeRaw, candidateRaw,
+          currentRaw: null, reasonCode: REASON_CODES.ADOPTION_STATE_CHANGED };
+        try { evidence.currentRaw = await readRaw(); } catch (failure) { evidence.readError = failure?.message || String(failure); }
+        try { recoveryEvidenceKey = retainRecoveryEvidence?.(evidence) || null; }
+        catch (failure) { evidenceError = failure?.message || String(failure); }
       }
       return result({
         ok: false,
-        reasonCode: [REASON_CODES.ADOPTION_STATE_CHANGED, REASON_CODES.ADOPTION_READBACK_MISMATCH]
+        reasonCode: !rolledBack ? REASON_CODES.ADOPTION_STATE_CHANGED : [REASON_CODES.ADOPTION_STATE_CHANGED, REASON_CODES.ADOPTION_READBACK_MISMATCH]
           .includes(error?.message)
           ? error.message
           : REASON_CODES.ADOPTION_PERSISTENCE_FAILED,
         error: error?.message || String(error),
-        rolledBack: true
+        rolledBack,
+        recoveryRequired: !rolledBack,
+        rollbackError,
+        recoveryEvidenceKey,
+        recoveryEvidenceRetained: Boolean(recoveryEvidenceKey),
+        evidenceError
       });
     }
   }

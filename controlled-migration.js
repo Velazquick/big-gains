@@ -208,6 +208,13 @@
       if (blockers.length) throw new (engine().MigrationError)('audit-mismatch', blockers[0]);
       const freshPlan = await engine().buildMigrationPlan({ audit: runtime.audit, preview: freshPreview, localSnapshots: localSnapshots() });
       if (freshJournal) engine().validateJournal(freshPlan, freshJournal);
+      if (freshJournal?.metadata?.status === 'complete') {
+        runtime.journal = freshJournal;
+        runtime.plan = null;
+        runtime.audit = null;
+        runtime.message = 'The verified migration is already complete.';
+        return;
+      }
       runtime.plan = freshPlan;
       runtime.journal = freshJournal;
       const result = await engine().executeMigration({

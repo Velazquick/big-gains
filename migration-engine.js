@@ -292,10 +292,26 @@
         return throwIfError(await client.from('sync_metadata').insert(row)
           .select('id,account_id,profile_id,client_id,last_acknowledged_version,metadata,version,created_at,updated_at').single());
       },
-      async updateJournal(id, values) {
-        return throwIfError(await client.from('sync_metadata').update(values)
+      async updateJournal(id, values, expected) {
+        const expectedVersion = Number(expected?.version);
+        const previousStatus = expected?.metadata?.status;
+        const nextStatus = values?.metadata?.status;
+        const allowedPrevious = nextStatus === 'complete'
+          ? ['verifying'] : ['pending', 'verifying', 'failed'];
+        if (!['verifying', 'complete', 'failed'].includes(nextStatus)
+          || !Number.isSafeInteger(expectedVersion) || expectedVersion < 1
+          || !Number.isSafeInteger(values.version) || values.version !== expectedVersion + 1
+          || !allowedPrevious.includes(previousStatus)) {
+          fail('journal-transition-invalid', 'The migration journal transition is not eligible.');
+        }
+        const result = await client.from('sync_metadata').update(values)
           .eq('account_id', accountId).eq('id', id)
-          .select('id,account_id,profile_id,client_id,last_acknowledged_version,metadata,version,created_at,updated_at').single());
+          .eq('version', expectedVersion).eq('metadata->>status', previousStatus)
+          .select('id,account_id,profile_id,client_id,last_acknowledged_version,metadata,version,created_at,updated_at').maybeSingle();
+        const updated = throwIfError(result);
+        if (!updated) fail('journal-transition-superseded',
+          'The migration journal changed. No journal transition was recorded; refresh before retrying.');
+        return updated;
       },
       async insertRow(table, row) {
         return throwIfError(await client.from(table).insert(row).select(columnsFor(table)).single());
@@ -413,6 +429,9 @@
         validateJournal(plan, journal);
       }
     }
+    if (journal.metadata?.status === 'complete') {
+      fail('migration-already-complete', 'This migration is already complete; no target rows were uploaded by this execution.');
+    }
     try {
       let completed = 0;
       for (const record of plan.records) {
@@ -422,7 +441,7 @@
       }
       timestamps = { ...timestamps, updatedAt: nowIso() };
       let metadata = journalMetadata(plan, 'verifying', timestamps);
-      journal = await repository.updateJournal(journal.id, { metadata, last_acknowledged_version: 1, version: Number(journal.version || 1) + 1, updated_at: timestamps.updatedAt });
+      journal = await repository.updateJournal(journal.id, { metadata, last_acknowledged_version: 1, version: Number(journal.version || 1) + 1, updated_at: timestamps.updatedAt }, journal);
       onProgress({ stage: 'verifying', completed, total: plan.records.length });
       const verification = await verifyReadback(plan, repository);
       const sourceResult = await verifySource();
@@ -430,7 +449,7 @@
       verification.sourceStillMatches = true;
       timestamps = { ...timestamps, updatedAt: nowIso(), completedAt: nowIso() };
       metadata = journalMetadata(plan, 'complete', timestamps, { verification });
-      journal = await repository.updateJournal(journal.id, { metadata, last_acknowledged_version: 2, version: Number(journal.version || 1) + 1, updated_at: timestamps.updatedAt });
+      journal = await repository.updateJournal(journal.id, { metadata, last_acknowledged_version: 2, version: Number(journal.version || 1) + 1, updated_at: timestamps.updatedAt }, journal);
       const audit = postMigrationAudit(plan, journal.metadata, verification);
       onProgress({ stage: 'complete', completed, total: plan.records.length });
       return { ok: true, journal, audit, verification };
@@ -438,8 +457,15 @@
       timestamps = { ...timestamps, updatedAt: nowIso() };
       const metadata = journalMetadata(plan, 'failed', timestamps, { failure: { code: error?.code || 'migration-interrupted' } });
       try {
-        journal = await repository.updateJournal(journal.id, { metadata, last_acknowledged_version: 0, version: Number(journal.version || 1) + 1, updated_at: timestamps.updatedAt });
-      } catch {}
+        journal = await repository.updateJournal(journal.id, { metadata, last_acknowledged_version: 0, version: Number(journal.version || 1) + 1, updated_at: timestamps.updatedAt }, journal);
+      } catch (journalError) {
+        if (journalError?.code === 'journal-transition-superseded') {
+          throw Object.assign(journalError, { migrationFailure: error });
+        }
+        throw Object.assign(new MigrationError('journal-failure-recording-unconfirmed',
+          'Migration stopped, but its failure marker could not be confirmed. Refresh before retrying.'),
+          { cause: journalError, migrationFailure: error });
+      }
       throw error;
     }
   }

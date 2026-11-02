@@ -1,7 +1,10 @@
 import { assertTelemetryRequest } from './helpers/telemetry.js';
 import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
-import { openApp } from './helpers/app.js';
+import { openApp, reloadApp } from './helpers/app.js';
+// This corpus mocks remote readback; real installed/offline workers are covered
+// separately. A worker-owned request can bypass page routing entirely.
+test.use({ serviceWorkers: 'block' });
 
 const authUserId = '84000000-0000-0000-0000-000000000001';
 const accountId = '84a00000-0000-0000-0000-000000000001';
@@ -133,7 +136,7 @@ test('profile parity true safely reconciles stale superseded pending operations 
     });
   });
 
-  await page.reload();
+  await reloadApp(page);
   await expect.poll(() => page.evaluate(() => BigGainsCloudSync.queue.pending().length)).toBe(0);
   await expect(page.locator('#cloudShadowHeading')).toHaveText('In sync');
   await expect(page.locator('#cloudQueueStatus')).toContainText('Reconciled 2 obsolete queued changes after verified readback');

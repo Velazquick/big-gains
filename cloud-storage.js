@@ -344,7 +344,14 @@
 
   function createDurableQueue({ storage = window.localStorage, key = DURABLE_QUEUE_KEY, acknowledgementLimit = 250 } = {}) {
     let parsed = null;
-    try { parsed = JSON.parse(storage.getItem(key) || 'null'); } catch { parsed = null; }
+    let unreadable = false;
+    try {
+      const raw = storage.getItem(key);
+      parsed = raw === null ? null : JSON.parse(raw);
+      unreadable = raw !== null && (parsed?.version !== 1 || !Array.isArray(parsed.pending)
+        || !Array.isArray(parsed.acknowledgements) || parsed.pending.some(value => !validPersistedOperation(value))
+        || parsed.acknowledgements.some(value => typeof value?.idempotencyKey !== 'string'));
+    } catch { unreadable = true; }
     const pendingByKey = new Map();
     const acknowledgements = new Map();
     if (parsed?.version === 1 && Array.isArray(parsed.pending)) {
@@ -360,6 +367,8 @@
     }
 
     function persist(pending = pendingByKey, acknowledged = acknowledgements) {
+      if (storage === window.localStorage) window.bigGainsStatePersistence?.assertWriter();
+      if (unreadable) throw new Error('Saved sync queue is unreadable; original data is protected.');
       storage.setItem(key, JSON.stringify({
         version: 1,
         pending: [...pending.values()],

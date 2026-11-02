@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import vm from 'node:vm';
 
 globalThis.window = globalThis;
 
@@ -237,14 +238,28 @@ function memoryProfile(initial, behavior = {}) {
   let raw = initial;
   let writes = 0;
   let removes = 0;
+  let mismatchReads = behavior.mismatchOnRead ? 1 : 0;
   return {
-    async readRaw() { return raw; },
+    async readRaw() {
+      if (writes > 0 && mismatchReads > 0) { mismatchReads -= 1; return `${raw} `; }
+      return raw;
+    },
     async writeRaw(value) {
       writes += 1;
       if (behavior.throwOnWrite === writes) throw new Error('synthetic write failure');
       raw = behavior.corruptOnWrite === writes ? `${value}corrupt` : value;
     },
     async removeRaw() { removes += 1; raw = null; },
+    replaceRaw(expected, replacement) {
+      if (raw !== expected) return false;
+      if (expected === replacement) return true;
+      if (replacement === null) { removes += 1; raw = null; return true; }
+      writes += 1;
+      if (behavior.throwOnWrite === writes) throw new Error('synthetic write failure');
+      raw = behavior.corruptOnWrite === writes ? `${replacement}corrupt` : replacement;
+      if (raw !== replacement) throw new Error('synthetic unknown persisted bytes');
+      return true;
+    },
     raw: () => raw,
     writes: () => writes,
     removes: () => removes
@@ -498,11 +513,11 @@ test('17 persistence failure restores the exact prior profile bytes', async () =
   assert.equal(memory.raw(), initial);
 });
 
-test('18 local readback mismatch restores the exact prior profile bytes', async () => {
+test('18 transient readback mismatch restores the exact prior transaction-owned profile bytes', async () => {
   const remote = await remoteFor();
   const inspected = await classify({ remoteRead: readResult(remote.validated), localProgramCapture: null, pristine: true, freshDevice: true });
   const initial = JSON.stringify({ version: 5, profileId: profileScope.profileId, workouts: [] });
-  const memory = memoryProfile(initial, { corruptOnWrite: 1 });
+  const memory = memoryProfile(initial, { mismatchOnRead: true });
   const adopted = await recovery.adopt({
     classification: inspected, remote: remote.validated, ...memory,
     owner, scope: profileScope, envelopeApi, programModel: model, catalog, freshDevice: true
@@ -901,4 +916,117 @@ test('41 unresolved fresh-device active origin blocks the complete candidate', a
   });
   assert.equal(inspected.state, recovery.states.INVALID_REMOTE);
   assert.equal(inspected.reasonCode, recovery.reasonCodes.ACTIVE_ORIGIN_UNRESOLVED);
+});
+
+async function ownedAdoptionFixture() {
+  const key = 'synthetic-faultline-profile';
+  const descriptor = { ...profileScope, storageKey: key };
+  const storage = new Map();
+  const localStorage = { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, String(value)), removeItem: key => storage.delete(key) };
+  const history = id => ({ id, type: 'Push', startedAt: '2026-08-28T10:00:00.000Z', completedAt: '2026-08-28T10:30:00.000Z', exercises: [{ id: 'bench', name: 'Bench', sets: [{ weight: 100, reps: 8, completed: true }] }] });
+  const capture = captureFixture();
+  const before = { version: 5, profileId: profileScope.profileId, goals: {}, workouts: [history('retained-history')], weights: [], prs: {}, activeWorkout: null, restTimerEndsAt: null, customRoutines: {}, programCapture: capture };
+  storage.set(key, JSON.stringify(before));
+  const sandbox = { console, localStorage, navigator: { locks: { request: async (_name, _options, callback) => callback({ name: 'synthetic-owned' }) } }, addEventListener() {},
+    bigGainsAccounts: { registry: { accounts: [descriptor], resolve: () => descriptor }, runtime: { storageNamespace: 'synthetic-faultline' }, activeSelectionKey: 'synthetic-selection' }, BigGainsProgramModel: model, BigGainsProgramOrigin: originApi };
+  sandbox.window = sandbox;
+  vm.createContext(sandbox);
+  vm.runInContext(await readFile(new URL('../state-persistence.js', import.meta.url), 'utf8'), sandbox);
+  await sandbox.bigGainsStatePersistence.writerReady;
+  const persistence = sandbox.bigGainsStatePersistence;
+  const profile = { id: profileScope.profileId, goals: {} };
+  const store = persistence.create({ account: descriptor, profile, profileConfig: { [profile.id]: profile }, validWorkoutTypes: ['Push'], createId: () => 'generated-id', slug: value => value, exerciseCatalog: catalog });
+  store.load();
+  const base = await remoteFor({ capture });
+  const successor = await remoteFor({ capture: changedHeads(capture, 20), version: 2, revisions: { definitions: 1, heads: 2, sequence: 1 }, acceptedBase: base.validated });
+  const inspected = await classify({ remoteRead: readResult(successor.validated), acceptedRemote: base.validated, localProgramCapture: capture });
+  const queue = cloud.createDurableQueue({ key: 'synthetic-program-queue', storage: localStorage });
+  const input = { classification: inspected, remote: successor.validated, readRaw: () => persistence.readRawOwnedState(key),
+    writeRaw: value => persistence.writeRawOwnedState(key, value), removeRaw: () => persistence.removeRawOwnedState(key),
+    replaceRaw: (expected, next) => persistence.compareAndReplaceRawOwnedState(key, expected, next),
+    retainRecoveryEvidence: evidence => persistence.retainRawOwnedStateRecovery(key, evidence),
+    getOperations: () => queue.pending(), owner, scope: profileScope, envelopeApi, programModel: model, catalog };
+  return { before, capture, base, input, queue, storage, key, persistence, store, history };
+}
+
+function heldVerification() {
+  let release, enter;
+  const held = new Promise(resolve => { release = resolve; });
+  const entered = new Promise(resolve => { enter = resolve; });
+  return { release, entered, envelopeApi: { ...envelopeApi, fingerprints: async (...args) => { enter(); await held; return envelopeApi.fingerprints(...args); } } };
+}
+
+for (const enqueueProgram of [false, true]) test(`faultline adoption retains newer durable History and active state with Program queue ${enqueueProgram}`, async () => {
+  const h = await ownedAdoptionFixture(); const delayed = heldVerification();
+  const adoption = recovery.adopt({ ...h.input, envelopeApi: delayed.envelopeApi });
+  await delayed.entered;
+  const newer = clone(h.before);
+  newer.workouts.unshift(h.history('new-durable-history'));
+  newer.activeWorkout = { id: 'new-active', type: 'Push', startedAt: '2026-08-28T12:00:00.000Z', exercises: [{ id: 'bench', name: 'Bench', sets: [] }] };
+  if (enqueueProgram) newer.programCapture = changedHeads(h.capture, 25);
+  h.store.save(newer, newer.activeWorkout);
+  if (enqueueProgram) await sync.enqueueProgramDomain({ ...profileScope, accountId: owner.accountId, profileId: owner.profileId, scope: profileScope, programCapture: newer.programCapture, acceptedBase: h.base.validated.record, catalog, queue: h.queue, updatedAt: '2026-08-28T15:00:00.000Z' });
+  const durable = h.storage.get(h.key), queueBytes = h.storage.get('synthetic-program-queue');
+  delayed.release(); const adopted = await adoption;
+  assert.equal(adopted.ok, false);
+  assert.equal(adopted.rolledBack, false);
+  assert.equal(h.storage.get(h.key), durable);
+  assert.equal(h.storage.get('synthetic-program-queue'), queueBytes);
+  assert.equal(JSON.parse(durable).workouts[0].id, 'new-durable-history');
+  assert.equal(JSON.parse(durable).activeWorkout.id, 'new-active');
+  assert.equal(adopted.recoveryEvidenceRetained, true);
+  const evidence = JSON.parse(h.storage.get(adopted.recoveryEvidenceKey));
+  assert.equal(evidence.beforeRaw, JSON.stringify(h.before));
+  assert.equal(evidence.currentRaw, durable);
+  assert.equal(evidence.scope.profileId, profileScope.profileId);
+});
+
+test('faultline Program queue conflict rolls back only its still owned candidate', async () => {
+  const h = await ownedAdoptionFixture(); const delayed = heldVerification();
+  const adoption = recovery.adopt({ ...h.input, envelopeApi: delayed.envelopeApi }); await delayed.entered;
+  await sync.enqueueProgramDomain({ accountId: owner.accountId, profileId: owner.profileId, scope: profileScope, programCapture: changedHeads(h.capture, 25), acceptedBase: h.base.validated.record, catalog, queue: h.queue, updatedAt: '2026-08-28T15:00:00.000Z' });
+  const queueBytes = h.storage.get('synthetic-program-queue'); delayed.release(); const adopted = await adoption;
+  assert.equal(adopted.ok, false); assert.equal(adopted.rolledBack, true);
+  assert.equal(h.storage.get(h.key), JSON.stringify(h.before));
+  assert.equal(h.storage.get('synthetic-program-queue'), queueBytes);
+});
+
+test('faultline persisted profile identity mismatch is refused before adoption writes', async () => {
+  const h = await ownedAdoptionFixture();
+  const foreign = JSON.stringify({ ...h.before, profileId: 'another-profile' }); h.storage.set(h.key, foreign);
+  const adopted = await recovery.adopt(h.input);
+  assert.equal(adopted.ok, false);
+  assert.equal(h.storage.get(h.key), foreign);
+});
+
+test('faultline compare and replace refuses changed bytes and mismatched profile identities', async () => {
+  const h = await ownedAdoptionFixture(); const before = h.storage.get(h.key);
+  const next = JSON.stringify({ ...h.before, goals: { primary: 'newer' } }); h.store.save(JSON.parse(next), null);
+  assert.equal(h.persistence.compareAndReplaceRawOwnedState(h.key, before, before), false);
+  assert.equal(h.storage.get(h.key), next);
+  assert.throws(() => h.persistence.compareAndReplaceRawOwnedState(h.key, next, JSON.stringify({ ...h.before, profileId: 'another-profile' })));
+  assert.equal(h.storage.get(h.key), next);
+});
+
+test('faultline missing synchronous replacement port refuses adoption without a fallback write', async () => {
+  const h = await ownedAdoptionFixture(); const before = h.storage.get(h.key);
+  const adopted = await recovery.adopt({ ...h.input, replaceRaw: undefined });
+  assert.equal(adopted.ok, false);
+  assert.equal(adopted.reasonCode, recovery.reasonCodes.ADOPTION_NOT_SAFE);
+  assert.equal(h.storage.get(h.key), before);
+});
+
+test('faultline unknown write readback is retained with recovery evidence instead of blind rollback', async () => {
+  const h = await ownedAdoptionFixture();
+  const replaceRaw = (expected, next) => {
+    if (h.storage.get(h.key) !== expected) return false;
+    h.storage.set(h.key, `${next}synthetic-unknown`);
+    throw Error('synthetic failed durable readback');
+  };
+  const adopted = await recovery.adopt({ ...h.input, replaceRaw });
+  assert.equal(adopted.ok, false); assert.equal(adopted.rolledBack, false);
+  assert.equal(adopted.recoveryRequired, true); assert.equal(adopted.recoveryEvidenceRetained, true);
+  const evidence = JSON.parse(h.storage.get(adopted.recoveryEvidenceKey));
+  assert.equal(h.storage.get(h.key), `${evidence.candidateRaw}synthetic-unknown`);
+  assert.equal(evidence.beforeRaw, JSON.stringify(h.before));
 });

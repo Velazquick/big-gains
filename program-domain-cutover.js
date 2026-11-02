@@ -428,6 +428,8 @@
         readRaw: input.readRaw,
         writeRaw: input.writeRaw,
         removeRaw: input.removeRaw,
+        replaceRaw: input.replaceRaw,
+        retainRecoveryEvidence: input.retainRecoveryEvidence,
         candidateProfile: input.candidateProfile ?? null,
         getOperations: () => queue.pending(),
         initialized: input.initialized !== false,
@@ -442,10 +444,11 @@
         const blocked = [recoveryApi.reasonCodes.PROGRAM_QUEUE_PENDING,
           recoveryApi.reasonCodes.ACTIVE_SESSION_PRESENT, recoveryApi.reasonCodes.REST_STATE_PRESENT].includes(adopted.reasonCode);
         return result({ status: blocked ? RESULTS.BLOCKED : RESULTS.FAILED, ok: false,
-          reasonCode: adopted.reasonCode, rolledBack: adopted.rolledBack === true });
+          reasonCode: adopted.reasonCode, rolledBack: adopted.rolledBack === true,
+          recoveryRequired: adopted.recoveryRequired === true, recoveryEvidenceKey: adopted.recoveryEvidenceKey || null });
       }
       return result({ status: RESULTS.SUCCESS, ok: true, reasonCode: null, choice: 'keep_cloud',
-        remoteIdentity: clone(adopted.remoteIdentity), queueChanged: false });
+        remoteIdentity: clone(adopted.remoteIdentity), profileRaw: adopted.profileRaw, queueChanged: false });
     }
 
     async function resolveKeepDevice(fresh, input) {
@@ -511,6 +514,8 @@
         readRaw: input.readRaw,
         writeRaw: input.writeRaw,
         removeRaw: input.removeRaw,
+        replaceRaw: input.replaceRaw,
+        retainRecoveryEvidence: input.retainRecoveryEvidence,
         candidateProfile: input.candidateProfile ?? null,
         getOperations: () => queue.pending(),
         initialized: input.initialized !== false,
@@ -523,9 +528,10 @@
       }); } catch { adopted = { ok: false, reasonCode: REASON_CODES.LOCAL_ADOPTION_FAILED }; }
       if (!adopted.ok) return result({ status: RESULTS.FAILED, ok: false,
         reasonCode: REASON_CODES.LOCAL_ADOPTION_FAILED, adoptionReasonCode: adopted.reasonCode,
-        cloudPublished: true, localMutation: false, rolledBack: adopted.rolledBack === true });
+        cloudPublished: true, localMutation: false, rolledBack: adopted.rolledBack === true,
+        recoveryRequired: adopted.recoveryRequired === true, recoveryEvidenceKey: adopted.recoveryEvidenceKey || null });
       return result({ status: RESULTS.SUCCESS, ok: true, reasonCode: null, choice: 'keep_device',
-        remoteVersion: enqueued.operation.version, verifiedReadback: true, localMutation: true });
+        remoteVersion: enqueued.operation.version, profileRaw: adopted.profileRaw, verifiedReadback: true, localMutation: true });
     }
 
     async function resolveConflict(choice, snapshot, input = {}) {

@@ -69,7 +69,35 @@
     else if (event.filename) record(event.filename, 'startup-script-execution-failed');
   }, true);
 
+  let ownedScriptsStarted = false;
+  const persistenceIndex = manifest.scripts.findIndex(url => stableName(url) === 'state-persistence.js');
+  if (persistenceIndex < 0) throw new Error('The persistence startup boundary is unavailable.');
+  async function startOwnedScripts(owned) {
+    if (ownedScriptsStarted) return;
+    ownedScriptsStarted = true;
+    if (!owned) {
+      window.BigGainsBootGate?.recover(window.bigGainsStatePersistence.writerStatus() === 'occupied'
+        ? 'Big Gains is open in another tab. Close that tab, then reload here. Your saved training is unchanged.'
+        : 'This browser could not protect saved training across tabs. Reload in a supported browser. Your saved data is unchanged.', 'local-writer-unavailable');
+      document.getElementById('bootRetry')?.removeAttribute('hidden');
+      return;
+    }
+    // Do not even construct a stale queue or execute recovery in a second tab.
+    // Classic scripts keep their global bindings and the manifest's exact order.
+    for (const url of manifest.scripts.slice(persistenceIndex + 1)) {
+      await new Promise(resolve => {
+        const script = document.createElement('script');
+        script.src = url;
+        script.async = false;
+        script.dataset.bigGainsAsset = 'script';
+        script.onload = resolve;
+        script.onerror = resolve;
+        document.body.appendChild(script);
+      });
+    }
+  }
   window.BigGainsAssetStatus = Object.freeze({
+    startOwnedScripts,
     complete: () => { monitoring = false; return true; },
     status: () => Object.freeze({
       monitoring,
@@ -82,7 +110,8 @@
   const escapeAttribute = value => value.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
   const markup = [
     ...manifest.styles.map(url => `<link rel="stylesheet" href="${escapeAttribute(url)}" data-big-gains-asset="style">`),
-    ...manifest.scripts.map(url => `<script src="${escapeAttribute(url)}" data-big-gains-asset="script"><\/script>`)
+    ...manifest.scripts.slice(persistenceIndex + 1).map(url => `<link rel="preload" as="script" href="${escapeAttribute(url)}">`),
+    ...manifest.scripts.slice(0, persistenceIndex + 1).map(url => `<script src="${escapeAttribute(url)}" data-big-gains-asset="script"><\/script>`)
   ].join('');
 
   document.write(markup);

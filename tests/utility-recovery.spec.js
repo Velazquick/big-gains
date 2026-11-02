@@ -45,7 +45,7 @@ test('next session queue drains after physical singleton correction and stale Fi
     if(result.failed!==1||result.pending!==1)throw Error('Expected physical singleton to block the new session');
     renderStaleRecovery();
   });
-  await expect(page.locator('#staleWorkoutFinish')).toBeDisabled();
+  await expect(page.locator('#staleWorkoutFinish')).toBeEnabled();
   await page.locator('#staleWorkoutResume').click();
   expect((await jorgeState(page)).activeWorkout).toEqual(before.activeWorkout);
   await page.evaluate(async()=>{
@@ -87,7 +87,9 @@ for(const historical of ['blocked','conflict'])test(`real sync ${historical} rec
     else{f.controls.recovery={ok:true};await f.reconcile();f.controls.pending=[{id:'synthetic'}];await f.api.applyRemoteFastForward();}
     renderStaleRecovery();
   },{builder:createSyncSafetyFixture.toString(),source:readFileSync(new URL('../cloud-sync.js',import.meta.url),'utf8'),historical});
-  await expect(page.locator('#staleWorkoutFinish')).toBeDisabled();await expect(page.locator('#staleWorkoutDiscard')).toBeDisabled();
+  // Historical delivery results do not own the live workout. Actual profile
+  // replacement/journal/ownership guards are tested separately below.
+  await expect(page.locator('#staleWorkoutFinish')).toBeEnabled();await expect(page.locator('#staleWorkoutDiscard')).toBeEnabled();
   await page.evaluate(async()=>{
     syntheticSync.controls.recovery={ok:true};
     syntheticSync.controls.pending=[]; // Synthetic queue owner independently settles its work.
@@ -108,19 +110,29 @@ for(const historical of ['blocked','conflict'])test(`real sync ${historical} rec
 for(const [patch,reason] of [
   [{pending:1},'sync'],[{busy:true},'sync'],[{comparing:true},'sync'],[{capturePending:1},'sync'],[{reconciliationInFlight:true},'sync'],
   [{sameEntityConflict:{eligible:true}},'recovery'],[{remoteFastForward:{conflict:true}},'recovery'],
-  [{lastResult:{blocked:true}},'recovery'],[{lastResult:{conflict:true}},'recovery'],[{lastComparison:{parity:false}},'recovery'],
+  [{lastResult:{blocked:true}},'outbound'],[{lastResult:{conflict:true}},'outbound'],[{lastComparison:{parity:false}},'outbound'],
   [{owner:'managed'},'recovery'],[{owner:'program'},'program'],[{owner:'migration'},'migration'],[{owner:'missing'},'unknown'],[{owner:'throw'},'unknown']
 ])test(`bounded stale diagnostic ${JSON.stringify(patch)}`,async({page,context})=>{
   await seed(page,{age:24});const before=await jorgeState(page);await context.setOffline(true);
   await page.evaluate(({status,patch})=>{
     if(patch.owner==='managed')window.BigGainsManagedProfileRecovery={updateSafety:()=>false};
-    else if(patch.owner==='program')window.BigGainsProgramPortability={updateSafety:()=>false};
+    else if(patch.owner==='program')window.BigGainsProgramPortability={updateSafety:()=>false,localMutationSafety:()=>false};
     else if(patch.owner==='migration')window.BigGainsControlledMigration={status:()=>({busy:true})};
     else if(patch.owner==='missing')window.BigGainsControlledMigration=null;
     else if(patch.owner==='throw')window.BigGainsCloudSync={status(){throw Error('private training contents');}};
     if(patch.owner!=='throw')window.BigGainsCloudSync={status:()=>({...status,...patch})};
     renderStaleRecovery();
   },{status:healthySync,patch});
+  if(reason==='sync'||reason==='outbound'){
+    expect(await page.locator('#diagnosticStaleRecovery').textContent()).toBe('Recovery safe');
+    await expect(page.locator('#staleWorkoutFinish')).toBeEnabled();await expect(page.locator('#staleWorkoutDiscard')).toBeEnabled();
+    expect(await jorgeState(page)).toEqual(before);
+    await expect(page.locator('#staleWorkoutResume')).toBeEnabled();
+    expect(await page.evaluate(()=>workoutSessionController.complete())).toBe(true);
+    const saved=await jorgeState(page);expect(saved.activeWorkout).toBeNull();expect(saved.workouts).toHaveLength(1);
+    expect(saved.workouts[0].exercises[0].sets).toEqual(before.activeWorkout.exercises[0].sets.filter(s=>s.completed));
+    return;
+  }
   expect(await page.locator('#diagnosticStaleRecovery').textContent()).toBe(`Recovery blocked: ${reason}`);
   await expect(page.locator('#staleWorkoutFinish')).toBeDisabled();await expect(page.locator('#staleWorkoutDiscard')).toBeDisabled();
   expect(await page.evaluate(()=>workoutSessionController.complete())).toBe(false);
@@ -218,7 +230,7 @@ test('offline detection and local Resume work',async({page,context})=>{
   await expect(page.locator('#staleWorkoutRecovery')).toBeVisible();await page.locator('#staleWorkoutResume').click();
   expect((await jorgeState(page)).activeWorkout.id).toBe('utility-active');
 });
-for(const status of [{pending:1},{lastResult:{conflict:true}},{reconciliationInFlight:true}])test(`recovery fails closed ${JSON.stringify(status)}`,async({page})=>{
+for(const status of [{sameEntityConflict:{eligible:true}},{remoteFastForward:{conflict:true}},{pending:-1}])test(`recovery fails closed ${JSON.stringify(status)}`,async({page})=>{
   await seed(page);const before=await jorgeState(page);
   await page.evaluate(status=>{window.BigGainsCloudSync={status:()=>status};renderStaleRecovery();},{...healthySync,...status});
   await expect(page.locator('#staleWorkoutFinish')).toBeDisabled();await expect(page.locator('#staleWorkoutDiscard')).toBeDisabled();
@@ -294,13 +306,21 @@ async function installSupportObserver(page){
 for(const [blocker,patch] of [
  ['sync',()=>{window.BigGainsCloudSync={status:()=>({...window.supportSync,pending:1})};}],
  ['recovery',()=>{window.BigGainsManagedProfileRecovery={updateSafety:()=>false};}],
- ['program',()=>{window.BigGainsProgramPortability={updateSafety:()=>false,status:()=>({status:'blocked'})};}],
+ ['program',()=>{window.BigGainsProgramPortability={updateSafety:()=>false,localMutationSafety:()=>false,status:()=>({status:'blocked'})};}],
  ['migration',()=>{window.BigGainsControlledMigration={status:()=>({busy:true})};}],
  ['unknown',()=>{window.BigGainsControlledMigration={status:()=>null};}]
 ])test(`support controller observes ${blocker}, then automatically ready once`,async({page})=>{
  await seed(page);
  await page.evaluate(fn=>{window.supportSync=BigGainsCloudSync.status();window.supportOwners={sync:BigGainsCloudSync,recovery:BigGainsManagedProfileRecovery,program:BigGainsProgramPortability,migration:BigGainsControlledMigration};new Function(`return (${fn})`)()();},patch.toString());
  await installSupportObserver(page);
+ if(blocker==='sync'){
+  await expect(page.locator('#staleWorkoutFinish')).toBeEnabled();
+  expect(await page.evaluate(()=>supportObserved.filter(e=>e.event_name==='stale_session_blocked').length)).toBe(0);
+  await page.locator('#staleWorkoutFinish').click();
+  await expect.poll(()=>page.evaluate(()=>supportObserved.filter(e=>e.event_name==='stale_session_finished').length)).toBe(1);
+  expect(await page.evaluate(()=>supportObserved.find(e=>e.event_name==='stale_session_finished').pending_sync)).toBe('1');
+  return;
+ }
  await expect(page.locator('#staleWorkoutFinish')).toBeDisabled();
  await expect.poll(()=>page.evaluate(()=>supportObserved.filter(e=>e.event_name==='stale_session_blocked').map(e=>e.blocker))).toEqual([blocker]);
  await page.evaluate(()=>{for(let i=0;i<30;i++)renderStaleRecovery();});

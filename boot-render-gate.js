@@ -9,6 +9,7 @@
   let reason = 'startup';
   let epoch = 0;
   let authorizing = false;
+  let writerCheck = null;
 
   function personalizedRoots() {
     return [...document.querySelectorAll(ROOT_SELECTOR)];
@@ -44,6 +45,32 @@
   }
 
   function authorize(nextReason = 'identity-resolved') {
+    const persistence = window.bigGainsStatePersistence;
+    if (persistence && persistence.writerStatus() !== 'owned') {
+      if (persistence.writerStatus() !== 'pending') {
+        recover(persistence.writerStatus() === 'occupied'
+          ? 'Big Gains is open in another tab. Close that tab, then reload here. Your saved training is unchanged.'
+          : 'Reload to reopen your saved training safely. Your saved data is unchanged.', 'local-writer-unavailable');
+        document.getElementById('bootRetry')?.removeAttribute('hidden');
+        return false;
+      }
+      if (!writerCheck) {
+        const currentEpoch = epoch;
+        writerCheck = persistence.writerReady.then(owned => {
+          writerCheck = null;
+          if (epoch !== currentEpoch) return;
+          if (owned && persistence.writerStatus() === 'owned') authorize(nextReason);
+          else {
+            recover(persistence.writerStatus() === 'occupied'
+              ? 'Big Gains is open in another tab. Close that tab, then reload here. Your saved training is unchanged.'
+              : 'This browser could not protect saved training across tabs. Reload in a supported browser. Your saved data is unchanged.', 'local-writer-unavailable');
+            document.getElementById('bootRetry')?.removeAttribute('hidden');
+          }
+        });
+      }
+      return false;
+    }
+    if (window.BigGainsAppRuntime?.preparePersistence?.() === false) return false;
     if (state === 'verified' && root.dataset.bootState === 'verified') {
       syncVisibility();
       return false;

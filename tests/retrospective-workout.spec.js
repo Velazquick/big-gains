@@ -1,6 +1,7 @@
-import { expect, test } from '@playwright/test';
+import { expect } from '@playwright/test';
+import { test } from './helpers/network-outage.js';
 import { activeWorkout, blankState, installLocalStorageFixture, readStoredJson, STORAGE_KEYS } from './fixtures/local-storage.js';
-import { openApp } from './helpers/app.js';
+import { clickCentered, openApp, switchProfile } from './helpers/app.js';
 import { openHistoryCalendar } from './helpers/history.js';
 
 test.use({ timezoneId: 'America/New_York' });
@@ -15,12 +16,12 @@ async function openCalendar(page, fixture = 'blankJorge') {
 }
 
 async function selectDate(page, dateKey) {
-  await page.locator(`[data-calendar-date="${dateKey}"]`).click();
+  await clickCentered(page.locator(`[data-calendar-date="${dateKey}"]`));
 }
 
 async function openEditor(page, dateKey) {
   await selectDate(page, dateKey);
-  await page.locator('#logRetrospectiveWorkout').click();
+  await clickCentered(page.locator('#logRetrospectiveWorkout'));
   await expect(page.locator('#retrospectiveDialog')).toBeVisible();
   await expect(page.locator('#retrospectiveTitle')).toBeFocused();
 }
@@ -239,9 +240,46 @@ test('cancel and reload discard only the draft while an active workout and retur
   }, { key: STORAGE_KEYS.jorge, value: { ...blankState('jorge'), activeWorkout: active } });
   await page.clock.setFixedTime(FIXED_NOW);
   await openApp(page);
+  await page.evaluate(() => {
+    let armed = false;
+    let navigationObserved = false;
+    window.retrospectiveHistoryOpenHits = [];
+    const record = event => {
+      if (!armed) return;
+      const button = document.querySelector('[data-open-history-archive]');
+      const rect = button?.getBoundingClientRect();
+      window.retrospectiveHistoryOpenHits.push({
+        type: event.type, trusted: event.isTrusted, hit: button?.contains(event.target) === true,
+        x: event.clientX, y: event.clientY,
+        rect: rect ? { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom } : null
+      });
+      if (event.type === 'click') armed = false;
+    };
+    document.addEventListener('pointerdown', record, true);
+    document.addEventListener('click', event => {
+      if (!navigationObserved && event.isTrusted && event.target.closest?.('.bottom-nav [data-view="progress"]')) {
+        navigationObserved = true;
+        window.retrospectiveHistoryOpenHits = [];
+        armed = true;
+        return;
+      }
+      record(event);
+    }, true);
+  });
   await page.locator('#exitWorkoutMode').click();
   const petState = await page.locator('body').getAttribute('data-workout-pet-state');
   await openHistoryCalendar(page);
+  const historyHits = await page.evaluate(() => window.retrospectiveHistoryOpenHits);
+  expect(historyHits.map(hit => hit.type)).toEqual(['pointerdown', 'click']);
+  for (const hit of historyHits) {
+    expect(hit.trusted).toBe(true);
+    expect(hit.hit).toBe(true);
+    expect(hit.rect).not.toBeNull();
+    expect(hit.x).toBeGreaterThanOrEqual(hit.rect.left);
+    expect(hit.x).toBeLessThanOrEqual(hit.rect.right);
+    expect(hit.y).toBeGreaterThanOrEqual(hit.rect.top);
+    expect(hit.y).toBeLessThanOrEqual(hit.rect.bottom);
+  }
   await openEditor(page, '2026-08-03');
   await completeFirstWorkingSet(page);
   await page.locator('#cancelRetrospectiveWorkout').click();
@@ -264,12 +302,19 @@ test('cancel and reload discard only the draft while an active workout and retur
 });
 
 test('account isolation and backup normalization preserve optional retrospective metadata for deployed and synthetic accounts', async ({ page }) => {
-  await openCalendar(page);
+  // Both owned profiles are explicit fixtures; reading an absent profile must
+  // not create durable state. The last fixture keeps Jorge initially active.
+  await openCalendar(page, ['blankAlexa', 'blankJorge']);
+  const alexaRaw = await page.evaluate(key => localStorage.getItem(key), STORAGE_KEYS.alexa);
+  expect(alexaRaw).not.toBeNull();
   await openEditor(page, '2026-08-03');
   await completeFirstWorkingSet(page);
   await page.locator('#saveRetrospectiveWorkout').click();
   const jorge = await readStoredJson(page, STORAGE_KEYS.jorge);
-  await Promise.all([page.waitForNavigation(), page.locator('#profileSelect').selectOption('alexa')]);
+  const jorgeRaw = await page.evaluate(key => localStorage.getItem(key), STORAGE_KEYS.jorge);
+  await switchProfile(page, 'alexa');
+  expect(await page.evaluate(key => localStorage.getItem(key), STORAGE_KEYS.alexa)).toBe(alexaRaw);
+  expect(await page.evaluate(key => localStorage.getItem(key), STORAGE_KEYS.jorge)).toBe(jorgeRaw);
   expect((await readStoredJson(page, STORAGE_KEYS.alexa)).workouts).toHaveLength(0);
   expect((await readStoredJson(page, STORAGE_KEYS.jorge)).workouts).toEqual(jorge.workouts);
   await openHistoryCalendar(page);
@@ -282,6 +327,7 @@ test('account isolation and backup normalization preserve optional retrospective
   await expect(page.locator('.retrospective-exercise')).toHaveCount(5);
   await page.locator('#cancelRetrospectiveWorkout').click();
 
+  expect(await page.evaluate(() => localStorage.getItem('big-gains-test-riley-v1'))).toBeNull();
   const result = await page.evaluate(workout => {
     const third = { accountId: 'test-riley-account', profileId: 'riley', displayName: 'Riley', storageNamespace: 'riley-test', storageKey: 'big-gains-test-riley-v1', profileConfigRef: 'riley' };
     const profile = { id: 'riley', name: 'Riley', goals: { primary: 'General fitness' }, weekPlan: { 0: 'Rest', 1: 'Push' }, capabilities: { allExercises: false, restFallbackWorkout: 'Push', wellnessPresentation: false } };
@@ -295,12 +341,14 @@ test('account isolation and backup normalization preserve optional retrospective
     return { backupMethod: backup.workouts[0].entryMethod, roundTripMethod: roundTrip.state.workouts[0].entryMethod, invalidPresent: 'entryMethod' in invalidMetadata.workouts[0], profileId: roundTrip.state.profileId };
   }, jorge.workouts[0]);
   expect(result).toEqual({ backupMethod: 'retrospective', roundTripMethod: 'retrospective', invalidPresent: false, profileId: 'riley' });
+  expect(await page.evaluate(key => localStorage.getItem(key), STORAGE_KEYS.alexa)).toBe(alexaRaw);
+  expect(await page.evaluate(key => localStorage.getItem(key), STORAGE_KEYS.jorge)).toBe(jorgeRaw);
 });
 
-test('retrospective logging and save work from the offline v44 app shell', async ({ page, context }) => {
+test('retrospective logging and save work from the offline v44 app shell', async ({ page, context, setAppNetworkUnavailable }) => {
   await openCalendar(page);
   await page.evaluate(() => navigator.serviceWorker.ready);
-  await context.setOffline(true);
+  await setAppNetworkUnavailable(true);
   try {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await openHistoryCalendar(page);
@@ -310,6 +358,6 @@ test('retrospective logging and save work from the offline v44 app shell', async
     await expect(page.locator('#calendarDayWorkouts')).toContainText('Entered later');
     expect((await readStoredJson(page, STORAGE_KEYS.jorge)).workouts).toHaveLength(1);
   } finally {
-    await context.setOffline(false);
+    await setAppNetworkUnavailable(false);
   }
 });

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openApp } from './helpers/app.js';
+import { clickCentered, openApp, reloadApp } from './helpers/app.js';
 import { blankState, completedWorkout, readStoredJson, STORAGE_KEYS } from './fixtures/local-storage.js';
 
 async function installState(page, value) {
@@ -16,12 +16,13 @@ async function installState(page, value) {
 
 async function openWorkoutDetail(page, workoutId) {
   await page.locator('.bottom-nav [data-view="progress"]').click();
-  await page.locator(`[data-history-id="${workoutId}"]`).first().click();
+  await clickCentered(page.locator(`[data-history-id="${workoutId}"]`).first());
   await expect(page.locator('#historyDialog')).toBeVisible();
+  await expect(page.locator('#historyDialog')).toHaveAttribute('data-workout-id', workoutId);
 }
 
 function exercise({ id, definitionId, name, muscle, equipment, sets, note = '' }) {
-  return { id, ...(definitionId ? { definitionId } : {}), name, muscle, equipment, note, sets };
+  return { id, ...(definitionId ? { definitionId } : {}), name, muscle, equipment, note, sets, collapsed: true };
 }
 
 test('editing a reps typo updates the same workout and derived analytics without rewriting unrelated history', async ({ page }) => {
@@ -184,7 +185,8 @@ test('delete confirms clearly, removes only the selected workout, and queues its
       migrationId: 'offline-delete-baseline', adoptedAt: '2026-08-05T12:00:00.000Z', profiles
     }));
   }, { alexaKey: STORAGE_KEYS.alexa, alexa: blankState('alexa') });
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  await reloadApp(page, { waitUntil: 'domcontentloaded', profileId: 'jorge' });
+  expect(await page.evaluate(() => typeof window.BigGainsCloudShadow?.localRecords)).toBe('function');
   const catalogDiagnostic = await page.evaluate(() => ({
     profileIds: BigGainsCloudShadow.profileIds,
     key: bigGainsAccounts.runtime.cloudKeys.catalog,

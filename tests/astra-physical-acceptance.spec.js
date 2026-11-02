@@ -45,8 +45,11 @@ test('inactive summaries surround the unchanged working card at 390px',async({pa
     expect((await card.boundingBox()).height).toBeLessThan(180);
     await expect(card).toHaveCSS('opacity','1');await expect(card).toHaveCSS('background-image','none');
     await expect(card.locator('.exercise-head h3')).toBeVisible();await expect(card.locator('.collapsed-summary strong')).toContainText('working sets');
-    for(const button of await card.locator('button:visible').all()){
-      const box=await button.boundingBox();expect(box.width).toBeGreaterThanOrEqual(44);expect(box.height).toBeGreaterThanOrEqual(44);
+    const buttonBoxes=await card.locator('button:visible').evaluateAll(buttons=>buttons.map(button=>{
+      const {width,height}=button.getBoundingClientRect();return {width,height};
+    }));
+    for(const box of buttonBoxes){
+      expect(box.width).toBeGreaterThanOrEqual(44);expect(box.height).toBeGreaterThanOrEqual(44);
     }
   }
   await page.locator('#activeExercises').evaluate(e=>window.scrollBy({top:e.getBoundingClientRect().top-document.querySelector('.active-heading').getBoundingClientRect().height-16,behavior:'instant'}));

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { installLocalStorageFixture, readStoredJson, STORAGE_KEYS } from './fixtures/local-storage.js';
-import { openApp } from './helpers/app.js';
+import { openApp, reloadApp } from './helpers/app.js';
 import { createProgramFixture } from './helpers/program.js';
 
 test.beforeEach(async ({ page }) => {
@@ -33,7 +33,7 @@ test('Plan presents Program-only and Goals-only states without inventing relatio
   await expect(page.locator('#planProgramDetail')).toContainText('No linked priorities');
   await expect(page.locator('#planProgramDetail')).toContainText('6 rolling sessions');
 
-  await page.reload();
+  await reloadApp(page);
   await page.evaluate(() => {
     state.programCapture = BigGainsProgramModel.blankCapture();
     bigGainsGoals.createGoal({ exerciseId: BigGainsExerciseCatalog.resolve('Barbell Bench Press').canonicalId, targetValue: 250 });

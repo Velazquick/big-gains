@@ -4,6 +4,9 @@ const chromiumExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
 
 export default defineConfig({
   testDir: './tests',
+  // Node contracts have their own runner and exit status. Never import them
+  // during browser collection, where node:test failures can escape CI verdicts.
+  testMatch: '**/*.spec.js',
   // PR diff metadata fetches the base with --depth=1 and makes a full clone
   // shallow before collection. Preserve the history required by release checks.
   captureGitInfo: { commit: true, diff: false },

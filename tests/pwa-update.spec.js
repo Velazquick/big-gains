@@ -4,19 +4,30 @@ import { readFile } from 'node:fs/promises';
 import { extname } from 'node:path';
 import { installLocalStorageFixture } from './fixtures/local-storage.js';
 import { createSyncSafetyFixture } from './helpers/sync-safety.mjs';
+import { clickCentered, waitForAppRuntime } from './helpers/app.js';
 
-const RELEASE = 'v121-train-premium-pass-02';
+const RELEASE = 'v123-reliability-completion';
 const V103 = 'v103-rc-hardening-pass-1';
+function aggregatePwaFailures(errors, label) {
+  // Playwright serializes message/stack/cause, not AggregateError.errors.
+  return new AggregateError(errors, `${label}: ${errors.map(error => String(error)).join(' | ')}`,
+    { cause: errors[0] });
+}
 test.setTimeout(60000);
 // Exact v103 core from e728f76; shell reduced to its load-only registration and
 // marker. This models real worker lifecycle, not every historical v103 UI asset.
-async function harness(browser, { legacy = false } = {}) {
+async function harness(browser, { legacy = false, pathPrefix = '' } = {}) {
   let version = legacy ? V103 : RELEASE, down = false, redirect = null, failWorker = false;
   const root = new URL('../', import.meta.url);
   const server = createServer(async (req, res) => {
     if (down) { req.socket.destroy(); return; }
     if (redirect) { res.writeHead(301, { Location: redirect + req.url }).end(); return; }
-    const path = new URL(req.url, 'http://localhost').pathname.slice(1) || 'index.html';
+    const pathname = new URL(req.url, 'http://localhost').pathname;
+    if (pathname === '/__activation_observer.html') {
+      res.writeHead(200, { 'Content-Type': 'text/html', 'Cache-Control': 'no-store' });
+      res.end('<title>Uncontrolled activation observer</title>'); return;
+    }
+    const path = pathname.slice(pathPrefix.length + 1) || 'index.html';
     if (failWorker && path === 'service-worker.js') { res.writeHead(503).end(); return; }
     const mime = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json' };
     try {
@@ -35,18 +46,27 @@ async function harness(browser, { legacy = false } = {}) {
     } catch { res.writeHead(404).end(); }
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-  const origin = `http://127.0.0.1:${server.address().port}`;
+  const origin = `http://127.0.0.1:${server.address().port}${pathPrefix ? `${pathPrefix}/` : ''}`;
   const context = await browser.newContext({ serviceWorkers: 'allow', viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   await installLocalStorageFixture(page, 'blankJorge');
   await page.goto(origin);
   await controlled(page);
+  if (!legacy) await waitForAppRuntime(page);
   // A controller can arrive while startup's explicit update check is still in
   // flight. Finish that baseline check before mutating the synthetic deployment.
   if (!legacy) await page.evaluate(() => bigGainsPwaUpdate.check(true));
   return { page, context, origin, deploy: value => { version = value; }, offline: value => { down = value; },
     redirect: value => { redirect = value; }, failWorker: value => { failWorker = value; },
-    close: async () => { await context.close(); await new Promise(resolve => server.close(resolve)); } };
+    close: async () => {
+      const errors = [];
+      try { await context.close(); } catch (error) { errors.push(error); }
+      try { server.closeAllConnections(); } catch (error) { errors.push(error); }
+      try { await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve())); }
+      catch (error) { errors.push(error); }
+      if (errors.length === 1) throw errors[0];
+      if (errors.length > 1) throw aggregatePwaFailures(errors, 'Context and owned server cleanup failed');
+    } };
 }
 async function controlled(page) {
   await page.evaluate(async () => {
@@ -86,7 +106,7 @@ test('real waiting worker: idle approval updates once, preserves data and launch
     const before = await h.page.evaluate(() => localStorage.getItem('big-gains-v2'));
     await h.page.getByRole('button', { name: 'Update now', exact: true }).focus();
     await Promise.all([h.page.waitForEvent('framenavigated', frame => frame === h.page.mainFrame()), h.page.keyboard.press('Enter')]);
-    await h.page.waitForLoadState('load');
+    await h.page.waitForLoadState('load'); await waitForAppRuntime(h.page);
     await expect.poll(() => h.page.evaluate(() => window.BIG_GAINS_ASSET_MANIFEST?.release)).toBe('v107-synthetic-update');
     await controlled(h.page);
     expect(await h.page.evaluate(() => localStorage.getItem('pwa-proof-sentinel'))).toBe('unchanged');
@@ -141,7 +161,7 @@ test('new shell with older worker and failed install has no false restart offer;
   const h = await harness(browser);
   try {
     h.deploy('v107-synthetic-update'); h.failWorker(true);
-    await h.page.reload();
+    await h.page.reload(); await waitForAppRuntime(h.page);
     await h.page.evaluate(() => bigGainsPwaUpdate.check(true));
     await expect.poll(() => h.page.evaluate(() => window.bigGainsPwaUpdate?.status().workerRelease)).toBe(RELEASE);
     expect(await h.page.evaluate(() => BIG_GAINS_ASSET_MANIFEST.release)).toBe('v107-synthetic-update');
@@ -151,7 +171,7 @@ test('new shell with older worker and failed install has no false restart offer;
     await h.page.evaluate(() => bigGainsPwaUpdate.check(true));
     await expect(h.page.locator('#pwaUpdate')).toBeVisible({ timeout: 15000 });
     await Promise.all([h.page.waitForEvent('framenavigated', frame => frame === h.page.mainFrame()), h.page.locator('#pwaUpdateNow').click()]);
-    await h.page.waitForLoadState('load');
+    await h.page.waitForLoadState('load'); await waitForAppRuntime(h.page);
     await expect.poll(() => h.page.evaluate(() => window.bigGainsPwaUpdate?.status().workerRelease)).toBe('v107-synthetic-update');
     await expect(h.page.locator('#pwaUpdate')).toBeHidden();
   } finally { await h.close(); }
@@ -165,7 +185,7 @@ for (const [name, setup, cleanup, reason] of [
   ['recovery journal', () => localStorage.setItem(BigGainsManagedProfileRecovery.adoptionKey, '{}'), () => localStorage.removeItem(BigGainsManagedProfileRecovery.adoptionKey), 'recovery'],
   ['open editor', () => document.querySelector('#routineDialog').showModal(), () => document.querySelector('#routineDialog').close(), 'editor']
 ]) test(`production guard defers ${name} and becomes safe after resolution`, async ({ page }) => {
-  await installLocalStorageFixture(page, 'blankJorge'); await page.goto('/');
+  await installLocalStorageFixture(page, 'blankJorge'); await page.goto('/'); await waitForAppRuntime(page);
   await expect.poll(() => page.evaluate(() => BigGainsPwaUpdate.safety().safe)).toBe(true);
   await page.evaluate(setup);
   expect(await page.evaluate(() => BigGainsPwaUpdate.safety())).toEqual({ safe: false, reason });
@@ -181,7 +201,7 @@ test('another open controlled client blocks forced worker activation', async ({ 
     expect(await h.page.evaluate(() => BIG_GAINS_ASSET_MANIFEST.release)).toBe(RELEASE);
     await other.close();
     await Promise.all([h.page.waitForEvent('framenavigated', frame => frame === h.page.mainFrame()), h.page.locator('#pwaUpdateNow').click()]);
-    await h.page.waitForLoadState('load');
+    await h.page.waitForLoadState('load'); await waitForAppRuntime(h.page);
     await expect.poll(() => h.page.evaluate(() => BIG_GAINS_ASSET_MANIFEST.release)).toBe('v107-synthetic-update');
   } finally { await h.close(); }
 });
@@ -193,7 +213,7 @@ test('startup and each resume event request an update; bursts are coalesced', as
     ServiceWorkerRegistration.prototype.update = function () { window.updateChecks++; return update.call(this); };
     const now = Date.now; Date.now = () => now() + window.updateClock;
   });
-  await page.goto('/');
+  await page.goto('/'); await waitForAppRuntime(page);
   await expect.poll(() => page.evaluate(() => window.updateChecks)).toBeGreaterThan(0);
   await page.evaluate(() => bigGainsPwaUpdate.check());
   for (const event of ['focus', 'pageshow', 'visibilitychange', 'online']) {
@@ -208,7 +228,7 @@ test('startup and each resume event request an update; bursts are coalesced', as
 });
 for (const conflict of ['sameEntityConflict', 'remoteFastForward', 'lastResult']) {
   test(`unresolved ${conflict} port blocks restart`, async ({ page }) => {
-    await installLocalStorageFixture(page, 'blankJorge'); await page.goto('/');
+    await installLocalStorageFixture(page, 'blankJorge'); await page.goto('/'); await waitForAppRuntime(page);
     await expect.poll(() => page.evaluate(() => BigGainsPwaUpdate.safety().safe)).toBe(true);
     expect(await page.evaluate(key => {
       const original = BigGainsCloudSync;
@@ -218,7 +238,7 @@ for (const conflict of ['sameEntityConflict', 'remoteFastForward', 'lastResult']
   });
 }
 test('unsubmitted visible form input and unavailable safety state defer restart', async ({ page }) => {
-  await installLocalStorageFixture(page, 'blankJorge'); await page.goto('/');
+  await installLocalStorageFixture(page, 'blankJorge'); await page.goto('/'); await waitForAppRuntime(page);
   await expect.poll(() => page.evaluate(() => BigGainsPwaUpdate.safety().safe)).toBe(true);
   await page.evaluate(() => { const input = document.createElement('input'); input.id = 'draft-proof'; input.value = 'unsaved'; document.body.append(input); });
   expect(await page.evaluate(() => BigGainsPwaUpdate.safety())).toEqual({ safe: false, reason: 'editor' });
@@ -226,7 +246,7 @@ test('unsubmitted visible form input and unavailable safety state defer restart'
   expect(await page.evaluate(() => BigGainsPwaUpdate.safety().safe)).toBe(false);
 });
 test('a selected hidden restore file blocks restart until the existing writer clears it', async ({ page }) => {
-  await installLocalStorageFixture(page, 'blankJorge'); await page.goto('/');
+  await installLocalStorageFixture(page, 'blankJorge'); await page.goto('/'); await waitForAppRuntime(page);
   await expect.poll(() => page.evaluate(() => BigGainsPwaUpdate.safety().safe)).toBe(true);
   await page.evaluate(() => {
     const input = document.getElementById('importData');
@@ -239,14 +259,29 @@ test('a selected hidden restore file blocks restart until the existing writer cl
   expect(await page.evaluate(() => BigGainsPwaUpdate.safety().safe)).toBe(true);
 });
 test('v103 same-origin close/reopen permits natural activation without any skipWaiting message', async ({ browser }) => {
-  const h = await harness(browser, { legacy: true });
+  const h = await harness(browser, { legacy: true, pathPrefix: '/app' });
   try {
     await h.page.evaluate(() => localStorage.setItem('close-proof', 'kept'));
     h.deploy(RELEASE);
     await h.page.evaluate(async () => (await navigator.serviceWorker.getRegistration()).update());
     await expect.poll(() => h.page.evaluate(async () => Boolean((await navigator.serviceWorker.getRegistration()).waiting))).toBe(true);
+    // Observe actual natural activation outside the worker's scope. Reopening
+    // inside it before teardown completes can create another legacy client.
+    const observer = await h.context.newPage();
+    await observer.goto(new URL('/__activation_observer.html', h.origin).href);
+    expect(await observer.evaluate(() => navigator.serviceWorker.controller)).toBeNull();
+    await observer.evaluate(async scope => {
+      const worker = (await navigator.serviceWorker.getRegistration(scope)).waiting;
+      window.activationProof = new Promise((resolve, reject) => {
+        worker.addEventListener('statechange', () => { if (worker.state === 'activated') resolve(true); });
+        AbortSignal.timeout(5000).addEventListener('abort', () => reject(new Error('Natural activation did not complete.')), { once: true });
+      });
+    }, h.origin);
     await h.page.close();
+    expect(await observer.evaluate(() => window.activationProof)).toBe(true);
+    expect(await observer.evaluate(() => navigator.serviceWorker.controller)).toBeNull();
     const reopened = await h.context.newPage(); await reopened.goto(h.origin);
+    await waitForAppRuntime(reopened); await controlled(reopened);
     await expect(reopened.locator('#quickStartSession')).toBeVisible();
     await expect.poll(() => reopened.evaluate(() => bigGainsPwaUpdate.status().workerRelease)).toBe(RELEASE);
     expect(await reopened.evaluate(() => localStorage.getItem('close-proof'))).toBe('kept');
@@ -264,7 +299,7 @@ test('v103 same-origin: can discover waiting worker but cannot activate it; new 
     await expect(h.page.locator('#quickStartSession')).toBeVisible();
     await expect(h.page.locator('#pwaUpdate')).toBeVisible();
     await Promise.all([h.page.waitForEvent('framenavigated', frame => frame === h.page.mainFrame()), h.page.locator('#pwaUpdateNow').click()]);
-    await h.page.waitForLoadState('load');
+    await h.page.waitForLoadState('load'); await waitForAppRuntime(h.page);
     await expect.poll(() => h.page.evaluate(() => bigGainsPwaUpdate.status().workerRelease)).toBe(RELEASE);
     expect(await h.page.evaluate(() => localStorage.getItem('v103-sentinel'))).toBe('preserved');
   } finally { await h.close(); }
@@ -335,7 +370,7 @@ test('waiting banner reevaluates each safety owner and exposes a bounded blocker
 });
 
 test('hidden stale UI is ignored but visible and off-screen unsaved work stays protected', async ({ page }) => {
-  await installLocalStorageFixture(page, 'blankJorge'); await page.goto('/');
+  await installLocalStorageFixture(page, 'blankJorge'); await page.goto('/'); await waitForAppRuntime(page);
   await expect.poll(() => page.evaluate(() => BigGainsPwaUpdate.safety().safe)).toBe(true);
   await page.evaluate(() => {
     const div = document.createElement('div'); div.id = 'hidden-proof';
@@ -370,15 +405,33 @@ test('durable queue drains and malformed records recover on the same visible ban
   } finally { await h.close(); }
 });
 
-test('Advanced diagnostics shows the live blocker in the actual Settings view', async ({ browser }) => {
+test('Advanced diagnostics shows the live blocker in the actual Settings view', async ({ browser }, info) => {
   const h = await harness(browser);
+  let inputEvidenceStarted = false, inputEvidenceAttached = false;
+  let failure;
   try {
     await offer(h);
     await h.page.locator('#pwaUpdateLater').click();
     await h.page.locator('.bottom-nav [data-view="more"]').click();
     await h.page.locator('#openSettings').click();
-    await h.page.locator('#advancedDiagnostics summary').evaluate(el => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
-    await h.page.locator('#advancedDiagnostics summary').click();
+    await h.page.evaluate(() => {
+      window.__pwaDisclosureHits = [];
+      const capture = event => {
+        const target = event.target?.closest?.('#advancedDiagnostics summary, #pwaCheckUpdate');
+        const rect = target?.getBoundingClientRect();
+        window.__pwaDisclosureHits.push({ type: event.type, trusted: event.isTrusted,
+          kind: target?.id === 'pwaCheckUpdate' ? 'check' : target ? 'summary' : 'other',
+          inside: Boolean(rect && event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom),
+          x: event.clientX, y: event.clientY, rect: rect ? { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom } : null,
+          path: event.composedPath().slice(0, 6).map(node => ({ tag: node.tagName ?? null, id: node.id ?? null })),
+          openBeforeDefault: document.querySelector('#advancedDiagnostics')?.open });
+      };
+      window.__stopPwaDisclosureHits = () => { for (const type of ['pointerdown', 'click']) document.removeEventListener(type, capture, true); };
+      for (const type of ['pointerdown', 'click']) document.addEventListener(type, capture, true);
+    });
+    inputEvidenceStarted = true;
+    await clickCentered(h.page.locator('#advancedDiagnostics summary'));
+    await expect(h.page.locator('#advancedDiagnostics')).toHaveAttribute('open', '');
     await h.page.locator('#pwaCheckUpdate').click();
     await expect(h.page.locator('#diagnosticUpdateBlocker')).toBeVisible();
     await expect(h.page.locator('#diagnosticUpdateBlocker')).toHaveText('Update safe');
@@ -388,5 +441,28 @@ test('Advanced diagnostics shows the live blocker in the actual Settings view', 
     await expect(h.page.locator('#pwaUpdateNow')).toBeDisabled();
     await h.page.evaluate(() => localStorage.setItem('big-gains-cloud-sync-queue-v1-proof', JSON.stringify({ version: 1, pending: [] })));
     await expect(h.page.locator('#pwaUpdateNow')).toBeEnabled();
-  } finally { await h.close(); }
+    const hits = await h.page.evaluate(() => { window.__stopPwaDisclosureHits(); return window.__pwaDisclosureHits; });
+    await info.attach('pwa-disclosure-native-hits', { contentType: 'application/json', body: Buffer.from(JSON.stringify(hits, null, 2)) });
+    inputEvidenceAttached = true;
+    expect(hits.map(({ type, trusted, kind, inside }) => ({ type, trusted, kind, inside }))).toEqual(
+      ['summary', 'check'].flatMap(kind => ['pointerdown', 'click'].map(type => ({ type, trusted: true, kind, inside: true }))));
+  } catch (error) { failure = error; throw error; } finally {
+    try {
+      if (inputEvidenceStarted && !inputEvidenceAttached) {
+        let hits;
+        try { hits = await h.page.evaluate(() => { window.__stopPwaDisclosureHits?.(); return window.__pwaDisclosureHits; }); }
+        catch (error) { hits = { snapshotUnavailable: String(error) }; }
+        await info.attach('pwa-disclosure-failed-native-hits', { contentType: 'application/json', body: Buffer.from(JSON.stringify(hits, null, 2)) });
+      }
+    } catch (error) {
+      failure = failure ? aggregatePwaFailures([failure, error], 'PWA assertion and evidence capture failed') : error;
+      throw failure;
+    } finally {
+      try { await h.close(); }
+      catch (error) {
+        if (failure) throw aggregatePwaFailures([failure, error], 'PWA assertion and owned cleanup failed');
+        throw error;
+      }
+    }
+  }
 });

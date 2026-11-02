@@ -4,7 +4,9 @@ permissions:
   contents: read
 jobs:
   lifecycle:
-    runs-on: macos-15
+    # Run 40367649246 never acquired an ARM64 runner. Preserve test deadlines
+    # and coverage while selecting the supported Intel macOS pool.
+    runs-on: macos-15-intel
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v7

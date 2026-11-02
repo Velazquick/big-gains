@@ -331,21 +331,24 @@
         const entityReasons = [];
         const keys = new Set([
           ...[...localByKey.keys()].filter(key => key.startsWith(`${table}\u0000`)),
-          ...[...cloudByKey.keys()].filter(key => key.startsWith(`${table}\u0000`))
+          ...[...cloudByKey.keys()].filter(key => key.startsWith(`${table}\u0000`)),
+          ...[...cloud.profiles[profileClientId].winners.keys()].filter(key => key.startsWith(`${table}\u0000`)),
+          ...Object.keys(expectedCatalog?.profiles?.[profileClientId]?.records || {}).filter(key => key.startsWith(`${table}\u0000`))
         ]);
         for (const key of keys) {
           const local = localByKey.get(key);
           const remote = cloudByKey.get(key);
-          const id = local?.clientId || remote?.clientId;
-          if (!remote) entityReasons.push(`${table}/${id} is missing from cloud.`);
-          else if (!local) entityReasons.push(`${table}/${id} is an unexpected extra cloud row.`);
-          else if (local.fingerprint !== remote.fingerprint) entityReasons.push(`${table}/${id} payload does not match local data.`);
           const expected = expectedCatalog?.profiles?.[profileClientId]?.records?.[key];
           const winnerRecord = cloud.profiles[profileClientId].winners.get(key);
+          const id = local?.clientId || remote?.clientId || expected?.clientId || winnerRecord?.clientId || key.slice(table.length+1);
+          if (local && !remote) entityReasons.push(`${table}/${id} is missing from cloud.`);
+          else if (!local && remote) entityReasons.push(`${table}/${id} is an unexpected extra cloud row.`);
+          else if (remote && local.fingerprint !== remote.fingerprint) entityReasons.push(`${table}/${id} payload does not match local data.`);
+          if (expected && !winnerRecord) entityReasons.push(`${table}/${id} is missing its accepted cloud revision.`);
           if (expected && winnerRecord) {
             if (winnerRecord.version < expected.version) entityReasons.push(`${table}/${id} has a stale remote version.`);
             else if (winnerRecord.version > expected.version) entityReasons.push(`${table}/${id} has a newer remote version; local remains authoritative.`);
-            else if (winnerRecord.fingerprint !== expected.fingerprint) entityReasons.push(`${table}/${id} has the expected version with a mismatched payload.`);
+            else if (winnerRecord.fingerprint !== expected.fingerprint || Boolean(winnerRecord.tombstone) !== Boolean(expected.tombstone)) entityReasons.push(`${table}/${id} has the expected version with a mismatched payload.`);
           }
         }
         const localChecksum = await checksumProfile(profileClientId, localRecordsValue.filter(record => record.table === table));

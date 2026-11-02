@@ -9,7 +9,8 @@ const telemetry=await readFile('product-telemetry.js','utf8');
 const program=await readFile('program-portability.js','utf8');
 const key='big-gains-operator-episodes-v2';
 const flush=()=>new Promise(r=>setImmediate(r));
-const memory=map=>({getItem:k=>map.get(k)||null,setItem:(k,v)=>map.set(k,v)});
+const memory=map=>({get length(){return map.size;},key:i=>[...map.keys()][i]??null,
+ getItem:k=>map.get(k)??null,setItem:(k,v)=>map.set(k,String(v))});
 // Execute the actual Program runtime and telemetry. Domain inspection outcomes,
 // identity, clocks, and transport are synthetic; no external endpoints are used.
 function setup({tab=new Map(),receipts=new Map(),local=new Map(),now=Date.parse('2026-10-06T14:00:00Z')}={}){
@@ -45,7 +46,7 @@ function setup({tab=new Map(),receipts=new Map(),local=new Map(),now=Date.parse(
   bigGainsStatePersistence:{readRawOwnedState:()=>null}
  };
  const state={workouts:[],programCapture:null},profile={id:'synthetic-profile'};
- const ctx=vm.createContext({window:scope,navigator:scope.navigator,PROFILE:profile,ACCOUNT:{accountId:'local-account'},state,active:null,
+ const ctx=vm.createContext({window:scope,localStorage:scope.localStorage,navigator:scope.navigator,PROFILE:profile,ACCOUNT:{accountId:'local-account'},state,active:null,
   statePersistenceApi:{storageKey:'synthetic-state',hasStoredState:()=>false},exerciseCatalog:{},
   setTimeout:(fn,ms)=>{const id=++timerId;timers.set(id,{fn,at:now+ms});return id;},clearTimeout:id=>timers.delete(id),AbortController,URL,Date:Clock});
  vm.runInContext(telemetry,ctx);vm.runInContext(program,ctx);
@@ -60,6 +61,20 @@ function setup({tab=new Map(),receipts=new Map(),local=new Map(),now=Date.parse(
 }
 const resolutions=h=>h.attempts.filter(e=>e.event_name==='conflict_resolved');
 const cached=h=>JSON.parse(h.tab.get(key)||'[]');
+
+test('receipt retries remain independent of retained adoption evidence and storage inspection faults',async()=>{
+ const h=setup();await h.start();h.delivery('reject');await h.converge();
+ const pending=cached(h)[0].resolution;
+ h.local.set('other-profile-program-adoption-recovery-v1-retained','evidence');
+ assert.equal(h.runtime.updateSafety(),true);
+ h.local.set('synthetic-state-program-adoption-recovery-v1-retained','evidence');
+ assert.equal(h.runtime.updateSafety(),false);assert.equal(h.runtime.localMutationSafety(),false);
+ h.delivery('ok');await h.retry();assert.equal(resolutions(h).at(-1).id,pending.id);assert.equal(cached(h).length,0);
+ assert.equal(h.local.get('synthetic-state-program-adoption-recovery-v1-retained'),'evidence');
+ h.local.delete('synthetic-state-program-adoption-recovery-v1-retained');
+ h.scope.localStorage.key=()=>{throw Error('synthetic storage inspection fault');};
+ assert.equal(h.runtime.updateSafety(),false);assert.equal(h.runtime.localMutationSafety(),false);
+});
 
 test('verified convergence resolves exact episode on explicit void-RPC HTTP acknowledgment',async()=>{
  const h=setup();await h.start();const id=h.attempts[0].episode_id;await h.converge();
