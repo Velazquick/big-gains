@@ -92,7 +92,7 @@ test('the saved-workout completion receipt is accurate, focused, reviewable, and
   const saved = (await jorgeState(page)).workouts[0];
   const expectedDuration = `${String(Math.floor(saved.durationSeconds / 60)).padStart(2, '0')}:${String(saved.durationSeconds % 60).padStart(2, '0')}`;
 
-  await expect(page.locator('#workoutCompletionTitle')).toHaveText('Push complete');
+  await expect(page.locator('#workoutCompletionTitle')).toHaveText('WORKOUT COMPLETE');
   await expect(page.locator('#completionWorkoutType')).toHaveText('Push');
   await expect(page.locator('#completionDuration')).toHaveText(expectedDuration);
   await expect(page.locator('#completionExercises')).toHaveText('2');
@@ -100,7 +100,9 @@ test('the saved-workout completion receipt is accurate, focused, reviewable, and
   await expect(page.locator('#completionVolume [data-workload-family="machine_indicated"] strong')).toHaveText('1,900 lb');
   await expect(page.locator('#completionPrCount')).toHaveText('2');
   await expect(page.locator('#completionPrCopy')).toHaveText('2 new records.');
-  await expect(page.locator('#completionPetSlot #trainingPetCard')).toBeVisible();
+  await expect(page.locator('#trainingPetHome #trainingPetCard')).toBeAttached();
+  await expect(page.locator('#workoutCompletion #trainingPetCard')).toHaveCount(0);
+  await expect(page.locator('#completionExercisesList .completion-set')).toHaveCount(3);
   await expect(page.locator('#trainingPet')).toHaveAttribute('data-state', 'pr');
   await expect.poll(() => page.evaluate(() => document.activeElement?.id)).toBe('workoutCompletionTitle');
 
@@ -134,7 +136,7 @@ test('the saved-workout completion receipt is accurate, focused, reviewable, and
   expect(reloaded.workouts).toHaveLength(1);
 });
 
-test('completion respects reduced motion and uses the indicated-load record pet state', async ({ page }) => {
+test('completion is static under reduced motion and leaves the indicated-load record pet at home', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await installLocalStorageFixture(page, 'activeWorkoutWithTwoExercises');
   await openApp(page);

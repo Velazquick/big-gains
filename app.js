@@ -292,37 +292,88 @@ function lastPerformance(exerciseId){return analyticsApi.previousPerformance(sta
 function renderActiveSession(scroll=true){if(!active)return;selectedDay=active.type;$('activePanel').classList.remove('hidden');$('cancelWorkout').classList.remove('hidden');$('cancelWorkout').textContent='Cancel';$('activeWorkoutTitle').textContent=displayWorkout(active.type);if($('activeWorkoutMeta'))$('activeWorkoutMeta').textContent=`${active.exercises.length} movement${active.exercises.length===1?'':'s'} · In progress`;if($('firstWorkoutGuidance'))$('firstWorkoutGuidance').hidden=!(state.onboarding&&state.workouts.length===0);clearInterval(workoutTicker);workoutTicker=setInterval(renderWorkoutClock,1000);renderWorkoutClock();renderActive();renderLibrary();timerController.renderPreferences();timerController.reconcile();if(scroll)window.bigGainsTrainPosition?.requestRestore({fallback:true});}
 function renderCompletion(workout){
   if(!workout)return false;
-  completionReceipt={workoutId:workout.id,workout};
-  const summary=analyticsApi.workoutSummary(workout,analyticsOptions());
-  const type=completionWorkoutLabel(workout.type);
-  $('workoutCompletionTitle').textContent=`${type} complete`;
-  $('completionWorkoutType').textContent=type;
-  $('completionDuration').textContent=fmtTime(summary.durationSeconds);
-  $('completionExercises').textContent=String((workout.exercises||[]).length);
-  $('completionWorkingSets').textContent=String(summary.workingSetCount);
-  $('completionVolume').innerHTML=progressApi.workloadFamiliesMarkup([workout]);
-  $('completionPrCount').textContent=String(summary.prCount);
-  $('completionPrCopy').textContent=summary.prCount?`${summary.prCount} new record${summary.prCount===1?'':'s'}.`:'';
-  $('completionPrCopy').hidden=!summary.prCount;
-  document.body.classList.add('workout-completion-open');
-  document.body.dataset.workoutCompletionPetState=summary.prCount?'pr':'complete';
-  $('workoutCompletion').classList.remove('hidden');
+  const background=completionReceipt?.background||[document.querySelector('main'),$('top'),document.querySelector('.bottom-nav')].filter(Boolean).map(element=>({element,inert:element.inert}));
+  completionReceipt={workoutId:workout.id,workout,background};
+  const receipt=$('workoutCompletion'),detail=$('completionDetail');
+  // Establish a usable saved-state presentation before any enhanced formatting.
+  $('completionWorkoutType').textContent=workout.type||'Workout';
+  $('completionDate').textContent='';
+  $('completionReceiptCopy').textContent='Saved on this device';
+  $('completionPrCopy').hidden=true;
+  detail.hidden=true;
+  $('completionExercisesList').replaceChildren();
+  $('completionWorkoutNote').replaceChildren();
+  try{
+    const summary=analyticsApi.workoutSummary(workout,analyticsOptions());
+    const events=derivePersonalRecords().workoutRecordEvents?.[workout.id]||[];
+    const seconds=summary.durationSeconds,hours=Math.floor(seconds/3600);
+    $('completionWorkoutType').textContent=completionWorkoutLabel(workout.type);
+    $('completionDate').textContent=fmtWorkoutContext(workout.completedAt);
+    $('completionDate').dateTime=workout.completedAt;
+    $('completionDuration').textContent=hours?`${hours}:${String(Math.floor(seconds%3600/60)).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`:fmtTime(seconds);
+    $('completionExercises').textContent=String((workout.exercises||[]).length);
+    $('completionWorkingSets').textContent=String(summary.workingSetCount);
+    $('completionWarmups').textContent=String((workout.exercises||[]).reduce((count,exercise)=>count+(exercise.sets||[]).filter(set=>set.completed&&set.warmup===true).length,0));
+    // This existing renderer keeps external, indicated and modeled workloads separate.
+    $('completionVolume').innerHTML=progressApi.workloadFamiliesMarkup([workout]);
+    $('completionPrCount').textContent=String(events.length);
+    $('completionPrCopy').textContent=events.length?`${events.length} new record${events.length===1?'':'s'}.`:'';
+    $('completionPrCopy').hidden=!events.length;
+    const node=(tag,className,text)=>{const element=document.createElement(tag);element.className=className;if(text!==undefined)element.textContent=String(text);return element;};
+    const appendNote=(container,label,text)=>{if(!text)return;const note=node('div','completion-note');note.append(node('span','label',label),node('p','',text));container.append(note);};
+    appendNote($('completionWorkoutNote'),'Workout note',workout.note);
+    const exercises=document.createDocumentFragment();
+    (workout.exercises||[]).forEach((exercise,exerciseIndex)=>{
+      const card=node('article','completion-exercise');
+      const heading=node('header','completion-exercise-head');
+      heading.append(node('span','completion-order',String(exerciseIndex+1).padStart(2,'0')),node('h3','',exercise.name));
+      card.append(heading);
+      const metadata=[exercise.muscle,exercise.equipment].filter(Boolean);
+      if(metadata.length)card.append(node('p','completion-exercise-meta',metadata.join(' · ')));
+      const sets=node('ol','completion-sets');
+      let workingIndex=0,warmupIndex=0;
+      (exercise.sets||[]).forEach((set,setIndex)=>{
+        if(!set.completed)return;
+        const label=set.warmup===true?`Warm-up ${++warmupIndex}`:`Working ${++workingIndex}`;
+        const value=formatLoggedSet(exercise,set);
+        const row=node('li',`completion-set${set.warmup===true?' is-warmup':''}`);
+        row.append(node('span','completion-set-label',label),node('strong','completion-set-value',value));
+        const badges=node('span','completion-set-badges');
+        events.filter(event=>event.source?.exerciseIndex===exerciseIndex&&event.source?.setIndex===setIndex).forEach(event=>badges.append(node('span','completion-record',event.shortLabel)));
+        if(badges.childElementCount)row.append(badges);
+        sets.append(row);
+      });
+      card.append(sets);
+      appendNote(card,'Exercise note',exercise.note);
+      exercises.append(card);
+    });
+    $('completionExercisesList').replaceChildren(exercises);
+    detail.hidden=false;
+  }catch(error){
+    // Presentation must never roll back or obscure the already committed workout.
+    $('completionPrCopy').hidden=true;
+    $('completionReceiptCopy').textContent='Saved on this device. Full details are available in History.';
+    console.warn('Workout saved; enhanced receipt could not render.',error);
+  }
+  // Let the normal workout-mode shell finish its own teardown first.
   window.bigGainsViewShell?.showView('today',{instant:true,scroll:false,workout:false});
-  $('completionPetSlot').appendChild($('trainingPetCard'));
-  window.trainingPet?.render(true);
-  requestAnimationFrame(()=>$('workoutCompletionTitle').focus({preventScroll:true}));
+  document.body.classList.add('workout-completion-open');
+  receipt.classList.remove('hidden');
+  receipt.scrollTop=0;
+  background.forEach(({element})=>{element.inert=true;});
+  $('workoutCompletionTitle').focus({preventScroll:true});
   return true;
 }
 function dismissCompletion(){
   if(!completionReceipt)return false;
+  completionReceipt.background.forEach(({element,inert})=>{element.inert=inert;});
   completionReceipt=null;
   document.body.classList.remove('workout-completion-open');
-  delete document.body.dataset.workoutCompletionPetState;
   $('workoutCompletion').classList.add('hidden');
-  $('trainingPetHome').appendChild($('trainingPetCard'));
-  window.trainingPet?.render(true);
   window.bigGainsViewShell?.showView('today',{workout:false});
-  $('top').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
+  const returnFocus=$('quickStartSession')||document.querySelector('.bottom-nav [data-view="today"]');
+  returnFocus?.focus({preventScroll:true});
+  $('top').scrollIntoView({behavior:'instant'});
   return true;
 }
 function reviewCompletedWorkout(){if(!completionReceipt)return false;window.bigGainsViewShell?.showView('progress',{workout:false,historyView:'list'});openHistory(completionReceipt.workoutId,'list');return true;}

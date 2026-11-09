@@ -385,21 +385,27 @@
 
     <section id="workoutCompletion" class="workout-completion hidden" aria-labelledby="workoutCompletionTitle">
       <div class="workout-completion-shell">
-        <div class="workout-completion-copy">
-          <span class="label">Workout saved</span>
-          <h1 id="workoutCompletionTitle" tabindex="-1">Workout complete</h1>
-          <p id="completionReceiptCopy">Saved on this device. You can review the session in History.</p>
+        <header class="workout-completion-copy">
+          <span class="label">Your workout receipt</span>
+          <h1 id="workoutCompletionTitle" tabindex="-1">WORKOUT COMPLETE</h1>
+          <p id="completionWorkoutType" class="completion-workout-name">Workout</p>
+          <time id="completionDate"></time>
+          <p id="completionReceiptCopy" class="completion-saved">Saved on this device</p>
           <p id="completionPrCopy" class="completion-pr-copy" hidden></p>
+        </header>
+        <div id="completionDetail" hidden>
+          <dl class="completion-summary" aria-label="Completed workout summary">
+            <div class="completion-elapsed"><dt>Elapsed</dt><dd id="completionDuration">00:00</dd></div>
+            <div><dt>Exercises</dt><dd id="completionExercises">0</dd></div>
+            <div><dt>Working sets</dt><dd id="completionWorkingSets">0</dd></div>
+            <div><dt>Warm-ups</dt><dd id="completionWarmups">0</dd></div>
+            <div><dt>Record events</dt><dd id="completionPrCount">0</dd></div>
+          </dl>
+          <section class="completion-workload" aria-label="Session workload"><span class="label">Session workload</span><div id="completionVolume"></div></section>
+          <div id="completionWorkoutNote"></div>
+          <div class="completion-breakdown-heading"><span class="label">The full session</span><h2>Every set. All yours.</h2><p>Completed exercises, in workout order.</p></div>
+          <div id="completionExercisesList"></div>
         </div>
-        <div id="completionPetSlot" class="completion-pet-slot" aria-label="Workout companion"></div>
-        <dl class="completion-summary" aria-label="Completed workout summary">
-          <div><dt>Workout type</dt><dd id="completionWorkoutType">Workout</dd></div>
-          <div><dt>Duration</dt><dd id="completionDuration">00:00</dd></div>
-          <div><dt>Exercises</dt><dd id="completionExercises">0</dd></div>
-          <div><dt>Working sets</dt><dd id="completionWorkingSets">0</dd></div>
-          <div><dt>Session workload</dt><dd id="completionVolume">0 lb</dd></div>
-          <div><dt>Record events</dt><dd id="completionPrCount">0</dd></div>
-        </dl>
         <div class="completion-actions">
           <button id="completionDone" class="primary" type="button">Done</button>
           <button id="completionReview" class="ghost compact" type="button">View in History</button>
